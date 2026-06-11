@@ -1,0 +1,179 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>魔导书 v4.2 — AI绘画提示词工作站</title>
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+
+<!-- 工具栏 -->
+<header id="toolbar">
+  <div class="tb-left">
+    <span class="tb-logo">📖 <span>魔导书</span></span>
+    <span class="tb-badge">v4.2</span>
+  </div>
+  <div class="tb-center">
+    <button id="btn-quality" class="tb-btn active">✨ 质量词</button>
+    <button id="btn-clean" class="tb-btn" title="清洗提示词 (Shift+C)">🧹 清洗</button>
+    <button id="btn-random" class="tb-btn">🎲 手气不错</button>
+    <button id="btn-clear-all" class="tb-btn danger">🗑 清空</button>
+    <button id="btn-undo" class="tb-btn ghost" disabled title="撤销 (Ctrl+Z)">↩</button>
+    <button id="btn-redo" class="tb-btn ghost" disabled title="重做 (Ctrl+Y)">↪</button>
+  </div>
+  <div class="tb-right">
+    <button id="btn-theme" class="tb-btn icon" title="主题设置">🎨</button>
+    <button id="btn-shortcuts" class="tb-btn ghost" title="快捷键设置">⌨</button>
+  </div>
+</header>
+
+<!-- 主布局 -->
+<div id="app">
+
+  <!-- ====== 左侧栏 ====== -->
+  <aside id="sidebar">
+    <div class="search-wrap">
+      <input id="search-input" placeholder="🔍 搜索标签 (Ctrl+K)..." autocomplete="off">
+      <button id="btn-search-clear" class="search-clear" style="display:none">✕</button>
+    </div>
+    <div class="sidebar-scroll">
+      <div class="sidebar-head">
+        <span class="sidebar-label">📁 标签分类</span>
+        <button id="btn-add-cat" class="cud-btn" title="新建大类">✚ 大类</button>
+      </div>
+      <nav id="category-tree"></nav>
+
+      <div class="sidebar-div"></div>
+      <span class="sidebar-label">🔥 常用标签</span>
+      <div id="freq-tags"></div>
+
+      <div class="sidebar-div"></div>
+      <span class="sidebar-label fav-toggle" id="fav-toggle">⭐ 收藏 <span id="fav-count"></span></span>
+      <div id="fav-list" style="display:none"></div>
+
+      <div class="sidebar-div"></div>
+      <span class="sidebar-label">📦 预设</span>
+      <div id="presets-list"></div>
+
+      <div class="sidebar-div"></div>
+      <span class="sidebar-label">💾 存档</span>
+      <div id="saved-list"></div>
+    </div>
+  </aside>
+
+  <!-- ====== 中间标签画布 ====== -->
+  <main id="canvas">
+    <div class="canvas-head">
+      <h2 id="canvas-title">选择一个子类别开始</h2>
+      <div class="canvas-actions">
+        <button id="btn-select-all" class="tb-btn" style="display:none">☑ 全选当前页</button>
+        <button id="btn-clear-page" class="tb-btn" style="display:none">☐ 清空当前页</button>
+        <button id="btn-add-sub-here" class="tb-btn" style="display:none" title="在当前大类新建子类">📂 +子类</button>
+        <button id="btn-add-tag-here" class="tb-btn" style="display:none" title="在当前子类添加标签">🏷 +标签</button>
+        <button id="rec-toggle" class="tb-btn" style="display:none" title="智能推荐相关标签">💡 推荐</button>
+      </div>
+    </div>
+    <div id="tag-grid"></div>
+    <div id="search-info" style="display:none"></div>
+  </main>
+
+  <!-- ====== 右侧工作室 ====== -->
+  <aside id="panel">
+
+    <!-- 版本快照 -->
+    <div class="panel-section" id="snapshot-section">
+      <div class="panel-sec-head">
+        <span class="panel-sec-title">📸 版本快照</span>
+        <button id="btn-save-snapshot" class="cud-btn" title="保存当前状态为快照">💾 保存</button>
+      </div>
+      <div id="snapshot-list" class="mini-scroll"></div>
+    </div>
+
+    <!-- 操作历史 -->
+    <div class="panel-section" id="history-section">
+      <span class="panel-sec-title">🕐 操作历史</span>
+      <div id="history-states" class="mini-scroll"></div>
+    </div>
+
+    <!-- 标签工作区 -->
+    <div class="panel-section" id="workspace-section">
+      <div class="panel-tabs">
+        <button class="panel-tab active" data-tab="pos">✅ 正面 <span id="tab-pos-num"></span></button>
+        <button class="panel-tab" data-tab="neg">❌ 负面 <span id="tab-neg-num"></span></button>
+      </div>
+
+      <div id="quick-neg" style="display:none"></div>
+
+      <div id="ws-pos">
+        <div class="ws-toolbar">
+          <label class="sort-label"><input type="checkbox" id="auto-sort-pos" checked> 自动排序</label>
+          <span id="pos-count">0 个</span>
+          <button id="btn-clear-pos" class="cud-btn danger">🗑 清空正面</button>
+        </div>
+        <div id="tags-pos" class="tags-container">
+          <div class="empty-hint">点击标签卡片添加</div>
+        </div>
+      </div>
+
+      <div id="ws-neg" style="display:none">
+        <div class="ws-toolbar">
+          <label class="sort-label"><input type="checkbox" id="auto-sort-neg" checked> 自动排序</label>
+          <span id="neg-count">0 个</span>
+          <button id="btn-clear-neg" class="cud-btn danger">🗑 清空负面</button>
+        </div>
+        <div id="tags-neg" class="tags-container">
+          <div class="empty-hint">右键或Shift+点击标签添加到此处</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 提示词预览 -->
+    <div class="panel-section preview-section">
+      <div class="preview-head-row">
+        <h3 class="panel-sec-title">📝 提示词预览</h3>
+        <button id="btn-preview-expand" class="cud-btn" title="放大预览">🔍 放大</button>
+      </div>
+      <textarea id="prompt-output-en" readonly placeholder="选择标签后显示英文提示词..." class="preview-ta"></textarea>
+      <textarea id="prompt-output-cn" readonly placeholder="选择标签后显示中文提示词..." class="preview-ta cn"></textarea>
+      <div class="preview-btns">
+        <button id="btn-copy" class="tb-btn primary">📋 复制英文</button>
+        <button id="btn-copy-cn" class="tb-btn">📋 复制中文</button>
+        <button id="btn-copy-pos" class="tb-btn">📋 仅正面</button>
+        <button id="btn-copy-neg" class="tb-btn">📋 仅负面</button>
+        <button id="btn-export-card" class="tb-btn">🖼 导出卡片</button>
+      </div>
+    </div>
+  </aside>
+</div>
+
+<!-- 模态框容器 -->
+<div id="modal-root"></div>
+
+<!-- 全屏预览弹窗 -->
+<div id="fullscreen-preview" class="fullscreen-overlay" style="display:none">
+  <div class="fullscreen-box">
+    <div class="fullscreen-head">
+      <h2>📝 提示词预览</h2>
+      <div>
+        <button id="fs-copy-en" class="tb-btn primary" style="margin-right: 4px">📋 复制英文</button>
+        <button id="fs-copy-cn" class="tb-btn">📋 复制中文</button>
+        <button id="fs-close" class="tb-btn">✕ 关闭</button>
+      </div>
+    </div>
+    <div class="fullscreen-body">
+      <div class="fs-section">
+        <h3>🇬🇧 English</h3>
+        <textarea id="fs-prompt-en" readonly class="fs-textarea"></textarea>
+      </div>
+      <div class="fs-section">
+        <h3>🇨🇳 中文</h3>
+        <textarea id="fs-prompt-cn" readonly class="fs-textarea"></textarea>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="/app.js"></script>
+</body>
+</html>
