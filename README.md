@@ -9,10 +9,10 @@
 ## 🖼 运行截图 Screenshots
 
 ### v3.1 升级版（推荐🔥）
-![v3.1运行截图](https://github.com/hanqingyan3293/Grimoire-Prompt-Combiner/releases/download/v1.0.0/v3.1%E8%BF%90%E8%A1%8C.png)
+![v3.1运行截图](https://github.com/hanqingyan3293/Grimoire-Prompt-Combiner/releases/download/v1.0.0/v3.1.png)
 
 ### v2 经典版（浏览器运行）
-![v2运行截图](https://github.com/hanqingyan3293/Grimoire-Prompt-Combiner/releases/download/v1.0.0/v2%E8%BF%90%E8%A1%8C.png)
+![v2运行截图](https://github.com/hanqingyan3293/Grimoire-Prompt-Combiner/releases/download/v1.0.0/v2.png)
 
 ---
 
@@ -94,11 +94,12 @@ python launch.py
 | `v3.1.zip` | v3.1 升级版源码 |
 | `v2.zip` | v2 经典版源码 |
 | `MoDaoShu-Grimoire.exe` | 桌面客户端 |
-| `v3.1运行.png` | v3.1 运行截图 |
-| `v2运行.png` | v2 运行截图 |
+| `v3.1.png` | v3.1 运行截图 |
+| `v2.png` | v2 运行截图 |
 
 ---
 
 ## 📄 许可证 License
 
 MIT License — 详见 [LICENSE](LICENSE) 文件
+
