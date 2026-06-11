@@ -1,0 +1,185 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>魔导书 - AI绘画提示词组合器</title>
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+
+<!-- 顶部工具栏 -->
+<header id="toolbar">
+  <div class="toolbar-left">
+    <span class="app-title">📖 魔导书</span>
+    <span class="app-subtitle">AI绘画提示词组合器</span>
+  </div>
+  <div class="toolbar-right">
+    <button id="btn-quality" class="tool-btn active" title="基础质量词">✨ 基础质量词</button>
+    <button id="btn-random" class="tool-btn" title="随机生成提示词">🎲 手气不错</button>
+    <button id="btn-clear" class="tool-btn danger" title="清空所有已选">🗑 清空全部</button>
+  </div>
+</header>
+
+<!-- 主布局 -->
+<div id="app">
+
+  <!-- 左侧栏 -->
+  <aside id="sidebar">
+    <!-- 搜索 -->
+    <div class="search-box">
+      <input type="text" id="search-input" placeholder="搜索标签 (中/英文)...">
+      <button id="btn-search-clear" class="search-clear" style="display:none">✕</button>
+    </div>
+
+    <!-- 分类导航 -->
+    <nav id="category-nav">
+      <div class="nav-section-title">📁 标签分类</div>
+      <div id="category-tree"></div>
+    </nav>
+
+    <div class="sidebar-divider"></div>
+
+    <!-- 收藏 -->
+    <div id="favorites-section" class="sidebar-section">
+      <div class="nav-section-title" id="fav-toggle" style="cursor:pointer">⭐ 我的收藏 <span id="fav-count">0</span></div>
+      <div id="favorites-list" class="favorites-list" style="display:none"></div>
+    </div>
+
+    <div class="sidebar-divider"></div>
+
+    <!-- 预设 -->
+    <div id="presets-section" class="sidebar-section">
+      <div class="nav-section-title">📦 预设组合</div>
+      <div id="presets-list"></div>
+    </div>
+
+    <div class="sidebar-divider"></div>
+
+    <!-- 我的存档 -->
+    <div id="saved-section" class="sidebar-section">
+      <div class="nav-section-title">💾 我的存档</div>
+      <div id="saved-list"></div>
+    </div>
+
+    <div class="sidebar-divider"></div>
+
+    <!-- 历史记录 -->
+    <div id="history-section" class="sidebar-section">
+      <div class="nav-section-title">🕐 历史记录</div>
+      <div id="history-list"></div>
+    </div>
+  </aside>
+
+  <!-- 中间标签浏览区 -->
+  <main id="tag-browser">
+    <div id="browser-header">
+      <h2 id="browser-title">请从左侧选择一个子类别开始浏览</h2>
+      <div id="browser-actions"></div>
+    </div>
+    <div id="tag-grid"></div>
+    <div id="search-results-info" style="display:none"></div>
+  </main>
+
+  <!-- 右侧提示词面板 -->
+  <aside id="prompt-panel">
+    <!-- 标签页切换 -->
+    <div class="panel-tabs">
+      <button class="panel-tab active" data-tab="positive">✅ 正面提示词</button>
+      <button class="panel-tab" data-tab="negative">❌ 负面提示词</button>
+    </div>
+
+    <!-- 正面提示词 -->
+    <div id="panel-positive" class="panel-content">
+      <div class="panel-toolbar">
+        <label class="sort-toggle">
+          <input type="checkbox" id="auto-sort-positive" checked>
+          <span>自动按权重排序</span>
+        </label>
+        <span id="positive-count" class="tag-count">已选 0 个</span>
+      </div>
+      <div id="selected-tags-positive" class="selected-tags">
+        <div class="empty-hint">点击左侧标签添加到此处</div>
+      </div>
+    </div>
+
+    <!-- 负面提示词 -->
+    <div id="panel-negative" class="panel-content" style="display:none">
+      <div class="panel-toolbar">
+        <label class="sort-toggle">
+          <input type="checkbox" id="auto-sort-negative" checked>
+          <span>自动按权重排序</span>
+        </label>
+        <span id="negative-count" class="tag-count">已选 0 个</span>
+      </div>
+      <div id="selected-tags-negative" class="selected-tags">
+        <div class="empty-hint">点击左侧标签添加到负面提示词</div>
+      </div>
+    </div>
+
+    <!-- 提示词预览 -->
+    <div class="preview-section">
+      <div class="preview-header">
+        <h3>📝 生成的提示词</h3>
+        <div class="preview-actions">
+          <select id="export-format">
+            <option value="generic">通用格式</option>
+            <option value="novelai">NovelAI</option>
+            <option value="sdwebui">SD WebUI</option>
+          </select>
+          <button id="btn-copy" class="action-btn primary">📋 复制</button>
+          <button id="btn-save-preset" class="action-btn">💾 保存预设</button>
+        </div>
+      </div>
+      <textarea id="prompt-output" readonly placeholder="选择标签后这里会显示完整提示词..."></textarea>
+    </div>
+  </aside>
+</div>
+
+<!-- 模态框: 保存预设 -->
+<div id="modal-save" class="modal" style="display:none">
+  <div class="modal-content">
+    <h3>保存预设</h3>
+    <input type="text" id="save-preset-name" placeholder="输入预设名称...">
+    <div class="modal-actions">
+      <button id="btn-save-confirm" class="action-btn primary">保存</button>
+      <button id="btn-save-cancel" class="action-btn">取消</button>
+    </div>
+  </div>
+</div>
+
+<!-- 模态框: 管理标签 -->
+<div id="modal-tag-manage" class="modal" style="display:none">
+  <div class="modal-content modal-wide">
+    <h3>管理自定义标签</h3>
+    <div class="form-row">
+      <input type="text" id="manage-category" placeholder="大类名称">
+      <input type="text" id="manage-subcategory" placeholder="子类别名称">
+    </div>
+    <div class="form-row">
+      <input type="text" id="manage-tag-en" placeholder="英文标签">
+      <input type="text" id="manage-tag-zh" placeholder="中文翻译">
+    </div>
+    <div class="modal-actions">
+      <button id="btn-tag-add" class="action-btn primary">添加标签</button>
+      <button id="btn-tag-cancel" class="action-btn">关闭</button>
+    </div>
+    <div id="custom-tags-list" class="custom-tags-list"></div>
+  </div>
+</div>
+
+<!-- 模态框: 导入预设 -->
+<div id="modal-import" class="modal" style="display:none">
+  <div class="modal-content">
+    <h3>导入预设</h3>
+    <textarea id="import-preset-json" placeholder="粘贴预设JSON数据..." rows="8"></textarea>
+    <div class="modal-actions">
+      <button id="btn-import-confirm" class="action-btn primary">导入</button>
+      <button id="btn-import-cancel" class="action-btn">取消</button>
+    </div>
+  </div>
+</div>
+
+<script src="/app.js"></script>
+</body>
+</html>
