@@ -2,157 +2,103 @@
 
 > **由 AI 生成 | AI-Generated Project**
 
-魔导书是一款面向 AI 绘画创作者的提示词（Prompt）组合与管理工具。它帮助用户通过分类标签快速组合高质量提示词，支持 Web 端和桌面客户端两种使用方式。
+魔导书是一款面向 AI 绘画创作者的提示词（Prompt）组合与管理工具。帮助用户通过分类标签快速组合高质量提示词，支持 Web 端和桌面客户端两种使用方式。
+
+---
+
+## 🖼 运行截图 Screenshots
+
+### v3.1 升级版（推荐🔥）
+![v3.1运行截图](https://github.com/hanqingyan3293/Grimoire-Prompt-Combiner/releases/download/v1.0.0/v3.1%E8%BF%90%E8%A1%8C.png)
+
+### v2 经典版（浏览器运行）
+![v2运行截图](https://github.com/hanqingyan3293/Grimoire-Prompt-Combiner/releases/download/v1.0.0/v2%E8%BF%90%E8%A1%8C.png)
 
 ---
 
 ## ✨ 功能 Features
 
-- **标签化提示词管理** — 按镜头、风格、光照、色彩、构图等分类管理和浏览提示词
-- **快速组合器** — 点击标签即可组合完整 Prompt，一键复制使用
+- **标签化提示词管理** — 按镜头、风格、光照、色彩、构图等分类管理
+- **快速组合器** — 点击标签即可组合完整 Prompt，一键复制
 - **基础质量词** — 一键添加画质增强前缀词
-- **随机手气** — 🎲 随机组合 Prompt，激发创作灵感
-- **标签扩展** — 支持自定义添加标签类别和内容
-- **历史记录** — 自动保存使用历史，方便回溯
-- **桌面版可用** — exe-v2 提供独立桌面客户端（基于 PyWebView）
+- **随机手气** 🎲 — 随机组合 Prompt，激发创作灵感
+- **双主题切换** 🌓 — 暗色/亮色一键切换（v3.1+）
+- **一键清洗** 🧹 — 自动去除重复标签
+- **自定义标签** — 支持添加/编辑/删除标签和分类
+- **历史记录** — 自动保存使用历史
+- **预设保存** — 保存常用提示词组合为预设
+- **桌面版可用** — exe-v2 提供独立桌面客户端
 
 ---
 
 ## 📦 项目结构 Structure
 
-`
+```
 魔导书/
-├── v2/                    # Web 版 (Flask)
-│   ├── server.py          # Flask 后端服务
-│   ├── launch.py          # 启动脚本（自动安装依赖 + 打开浏览器）
-│   ├── start.bat          # Windows 快捷启动
-│   ├── static/            # 前端资源
-│   │   ├── index.html     # 主页面
-│   │   ├── style.css      # 样式表
-│   │   └── app.js         # 前端逻辑
-│   └── data/              # 标签数据
-│       └── tags.json      # 提示词标签库
-│
-├── v3.1/                 # Web 版 v3.1 (全新升级，推荐使用)
-│   ├── server.py          # Flask 后端服务 (端口 5805)
-│   ├── launch.py          # 启动脚本
-│   ├── start.bat          # Windows 快捷启动
-│   └── static/            # 前端资源
-│
-└── exe-v2/                # 桌面客户端版 (PyWebView)
-    ├── 魔导书.py           # 桌面应用源码
-    ├── dist/               # 编译后的可执行文件
-    │   └── 魔导书.exe       # Windows 独立运行程序
-    ├── static/             # 前端资源
-    └── data/               # 标签数据
-`
+├── v2/                 # Web版v2（经典版）- Flask + 浏览器
+├── v3/                 # Web版v3（中间版）
+├── v3.1/               # Web版v3.1（推荐）- 升级版
+├── v4/                 # Web版v4（最新）- Bento Grid设计
+├── exe-v2/             # 桌面客户端 - 单文件exe
+├── README.md           # 本文件
+└── LICENSE             # MIT开源协议
+```
 
 ---
 
 ## 🚀 快速开始 Quick Start
 
-### Web 版 (v2)
-
-**环境要求：** Python 3.8+
-
-`bash
-# 进入 v2 目录
-cd v2
-
-# 启动服务（自动安装 Flask + openpyxl 依赖）
+### v3.1（推荐）— 浏览器运行
+```bash
+# 1. 解压 v3.1.zip
+# 2. 安装依赖（需要Python 3.8+）
+pip install flask
+# 3. 运行
 python launch.py
-`
+# 或双击 start.bat
+# 4. 浏览器自动打开 http://127.0.0.1:5805
+```
 
-启动后浏览器会自动打开 http://127.0.0.1:5801
-
-或者手动启动：
-
-`bash
+### v2（经典版）— 浏览器运行
+```bash
+# 同上，端口为 5801
 cd v2
-pip install flask openpyxl
-python server.py
-`
+pip install flask
+python launch.py
+```
 
-### Windows 一键启动
-
-双击 v2/start.bat 即可自动运行。
-
-### 桌面客户端 (exe-v2)
-
-直接运行 exe-v2/dist/魔导书.exe，无需安装 Python 环境。
+### exe-v2（桌面版）— 单文件运行
+- 下载 `MoDaoShu-Grimoire.exe`
+- 双击运行，无需安装Python
+- 适合非技术用户
 
 ---
 
+## 🖥 技术栈 Tech Stack
+
+| 版本 | 后端 | 前端 | 特点 |
+|---|---|---|---|
+| v2 | Python + Flask | HTML + CSS + JS | 经典版 |
+| v3.1 | Python + Flask | HTML + CSS + JS | 双主题+清洗+快捷操作 |
+| v4 | Python + Flask | HTML + CSS + JS | Bento Grid + Glassmorphism |
+| exe-v2 | PyWebView | HTML + CSS + JS | 桌面客户端，无需Python |
 
 ---
 
-## 📸 截图 Screenshots
+## 📥 下载 Downloads
 
-### Web 版 (v2) — 浏览器运行
+前往 [Releases 页面](https://github.com/hanqingyan3293/Grimoire-Prompt-Combiner/releases) 下载最新版本。
 
-![v2运行截图](v2/v2运行.png)
-
-> **v2 Web 版** 基于 Python Flask 框架，在浏览器中运行。需要本地安装 Python 3.8+ 环境，启动后自动打开浏览器访问 `http://127.0.0.1:5801`。
-
-### 桌面客户端 (exe-v2) — 单文件运行
-
-![exe运行截图](exe-v2/dist/exe运行.png)
-
-> **exe-v2 桌面版** 为独立可执行文件（基于 PyWebView + PyInstaller 打包），无需安装 Python 环境，下载后双击即可运行，适合非技术用户使用。
-
-### Web 版 (v3.1) — 全新升级
-
-![v3.1运行截图](v3.1/v3.1运行.png)
-
-> **v3.1 升级版** — 在 v2 基础上大幅优化：
-> - 🧹 **一键清洗** — 自动去除重复标签，格式化提示词
-> - 🌓 **双主题** — 暗色/亮色一键切换，偏好自动记忆
-> - 🃏 **卡片式标签** — 标签改为可视化卡片，带分类标识和使用频率
-> - 🔥 **常用标签** — 按使用频次自动排序，快速调用高频标签
-> - ⚡ **快速负面词** — 10 个预设负面词一键添加
-> - 🗑 **独立清空** — 正面/负面面板各自独立清空
-> - 📋 **分面板复制** — 支持仅复制正面或仅复制负面提示词
-> - ⌨ **键盘快捷键** — `Ctrl+K` 搜索、`Ctrl+C` 复制、`Shift+C` 清洗
-## ⚙️ 配置说明 Configuration
-
-### 标签数据
-
-v2/data/tags.json 包含所有提示词分类标签，支持按以下维度分类：
-
-| 维度 | 说明 |
-|------|------|
-| 🎥 镜头 | 全景、特写、航拍、鱼眼等 |
-| 🎨 风格 | 写实、二次元、赛博朋克、水墨等 |
-| ☀️ 光照 | 自然光、逆光、霓虹灯、体积光等 |
-| 🌈 色彩 | 高饱和、莫兰迪、黑白、渐变色等 |
-| 📐 构图 | 三分法、对称、引导线、框架等 |
-| 🖼️ 画面 | 景深、动感模糊、粒子、光晕等 |
-
-### 自定义扩展
-
-编辑 tags.json 即可添加自定义标签分类和内容，格式直观易懂。
-
-### 端口配置
-
-默认端口为 5801，如需修改请编辑 server.py 中的端口参数。
+| 文件 | 说明 |
+|---|---|
+| `v3.1.zip` | v3.1 升级版源码 |
+| `v2.zip` | v2 经典版源码 |
+| `MoDaoShu-Grimoire.exe` | 桌面客户端 |
+| `v3.1运行.png` | v3.1 运行截图 |
+| `v2运行.png` | v2 运行截图 |
 
 ---
 
-## 🖥️ 技术栈 Tech Stack
+## 📄 许可证 License
 
-- **后端：** Python + Flask
-- **前端：** 原生 HTML + CSS + JavaScript（无框架依赖）
-- **桌面版：** PyWebView（Web 界面封装为桌面应用）
-- **打包：** PyInstaller（exe-v2 打包为独立 exe）
-
----
-
-## 📄 开源许可 License
-
-本项目基于 MIT 许可证开源 — 详见 [LICENSE](LICENSE) 文件。
-
----
-
-## 🤖 说明 Notice
-
-本项目代码由 AI 辅助生成，旨在为 AI 绘画创作者提供一个轻量、好用的提示词管理工具。欢迎自由使用、修改和分发。
+MIT License — 详见 [LICENSE](LICENSE) 文件

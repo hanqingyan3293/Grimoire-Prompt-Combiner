@@ -1,0 +1,135 @@
+﻿/* ============================================================
+   魔导书 v4 — 设计令牌系统 (Design Tokens)
+   三层架构: Primitive → Semantic → Component
+   三主题: Dark Neon / Light Clean / Midnight Gold
+   ============================================================ */
+
+/* ========== 1. PRIMITIVE TOKENS (原始值) ========== */
+:root {
+  /* --- Dark Neon (default) primitives --- */
+  --pr-slate-900: #0f0f1a; --pr-slate-850: #151525; --pr-slate-800: #1a1a30;
+  --pr-slate-700: #252540; --pr-slate-600: #303055; --pr-slate-500: #404070;
+  --pr-slate-400: #5a5a8a; --pr-slate-300: #8080a8; --pr-slate-200: #b0b0cc;
+  --pr-slate-100: #d8d8ee; --pr-slate-50: #f0f0ff;
+  --pr-purple-500: #7c3aed; --pr-purple-400: #8b5cf6; --pr-purple-300: #a78bfa;
+  --pr-purple-200: #c4b5fd; --pr-purple-100: #ede9fe;
+  --pr-amber-500: #f59e0b; --pr-amber-400: #fbbf24; --pr-amber-300: #fcd34d;
+  --pr-rose-500: #f43f5e; --pr-rose-400: #fb7185;
+  --pr-emerald-500: #10b981; --pr-emerald-400: #34d399;
+  --pr-cyan-500: #06b6d4; --pr-cyan-400: #22d3ee;
+  --pr-radius-xs: 4px; --pr-radius-sm: 8px; --pr-radius-md: 12px;
+  --pr-radius-lg: 16px; --pr-radius-xl: 24px;
+  --pr-space-1: 4px; --pr-space-2: 8px; --pr-space-3: 12px;
+  --pr-space-4: 16px; --pr-space-5: 20px; --pr-space-6: 24px;
+  --pr-space-8: 32px; --pr-space-10: 40px; --pr-space-12: 48px;
+  --pr-font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', sans-serif;
+  --pr-font-mono: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+  --pr-font-size-xs: 11px; --pr-font-size-sm: 12px; --pr-font-size-base: 14px;
+  --pr-font-size-lg: 16px; --pr-font-size-xl: 20px; --pr-font-size-2xl: 24px;
+  --pr-duration-fast: 150ms; --pr-duration-normal: 250ms; --pr-duration-slow: 350ms;
+  --pr-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --pr-ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* ========== 2. SEMANTIC TOKENS (语义层) ========== */
+/* Dark Neon Theme (default) */
+[data-theme="neon"], :root {
+  --color-bg-base: var(--pr-slate-900);
+  --color-bg-surface: var(--pr-slate-850);
+  --color-bg-elevated: var(--pr-slate-800);
+  --color-bg-overlay: rgba(15, 15, 26, 0.8);
+  --color-border-default: var(--pr-slate-700);
+  --color-border-subtle: var(--pr-slate-600);
+  --color-border-accent: var(--pr-purple-500);
+  --color-text-primary: var(--pr-slate-100);
+  --color-text-secondary: var(--pr-slate-300);
+  --color-text-muted: var(--pr-slate-400);
+  --color-text-inverse: var(--pr-slate-900);
+  --color-accent-primary: var(--pr-purple-500);
+  --color-accent-hover: var(--pr-purple-400);
+  --color-accent-subtle: rgba(124, 58, 237, 0.15);
+  --color-accent-glow: rgba(124, 58, 237, 0.4);
+  --color-accent-secondary: var(--pr-cyan-500);
+  --color-danger: var(--pr-rose-500); --color-danger-hover: var(--pr-rose-400);
+  --color-success: var(--pr-emerald-500); --color-warning: var(--pr-amber-500);
+  --glass-bg: rgba(26, 26, 48, 0.6); --glass-border: rgba(124, 58, 237, 0.2);
+  --glass-blur: 16px; --shadow-sm: 0 1px 3px rgba(0,0,0,0.4);
+  --shadow-md: 0 4px 16px rgba(0,0,0,0.5); --shadow-lg: 0 8px 32px rgba(0,0,0,0.6);
+  --shadow-glow: 0 0 20px var(--color-accent-glow);
+}
+
+/* Light Clean Theme */
+[data-theme="clean"] {
+  --color-bg-base: #f8f9fc; --color-bg-surface: #ffffff; --color-bg-elevated: #f0f2f8;
+  --color-bg-overlay: rgba(248, 249, 252, 0.8);
+  --color-border-default: #e2e4ec; --color-border-subtle: #eef0f6;
+  --color-border-accent: #7c3aed;
+  --color-text-primary: #1a1a2e; --color-text-secondary: #505070;
+  --color-text-muted: #8888a0; --color-text-inverse: #ffffff;
+  --color-accent-primary: #7c3aed; --color-accent-hover: #6d28d9;
+  --color-accent-subtle: rgba(124, 58, 237, 0.08);
+  --color-accent-glow: rgba(124, 58, 237, 0.2);
+  --color-accent-secondary: #0891b2;
+  --color-danger: #e11d48; --color-danger-hover: #be123c;
+  --color-success: #059669; --color-warning: #d97706;
+  --glass-bg: rgba(255, 255, 255, 0.7); --glass-border: rgba(124, 58, 237, 0.15);
+  --glass-blur: 12px; --shadow-sm: 0 1px 3px rgba(0,0,0,0.06);
+  --shadow-md: 0 4px 16px rgba(0,0,0,0.08); --shadow-lg: 0 8px 32px rgba(0,0,0,0.12);
+  --shadow-glow: 0 0 20px var(--color-accent-glow);
+}
+
+/* Midnight Gold Theme */
+[data-theme="gold"] {
+  --color-bg-base: #0d0d14; --color-bg-surface: #14141f; --color-bg-elevated: #1a1a2a;
+  --color-bg-overlay: rgba(13, 13, 20, 0.85);
+  --color-border-default: #2a2a3a; --color-border-subtle: #202030;
+  --color-border-accent: #f59e0b;
+  --color-text-primary: #f0ead6; --color-text-secondary: #c4b998;
+  --color-text-muted: #8a7a5a; --color-text-inverse: #0d0d14;
+  --color-accent-primary: var(--pr-amber-500);
+  --color-accent-hover: var(--pr-amber-400);
+  --color-accent-subtle: rgba(245, 158, 11, 0.12);
+  --color-accent-glow: rgba(245, 158, 11, 0.3);
+  --color-accent-secondary: #fcd34d;
+  --color-danger: #dc2626; --color-danger-hover: #ef4444;
+  --color-success: #22c55e; --color-warning: #eab308;
+  --glass-bg: rgba(20, 20, 31, 0.7); --glass-border: rgba(245, 158, 11, 0.15);
+  --glass-blur: 14px; --shadow-sm: 0 1px 3px rgba(0,0,0,0.5);
+  --shadow-md: 0 4px 16px rgba(0,0,0,0.6); --shadow-lg: 0 8px 32px rgba(0,0,0,0.7);
+  --shadow-glow: 0 0 24px var(--color-accent-glow);
+}
+
+/* ========== 3. COMPONENT TOKENS (组件层) ========== */
+:root {
+  --card-bg: var(--color-bg-elevated);
+  --card-border: var(--color-border-subtle);
+  --card-radius: var(--pr-radius-md);
+  --card-shadow: var(--shadow-sm);
+  --card-hover-shadow: var(--shadow-md);
+  --card-hover-border: var(--color-border-accent);
+  --card-selected-bg: var(--color-accent-subtle);
+  --card-selected-border: var(--color-accent-primary);
+  --btn-bg: var(--color-bg-elevated);
+  --btn-border: var(--color-border-default);
+  --btn-text: var(--color-text-secondary);
+  --btn-hover-bg: var(--color-accent-subtle);
+  --btn-hover-text: var(--color-text-primary);
+  --btn-primary-bg: var(--color-accent-primary);
+  --btn-primary-text: #ffffff;
+  --btn-radius: var(--pr-radius-sm);
+  --input-bg: var(--color-bg-base);
+  --input-border: var(--color-border-default);
+  --input-focus-border: var(--color-accent-primary);
+  --input-focus-ring: var(--color-accent-subtle);
+  --tooltip-bg: var(--color-bg-elevated);
+  --tooltip-text: var(--color-text-primary);
+  --sidebar-width: 280px;
+  --panel-width: 360px;
+  --toolbar-height: 52px;
+  --tag-card-min-w: 160px;
+  --tag-card-max-w: 240px;
+  --transition-fast: var(--pr-duration-fast) var(--pr-ease-out);
+  --transition-normal: var(--pr-duration-normal) var(--pr-ease-out);
+  --transition-spring: var(--pr-duration-slow) var(--pr-ease-spring);
+  --z-sidebar: 10; --z-toolbar: 20; --z-modal: 100; --z-toast: 200; --z-tooltip: 300;
+}

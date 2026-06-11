@@ -1,0 +1,163 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>魔导书 v4 — AI 绘画提示词工作站</title>
+<link rel="stylesheet" href="/tokens.css">
+<link rel="stylesheet" href="/app.css">
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#0f0f1a">
+</head>
+<body>
+
+<!-- 工具栏 -->
+<header id="toolbar">
+  <div class="tb-left">
+    <span class="tb-logo"><span class="accent">📖</span> 魔导书</span>
+    <span class="tb-badge">v4</span>
+  </div>
+  <div class="tb-center">
+    <button id="btn-quality" class="btn active">✨ 质量词</button>
+    <button id="btn-clean" class="btn" title="清洗提示词 (Shift+C)">🧹 清洗</button>
+    <button id="btn-random" class="btn">🎲 手气不错</button>
+    <button id="btn-clear-all" class="btn danger">🗑 清空</button>
+    <button id="btn-undo" class="btn ghost" title="撤销 (Ctrl+Z)" disabled>↩</button>
+    <button id="btn-redo" class="btn ghost" title="重做 (Ctrl+Y)" disabled>↪</button>
+  </div>
+  <div class="tb-right">
+    <button id="btn-theme" class="btn btn-icon" title="切换主题">🎨</button>
+    <button id="btn-shortcuts" class="btn ghost" title="快捷键">⌨</button>
+  </div>
+</header>
+
+<!-- Bento Grid 主布局 -->
+<div id="app">
+  <!-- ====== 左栏：导航 ====== -->
+  <aside id="sidebar">
+    <div class="search-wrap">
+      <input class="search-input" id="search-input" placeholder="搜索标签 (Ctrl+K)...">
+    </div>
+    <div class="sidebar-scroll">
+      <div class="sidebar-section">
+        <div class="sidebar-head">
+          <span class="sidebar-label">📁 分类</span>
+          <button id="btn-add-cat" class="btn ghost" style="font-size:14px;padding:0 4px">＋</button>
+        </div>
+        <nav id="category-tree"></nav>
+      </div>
+      <div class="sidebar-divider"></div>
+      <div class="sidebar-section">
+        <span class="sidebar-label">🔥 常用标签</span>
+        <div id="freq-tags"></div>
+      </div>
+      <div class="sidebar-divider"></div>
+      <div class="sidebar-section">
+        <span class="sidebar-label" id="fav-toggle" style="cursor:pointer">⭐ 收藏 <span id="fav-count"></span></span>
+        <div id="fav-list" style="display:none"></div>
+      </div>
+      <div class="sidebar-divider"></div>
+      <div class="sidebar-section">
+        <span class="sidebar-label">📦 预设</span>
+        <div id="presets-list"></div>
+      </div>
+      <div class="sidebar-divider"></div>
+      <div class="sidebar-section">
+        <span class="sidebar-label">💾 存档</span>
+        <div id="saved-list"></div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ====== 中栏：标签画布 ====== -->
+  <main id="canvas">
+    <div class="canvas-header">
+      <h2 class="canvas-title" id="canvas-title">选择一个子类别开始</h2>
+      <div class="canvas-actions">
+        <button id="btn-select-all" class="btn" style="display:none">全选当前页</button>
+        <span id="rec-toggle" class="btn" style="display:none" title="开启智能推荐">💡 推荐</span>
+      </div>
+    </div>
+    <div id="tag-grid"></div>
+    <div id="search-info" style="display:none;padding:8px 16px;font-size:12px;color:var(--color-text-muted);border-top:1px solid var(--color-border-subtle)"></div>
+  </main>
+
+  <!-- ====== 右栏：工作室 ====== -->
+  <div id="panel">
+    <!-- 版本历史 -->
+    <div class="panel-card" id="history-panel">
+      <div class="panel-card-header">
+        <span class="panel-card-title">🕐 版本历史</span>
+        <span style="font-size:10px;color:var(--color-text-muted)" id="history-count"></span>
+      </div>
+      <div class="panel-card-body" id="history-list">
+        <div style="padding:20px;text-align:center;color:var(--color-text-muted);font-size:12px">操作记录将显示在这里</div>
+      </div>
+    </div>
+
+    <!-- 提示词工作室 -->
+    <div class="panel-card" id="workspace">
+      <div class="panel-tabs">
+        <button class="panel-tab active" data-tab="pos">✅ 正面 <span id="tab-pos-num"></span></button>
+        <button class="panel-tab" data-tab="neg">❌ 负面 <span id="tab-neg-num"></span></button>
+      </div>
+      <!-- 快速负面词 -->
+      <div class="quick-chips" id="quick-neg" style="display:none"></div>
+      <!-- 正面面板 -->
+      <div class="panel-card-body" id="ws-pos">
+        <div class="panel-card-header" style="border-bottom:0;padding:4px 8px">
+          <label style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--color-text-muted);cursor:pointer">
+            <input type="checkbox" id="auto-sort-pos" checked> 自动排序
+          </label>
+          <button id="btn-clear-pos" class="btn ghost" style="font-size:10px;padding:2px 8px">🗑 清空正面</button>
+          <span style="font-size:11px;color:var(--color-text-muted)" id="pos-count">0 个</span>
+        </div>
+        <div id="tags-pos">
+          <div style="padding:30px;text-align:center;color:var(--color-text-muted);font-size:12px">点击标签卡片添加</div>
+        </div>
+      </div>
+      <!-- 负面面板 -->
+      <div class="panel-card-body" id="ws-neg" style="display:none">
+        <div class="panel-card-header" style="border-bottom:0;padding:4px 8px">
+          <label style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--color-text-muted);cursor:pointer">
+            <input type="checkbox" id="auto-sort-neg" checked> 自动排序
+          </label>
+          <button id="btn-clear-neg" class="btn ghost" style="font-size:10px;padding:2px 8px">🗑 清空负面</button>
+          <span style="font-size:11px;color:var(--color-text-muted)" id="neg-count">0 个</span>
+        </div>
+        <div id="tags-neg">
+          <div style="padding:30px;text-align:center;color:var(--color-text-muted);font-size:12px">点击标签卡片添加</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 预览区 -->
+    <div class="panel-card" id="prompt-preview">
+      <div class="preview-area">
+        <div class="preview-toolbar">
+          <h3>📝 提示词</h3>
+          <select id="export-fmt">
+            <option value="generic">通用格式</option>
+            <option value="novelai">NovelAI</option>
+            <option value="sdwebui">SD WebUI</option>
+          </select>
+        </div>
+        <textarea class="preview-textarea" id="prompt-output" readonly placeholder="选择标签后这里会显示完整提示词..."></textarea>
+        <div class="preview-btns">
+          <button id="btn-copy" class="btn primary">📋 复制英文</button>
+          <button id="btn-copy-cn" class="btn">📋 复制中文</button>
+          <button id="btn-copy-pos" class="btn">📋 仅正面</button>
+          <button id="btn-copy-neg" class="btn">📋 仅负面</button>
+          <button id="btn-export-card" class="btn">🖼 导出卡片</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 模态框容器 -->
+<div id="modal-root"></div>
+
+<script src="/app.js"></script>
+</body>
+</html>

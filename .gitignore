@@ -26,4 +26,4 @@ exe版本/
 # Allow screenshots in dist
 !exe-v2/dist/exe运行.png
 exe-v2/dist/*
-!exe-v2/dist/exe运行.png
+!exe-v2/dist/exe运行.png*.bak
