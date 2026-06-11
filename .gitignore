@@ -1,4 +1,4 @@
-# Python
+﻿# Python
 __pycache__/
 *.py[cod]
 *.egg-info/
@@ -17,3 +17,8 @@ venv/
 # OS
 Thumbs.db
 .DS_Store
+
+# Excluded folders (only v2 and exe-v2 published)
+v1/
+exe版本/
+*.zip
