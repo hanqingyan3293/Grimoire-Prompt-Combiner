@@ -1,4 +1,4 @@
-﻿# Python
+# Python
 __pycache__/
 *.py[cod]
 *.egg-info/
@@ -22,3 +22,8 @@ Thumbs.db
 v1/
 exe版本/
 *.zip
+
+# Allow screenshots in dist
+!exe-v2/dist/exe运行.png
+exe-v2/dist/*
+!exe-v2/dist/exe运行.png

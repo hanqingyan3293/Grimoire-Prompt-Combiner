@@ -1,4 +1,4 @@
-﻿# 📖 魔导书 Grimoire — AI提示词组合器
+# 📖 魔导书 Grimoire — AI提示词组合器
 
 > **由 AI 生成 | AI-Generated Project**
 
@@ -49,7 +49,7 @@
 
 **环境要求：** Python 3.8+
 
-`ash
+`bash
 # 进入 v2 目录
 cd v2
 
@@ -61,7 +61,7 @@ python launch.py
 
 或者手动启动：
 
-`ash
+`bash
 cd v2
 pip install flask openpyxl
 python server.py
@@ -69,7 +69,7 @@ python server.py
 
 ### Windows 一键启动
 
-双击 2/start.bat 即可自动运行。
+双击 v2/start.bat 即可自动运行。
 
 ### 桌面客户端 (exe-v2)
 
@@ -77,11 +77,27 @@ python server.py
 
 ---
 
+
+---
+
+## 📸 截图 Screenshots
+
+### Web 版 (v2) — 浏览器运行
+
+![v2运行截图](v2/v2运行.png)
+
+> **v2 Web 版** 基于 Python Flask 框架，在浏览器中运行。需要本地安装 Python 3.8+ 环境，启动后自动打开浏览器访问 `http://127.0.0.1:5801`。
+
+### 桌面客户端 (exe-v2) — 单文件运行
+
+![exe运行截图](exe-v2/dist/exe运行.png)
+
+> **exe-v2 桌面版** 为独立可执行文件（基于 PyWebView + PyInstaller 打包），无需安装 Python 环境，下载后双击即可运行，适合非技术用户使用。
 ## ⚙️ 配置说明 Configuration
 
 ### 标签数据
 
-2/data/tags.json 包含所有提示词分类标签，支持按以下维度分类：
+v2/data/tags.json 包含所有提示词分类标签，支持按以下维度分类：
 
 | 维度 | 说明 |
 |------|------|
@@ -94,7 +110,7 @@ python server.py
 
 ### 自定义扩展
 
-编辑 	ags.json 即可添加自定义标签分类和内容，格式直观易懂。
+编辑 tags.json 即可添加自定义标签分类和内容，格式直观易懂。
 
 ### 端口配置
 
