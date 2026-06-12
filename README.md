@@ -2,7 +2,7 @@
 
 > **由 AI 生成 | AI-Generated Project**
 
-魔导书是一款面向 AI 绘画创作者的提示词（Prompt）组合与管理工具。帮助用户通过分类标签快速组合高质量提示词，支持 Web 端浏览器运行。
+魔导书是一款面向 AI 绘画创作者的提示词（Prompt）组合与管理工具。提供 **Flask Web 版**（浏览器运行）和 **Electron 桌面版**（原生应用）两种形态。
 
 ---
 
@@ -31,25 +31,25 @@
 
 ---
 
-## 🆚 版本对比
+## 🆚 版本体系
 
-| | v3.1 经典稳定版 | v4 Bento Grid 版 | v4.1~v4.3 实验版 |
+### Flask Web 版（浏览器运行）
+
+| | v3.1 经典版 | v4 Bento Grid | v4.1~v4.3 实验版 |
 |---|---|---|---|
-| **定位** | 稳定实用，久经考验 | 新设计 + 更多功能 | 开发版，有 Bug |
-| **布局** | 传统双栏 | Bento Grid 三栏 + 毛玻璃 | 继承 v4 布局 |
-| **主题** | 暗色/亮色 双主题 | 3 套主题 | 7 套主题 + 自定义 RGB |
-| **标签权重** | ✅ 滑块 | ✅ 滑块 + 数值 | ✅ 滑块 + 数值 |
-| **手气不错** | ❌ | ✅ | ✅ |
-| **撤销/重做** | ❌ | ✅ | ✅ + PS风格历史栈 |
-| **预设管理** | 基础 | ✅ 保存/加载/导入 | ✅ |
-| **智能推荐** | ❌ | ✅ | ✅ |
-| **导出 PNG** | ❌ | ✅ | ✅ |
-| **右键负面** | ❌ | ✅ | ✅ |
-| **标签收藏** | ❌ | ❌ | ✅ ⭐ |
-| **版本快照** | ❌ | ❌ | ✅ |
-| **自定义快捷键** | ❌ | ❌ | ✅ |
-| **全屏预览弹窗** | ❌ | ❌ | ✅ |
-| **端口** | 5805 | 5810 | 5811/5812/5813 |
+| **定位** | 稳定实用 | 新设计+功能 | 开发版，有Bug |
+| **布局** | 传统双栏 | Bento Grid + 毛玻璃 | 继承 v4 |
+| **主题** | 暗/亮双主题 | 3 套主题 | 7套+自定义RGB |
+| **端口** | 5805 | 5810 | 5811~5813 |
+
+### Electron 桌面版（原生应用）
+
+| | v5 初版 | v5.1 改进版 | v5.3 稳定版 | v5.2/v5.4/v5.5 |
+|---|---|---|---|---|
+| **定位** | Electron初版 | 改进+安装包 | 趋于稳定 | ❌ 严重Bug |
+| **技术栈** | Electron+TS+Vite | Electron+TS+Vite | Electron+TS+Vite | Electron+TS+Vite |
+| **安装包** | ❌ | ✅ Setup.exe | ✅ Setup.exe | ✅（但不可用） |
+| **状态** | ⚠️ 小Bug | ⚠️ 小Bug | ⚠️ 小Bug | ❌ 不可用 |
 
 ---
 
@@ -58,76 +58,60 @@
 ```
 魔导书/
 ├── v3.1/               # ⭐ v3.1 经典稳定版 — 推荐
-├── v4/                 # ✅ v4 Bento Grid 设计版 — 稳定
-├── v4.1/               # ⚠️ 实验版 — 快照+历史+收藏（有Bug）
-├── v4.2/               # ⚠️ 实验版 — 7主题+快捷键+全屏预览（有Bug）
-├── v4.3/               # ⚠️ 实验版 — 从v3.1重建整合版（有Bug）
+├── v4/                 # ✅ v4 Bento Grid 设计版
+├── v4.1~v4.3/          # ⚠️ 实验版（有Bug）
+├── v5 ~ v5.5/          # 🖥 Electron 桌面版系列
 ├── v2/                 # v2 经典版（保留）
 ├── exe-v2/             # 桌面客户端（保留）
-├── README.md           # 本文件
-└── LICENSE             # MIT开源协议
+├── README.md
+└── LICENSE             # MIT
 ```
 
 ---
 
 ## 🚀 快速开始 Quick Start
 
-### v3.1（推荐 🔥）— 端口 5805
+### Flask Web 版
 ```bash
-cd v3.1
-pip install flask
-python launch.py
-# 浏览器自动打开 http://127.0.0.1:5805
-```
+# v3.1（推荐，端口 5805）
+cd v3.1 && pip install flask && python launch.py
 
-### v4（Bento Grid 稳定版）— 端口 5810
+# v4（Bento Grid，端口 5810）
+cd v4 && pip install flask && python launch.py
+```
+> Python 3.8+，仅需 Flask
+
+### Electron 桌面版
 ```bash
-cd v4
-pip install flask
-python launch.py
-# 浏览器自动打开 http://127.0.0.1:5810
+# 开发模式
+cd v5.3 && npm install && npm start
+
+# 或直接下载安装包
+# Grimoire Setup 5.3.0.exe 双击安装
 ```
-
-### v4.1 ~ v4.3（实验版，有 Bug）— 端口 5811~5813
-```bash
-cd v4.1   # 或 v4.2 / v4.3
-pip install flask
-python launch.py
-```
-
-> **环境要求**：Python 3.8+，仅需 Flask 一个依赖
-
-### exe-v2（桌面版，保留）— 单文件运行
-- 下载 `MoDaoShu-Grimoire.exe`
-- 双击运行，无需安装 Python
+> Node.js 18+（开发模式）/ Windows 10+（安装包）
 
 ---
 
 ## 🖥 技术栈 Tech Stack
 
-| 版本 | 后端 | 前端 | 设计 |
-|---|---|---|---|
-| v3.1 | Python Flask | 原生 HTML/CSS/JS | 传统双栏 + 双主题 |
-| v4 | Python Flask | 原生 HTML/CSS/JS | Bento Grid + Glassmorphism + 3层CSS Token |
-| v4.1~v4.3 | Python Flask | 原生 HTML/CSS/JS | 继承 v4 + 增强功能 |
+| 系列 | 版本 | 后端 | 前端 | 运行方式 |
+|---|---|---|---|---|
+| Flask Web | v3.1~v4.3 | Python Flask | 原生 HTML/CSS/JS | 浏览器 |
+| Electron 桌面 | v5~v5.5 | Electron | TypeScript + Vite | 原生窗口 |
 
 ---
 
 ## 📥 下载 Downloads
 
-前往 [Releases 页面](https://github.com/hanqingyan3293/Grimoire-Prompt-Combiner/releases) 下载。
+前往 [Releases 页面](https://github.com/hanqingyan3293/Grimoire-Prompt-Combiner/releases)
 
-| Release | 文件 | 说明 |
-|---|---|---|
-| **v3.0.0** (最新) | `v4-release.zip` | ✅ v4 Bento Grid 稳定版 |
-| | `v4.1-release.zip` | ⚠️ v4.1 实验版（有Bug） |
-| | `v4.2-release.zip` | ⚠️ v4.2 实验版（有Bug） |
-| | `v4.3-release.zip` | ⚠️ v4.3 实验版（有Bug） |
-| **v2.0.0** | `v3.1-fresh.zip` | ⭐ v3.1 经典稳定版 |
-| | `v4-fresh.zip` | ✅ v4 Bento Grid 设计版 |
-| | `v3.1运行.png` | 运行截图 |
-| **v1.0.0** (旧版) | `v2.zip` | v2 经典版源码 |
-| | `MoDaoShu-Grimoire.exe` | 桌面客户端 |
+| Release | 内容 |
+|---|---|
+| **v4.0.0** (最新) | 🖥 v5~v5.5 Electron 系列源码 + 安装包 |
+| **v3.0.0** | ✅ v4~v4.3 Flask Bento Grid 系列 |
+| **v2.0.0** | ⭐ v3.1 + v4 经典版 + 截图 |
+| **v1.0.0** (旧版) | v2 经典版 + exe 桌面客户端 |
 
 ---
 
