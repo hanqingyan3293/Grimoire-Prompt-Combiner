@@ -2,17 +2,18 @@
 
 > **由 AI 生成 | AI-Generated Project**
 
-魔导书是一款面向 AI 绘画创作者的提示词（Prompt）组合与管理工具。提供 **Flask Web 版**（浏览器运行）和 **Electron 桌面版**（原生应用）两种形态。
+魔导书是一款面向 AI 绘画创作者的提示词（Prompt）组合与管理工具。提供 **Flask Web 版**（浏览器运行）、**Electron 桌面版**（原生应用）和 **v6 AI 智能版**（集成 AI 识图与聊天）。
 
 ---
 
-## 🖼 运行截图 Screenshots
+## 🌟 最新：v6 — AI 识图 + 聊天
 
-### v3.1 经典稳定版（推荐 🔥）
-![v3.1运行截图](https://github.com/hanqingyan3293/Grimoire-Prompt-Combiner/releases/download/v2.0.0/v3.1运行.png)
+**v6 是重大升级版本**，在标签化提示词管理基础上，集成了 **OpenAI 兼容的 AI 聊天与视觉识别**：
 
-### v4 Bento Grid 设计版
-![v3.1运行截图](https://github.com/hanqingyan3293/Grimoire-Prompt-Combiner/releases/download/v1.0.0/v3.1.png)
+- 🤖 **AI 聊天** — 对话式 AI 助手，支持切换模型
+- 👁 **AI 识图** — 上传图片自动分析生成标签
+- 🔑 **自行配置 API Key** — 兼容 OpenAI / 中转 API
+- 🏗 **技术栈升级** — Electron + React 18 + TypeScript + Tailwind CSS 4 + Zustand 5 + SQLite
 
 ---
 
@@ -28,90 +29,74 @@
 - **键盘快捷键** — Ctrl+K 搜索，Ctrl+C 复制等
 - **预设管理** — 保存/加载/导入常用提示词组合
 - **标签 CRUD** — 自定义大类/子类/标签，支持编辑删除
+- **AI 聊天** 🤖 — v6 新增，对话式 AI 助手
+- **AI 识图** 👁 — v6 新增，图片分析生成标签
 
 ---
 
 ## 🆚 版本体系
 
 ### Flask Web 版（浏览器运行）
-
 | | v3.1 经典版 | v4 Bento Grid | v4.1~v4.3 实验版 |
 |---|---|---|---|
-| **定位** | 稳定实用 | 新设计+功能 | 开发版，有Bug |
-| **布局** | 传统双栏 | Bento Grid + 毛玻璃 | 继承 v4 |
-| **主题** | 暗/亮双主题 | 3 套主题 | 7套+自定义RGB |
+| **定位** | 稳定实用 | 新设计 | 开发版有Bug |
 | **端口** | 5805 | 5810 | 5811~5813 |
 
-### Electron 桌面版（原生应用）
-
-| | v5 初版 | v5.1 改进版 | v5.3 稳定版 | v5.2/v5.4/v5.5 |
-|---|---|---|---|---|
-| **定位** | Electron初版 | 改进+安装包 | 趋于稳定 | ❌ 严重Bug |
-| **技术栈** | Electron+TS+Vite | Electron+TS+Vite | Electron+TS+Vite | Electron+TS+Vite |
-| **安装包** | ❌ | ✅ Setup.exe | ✅ Setup.exe | ✅（但不可用） |
-| **状态** | ⚠️ 小Bug | ⚠️ 小Bug | ⚠️ 小Bug | ❌ 不可用 |
+### Electron 桌面版
+| | v5~v5.5 早期版 | **v6 AI 智能版** 🆕 |
+|---|---|---|
+| **技术栈** | Electron + TS + Vite | Electron + React 18 + Tailwind CSS 4 |
+| **状态管理** | 基础 | Zustand 5 |
+| **数据存储** | JSON 文件 | SQLite (sql.js WASM) |
+| **AI 聊天** | ❌ | ✅ |
+| **AI 识图** | ❌ | ✅ |
+| **API Key** | ❌ | ✅ 自行配置 |
+| **主题** | 基础 | 7 套主题 |
+| **国际化** | 标签双语 | 界面+标签全面中英双语 |
 
 ---
 
-## 📦 项目结构 Structure
+## 📦 项目结构
 
 ```
 魔导书/
-├── v3.1/               # ⭐ v3.1 经典稳定版 — 推荐
-├── v4/                 # ✅ v4 Bento Grid 设计版
-├── v4.1~v4.3/          # ⚠️ 实验版（有Bug）
-├── v5 ~ v5.5/          # 🖥 Electron 桌面版系列
-├── v2/                 # v2 经典版（保留）
-├── exe-v2/             # 桌面客户端（保留）
-├── README.md
-└── LICENSE             # MIT
+├── v3.1/               # ⭐ v3.1 经典稳定版
+├── v4~v4.3/            # Flask Bento Grid 系列
+├── v5~v5.5/            # Electron 早期桌面版
+├── v6/                 # 🆕 AI 识图+聊天 最新版
+├── 文档/               # 开发文档与发布记录
+├── 打包归档/           # 历史发布包
+└── README.md
 ```
 
 ---
 
-## 🚀 快速开始 Quick Start
+## 🚀 快速开始
 
-### Flask Web 版
+### v6 AI 智能版（推荐 🆕）
+- 下载 `win-unpacked-v6.zip` 解压即用
+- 或双击 `Grimoire Setup 6.0.0.exe` 安装
+- 在设置中填入 OpenAI 兼容 API Key
+
+### v3.1 Flask 经典版
 ```bash
-# v3.1（推荐，端口 5805）
 cd v3.1 && pip install flask && python launch.py
-
-# v4（Bento Grid，端口 5810）
-cd v4 && pip install flask && python launch.py
+# http://127.0.0.1:5805
 ```
-> Python 3.8+，仅需 Flask
-
-### Electron 桌面版
-```bash
-# 开发模式
-cd v5.3 && npm install && npm start
-
-# 或直接下载安装包
-# Grimoire Setup 5.3.0.exe 双击安装
-```
-> Node.js 18+（开发模式）/ Windows 10+（安装包）
-
----
-
-## 🖥 技术栈 Tech Stack
-
-| 系列 | 版本 | 后端 | 前端 | 运行方式 |
-|---|---|---|---|---|
-| Flask Web | v3.1~v4.3 | Python Flask | 原生 HTML/CSS/JS | 浏览器 |
-| Electron 桌面 | v5~v5.5 | Electron | TypeScript + Vite | 原生窗口 |
 
 ---
 
 ## 📥 下载 Downloads
 
-前往 [Releases 页面](https://github.com/hanqingyan3293/Grimoire-Prompt-Combiner/releases)
+前往 [Releases](https://github.com/hanqingyan3293/Grimoire-Prompt-Combiner/releases)
 
 | Release | 内容 |
 |---|---|
-| **v4.0.0** (最新) | 🖥 v5~v5.5 Electron 系列源码 + 安装包 |
-| **v3.0.0** | ✅ v4~v4.3 Flask Bento Grid 系列 |
-| **v2.0.0** | ⭐ v3.1 + v4 经典版 + 截图 |
-| **v1.0.0** (旧版) | v2 经典版 + exe 桌面客户端 |
+| **v5.0.0** (最新) 🆕 | v6 AI 识图+聊天 — 源码 + 绿色便携包 |
+| **v4.0.0** | v5~v5.5 Electron 系列 — 源码 + 安装包 |
+| **v3.0.0** | v4~v4.3 Flask Bento Grid 系列 |
+| **v2.0.0** | v3.1 + v4 经典版 |
+| **v1.0.0** | v2 初版 + 桌面客户端 |
 
 ---
 
