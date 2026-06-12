@@ -1,0 +1,26 @@
+﻿appId: com.grimoire.prompt-combiner
+productName: Grimoire
+copyright: MIT License
+directories:
+  output: release
+  buildResources: resources
+files:
+  - dist/**/*
+  - package.json
+win:
+  target:
+    - target: nsis
+      arch:
+        - x64
+    - target: portable
+      arch:
+        - x64
+  icon: resources/icons/icon.png
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  shortcutName: Grimoire
+  installerSidebar: null
+extraMetadata:
+  main: dist/main/main/index.js

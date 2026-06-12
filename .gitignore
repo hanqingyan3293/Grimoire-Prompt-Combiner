@@ -1,4 +1,4 @@
-﻿# Python
+# Python
 __pycache__/
 *.py[cod]
 *.egg-info/
@@ -18,12 +18,15 @@ venv/
 Thumbs.db
 .DS_Store
 
-# Excluded folders (only v2 and exe-v2 published)
+# Excluded folders
 v1/
 exe版本/
 *.zip
+node_modules/
+release/
+.bin/
+.vite/
 
-# Allow screenshots in dist
-!exe-v2/dist/exe运行.png
-exe-v2/dist/*
-!exe-v2/dist/exe运行.png*.bak
+# v5/v6 build artifacts
+*/dist/
+*/release/

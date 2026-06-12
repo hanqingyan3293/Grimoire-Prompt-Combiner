@@ -1,0 +1,199 @@
+{
+    "app": {
+        "title": "Grimoire v5.3.2",
+        "loading": "Loading Grimoire...",
+        "error": "Load Failed",
+        "retry": "Retry"
+    },
+    "sidebar": {
+        "search": "Search tags...",
+        "categories": "Categories",
+        "favorites": "Favorites",
+        "frequent": "Frequent",
+        "noFavs": "Right-click tags to favorite",
+        "noFreq": "Auto-tracked on use",
+        "clearPos": "Clear Pos",
+        "clearNeg": "Clear Neg",
+        "exportTags": "Export Tags",
+        "importTags": "Import Tags"
+    },
+    "main": {
+        "selectCat": "Select a category",
+        "noTags": "Select a category to browse",
+        "clickHint": "Click=toggle pos | Shift+Click=neg | Right-click=edit/fav/delete",
+        "selectAll": "Select All",
+        "clearPage": "Clear Page",
+        "search": "Search",
+        "selected": "Selected",
+        "editTag": "Edit Tag"
+    },
+    "right": {
+        "pos": "Positive",
+        "neg": "Negative",
+        "clear": "Clear",
+        "clickAdd": "Click tags to add",
+        "shiftAdd": "Shift+Click = negative",
+        "copyEN": "Copy EN",
+        "copyZH": "Copy ZH",
+        "copyFull": "Copy Full",
+        "copyNeg": "Copy Neg",
+        "history": "History",
+        "snapshot": "Snapshot",
+        "settings": "Settings",
+        "fullPreview": "Full Preview",
+        "previewTitle": "Prompt Preview",
+        "cnPreview": "CN Preview",
+        "close": "Close",
+        "saveHistory": "Saved to history",
+        "saveSnapshot": "Snapshot saved",
+        "saved": "Copied",
+        "snapshotName": "Snapshot name",
+        "randomCount": "Random",
+        "empty": "empty"
+    },
+    "presets": {
+        "title": "Presets",
+        "save": "Save",
+        "load": "Load",
+        "delete": "Delete",
+        "import": "Import",
+        "export": "Export",
+        "name": "Preset name...",
+        "noPresets": "No presets",
+        "saved": "Preset saved",
+        "loaded": "Preset loaded",
+        "deleted": "Preset deleted",
+        "imported": "Preset imported",
+        "importFail": "Import failed",
+        "current": "Current"
+    },
+    "history": {
+        "title": "History & Snapshots",
+        "tabHistory": "History",
+        "tabSnapshots": "Snapshots",
+        "noHistory": "No history",
+        "noSnapshots": "No snapshots",
+        "clearAll": "Clear All",
+        "restore": "Restore",
+        "copy": "Copy",
+        "deleted": "Deleted",
+        "restored": "Snapshot restored"
+    },
+    "settings": {
+        "title": "Settings",
+        "theme": "Theme",
+        "lang": "Language",
+        "fontSize": "Font Size",
+        "fontSmall": "Small (12px)",
+        "fontMedium": "Medium (14px)",
+        "fontLarge": "Large (16px)",
+        "fontCustom": "Custom",
+        "randomRange": "Random Tag Count Range",
+        "aiTitle": "AI Vision API",
+        "aiNote": "Configure vision model API for image-to-tag",
+        "aiProvider": "AI Provider",
+        "apiKey": "API Key",
+        "model": "Model",
+        "save": "Save AI Settings",
+        "shortcuts": "Keyboard Shortcuts",
+        "customColor": "Custom Theme Color",
+        "presetColors": "Preset Palettes",
+        "aiEndpoint": "API Endpoint (Base URL)",
+        "aiModel": "AI Model Name",
+        "testConnection": "Test Connection",
+        "about": "About",
+        "aboutText": "Grimoire - AI Art Prompt Workstation"
+    },
+    "tags": {
+        "edit": "Edit",
+        "delete": "Delete",
+        "favorite": "Favorite",
+        "unfavorite": "Unfavorite",
+        "editTitle": "Edit Tag",
+        "enName": "English",
+        "zhName": "Chinese",
+        "addToPositive": "Add to Positive",
+        "addToNegative": "Add to Negative",
+        "removeFromPrompts": "Remove from Prompts",
+        "deleteConfirm": "Delete this tag?",
+        "deleteMessage": "This action cannot be undone!"
+    },
+    "common": {
+        "save": "Save",
+        "cancel": "Cancel",
+        "close": "Close",
+        "yes": "OK",
+        "no": "Cancel",
+        "deleteConfirm": "Confirm Delete",
+        "undo": "Undo",
+        "redo": "Redo",
+        "dedup": "Dedup",
+        "dice": "Random",
+        "on": "ON",
+        "off": "OFF",
+        "add": "Add",
+        "new": "New",
+        "del": "Del",
+        "sub": "Sub",
+        "copy": "Copy"
+    },
+    "panel": {
+        "collapse": "Collapse",
+        "expand": "Expand",
+        "close": "Close",
+        "float": "Float",
+        "dock": "Dock",
+        "dockAll": "Dock All",
+        "split": "Split",
+        "unsplit": "Unsplit",
+        "hidden": "Hidden",
+        "floating": "Floating",
+        "dragHint": "Drag to detach"
+    },
+    "statusBar": {
+        "positiveCount": "Pos",
+        "category": "Category",
+        "tagsCount": "Tags",
+        "negativeCount": "Neg"
+    },
+    "optionsBar": {
+        "workspace": "Workspace Layout",
+        "manageWorkspace": "Manage Workspaces",
+        "saveWorkspace": "Save Workspace"
+    },
+    "workspace": {
+        "default": "Default",
+        "compact": "Compact",
+        "wideCanvas": "Wide Canvas"
+    },
+    "theme": {
+        "darkest": "Darkest",
+        "dark": "Dark",
+        "mediumDark": "Medium",
+        "light": "Light"
+    },
+    "panels": {
+        "images": {
+            "tab": "Images",
+            "generated": "Generated Images"
+        },
+        "history": {
+            "snapshots": "Snapshots",
+            "tab": "History",
+            "operations": "History"
+        },
+        "presets": {
+            "tab": "Presets",
+            "myPresets": "My Presets"
+        },
+        "prompt": {
+            "output": "Output",
+            "tab": "Prompt",
+            "negative": "Negative",
+            "positive": "Positive"
+        },
+        "ai": {
+            "tab": "AI"
+        }
+    }
+}

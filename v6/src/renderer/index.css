@@ -1,0 +1,27 @@
+/* ============================================================
+   Grimoire v5.3 — Master Stylesheet
+   Photoshop-inspired design system
+   ============================================================ */
+
+@import "tailwindcss";
+
+/* ── Design Foundation ── */
+@import "./styles/tokens.css";
+@import "./styles/themes.css";
+@import "./styles/components.css";
+@import "./styles/layout.css";
+
+/* ── Utility Overrides ── */
+.truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.flex-center { display: flex; align-items: center; justify-content: center; }
+.gap-1 { gap: 4px; }
+.gap-2 { gap: 8px; }
+.gap-3 { gap: 12px; }
+.ml-auto { margin-left: auto; }
+.flex-1 { flex: 1; }
+.min-w-0 { min-width: 0; }
+.w-full { width: 100%; }
+.text-xs { font-size: var(--font-size-ui); }
+.text-sm { font-size: var(--font-size-panel); }
+.font-medium { font-weight: 500; }
+.font-bold { font-weight: 700; }

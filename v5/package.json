@@ -1,0 +1,47 @@
+{
+    "name":  "grimoire",
+    "version":  "5.0.0",
+    "description":  "魔导书 Grimoire - AI绘画提示词全流程工作台",
+    "main":  "dist/main/main/index.js",
+    "scripts":  {
+                    "dev":  "concurrently \"npm run dev:renderer\" \"npm run dev:electron\"",
+                    "dev:renderer":  "vite",
+                    "dev:electron":  "wait-on http://localhost:5173 \u0026\u0026 electron .",
+                    "build:renderer":  "vite build",
+                    "build:main":  "tsc -p tsconfig.node.json",
+                    "build":  "npm run build:renderer \u0026\u0026 npm run build:main",
+                    "start":  "electron .",
+                    "pack":  "npm run build \u0026\u0026 electron-builder --dir",
+                    "dist":  "npm run build \u0026\u0026 electron-builder"
+                },
+    "keywords":  [
+                     "grimoire",
+                     "prompt-combiner",
+                     "ai-art",
+                     "stable-diffusion"
+                 ],
+    "author":  "",
+    "license":  "MIT",
+    "dependencies":  {
+                         "react":  "^18.3.1",
+                         "react-dom":  "^18.3.1",
+                         "sql.js":  "^1.14.1",
+                         "zustand":  "^5.0.14"
+                     },
+    "devDependencies":  {
+                            "@tailwindcss/vite":  "^4.3.0",
+                            "@types/react":  "^19.2.17",
+                            "@types/react-dom":  "^19.2.3",
+                            "@types/sql.js":  "^1.4.11",
+                            "@vitejs/plugin-react":  "^6.0.2",
+                            "autoprefixer":  "^10.5.0",
+                            "concurrently":  "^10.0.3",
+                            "electron":  "^42.4.0",
+                            "electron-builder":  "^26.15.2",
+                            "postcss":  "^8.5.15",
+                            "tailwindcss":  "^4.3.0",
+                            "typescript":  "^6.0.3",
+                            "vite":  "^8.0.16",
+                            "wait-on":  "^9.0.10"
+                        }
+}

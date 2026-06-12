@@ -1,0 +1,22 @@
+appId: com.grimoire.prompt-combiner
+productName: "魔导书 Grimoire"
+copyright: "MIT License"
+directories:
+  output: release
+  buildResources: resources
+files:
+  - dist/**/*
+  - package.json
+win:
+  target:
+    - target: nsis
+      arch:
+        - x64
+  icon: resources/icons/icon.png
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  shortcutName: "魔导书 Grimoire"
+extraMetadata:
+  main: dist/main/index.js

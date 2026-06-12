@@ -1,0 +1,226 @@
+/* ============================================================
+   Grimoire v5.3 — Layout Styles
+   ============================================================ */
+
+/* ── Reset & Base ── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body, #root {
+  height: 100%;
+  overflow: hidden;
+  font-family: var(--font-ui);
+  font-size: var(--font-size-body);
+  line-height: var(--line-height-ui);
+  background: var(--color-bg-primary);
+  color: var(--color-text-primary);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── App Shell ── */
+.app-shell {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background: var(--color-bg-deep, #121212);
+  overflow: hidden;
+}
+
+/* ── Main Layout Area ── */
+.app-workspace {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+.app-workspace--compact .sidebar { width: 48px; }
+.app-workspace--wide .right-panel { width: 48px; }
+.app-workspace--two-row { flex-direction: column; }
+.app-workspace--two-row .app-main-row { flex: 1; display: flex; overflow: hidden; }
+.app-workspace--two-row .app-bottom-row { height: 220px; border-top: 1px solid var(--color-border); }
+
+/* ── Sidebar ── */
+.sidebar {
+  width: var(--sidebar-width, 250px);
+  flex-shrink: 0;
+  overflow: hidden;
+  transition: width var(--tr-normal);
+}
+
+/* ── Main Content ── */
+.main-content {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  background: var(--color-bg-canvas, #1a1a1a);
+}
+
+/* ── Right Panel System ── */
+.right-panel {
+  width: var(--right-panel-width, 320px);
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  transition: width var(--tr-normal);
+}
+.right-panel--collapsed {
+  width: 48px;
+}
+
+/* ── Panel Content Area ── */
+.panel-content {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+.panel-content::-webkit-scrollbar { width: 6px; }
+.panel-content::-webkit-scrollbar-track { background: transparent; }
+.panel-content::-webkit-scrollbar-thumb { background: var(--color-border); border-radius: 3px; }
+
+/* ── Tag Grid ── */
+.tag-grid {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--sp-md);
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: var(--sp-sm);
+  align-content: start;
+}
+.tag-grid::-webkit-scrollbar { width: 6px; }
+.tag-grid::-webkit-scrollbar-track { background: transparent; }
+.tag-grid::-webkit-scrollbar-thumb { background: var(--color-border); border-radius: 3px; }
+
+/* ── Category Tree (in Sidebar) ── */
+.cat-tree { flex: 1; overflow-y: auto; padding: var(--sp-xs) 0; }
+.cat-tree::-webkit-scrollbar { width: 6px; }
+.cat-tree::-webkit-scrollbar-track { background: transparent; }
+.cat-tree::-webkit-scrollbar-thumb { background: var(--color-border); border-radius: 3px; }
+.cat-item {
+  display: flex;
+  align-items: center;
+  height: 24px;
+  padding: 0 var(--sp-md);
+  font-size: var(--font-size-ui);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  user-select: none;
+  transition: background var(--tr-fast);
+}
+.cat-item:hover { background: var(--color-bg-hover); }
+.cat-item--active { color: var(--color-accent); background: var(--color-accent-bg); }
+.cat-item--sub { padding-left: 28px; font-size: 11px; }
+.cat-item--tag { padding-left: 42px; }
+
+/* ── Prompt tag chips ── */
+.prompt-tag-chip {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-xs);
+  padding: 1px 6px;
+  background: var(--color-tag-bg);
+  border: 1px solid var(--color-tag-border);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-ui);
+  margin: 1px 0;
+}
+.prompt-tag-chip__remove {
+  width: 14px;
+  height: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  color: var(--color-text-muted);
+  font-size: 10px;
+  cursor: pointer;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+.prompt-tag-chip__remove:hover { background: var(--color-danger); color: white; }
+.prompt-tag-chip__weight {
+  font-size: 10px;
+  color: var(--color-text-dim);
+}
+
+/* ── Modal Overlay ── */
+.ps-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-modal);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0,0,0,0.65);
+}
+.ps-modal {
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-drop);
+  max-width: 560px;
+  width: 90%;
+  max-height: 80vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.ps-modal__header {
+  display: flex;
+  align-items: center;
+  height: 36px;
+  padding: 0 var(--sp-lg);
+  background: var(--color-bg-tertiary);
+  border-bottom: 1px solid var(--color-border);
+  flex-shrink: 0;
+}
+.ps-modal__title {
+  flex: 1;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+.ps-modal__body {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--sp-lg);
+}
+
+/* ── Weight Slider (PS-style thin) ── */
+.ps-slider {
+  -webkit-appearance: none;
+  width: 50px;
+  height: 3px;
+  background: var(--color-border);
+  border-radius: 2px;
+  outline: none;
+}
+.ps-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--color-accent);
+  cursor: pointer;
+}
+
+/* ── Toast ── */
+.ps-toast {
+  position: fixed;
+  bottom: 40px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: var(--z-toast);
+  padding: 4px 16px;
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-primary);
+  font-size: var(--font-size-ui);
+  box-shadow: var(--shadow-panel);
+  animation: toastIn var(--tr-normal);
+}
+@keyframes toastIn {
+  from { opacity: 0; transform: translateX(-50%) translateY(8px); }
+  to { opacity: 1; transform: translateX(-50%) translateY(0); }
+}

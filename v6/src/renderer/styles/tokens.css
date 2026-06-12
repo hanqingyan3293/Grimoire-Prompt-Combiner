@@ -1,0 +1,75 @@
+/* ============================================================
+   Grimoire v5.3 — Design Tokens (Photoshop-style palette)
+   ============================================================ */
+:root {
+  /* ── PS Color Palette ── */
+  --ps-bg-deep:       #121212;
+  --ps-bg-canvas:     #1a1a1a;
+  --ps-bg-panel:      #1e1e1e;
+  --ps-bg-header:     #2d2d2d;
+  --ps-bg-hover:      #353535;
+  --ps-bg-active:     #3a3a3a;
+  --ps-bg-input:      #262626;
+  --ps-border:        #3c3c3c;
+  --ps-border-light:  #4a4a4a;
+  --ps-border-focus:  #4b9cd3;
+  --ps-text-primary:  #cccccc;
+  --ps-text-secondary:#999999;
+  --ps-text-muted:    #808080;
+  --ps-text-dim:      #666666;
+  --ps-accent:        #4b9cd3;
+  --ps-accent-hover:  #5dade2;
+  --ps-accent-bg:     rgba(75, 156, 211, 0.12);
+  --ps-accent-border: rgba(75, 156, 211, 0.3);
+  --ps-success:       #4caf50;
+  --ps-warning:       #ff9800;
+  --ps-danger:        #f44336;
+  --ps-danger-hover:  #d32f2f;
+
+  /* ── Layout ── */
+  --sidebar-width:       250px;
+  --right-panel-width:   320px;
+  --menubar-height:      0px;
+  --optionsbar-height:   34px;
+  --statusbar-height:    26px;
+  --panel-header-height: 30px;
+  --tab-height:          28px;
+  --section-header-height: 26px;
+
+  /* ── Spacing ── */
+  --sp-xs:  2px;
+  --sp-sm:  4px;
+  --sp-md:  8px;
+  --sp-lg:  12px;
+  --sp-xl:  16px;
+
+  /* ── Border Radius ── */
+  --radius-sm: 2px;
+  --radius-md: 3px;
+  --radius-lg: 5px;
+
+  /* ── Shadows ── */
+  --shadow-panel: 0 2px 10px rgba(0,0,0,0.4);
+  --shadow-drop:  0 4px 16px rgba(0,0,0,0.5);
+
+  /* ── Typography ── */
+  --font-ui:     'Segoe UI', 'Microsoft YaHei', system-ui, -apple-system, sans-serif;
+  --font-mono:   'Cascadia Code', 'Consolas', 'Courier New', monospace;
+  --font-size-ui:    11px;
+  --font-size-panel: 12px;
+  --font-size-tag:   12px;
+  --font-size-body:  13px;
+  --line-height-ui:  1.4;
+
+  /* ── Transitions ── */
+  --tr-fast:   120ms ease;
+  --tr-normal: 200ms ease;
+  --tr-slow:   300ms ease;
+
+  /* ── Z-Index ── */
+  --z-panel:     10;
+  --z-overlay:   100;
+  --z-modal:     200;
+  --z-tooltip:   300;
+  --z-toast:     400;
+}

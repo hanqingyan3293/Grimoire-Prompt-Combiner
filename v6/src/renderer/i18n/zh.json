@@ -1,0 +1,199 @@
+{
+    "app": {
+        "title": "魔导书 Grimoire v5.3.3",
+        "loading": "魔导书加载中...",
+        "error": "加载失败",
+        "retry": "重试"
+    },
+    "sidebar": {
+        "search": "搜索标签...",
+        "categories": "分类",
+        "favorites": "收藏",
+        "frequent": "常用",
+        "noFavs": "右键标签点击收藏",
+        "noFreq": "使用标签后自动统计",
+        "clearPos": "清空正面",
+        "clearNeg": "清空负面",
+        "exportTags": "导出标签库",
+        "importTags": "导入标签库"
+    },
+    "main": {
+        "selectCat": "选择一个分类开始浏览",
+        "noTags": "选择左侧分类浏览标签",
+        "clickHint": "单击=加/取消正面 | Shift+单击=负面 | 右键=编辑/收藏/删除",
+        "selectAll": "全选",
+        "clearPage": "清空本页",
+        "search": "搜索",
+        "selected": "已选",
+        "editTag": "编辑标签"
+    },
+    "right": {
+        "pos": "正面提示词",
+        "neg": "负面提示词",
+        "clear": "清空",
+        "clickAdd": "单击标签添加正面提示词",
+        "shiftAdd": "Shift+单击添加负面标签",
+        "copyEN": "复制EN正面",
+        "copyZH": "复制中文正面",
+        "copyFull": "复制全文",
+        "copyNeg": "复制EN负面",
+        "history": "历史",
+        "snapshot": "快照",
+        "settings": "设置",
+        "fullPreview": "全屏预览",
+        "previewTitle": "提示词预览",
+        "cnPreview": "中文预览",
+        "close": "关闭",
+        "saveHistory": "已保存到历史",
+        "saveSnapshot": "快照已保存",
+        "saved": "已复制",
+        "snapshotName": "快照名称",
+        "randomCount": "随机生成",
+        "empty": "空"
+    },
+    "presets": {
+        "title": "预设管理",
+        "save": "保存",
+        "load": "加载",
+        "delete": "删除",
+        "import": "导入",
+        "export": "导出",
+        "name": "预设名称...",
+        "noPresets": "暂无预设",
+        "saved": "预设已保存",
+        "loaded": "已加载预设",
+        "deleted": "预设已删除",
+        "imported": "预设已导入",
+        "importFail": "导入失败",
+        "current": "当前"
+    },
+    "history": {
+        "title": "历史与快照",
+        "tabHistory": "操作历史",
+        "tabSnapshots": "版本快照",
+        "noHistory": "暂无历史",
+        "noSnapshots": "暂无快照",
+        "clearAll": "清空全部",
+        "restore": "恢复",
+        "copy": "复制",
+        "deleted": "已删除",
+        "restored": "已恢复快照"
+    },
+    "settings": {
+        "title": "全局设置",
+        "theme": "主题配色",
+        "lang": "界面语言",
+        "fontSize": "字体大小",
+        "fontSmall": "小 (12px)",
+        "fontMedium": "中 (14px)",
+        "fontLarge": "大 (16px)",
+        "fontCustom": "自定义",
+        "randomRange": "随机标签数量范围",
+        "aiTitle": "AI 识图接口",
+        "aiNote": "配置视觉模型 API 用于图片反推标签",
+        "aiProvider": "AI 提供商",
+        "apiKey": "API Key",
+        "model": "模型",
+        "save": "保存 AI 设置",
+        "shortcuts": "键盘快捷键",
+        "customColor": "自定义主题色",
+        "presetColors": "预设色卡",
+        "aiEndpoint": "API 端点 (Base URL)",
+        "aiModel": "AI 模型名称",
+        "testConnection": "测试连接",
+        "about": "关于",
+        "aboutText": "魔导书 Grimoire - AI绘画提示词工作站"
+    },
+    "tags": {
+        "edit": "编辑",
+        "delete": "删除",
+        "favorite": "收藏",
+        "unfavorite": "取消收藏",
+        "editTitle": "编辑标签",
+        "enName": "英文名",
+        "zhName": "中文名",
+        "addToPositive": "添加到正面",
+        "addToNegative": "添加到负面",
+        "removeFromPrompts": "从提示词中移除",
+        "deleteConfirm": "确定删除此标签？",
+        "deleteMessage": "此操作不可撤销！"
+    },
+    "common": {
+        "save": "保存",
+        "cancel": "取消",
+        "close": "关闭",
+        "yes": "确定",
+        "no": "取消",
+        "deleteConfirm": "确认删除",
+        "undo": "撤销",
+        "redo": "重做",
+        "dedup": "去重",
+        "dice": "随机抽取",
+        "on": "开",
+        "off": "关",
+        "add": "添加",
+        "new": "新建",
+        "del": "删除",
+        "sub": "子类",
+        "copy": "复制"
+    },
+    "panel": {
+        "collapse": "折叠",
+        "expand": "展开",
+        "close": "关闭",
+        "float": "浮动",
+        "dock": "停靠",
+        "dockAll": "全部停靠",
+        "split": "分栏",
+        "unsplit": "取消分栏",
+        "hidden": "已隐藏",
+        "floating": "浮动中",
+        "dragHint": "拖拽分离"
+    },
+    "statusBar": {
+        "positiveCount": "正面",
+        "category": "分类",
+        "tagsCount": "标签数",
+        "negativeCount": "负面"
+    },
+    "optionsBar": {
+        "workspace": "工作区布局",
+        "manageWorkspace": "管理工作区",
+        "saveWorkspace": "保存工作区"
+    },
+    "workspace": {
+        "default": "默认布局",
+        "compact": "紧凑模式",
+        "wideCanvas": "宽画布"
+    },
+    "theme": {
+        "darkest": "极暗",
+        "dark": "暗色",
+        "mediumDark": "中暗",
+        "light": "亮色"
+    },
+    "panels": {
+        "images": {
+            "tab": "图库",
+            "generated": "生成的图片"
+        },
+        "history": {
+            "snapshots": "版本快照",
+            "tab": "历史",
+            "operations": "操作记录"
+        },
+        "presets": {
+            "tab": "预设",
+            "myPresets": "我的预设"
+        },
+        "prompt": {
+            "output": "输出预览",
+            "tab": "提示词",
+            "negative": "负面提示词",
+            "positive": "正面提示词"
+        },
+        "ai": {
+            "tab": "AI"
+        }
+    }
+}

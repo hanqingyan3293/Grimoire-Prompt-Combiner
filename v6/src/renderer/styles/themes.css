@@ -1,0 +1,91 @@
+/* ============================================================
+   Grimoire v5.3 — PS-Style Brightness Themes
+   ============================================================ */
+
+/* ── Darkest (default, matches PS darkest) ── */
+:root,
+[data-theme="darkest"] {
+  --color-bg-primary:    #121212;
+  --color-bg-secondary:  #1a1a1a;
+  --color-bg-tertiary:   #1e1e1e;
+  --color-bg-elevated:   #252525;
+  --color-bg-input:      #1a1a1a;
+  --color-bg-hover:      #353535;
+  --color-bg-active:     #3a3a3a;
+  --color-text-primary:  #cccccc;
+  --color-text-secondary:#999999;
+  --color-text-muted:    #808080;
+  --color-text-dim:      #666666;
+  --color-border:        #3c3c3c;
+  --color-border-light:  #4a4a4a;
+  --color-accent:        var(--ps-accent, #4b9cd3);
+  --color-accent-hover:  var(--ps-accent-hover, #5dade2);
+  --color-accent-text:   #ffffff;
+  --color-accent-bg:     rgba(75,156,211,0.12);
+  --color-success:       #4caf50;
+  --color-warning:       #ff9800;
+  --color-danger:        #f44336;
+  --color-danger-hover:  #d32f2f;
+  --color-tag-bg:        rgba(75,156,211,0.10);
+  --color-tag-border:    rgba(75,156,211,0.25);
+  --color-tag-hover:     rgba(75,156,211,0.18);
+  --separator-color:     #2a2a2a;
+}
+
+/* ── Dark ── */
+[data-theme="dark"] {
+  --color-bg-primary:    #1e1e1e;
+  --color-bg-secondary:  #252525;
+  --color-bg-tertiary:   #2d2d2d;
+  --color-bg-elevated:   #333333;
+  --color-bg-input:      #2a2a2a;
+  --color-bg-hover:      #3e3e3e;
+  --color-bg-active:     #444444;
+  --color-text-primary:  #d4d4d4;
+  --color-text-secondary:#a0a0a0;
+  --color-text-muted:    #858585;
+  --color-text-dim:      #6e6e6e;
+  --color-border:        #404040;
+  --color-border-light:  #505050;
+}
+
+/* ── Medium Dark ── */
+[data-theme="medium-dark"] {
+  --color-bg-primary:    #2d2d2d;
+  --color-bg-secondary:  #353535;
+  --color-bg-tertiary:   #3c3c3c;
+  --color-bg-elevated:   #424242;
+  --color-bg-input:      #383838;
+  --color-bg-hover:      #4a4a4a;
+  --color-bg-active:     #505050;
+  --color-text-primary:  #e0e0e0;
+  --color-text-secondary:#aaaaaa;
+  --color-text-muted:    #909090;
+  --color-text-dim:      #777777;
+  --color-border:        #4a4a4a;
+  --color-border-light:  #585858;
+}
+
+/* ── Light ── */
+[data-theme="light"] {
+  --color-bg-primary:    #e8e8e8;
+  --color-bg-secondary:  #f0f0f0;
+  --color-bg-tertiary:   #f5f5f5;
+  --color-bg-elevated:   #ffffff;
+  --color-bg-input:      #ffffff;
+  --color-bg-hover:      #e0e0e0;
+  --color-bg-active:     #d0d0d0;
+  --color-text-primary:  #222222;
+  --color-text-secondary:#555555;
+  --color-text-muted:    #888888;
+  --color-text-dim:      #aaaaaa;
+  --color-border:        #cccccc;
+  --color-border-light:  #dddddd;
+  --color-accent:        #0066cc;
+  --color-accent-hover:  #0055aa;
+  --color-accent-bg:     rgba(0,102,204,0.08);
+  --color-tag-bg:        rgba(0,102,204,0.06);
+  --color-tag-border:    rgba(0,102,204,0.20);
+  --color-tag-hover:     rgba(0,102,204,0.12);
+  --separator-color:     #dddddd;
+}
