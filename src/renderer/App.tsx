@@ -51,6 +51,17 @@ function AppInner() {
     }
   }, [])
 
+  // Window focus -> refresh stores for cross-window sync
+  useEffect(() => {
+    let cleanup = null
+    try {
+      cleanup = window.api.db.onFocus(() => {
+        window.dispatchEvent(new CustomEvent('grimoire:refresh'))
+      })
+    } catch {}
+    return () => { if (cleanup) cleanup() }
+  }, [])
+
   // 跨窗口数据同步：监听主进程广播的 data:refresh
   useEffect(() => {
     let cleanup: (() => void) | null = null

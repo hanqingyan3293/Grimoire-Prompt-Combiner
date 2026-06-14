@@ -85,6 +85,19 @@ if (typeof window !== 'undefined') {
   })
 }
 
+// Auto-refresh on window focus
+if (typeof window !== 'undefined') {
+  let refreshTimer = 0
+  window.addEventListener('grimoire:refresh', () => {
+    clearTimeout(refreshTimer)
+    refreshTimer = setTimeout(() => {
+      const s = useChatStore.getState()
+      s.loadConversations().catch(() => {})
+      s.loadGroups().catch(() => {})
+    }, 200) // debounce 200ms
+  })
+}
+
 export const useChatStore = create<ChatState>((set, get) => ({
   conversations: [],
   activeConversationId: null,

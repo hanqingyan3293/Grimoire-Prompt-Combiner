@@ -50,6 +50,9 @@ function createSettingsWindow(): void {
   })
   settingsWindow.loadURL(getRendererURL("settings"))
   settingsWindow.on("closed", () => { settingsWindow = null })
+  settingsWindow.on('focus', () => {
+    settingsWindow?.webContents.send('window:focused')
+  })
 }
 
 function createAIWindow(): void {
@@ -70,10 +73,14 @@ function createAIWindow(): void {
   })
   aiWindow.loadURL(getRendererURL("ai"))
   aiWindow.on("closed", () => { aiWindow = null })
+  aiWindow.on('focus', () => {
+    aiWindow?.webContents.send('window:focused')
+  })
 }
 
 function createWindow(): void {
   mainWindow = new BrowserWindow({
+    show: false,
     width: 1400, height: 900, minWidth: 1024, minHeight: 700,
     title: "魔导书 Grimoire",
     icon: path.join(__dirname, "../../../resources/icons/icon.png"),
@@ -90,6 +97,12 @@ function createWindow(): void {
   } else {
     mainWindow.loadFile(path.join(__dirname, "../../renderer/index.html"))
   }
+
+  // Focus-based cross-window sync
+  mainWindow.on('focus', () => {
+    mainWindow?.webContents.send('window:focused')
+  })
+  mainWindow.show()
 
   const menuTemplate: Electron.MenuItemConstructorOptions[] = [
     {

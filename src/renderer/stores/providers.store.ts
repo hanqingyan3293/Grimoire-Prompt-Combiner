@@ -14,6 +14,12 @@ interface ProviderState {
   refreshActive: () => Promise<void>
 }
 
+if (typeof window !== 'undefined') {
+  window.addEventListener('grimoire:refresh', () => {
+    useProviderStore.getState().loadProviders().catch(() => {})
+  })
+}
+
 export const useProviderStore = create<ProviderState>((set, get) => ({
   providers: [],
   activeProvider: null,
