@@ -12,6 +12,13 @@ export function RightPanel({ onOpenSettings, onOpenAI }: {
 }) {
   const [activeTab, setActiveTab] = useState<TabKey>('presets')
 
+  // Auto-refresh when switching to AI tab
+  React.useEffect(() => {
+    if (activeTab === 'ai') {
+      window.dispatchEvent(new CustomEvent('grimoire:refresh'))
+    }
+  }, [activeTab])
+
   const tabs: { key: TabKey; icon: string; label: string }[] = [
     { key: 'presets', icon: '📁', label: '预设' },
     { key: 'history', icon: '🕐', label: '历史' },
@@ -24,7 +31,7 @@ export function RightPanel({ onOpenSettings, onOpenAI }: {
       {/* Tab Bar */}
       <div className="flex border-b border-[var(--color-border)]">
         {tabs.map(tab => (
-          <button key={tab.key} onClick={() => handleTabSwitch(tab.key)}
+          <button key={tab.key} onClick={() => setActiveTab(tab.key)}
             className={`flex-1 py-2 text-xs font-medium transition-colors border-b-2 ${
               activeTab === tab.key
                 ? 'border-[var(--color-accent)] text-[var(--color-accent)]'
