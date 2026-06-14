@@ -218,15 +218,6 @@ async function registerAllIPC(): Promise<void> {
     })
   })
 
-  ipcMain.handle(IPC_CHANNELS.AI_VISION, async (_event, imageBase64: string, customPrompt?: string) => {
-    try {
-      const provider = await getActiveProvider()
-      if (!provider) return { success: false, error: "请先在设置中配置供应商" }
-      const prompt = customPrompt || "请分析这张图片，列出适合作为 Stable Diffusion / NovelAI 提示词 (prompt tags) 的关键词标签。请用逗号分隔的英文标签列表格式输出。"
-      const result = await analyzeImage(imageBase64, prompt, { api_key: provider.api_key, api_endpoint: provider.base_url, api_model: provider.default_model })
-      return { success: true, text: result }
-    } catch (err) { return { success: false, error: err instanceof Error ? err.message : "未知错误" } }
-  })
 
   ipcMain.handle(IPC_CHANNELS.AI_CHAT_HISTORY, async () => getChatHistory(100))
   ipcMain.handle(IPC_CHANNELS.ERROR_GET_ALL, async () => getErrorLogs(50))
