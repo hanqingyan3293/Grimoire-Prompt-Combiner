@@ -181,6 +181,7 @@ export const IPC_CHANNELS = {
   TAGS_UPDATE: "tags:update",
   TAGS_DELETE: "tags:delete",
   TAGS_IMPORT: "tags:import",
+  TAGS_RESET: "tags:reset",
 
   // Category / Subcategory
   CATEGORY_CREATE: "category:create",
