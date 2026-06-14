@@ -1,0 +1,101 @@
+
+/* UI Scale */
+html {
+  font-size: calc(14px * var(--ui-scale, 1));
+}
+/* 魔导书 Grimoire v7 — 主题系统 */
+/* 通过在 <html> 上设置 data-theme 属性切换主题 */
+
+/* ===== Neon 霓虹（默认）===== */
+[data-theme="neon"] {
+  --color-bg-primary: #0f0f1a;
+  --color-bg-secondary: #1a1a2e;
+  --color-bg-tertiary: #252540;
+  --color-text-primary: #e8e8f0;
+  --color-text-secondary: #a0a0b8;
+  --color-accent: #a855f7;
+  --color-accent-hover: #9333ea;
+  --color-border: #2a2a45;
+}
+
+/* ===== Clean 简洁 ===== */
+[data-theme="clean"] {
+  --color-bg-primary: #f8fafc;
+  --color-bg-secondary: #ffffff;
+  --color-bg-tertiary: #f1f5f9;
+  --color-text-primary: #1e293b;
+  --color-text-secondary: #64748b;
+  --color-accent: #3b82f6;
+  --color-accent-hover: #2563eb;
+  --color-border: #e2e8f0;
+}
+
+/* ===== Gold 金色 ===== */
+[data-theme="gold"] {
+  --color-bg-primary: #1a1a0f;
+  --color-bg-secondary: #2a2a1a;
+  --color-bg-tertiary: #3a3a25;
+  --color-text-primary: #f0e8d0;
+  --color-text-secondary: #a09870;
+  --color-accent: #f59e0b;
+  --color-accent-hover: #d97706;
+  --color-border: #4a4a35;
+}
+
+/* ===== Midnight 暗夜 ===== */
+[data-theme="midnight"] {
+  --color-bg-primary: #0f172a;
+  --color-bg-secondary: #1e293b;
+  --color-bg-tertiary: #334155;
+  --color-text-primary: #e2e8f0;
+  --color-text-secondary: #94a3b8;
+  --color-accent: #6366f1;
+  --color-accent-hover: #4f46e5;
+  --color-border: #475569;
+}
+
+/* ===== Sakura 樱花 ===== */
+[data-theme="sakura"] {
+  --color-bg-primary: #1a0f15;
+  --color-bg-secondary: #2a1a25;
+  --color-bg-tertiary: #3a2535;
+  --color-text-primary: #f0e0e8;
+  --color-text-secondary: #a09098;
+  --color-accent: #ec4899;
+  --color-accent-hover: #db2777;
+  --color-border: #4a3545;
+}
+
+/* ===== Forest 森林 ===== */
+[data-theme="forest"] {
+  --color-bg-primary: #0f1a12;
+  --color-bg-secondary: #1a2a1e;
+  --color-bg-tertiary: #253a2a;
+  --color-text-primary: #e0f0e4;
+  --color-text-secondary: #90a898;
+  --color-accent: #22c55e;
+  --color-accent-hover: #16a34a;
+  --color-border: #354a3a;
+}
+
+/* ===== Sunset 日落 ===== */
+[data-theme="sunset"] {
+  --color-bg-primary: #1a100f;
+  --color-bg-secondary: #2a1a18;
+  --color-bg-tertiary: #3a2520;
+  --color-text-primary: #f0e0d8;
+  --color-text-secondary: #a09888;
+  --color-accent: #f97316;
+  --color-accent-hover: #ea580c;
+  --color-border: #4a3528;
+}
+
+/* ===== 动画 ===== */
+@keyframes slide-up {
+  from { opacity: 0; transform: translate(-50%, 10px); }
+  to { opacity: 1; transform: translate(-50%, 0); }
+}
+
+.animate-slide-up {
+  animation: slide-up 0.3s ease-out;
+}
