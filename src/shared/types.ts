@@ -1,8 +1,8 @@
-﻿// ============================================================
-// 魔导书 Grimoire v7 — 共享类型定义
+// ============================================================
+// Grimoire v7 — Shared Types
 // ============================================================
 
-/** 标签结构 */
+/** Tag structure */
 export interface Tag {
   id: string
   subcategory_id: string
@@ -13,7 +13,7 @@ export interface Tag {
   created_at: string
 }
 
-/** 子类结构 */
+/** Subcategory structure */
 export interface Subcategory {
   id: string
   category_id: string
@@ -23,7 +23,7 @@ export interface Subcategory {
   tags: Tag[]
 }
 
-/** 大类结构 */
+/** Category structure */
 export interface Category {
   id: string
   en: string
@@ -32,7 +32,7 @@ export interface Category {
   subcategories: Subcategory[]
 }
 
-/** 左侧面板展示的标签（带权重） */
+/** Panel tag (with weight) */
 export interface PanelTag {
   tag: Tag
   weight: number
@@ -40,20 +40,20 @@ export interface PanelTag {
   subcategory: string
 }
 
-/** 当前提示词状态 */
+/** Prompt state */
 export interface PromptState {
   positive: PanelTag[]
   negative: PanelTag[]
 }
 
-/** 撤销/重做栈项 */
+/** Undo/Redo entry */
 export interface UndoRedoEntry {
   positive: PanelTag[]
   negative: PanelTag[]
   timestamp: number
 }
 
-/** 预设 */
+/** Preset */
 export interface Preset {
   id: string
   name: string
@@ -67,7 +67,7 @@ export interface PresetData {
   negative: { tag_id: string; weight: number }[]
 }
 
-/** 历史记录 */
+/** History item */
 export interface HistoryItem {
   id: string
   prompt: string
@@ -76,14 +76,14 @@ export interface HistoryItem {
   created_at: string
 }
 
-/** 图片参考 */
+/** Image reference */
 export interface ImageRef {
   id: number
   file_path: string
   created_at: string
 }
 
-/** 聊天消息 */
+/** Chat message */
 export interface ChatMessage {
   id: string
   role: "user" | "assistant" | "system"
@@ -92,7 +92,7 @@ export interface ChatMessage {
   created_at: string
 }
 
-/** AI 标签建议 */
+/** AI tag suggestion */
 export interface TagSuggestion {
   en: string
   zh: string
@@ -100,7 +100,7 @@ export interface TagSuggestion {
   category?: string
 }
 
-/** 用户设置 */
+/** App settings */
 export interface AppSettings {
   api_key: string
   api_endpoint: string
@@ -114,7 +114,23 @@ export interface AppSettings {
   random_max: string
 }
 
-/** 错误日志 */
+/** Favorite tag */
+export interface FavoriteTag {
+  fav_id: number
+  id: string; en: string; zh: string
+  subcategory_id: string; source: string
+  sub_zh: string; cat_zh: string
+}
+
+/** Favorite subcategory */
+export interface FavoriteSub {
+  fav_id: number
+  id: string; zh: string
+  category_id: string; cat_zh: string
+  tag_count: number
+}
+
+/** Error log */
 export interface ErrorLog {
   id: number
   message: string
@@ -123,15 +139,16 @@ export interface ErrorLog {
   created_at: string
 }
 
-/** IPC 通道名称常量 */
+/** IPC channel names */
 export const IPC_CHANNELS = {
-  // 标签
+  // Tags
   TAGS_GET_ALL: "tags:getAll",
   TAGS_CREATE: "tags:create",
   TAGS_UPDATE: "tags:update",
   TAGS_DELETE: "tags:delete",
   TAGS_IMPORT: "tags:import",
-  // 大类/子类管理
+
+  // Category / Subcategory
   CATEGORY_CREATE: "category:create",
   CATEGORY_UPDATE: "category:update",
   CATEGORY_DELETE: "category:delete",
@@ -139,21 +156,21 @@ export const IPC_CHANNELS = {
   SUBCATEGORY_UPDATE: "subcategory:update",
   SUBCATEGORY_DELETE: "subcategory:delete",
 
-  // 预设
+  // Presets
   PRESETS_LIST: "presets:list",
   PRESETS_SAVE: "presets:save",
   PRESETS_DELETE: "presets:delete",
 
-  // 历史
+  // History
   HISTORY_LIST: "history:list",
   HISTORY_ADD: "history:add",
   HISTORY_CLEAR: "history:clear",
 
-  // 设置
+  // Settings
   SETTINGS_GET_ALL: "settings:getAll",
   SETTINGS_SET: "settings:set",
 
-  // 图片
+  // Images
   IMAGES_LIST: "images:list",
   IMAGES_ADD: "images:add",
   IMAGES_DELETE: "images:delete",
@@ -163,21 +180,31 @@ export const IPC_CHANNELS = {
   AI_VISION: "ai:vision",
   AI_CHAT_HISTORY: "ai:chatHistory",
 
-  // 错误日志
+  // Error logs
   ERROR_LOG: "error:log",
   ERROR_GET_ALL: "error:getAll",
 
-  // 数据库
+  // Database
   DB_EXPORT: "db:export",
   DB_IMPORT: "db:import",
+
+  // Favorites
+  FAV_TAG_LIST: "fav:tagList",
+  FAV_TAG_ADD: "fav:tagAdd",
+  FAV_TAG_REMOVE: "fav:tagRemove",
+  FAV_TAG_CHECK: "fav:tagCheck",
+  FAV_SUB_LIST: "fav:subList",
+  FAV_SUB_ADD: "fav:subAdd",
+  FAV_SUB_REMOVE: "fav:subRemove",
+  FAV_SUB_CHECK: "fav:subCheck",
 } as const
 
-/** 默认标签权重 */
+/** Default tag weight */
 export const DEFAULT_WEIGHT = 1.0
 
-/** 权重范围 */
+/** Weight range */
 export const WEIGHT_MIN = 0.1
 export const WEIGHT_MAX = 2.0
 
-/** 最大撤销步数 */
+/** Max undo steps */
 export const MAX_UNDO_STEPS = 50

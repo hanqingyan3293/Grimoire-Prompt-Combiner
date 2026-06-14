@@ -1,4 +1,4 @@
-﻿// 魔导书 Grimoire v7 — SQLite 数据库管理
+// 魔导书 Grimoire v7 — SQLite 数据库管理
 import initSqlJs, { Database as SqlJsDatabase, SqlJsStatic } from 'sql.js'
 import path from 'path'
 import fs from 'fs'
@@ -43,6 +43,13 @@ CREATE TABLE IF NOT EXISTS favorites (
   tag_id TEXT NOT NULL UNIQUE,
   created_at TEXT DEFAULT (datetime('now','localtime')),
   FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS sub_favorites (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  subcategory_id TEXT NOT NULL UNIQUE,
+  created_at TEXT DEFAULT (datetime('now','localtime')),
+  FOREIGN KEY (subcategory_id) REFERENCES subcategories(id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS tag_usage (
@@ -97,6 +104,7 @@ CREATE TABLE IF NOT EXISTS error_logs (
 
 CREATE INDEX IF NOT EXISTS idx_sub_cat ON subcategories(category_id);
 CREATE INDEX IF NOT EXISTS idx_tag_sub ON tags(subcategory_id);
+CREATE INDEX IF NOT EXISTS idx_sub_fav ON sub_favorites(subcategory_id);
 CREATE INDEX IF NOT EXISTS idx_fav_tag ON favorites(tag_id);
 CREATE INDEX IF NOT EXISTS idx_presets_name ON presets(name);
 CREATE INDEX IF NOT EXISTS idx_history_time ON history(created_at DESC);
@@ -106,7 +114,6 @@ export async function initDatabase(): Promise<SqlJsDatabase> {
   SQL = await initSqlJs()
   dbPath = path.join(app.getPath('userData'), 'grimoire.db')
   
-  // Try to load existing database
   if (fs.existsSync(dbPath)) {
     const buffer = fs.readFileSync(dbPath)
     db = new SQL.Database(buffer)
@@ -114,12 +121,10 @@ export async function initDatabase(): Promise<SqlJsDatabase> {
     db = new SQL.Database()
   }
   
-  // Enable WAL mode for better performance
   db.run('PRAGMA journal_mode=WAL;')
   db.run('PRAGMA foreign_keys=ON;')
   db.run('PRAGMA busy_timeout=5000;')
   
-  // Run schema migration
   db.run(SCHEMA_SQL)
   saveDatabase()
   
@@ -156,10 +161,8 @@ export function importDatabase(importPath: string): void {
   db.close()
   db = new SQL.Database(buffer)
   
-  // Re-apply schema and save
   db.run(SCHEMA_SQL)
   
-  // Copy to app data
   const data = db.export()
   fs.writeFileSync(dbPath, Buffer.from(data))
 }
@@ -172,7 +175,6 @@ export function closeDatabase(): void {
   }
 }
 
-// Import default tags from data/tags.json
 export async function importDefaultTags(tagsData: string): Promise<void> {
   const database = getDatabase()
   const categories = JSON.parse(tagsData) as Array<{

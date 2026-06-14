@@ -1,8 +1,9 @@
-﻿// 魔导书 Grimoire v7 — 标签卡片网格
+// 魔导书 Grimoire v7 — 标签卡片网格
 import React, { useState, useMemo } from "react"
 import { usePromptsStore } from "../../stores/prompts.store"
 import { useTagsStore } from "../../stores/tags.store"
 import { useSettingsStore } from "../../stores/settings.store"
+import { useFavoritesStore } from "../../stores/favorites.store"
 import { Modal } from "../ui/Modal"
 import type { Tag, Subcategory, Category } from "../../../shared/types"
 
@@ -15,6 +16,7 @@ const SCALE_SIZES: Record<string, { card: string; text: string; subtext: string 
 export function TagCards() {
   const { categories, loadTags, updateTag, deleteTag, searchQuery, selectedSubIds } = useTagsStore()
   const { positive, negative, addPositive, addNegative, removePositive, removeNegative } = usePromptsStore()
+  const favStore = useFavoritesStore()
   const ui_scale = useSettingsStore(s => s.ui_scale)
   const custom_accent = useSettingsStore(s => s.custom_accent)
 
@@ -117,24 +119,38 @@ export function TagCards() {
               : sub.tags
             return (
               <div key={sub.id} className="border border-[var(--color-border)] rounded p-3">
-                <div className="flex items-center justify-between mb-3">
-                  <div>
-                    <span className="text-xs text-[var(--color-text-secondary)]">{cat.zh} › {sub.zh}</span>
-                    <span className="text-xs text-[var(--color-text-secondary)] ml-2">({filtered.length})</span>
+                <div className="flex items-center justify-between mb-2">
+                  <div className="text-xs text-[var(--color-text-secondary)]">
+                    <span className="text-[var(--color-accent)]">{cat.zh}</span>
+                    <span className="mx-1">/</span>
+                    <span>{sub.zh}</span>
+                    <span className="ml-2 opacity-50">({filtered.length})</span>
                   </div>
-                  <button onClick={() => setAddModal({ subId: sub.id, subName: sub.zh })} className="text-xs text-[var(--color-accent)] hover:underline">+ 添加标签</button>
+                  <button onClick={() => setAddModal({ subId: sub.id, subName: sub.zh })}
+                    className="text-[10px] px-2 py-1 text-[var(--color-accent)] border border-[var(--color-accent)]/30 rounded hover:bg-[var(--color-accent)]/10">
+                    + 添加标签
+                  </button>
                 </div>
-                <div className="flex flex-wrap gap-2 justify-start">
+                <div className="flex flex-wrap gap-2">
                   {filtered.map(tag => {
-                    const isSelected = selectedIds.has(tag.id)
+                    const isPositive = selectedIds.has(tag.id)
                     const isNegative = negativeIds.has(tag.id)
+                    let bgStyle = {}
+                    let borderStyle = {}
+                    if (isPositive) {
+                      bgStyle = { backgroundColor: `${custom_accent || "#a855f7"}25` }
+                      borderStyle = { borderColor: `${custom_accent || "#a855f7"}50`, boxShadow: `0 0 8px ${custom_accent || "#a855f7"}40` }
+                    } else if (isNegative) {
+                      bgStyle = { backgroundColor: negativeGlowColor }
+                      borderStyle = { borderColor: negativeBorderColor, boxShadow: `0 0 8px ${negativeBorderColor}` }
+                    }
                     return (
-                      <button key={tag.id} onClick={() => handleLeftClick(tag, sub, cat)} onContextMenu={(e) => handleRightClick(e, tag)}
-                        className={`relative ${scale.card} rounded border transition-all duration-150 flex flex-col items-center justify-center p-1.5 text-center overflow-hidden ${
-                          isNegative ? "ring-1" : isSelected ? "bg-[var(--color-accent)]/20 border-[var(--color-accent)]/50 ring-1 ring-[var(--color-accent)]/50" : "bg-[var(--color-bg-primary)] border-[var(--color-border)] hover:border-[var(--color-accent)]/40"
-                        }`}
-                        style={isNegative ? { backgroundColor: negativeGlowColor, borderColor: negativeBorderColor } : undefined}>
-                        <div className={`${scale.text} text-[var(--color-text-primary)] leading-tight line-clamp-2`}>{tag.zh}</div>
+                      <button key={tag.id}
+                        onClick={() => handleLeftClick(tag, sub, cat)}
+                        onContextMenu={(e) => handleRightClick(e, tag)}
+                        className={`${scale.card} flex flex-col items-center justify-center border rounded cursor-pointer transition-all hover:shadow-md p-1`}
+                        style={{ ...bgStyle, ...borderStyle }}>
+                        <div className={`${scale.text} font-medium text-[var(--color-text-primary)] text-center leading-tight line-clamp-2`}>{tag.zh}</div>
                         <div className={`${scale.subtext} opacity-50 truncate mt-0.5 max-w-full`}>{tag.en}</div>
                       </button>
                     )
@@ -151,14 +167,14 @@ export function TagCards() {
         <div className="fixed inset-0 z-40" onClick={() => setContextMenu(null)} />
         <div className="fixed z-50 bg-[var(--color-bg-tertiary)] border border-[var(--color-border)] rounded shadow-2xl py-1.5 min-w-[160px]" style={{ left: contextMenu.x, top: contextMenu.y }}>
           <button onClick={handleAddNegative} className="w-full text-left px-4 py-2 text-sm text-[var(--color-text-primary)] hover:bg-[var(--color-accent)]/15">{negativeIds.has(contextMenu.tag.id) ? "✓ 取消负面" : "☒ 加入负面"}</button>
-          <button className="w-full text-left px-4 py-2 text-sm text-[var(--color-text-primary)] hover:bg-[var(--color-accent)]/15">⭐ 收藏</button>
+          <button onClick={() => { favStore.toggleTagFav(contextMenu!.tag.id); setContextMenu(null) }} className="w-full text-left px-4 py-2 text-sm text-[var(--color-text-primary)] hover:bg-[var(--color-accent)]/15">{favStore.isTagFav(contextMenu!.tag.id) ? "★ 取消收藏" : "☆ 收藏"}</button>
           <button onClick={() => openEdit(contextMenu.tag)} className="w-full text-left px-4 py-2 text-sm text-[var(--color-text-primary)] hover:bg-[var(--color-accent)]/15">✏ 编辑</button>
           <div className="border-t border-[var(--color-border)] my-1" />
           <button onClick={() => { setDeleteConfirm(contextMenu.tag); setContextMenu(null) }} className="w-full text-left px-4 py-2 text-sm text-red-400 hover:bg-red-500/15">🗑 删除</button>
         </div>
       </>)}
 
-      {/* Edit Tag Modal - stopPropagation to prevent backdrop closing */}
+      {/* Edit Tag Modal */}
       <Modal title="编辑标签" open={!!editTag} onClose={() => setEditTag(null)}>
         <div className="space-y-4 p-2" onClick={e => e.stopPropagation()}>
           <div><label className="text-xs text-[var(--color-text-secondary)]">英文名</label>
@@ -177,7 +193,7 @@ export function TagCards() {
       {/* Delete Confirm Modal */}
       <Modal title="确认删除" open={!!deleteConfirm} onClose={() => setDeleteConfirm(null)}>
         <div className="space-y-4 p-2" onClick={e => e.stopPropagation()}>
-          <p className="text-sm">确定删除标签 "{deleteConfirm?.zh}"？此操作不可撤销。</p>
+          <p className="text-sm">确定删除标签 &ldquo;{deleteConfirm?.zh}&rdquo;？此操作不可撤销。</p>
           <div className="flex gap-3 pt-2">
             <button onClick={() => setDeleteConfirm(null)} className="flex-1 py-3 text-sm bg-[var(--color-bg-tertiary)] rounded">取消</button>
             <button onClick={handleDeleteTag} className="flex-1 py-3 text-sm bg-red-500 text-white rounded">删除</button>

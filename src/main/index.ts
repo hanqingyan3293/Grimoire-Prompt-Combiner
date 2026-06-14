@@ -1,4 +1,4 @@
-﻿// 魔导书 Grimoire v7 — Electron 主进程入口
+// 魔导书 Grimoire v7 — Electron 主进程入口
 import { app, BrowserWindow, ipcMain, Menu, dialog, shell } from "electron"
 import path from "path"
 import fs from "fs"
@@ -8,6 +8,7 @@ import { registerPresetsIPC } from "./ipc/presets.ipc"
 import { registerHistoryIPC } from "./ipc/history.ipc"
 import { registerSettingsIPC } from "./ipc/settings.ipc"
 import { registerImagesIPC } from "./ipc/images.ipc"
+import { registerFavoritesIPC } from "./ipc/favorites.ipc"
 import { chatStream, analyzeImage, saveChatMessage, getChatHistory } from "./services/ai.service"
 import { logError, getErrorLogs } from "./services/logger.service"
 import { IPC_CHANNELS } from "../shared/types"
@@ -68,6 +69,7 @@ function registerAllIPC(): void {
   registerHistoryIPC()
   registerSettingsIPC()
   registerImagesIPC()
+  registerFavoritesIPC()
 
   ipcMain.handle(IPC_CHANNELS.AI_CHAT, async (_event, messages) => {
     return new Promise((resolve) => {

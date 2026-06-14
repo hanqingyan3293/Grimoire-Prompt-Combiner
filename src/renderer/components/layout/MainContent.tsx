@@ -1,4 +1,4 @@
-﻿// 魔导书 Grimoire v7 — 主内容区
+// 魔导书 Grimoire v7 — 主内容区
 import React, { useState, useCallback, useRef, useEffect as useEff } from "react"
 import { useI18n } from "../../i18n/context"
 import { usePromptsStore } from "../../stores/prompts.store"
@@ -25,15 +25,37 @@ export function MainContent() {
   const { random_min, random_max, ui_scale } = useSettingsStore()
 
   const scaleClass = SCALE_CHIP[ui_scale] || SCALE_CHIP.medium
+  const [magnifierOpen, setMagnifierOpen] = useState(false)
 
-  const handleCopy = async () => {
-    const text = getFullPrompt()
+  const getPromptByLang = useCallback((lang: "zh" | "en"): string => {
+    const posParts: string[] = []
+    const negParts: string[] = []
+    for (const pt of positive) {
+      const text = lang === "zh" ? pt.tag.zh : pt.tag.en
+      posParts.push(pt.weight === 1 ? text : `{${text}:${pt.weight}}`)
+    }
+    for (const pt of negative) {
+      const text = lang === "zh" ? pt.tag.zh : pt.tag.en
+      negParts.push(pt.weight === 1 ? text : `{${text}:${pt.weight}}`)
+    }
+    let result = posParts.join(", ")
+    if (negParts.length > 0) {
+      result += "\n--neg " + negParts.join(", ")
+    }
+    return result
+  }, [positive, negative])
+
+  const copyText = async (text: string) => {
     if (!text) return
-    try {
-      await navigator.clipboard.writeText(text)
-      showToast("已复制", "success")
-      try { await window.api.history.add({ prompt: text, positive_count: positive.length, negative_count: negative.length }) } catch { /* ok */ }
-    } catch { showToast("复制失败", "error") }
+    try { await navigator.clipboard.writeText(text); showToast("已复制", "success") }
+    catch { showToast("复制失败", "error") }
+  }
+
+  const handleCopy = async (lang?: "zh" | "en") => {
+    const text = lang ? getPromptByLang(lang) : getFullPrompt()
+    if (!text) return
+    await copyText(text)
+    try { await window.api.history.add({ prompt: text, positive_count: positive.length, negative_count: negative.length }) } catch { /* ok */ }
   }
 
   const availableTags = React.useMemo(() => {
@@ -89,14 +111,48 @@ export function MainContent() {
         </div>
 
         <div className="p-3 bg-[var(--color-bg-secondary)]">
-          <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center justify-between mb-2 flex-wrap gap-1">
             <span className="text-xs font-medium text-[var(--color-text-secondary)]">输出</span>
-            <button onClick={handleCopy} className="px-4 py-1.5 text-xs bg-[var(--color-accent)] text-white rounded hover:bg-[var(--color-accent-hover)]">📋 复制</button>
+            <div className="flex items-center gap-1">
+              <button onClick={() => handleCopy("zh")} className="px-3 py-1.5 text-xs bg-[var(--color-bg-primary)] border border-[var(--color-border)] text-[var(--color-text-primary)] rounded hover:bg-[var(--color-accent)]/10">📋 复制中文</button>
+              <button onClick={() => handleCopy("en")} className="px-3 py-1.5 text-xs bg-[var(--color-bg-primary)] border border-[var(--color-border)] text-[var(--color-text-primary)] rounded hover:bg-[var(--color-accent)]/10">📋 复制英文</button>
+              <button onClick={() => setMagnifierOpen(true)} className="px-3 py-1.5 text-xs bg-[var(--color-bg-primary)] border border-[var(--color-border)] text-[var(--color-text-primary)] rounded hover:bg-[var(--color-accent)]/10" title="放大查看">🔍</button>
+            </div>
           </div>
           <textarea readOnly value={getFullPrompt()}
             placeholder={positive.length === 0 && negative.length === 0 ? "请选择标签..." : ""}
             className="w-full h-20 px-3 py-2 bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded text-sm text-[var(--color-text-primary)] font-mono resize-none focus:outline-none focus:border-[var(--color-accent)]" />
         </div>
+
+        {/* Magnifier Modal */}
+        {magnifierOpen && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50" onClick={() => setMagnifierOpen(false)}>
+            <div className="bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded-lg shadow-2xl w-[90vw] max-w-[800px] max-h-[85vh] flex flex-col" onClick={e => e.stopPropagation()}>
+              <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--color-border)]">
+                <span className="text-sm font-medium text-[var(--color-text-primary)]">🔍 输出预览</span>
+                <button onClick={() => setMagnifierOpen(false)} className="text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] text-lg leading-none">✕</button>
+              </div>
+              <div className="flex-1 overflow-auto p-4 space-y-4">
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs font-medium text-green-400">中文</span>
+                    <button onClick={() => copyText(getPromptByLang("zh"))} className="px-3 py-1 text-xs bg-[var(--color-accent)]/10 border border-[var(--color-accent)]/30 text-[var(--color-accent)] rounded hover:bg-[var(--color-accent)]/20">📋 复制中文</button>
+                  </div>
+                  <textarea readOnly value={getPromptByLang("zh")}
+                    className="w-full h-28 px-3 py-2 bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded text-sm text-[var(--color-text-primary)] font-mono resize-none" />
+                </div>
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs font-medium text-[var(--color-accent)]">English</span>
+                    <button onClick={() => copyText(getPromptByLang("en"))} className="px-3 py-1 text-xs bg-[var(--color-accent)]/10 border border-[var(--color-accent)]/30 text-[var(--color-accent)] rounded hover:bg-[var(--color-accent)]/20">📋 复制英文</button>
+                  </div>
+                  <textarea readOnly value={getPromptByLang("en")}
+                    className="w-full h-28 px-3 py-2 bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded text-sm text-[var(--color-text-primary)] font-mono resize-none" />
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )
@@ -106,13 +162,11 @@ function ToolBtn({ onClick, disabled, title, children }: { onClick: () => void; 
   return <button onClick={onClick} disabled={disabled} title={title} className="w-7 h-7 flex items-center justify-center rounded text-xs hover:bg-[var(--color-accent)]/20 disabled:opacity-30 disabled:cursor-not-allowed">{children}</button>
 }
 
-// Weight input that allows typing decimals
 function WeightInput({ tagId, value, onChange }: { tagId: string; value: number; onChange: (v: number) => void }) {
   const [text, setText] = useState(String(value))
   const inputRef = useRef<HTMLInputElement>(null)
   const isFocused = useRef(false)
 
-  // Sync from external changes (slider) when not focused
   useEff(() => {
     if (!isFocused.current) setText(String(value))
   }, [value])
@@ -130,7 +184,6 @@ function WeightInput({ tagId, value, onChange }: { tagId: string; value: number;
       onFocus={() => { isFocused.current = true }}
       onChange={e => {
         const raw = e.target.value
-        // Allow: empty, single dot, digits, digits.digits (max 2 after dot)
         if (raw === "" || raw === "." || /^\d*\.?\d{0,2}$/.test(raw)) {
           setText(raw)
         }

@@ -1,7 +1,7 @@
-// Vite »·¾³±äÁ¿ÀàĞÍ
+// Vite ç¯å¢ƒå˜é‡ç±»å‹
 /// <reference types="vite/client" />
 
-// Ô¤¼ÓÔØ API ÀàĞÍ
+// é¢„åŠ è½½ API ç±»å‹
 interface GrimoireAPI {
   tags: {
     getAll: () => Promise<{

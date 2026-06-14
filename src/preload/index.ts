@@ -1,4 +1,4 @@
-﻿// 魔导书 Grimoire v7 — 预加载桥
+// 魔导书 Grimoire v7 — 预加载桥
 import { contextBridge, ipcRenderer } from "electron"
 import type { Category, Tag, Preset, HistoryItem, ImageRef, ChatMessage, AppSettings, ErrorLog } from "../shared/types"
 import { IPC_CHANNELS } from "../shared/types"
@@ -72,6 +72,18 @@ const api = {
       ipcRenderer.invoke(IPC_CHANNELS.ERROR_LOG, message, stack || "", context || ""),
   },
 
+  favorites: {
+    tagList: (): Promise<import("../shared/types").FavoriteTag[]> =>
+      ipcRenderer.invoke(IPC_CHANNELS.FAV_TAG_LIST),
+    tagAdd: (tagId: string) => ipcRenderer.invoke(IPC_CHANNELS.FAV_TAG_ADD, tagId),
+    tagRemove: (tagId: string) => ipcRenderer.invoke(IPC_CHANNELS.FAV_TAG_REMOVE, tagId),
+    tagCheck: (tagId: string): Promise<boolean> => ipcRenderer.invoke(IPC_CHANNELS.FAV_TAG_CHECK, tagId),
+    subList: (): Promise<import("../shared/types").FavoriteSub[]> =>
+      ipcRenderer.invoke(IPC_CHANNELS.FAV_SUB_LIST),
+    subAdd: (subId: string) => ipcRenderer.invoke(IPC_CHANNELS.FAV_SUB_ADD, subId),
+    subRemove: (subId: string) => ipcRenderer.invoke(IPC_CHANNELS.FAV_SUB_REMOVE, subId),
+    subCheck: (subId: string): Promise<boolean> => ipcRenderer.invoke(IPC_CHANNELS.FAV_SUB_CHECK, subId),
+  },
   db: {
     export: () => ipcRenderer.invoke(IPC_CHANNELS.DB_EXPORT),
     import: () => ipcRenderer.invoke(IPC_CHANNELS.DB_IMPORT),
