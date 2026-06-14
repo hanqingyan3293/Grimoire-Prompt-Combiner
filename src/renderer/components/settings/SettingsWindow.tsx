@@ -280,14 +280,18 @@ export function SettingsWindow({ onClose }: { onClose: () => void }) {
 
         {showProviderEditor && (
           <div className="absolute inset-0 bg-black/50 z-20 flex items-center justify-center">
-            <div className="bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded shadow-2xl flex flex-col overflow-hidden" style={{ width: 680, maxWidth: "94vw", maxHeight: "88vh" }}>
-              <ProviderEditor
+            <div className="bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded shadow-2xl flex flex-col overflow-hidden" style={{ width: 680, maxWidth: "94vw", height: "90vh", maxHeight: 700 }}>
+              <ProviderEditor key={editingProvider?.id || "new"}
                 provider={editingProvider}
                 onSave={async (data) => {
-                  await saveProvider(data)
-                  setShowProviderEditor(false)
-                  setEditingProvider(null)
-                  showToast("供应商已保存", "success")
+                  try {
+                    await saveProvider(data)
+                    setShowProviderEditor(false)
+                    setEditingProvider(null)
+                    showToast("供应商已保存", "success")
+                  } catch (e) {
+                    showToast("保存失败: " + (e.message || "未知错误"), "error")
+                  }
                 }}
                 onCancel={() => { setShowProviderEditor(false); setEditingProvider(null) }}
               />

@@ -106,7 +106,7 @@ export function ProviderEditor({ provider, onSave, onCancel }: Props) {
   )
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col" style={{ height: "100%" }}>
       <div className="flex items-center justify-between px-5 py-3 border-b border-[var(--color-border)]">
         <span className="font-bold text-sm text-[var(--color-text-primary)]">
           {isNew ? "新增供应商" : "编辑供应商"}
@@ -114,7 +114,7 @@ export function ProviderEditor({ provider, onSave, onCancel }: Props) {
         <button onClick={onCancel} className="text-[var(--color-text-secondary)] hover:text-red-400 text-lg">✕</button>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-5 space-y-4">
+      <div className="flex-1 overflow-y-auto p-5 space-y-4" style={{ minHeight: 0 }}>
         <Field label="名称" desc="供应商显示名称，用于快速识别">
           <input value={name} onChange={e => setName(e.target.value)} placeholder="例如：OpenAI、NovelAI"
             className="w-full px-3 py-2 bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded text-sm text-[var(--color-text-primary)] focus:outline-none focus:border-[var(--color-accent)]" />
@@ -260,7 +260,7 @@ export function ProviderEditor({ provider, onSave, onCancel }: Props) {
         </Field>
       </div>
 
-      <div className="flex gap-3 px-5 py-3 border-t border-[var(--color-border)]">
+      <div className="shrink-0 flex gap-3 px-5 py-3 border-t border-[var(--color-border)]">
         <button onClick={onCancel}
           className="flex-1 py-2 text-sm border border-[var(--color-border)] rounded text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-primary)] transition-colors">
           取消
