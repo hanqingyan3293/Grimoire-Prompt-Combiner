@@ -1,0 +1,46 @@
+*** Begin Patch
+*** Update File: D:\File\Data\魔导书\grimoire\src\main\services\ai.service.ts
+@@ // Decrypt logic handled in settings IPC; here we read raw
+   for (const row of result[0]?.values || []) {
+     settings[row[0] as string] = (row[1] as string) || ''
+   }
+-  
++
+   return {
+     api_key: settings.api_key || '',
+     api_endpoint: settings.api_endpoint || 'https://api.openai.com/v1',
+@@ interface AIMessage {
+   role: 'user' | 'assistant' | 'system'
+   content: string | Array<{ type: string; text?: string; image_url?: { url: string } }>
+ }
++
++/** 清洗消息内容，移除 image_url，只保留 text（适配不支持多模态的 API） */
++function normalizeContent(content: AIMessage["content"]): string {
++  if (typeof content === "string") return content
++  return content
++    .filter((p): p is { type: "text"; text: string } => p.type === "text" && typeof p.text === "string")
++    .map(p => p.text)
++    .join("\n")
++}
++
++function normalizeMessages(messages: AIMessage[]): Array<{ role: string; content: string }> {
++  return messages.map(m => ({ role: m.role, content: normalizeContent(m.content) }))
++}
+ 
+ /** 发送聊天请求（流式） */
+ export async function chatStream(
+@@       body: JSON.stringify({
+         model: settings.api_model,
+-        messages,
++        messages: normalizeMessages(messages),
+         stream: true,
+       }),
+@@   if (!response.ok) {
+     const errText = await response.text()
+-    throw new Error(`API 错误 (${response.status}): ${errText.slice(0, 200)}`)
++    if (errText.includes("image_url")) {
++      throw new Error("当前配置的 API 不支持识图（image_url），请使用支持 Vision 的模型（如 gpt-4o）")
++    }
++    throw new Error(`API 错误 (${response.status}): ${errText.slice(0, 200)}`)
+   }
+*** End Patch

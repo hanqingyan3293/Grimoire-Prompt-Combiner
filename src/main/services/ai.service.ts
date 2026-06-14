@@ -1,4 +1,4 @@
-﻿// 魔导书 Grimoire v7 — AI 服务（OpenAI 兼容 API）
+// 魔导书 Grimoire v7 — AI 服务（OpenAI 兼容 API）
 import { getDatabase, saveDatabase } from '../database'
 import crypto from 'crypto'
 
@@ -29,6 +29,18 @@ interface AIMessage {
   role: 'user' | 'assistant' | 'system'
   content: string | Array<{ type: string; text?: string; image_url?: { url: string } }>
 }
+/** 清洗消息内容，移除 image_url，只保留 text（适配不支持多模态的 API） */
+function normalizeContent(content: AIMessage["content"]): string {
+  if (typeof content === "string") return content
+  return content
+    .filter((p): p is { type: "text"; text: string } => p.type === "text" && typeof p.text === "string")
+    .map(p => p.text)
+    .join("\n")
+}
+
+function normalizeMessages(messages: AIMessage[]): Array<{ role: string; content: string }> {
+  return messages.map(m => ({ role: m.role, content: normalizeContent(m.content) }))
+}
 
 /** 发送聊天请求（流式） */
 export async function chatStream(
@@ -57,7 +69,7 @@ export async function chatStream(
       },
       body: JSON.stringify({
         model: settings.api_model,
-        messages,
+        messages: normalizeMessages(messages),
         stream: true,
       }),
       signal,
@@ -156,6 +168,9 @@ export async function analyzeImage(
   
   if (!response.ok) {
     const errText = await response.text()
+    if (errText.includes("image_url")) {
+      throw new Error("当前配置的 API 不支持识图（image_url），请使用支持 Vision 的模型（如 gpt-4o）")
+    }
     throw new Error(`API 错误 (${response.status}): ${errText.slice(0, 200)}`)
   }
   

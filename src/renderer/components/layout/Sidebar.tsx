@@ -266,7 +266,8 @@ export function Sidebar() {
                             const found = tagLookup.get(tag.id)
                             if (found) {
                               const ps = usePromptsStore.getState()
-                              if (posIds.has(tag.id)) ps.removePositive(tag.id)
+                              const curPosIds = new Set(ps.positive.map(p => p.tag.id))
+                              if (curPosIds.has(tag.id)) ps.removePositive(tag.id)
                               else ps.addPositive(found.tag, found.catZh, found.subZh)
                             }
                           }}
