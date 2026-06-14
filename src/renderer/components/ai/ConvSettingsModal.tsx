@@ -32,7 +32,7 @@ export function ConvSettingsModal({ open, onClose }: Props) {
   const handleExport = () => {
     const { messages } = useChatStore.getState()
     const text = messages.map(m => {
-      const role = m.role === 'user' ? 'User' : 'AI'
+      const role = m.role === 'user' ? '用户' : 'AI'
       return `### ${role}
 
 ${m.content}
@@ -67,7 +67,7 @@ ${m.content}
           <p className="text-xs text-[var(--color-text-secondary)] mt-1 mb-2">将当前对话导出为 Markdown 文件</p>
           <button onClick={handleExport}
             className="px-4 py-2 text-xs bg-[var(--color-bg-tertiary)] border border-[var(--color-border)] rounded-lg text-[var(--color-text-primary)] hover:bg-[var(--color-accent)]/10 transition-colors">
-            Export Markdown
+            导出 Markdown
           </button>
         </div>
 

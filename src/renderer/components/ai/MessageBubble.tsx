@@ -18,16 +18,12 @@ export function MessageBubble({ message, isStreaming }: Props) {
   const [editContent, setEditContent] = useState(message.content)
 
   const handleCopy = async () => {
-    try {
-      await navigator.clipboard.writeText(message.content)
-    } catch {}
+    try { await navigator.clipboard.writeText(message.content) } catch {}
     setMenuOpen(false)
   }
 
   const handleEdit = () => {
-    setEditing(true)
-    setEditContent(message.content)
-    setMenuOpen(false)
+    setEditing(true); setEditContent(message.content); setMenuOpen(false)
   }
 
   const handleSaveEdit = () => {
@@ -37,29 +33,33 @@ export function MessageBubble({ message, isStreaming }: Props) {
     setEditing(false)
   }
 
-  const handleResend = () => {
-    resendMessage(message.id)
-    setMenuOpen(false)
-  }
+  const handleResend = () => { resendMessage(message.id); setMenuOpen(false) }
+  const handleDelete = () => { deleteMessage(message.id); setMenuOpen(false) }
 
-  const handleDelete = () => {
-    deleteMessage(message.id)
-    setMenuOpen(false)
-  }
+  // User messages: right-aligned, AI messages: left-aligned
+  const rowClass = isUser ? 'flex-row-reverse' : 'flex-row'
+  const bubbleBg = isUser
+    ? 'bg-[var(--color-accent)]/15 text-[var(--color-text-primary)]'
+    : 'bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)]'
+  const timeAlign = isUser ? 'text-right' : 'text-left'
 
   return (
-    <div className="flex gap-3">
-      /* AI */
-      {!isUser && (
-        <div className="w-7 h-7 rounded-full bg-[var(--color-accent)]/20 flex items-center justify-center text-xs flex-shrink-0 mt-0.5">
-          🤖
-        </div>
-      )}
+    <div className={"flex gap-2 " + rowClass}>
+      {/* Avatar */}
+      <div className={"w-7 h-7 rounded-full flex items-center justify-center text-xs flex-shrink-0 mt-0.5 " + (isUser ? 'bg-[var(--color-accent)]/10' : 'bg-[var(--color-accent)]/20')}>
+        {isUser ? '👤' : '🤖'}
+      </div>
 
-      <div className="relative group max-w-[80%]">
+      {/* Bubble + time */}
+      <div className="relative group max-w-[75%]">
+        {/* Name label */}
+        <div className={"text-[10px] text-[var(--color-text-secondary)] mb-0.5 opacity-60 " + timeAlign}>
+          {isUser ? '用户' : 'AI'}
+        </div>
+
         <div
           onContextMenu={e => { e.preventDefault(); setMenuOpen(true) }}
-          className="px-4 py-2.5 rounded-2xl text-sm leading-relaxed">
+          className={"px-3 py-2 rounded-2xl text-sm leading-relaxed " + bubbleBg}>
 
           {editing && isUser ? (
             <div className="min-w-[200px]">
@@ -95,14 +95,16 @@ export function MessageBubble({ message, isStreaming }: Props) {
           )}
         </div>
 
-        <div className="text-[10px] text-[var(--color-text-secondary)] mt-0.5 opacity-50">
+        {/* Time */}
+        <div className={"text-[10px] text-[var(--color-text-secondary)] mt-0.5 opacity-50 " + timeAlign}>
           {message.created_at ? new Date(message.created_at).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }) : ''}
         </div>
 
+        {/* Context menu */}
         {menuOpen && (
           <>
             <div className="fixed inset-0 z-40" onClick={() => setMenuOpen(false)} />
-            <div className="absolute right-0 top-8 z-50 bg-[var(--color-bg-tertiary)] border border-[var(--color-border)] rounded-lg shadow-xl py-1 min-w-[140px]">
+            <div className={"absolute z-50 bg-[var(--color-bg-tertiary)] border border-[var(--color-border)] rounded-lg shadow-xl py-1 min-w-[140px] " + (isUser ? 'right-0' : 'left-0') + " top-8"}>
               <button onClick={handleCopy} className="w-full text-left px-3 py-1.5 text-xs text-[var(--color-text-primary)] hover:bg-[var(--color-accent)]/10">
                 📋 复制
               </button>
@@ -124,12 +126,6 @@ export function MessageBubble({ message, isStreaming }: Props) {
           </>
         )}
       </div>
-
-      {isUser && (
-        <div className="w-7 h-7 rounded-full bg-[var(--color-accent)]/10 flex items-center justify-center text-xs flex-shrink-0 mt-0.5">
-          👤
-        </div>
-      )}
     </div>
   )
 }

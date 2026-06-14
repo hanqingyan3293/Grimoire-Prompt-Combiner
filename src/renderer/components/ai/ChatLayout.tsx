@@ -1,5 +1,5 @@
 // 魔导书 Grimoire v7 — Chatbox 布局
-import React, { useCallback } from 'react'
+import React, { useCallback, useEffect } from 'react'
 import { useChatStore } from '../../stores/chat.store'
 import { ConversationList } from './ConversationList'
 import { MessageList } from './MessageList'
@@ -10,7 +10,28 @@ interface Props {
 }
 
 export function ChatLayout({ onClose }: Props) {
-  const { activeConversationId, loadingConv } = useChatStore()
+  const {
+    activeConversationId, loadingConv,
+    loadConversations, conversations, setActiveConversation
+  } = useChatStore()
+
+  // Auto-resume last conversation on mount
+  React.useEffect(() => {
+    const init = async () => {
+      await loadConversations()
+      const { conversations: convs, activeConversationId: activeId } = useChatStore.getState()
+      if (!activeId && convs.length > 0) {
+        // Find most recent conversation
+        const sorted = [...convs].sort((a, b) =>
+          new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
+        )
+        if (sorted.length > 0) {
+          await setActiveConversation(sorted[0].id)
+        }
+      }
+    }
+    init()
+  }, [])
 
   return (
     <div className="flex h-full bg-[var(--color-bg-primary)]">

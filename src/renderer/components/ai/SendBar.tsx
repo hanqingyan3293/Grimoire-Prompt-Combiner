@@ -44,7 +44,7 @@ export function SendBar({
       <div className="flex-1" />
 
       <span className="text-[10px] text-[var(--color-text-secondary)] opacity-60 tabular-nums"
-        title={`Used ${tokenUsed} / Max ${tokenMax} tokens`}>
+        title={`已用 ${tokenUsed} / 上限 ${tokenMax} tokens`}>
         {tokenUsed}/{tokenMax}
       </span>
 
@@ -52,7 +52,7 @@ export function SendBar({
         onClick={onCompressToggle}
         className={"relative w-8 h-4 rounded-full transition-colors " +
           (compressEnabled ? 'bg-[var(--color-accent)]' : 'bg-[var(--color-border)]')}
-        title={compressEnabled ? 'Auto Compress: ON' : 'Auto Compress: OFF'}>
+        title={compressEnabled ? '自动压缩: 开' : '自动压缩: 关'}>
         <span className={"absolute top-0.5 w-3 h-3 rounded-full bg-white transition-transform " +
           (compressEnabled ? 'left-4' : 'left-0.5')} />
       </button>
