@@ -9,6 +9,19 @@
   <body>
     <div id="root"></div>
     <script type="module" src="/src/renderer/main.tsx"></script>
-  </body>
+  
+  <script>
+    window.addEventListener('error', function(e) {
+      var msg = 'RENDERER_ERROR: ' + (e.message || e.error?.message || 'unknown') + '\n' + (e.error?.stack || '');
+      localStorage.setItem('__crash_log', msg);
+      document.body.innerHTML = '<pre style="color:red;padding:20px;white-space:pre-wrap;font-size:12px">' + msg + '</pre>';
+    });
+    window.addEventListener('unhandledrejection', function(e) {
+      var msg = 'PROMISE_ERROR: ' + (e.reason?.message || String(e.reason));
+      localStorage.setItem('__crash_log', msg);
+      document.body.innerHTML = '<pre style="color:red;padding:20px;white-space:pre-wrap;font-size:12px">' + msg + '</pre>';
+    });
+  </script>
+</body>
 </html>
 

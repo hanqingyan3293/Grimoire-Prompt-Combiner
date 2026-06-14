@@ -60,6 +60,21 @@ function createWindow(): void {
     ]},
   ]
   Menu.setApplicationMenu(Menu.buildFromTemplate(menuTemplate))
+  // 捕获渲染进程控制台
+  mainWindow.webContents.on('console-message', (_e, level, message) => {
+    const logPath = path.join(app.getPath('userData'), 'renderer.log')
+    fs.appendFileSync(logPath, '[L' + level + '] ' + message + '\n', 'utf-8')
+  })
+  // 捕获渲染进程崩溃
+  mainWindow.webContents.on('render-process-gone', (_e, details) => {
+    const logPath = path.join(app.getPath('userData'), 'renderer.log')
+    fs.appendFileSync(logPath, 'RENDERER_CRASH: reason=' + details.reason + ' exitCode=' + details.exitCode + '\n', 'utf-8')
+  })
+  // 捕获页面加载失败
+  mainWindow.webContents.on('did-fail-load', (_e, errorCode, errorDescription) => {
+    const logPath = path.join(app.getPath('userData'), 'renderer.log')
+    fs.appendFileSync(logPath, 'LOAD_FAIL: ' + errorCode + ' ' + errorDescription + '\n', 'utf-8')
+  })
   mainWindow.on("closed", () => { mainWindow = null })
 }
 
