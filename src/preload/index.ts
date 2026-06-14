@@ -72,6 +72,11 @@ const api = {
       ipcRenderer.invoke(IPC_CHANNELS.ERROR_LOG, message, stack || "", context || ""),
   },
 
+  window: {
+    openSettings: () => ipcRenderer.invoke("window:openSettings"),
+    openAI: () => ipcRenderer.invoke("window:openAI"),
+  },
+
   providers: {
     list: (): Promise<import("../shared/types").Provider[]> =>
       ipcRenderer.invoke(IPC_CHANNELS.PROVIDERS_LIST),

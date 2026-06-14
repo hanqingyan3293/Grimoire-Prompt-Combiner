@@ -1,10 +1,11 @@
-﻿// 魔导书 Grimoire v7 — 右侧面板（历史/预设/图片）
+// 魔导书 Grimoire v7 — 右侧面板（历史/预设/图片）
 import React, { useState } from 'react'
 import { PresetsPanel } from '../presets/PresetsPanel'
 import { HistoryPanel } from '../history/HistoryPanel'
 import { ImagesPanel } from '../images/ImagesPanel'
+import { SimpleAIPanel } from '../ai/SimpleAIPanel'
 
-type TabKey = 'presets' | 'history' | 'images'
+type TabKey = 'presets' | 'history' | 'images' | 'ai'
 
 export function RightPanel({ onOpenSettings, onOpenAI }: {
   onOpenSettings: () => void; onOpenAI: () => void
@@ -15,6 +16,7 @@ export function RightPanel({ onOpenSettings, onOpenAI }: {
     { key: 'presets', icon: '📁', label: '预设' },
     { key: 'history', icon: '🕐', label: '历史' },
     { key: 'images', icon: '🖼', label: '图片' },
+    { key: 'ai', icon: '🤖', label: 'AI' },
   ]
 
   return (
@@ -37,15 +39,16 @@ export function RightPanel({ onOpenSettings, onOpenAI }: {
         {activeTab === 'presets' && <PresetsPanel />}
         {activeTab === 'history' && <HistoryPanel />}
         {activeTab === 'images' && <ImagesPanel />}
+        {activeTab === 'ai' && <SimpleAIPanel />}
       </div>
 
       {/* Bottom buttons for Settings & AI */}
       <div className="border-t border-[var(--color-border)] p-2 flex gap-2">
-        <button onClick={onOpenAI}
+        <button onClick={() => window.api.window.openAI()}
           className="flex-1 py-1.5 text-xs rounded-lg border border-[var(--color-accent)]/30 text-[var(--color-accent)] hover:bg-[var(--color-accent)]/10 transition-colors">
           🤖 AI 助手
         </button>
-        <button onClick={onOpenSettings}
+        <button onClick={() => window.api.window.openSettings()}
           className="flex-1 py-1.5 text-xs rounded-lg border border-[var(--color-border)] text-[var(--color-text-secondary)] hover:bg-[var(--color-accent)]/10 transition-colors">
           ⚙ 设置
         </button>

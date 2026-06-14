@@ -15,6 +15,60 @@ import { logError, getErrorLogs } from "./services/logger.service"
 import { IPC_CHANNELS } from "../shared/types"
 
 let mainWindow: BrowserWindow | null = null
+let settingsWindow: BrowserWindow | null = null
+let aiWindow: BrowserWindow | null = null
+
+
+function getPreloadPath(): string {
+  return path.join(__dirname, "../preload/index.js")
+}
+
+function getRendererURL(hash: string): string {
+  if (process.env.VITE_DEV_SERVER_URL) {
+    return process.env.VITE_DEV_SERVER_URL + "/#" + hash
+  }
+  return "file://" + path.join(__dirname, "../../renderer/index.html") + "#" + hash
+}
+
+function createSettingsWindow(): void {
+  if (settingsWindow && !settingsWindow.isDestroyed()) {
+    settingsWindow.focus()
+    return
+  }
+  settingsWindow = new BrowserWindow({
+    width: 820, height: 640, minWidth: 600, minHeight: 500,
+    title: "设置 - 魔导书",
+    parent: mainWindow || undefined,
+    webPreferences: {
+      preload: getPreloadPath(),
+      contextIsolation: true,
+      nodeIntegration: false,
+      sandbox: false,
+    },
+  })
+  settingsWindow.loadURL(getRendererURL("settings"))
+  settingsWindow.on("closed", () => { settingsWindow = null })
+}
+
+function createAIWindow(): void {
+  if (aiWindow && !aiWindow.isDestroyed()) {
+    aiWindow.focus()
+    return
+  }
+  aiWindow = new BrowserWindow({
+    width: 1000, height: 700, minWidth: 700, minHeight: 500,
+    title: "AI 助手 - 魔导书",
+    parent: mainWindow || undefined,
+    webPreferences: {
+      preload: getPreloadPath(),
+      contextIsolation: true,
+      nodeIntegration: false,
+      sandbox: false,
+    },
+  })
+  aiWindow.loadURL(getRendererURL("ai"))
+  aiWindow.on("closed", () => { aiWindow = null })
+}
 
 function createWindow(): void {
   mainWindow = new BrowserWindow({
@@ -205,5 +259,5 @@ app.whenReady().then(async () => {
   } catch (err) { console.error("启动失败:", err); dialog.showErrorBox("启动失败", err instanceof Error ? err.message : "未知错误") }
 })
 
-app.on("window-all-closed", () => { closeDatabase(); app.quit() })
+app.on("window-all-closed", () => { if (BrowserWindow.getAllWindows().length === 0) { closeDatabase(); app.quit() } })
 app.on("activate", () => { if (BrowserWindow.getAllWindows().length === 0) createWindow() })

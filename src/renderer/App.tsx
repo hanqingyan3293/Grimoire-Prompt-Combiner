@@ -15,6 +15,7 @@ import { AIWindow } from './components/ai/AIWindow'
 import './styles/themes.css'
 
 function AppInner() {
+  const [windowType, setWindowType] = useState<string>(window.location.hash.replace("#", "") || "main")
   const { lang, setLang } = useI18n()
   const loadTags = useTagsStore(s => s.loadTags)
   const { loadSettings, language } = useSettingsStore()
@@ -22,6 +23,11 @@ function AppInner() {
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [aiOpen, setAIOpen] = useState(false)
 
+  useEffect(() => {
+    const onHashChange = () => setWindowType(window.location.hash.replace("#", "") || "main")
+    window.addEventListener("hashchange", onHashChange)
+    return () => window.removeEventListener("hashchange", onHashChange)
+  }, [])
   useEffect(() => { loadSettings(); loadTags() }, [])
   useEffect(() => { if (language !== lang) setLang(language as 'zh' | 'en') }, [language])
 
@@ -45,6 +51,24 @@ function AppInner() {
     }
   }, [])
 
+    // 设置独立窗口
+  if (windowType === "settings") {
+    return (
+      <div className="flex flex-col h-screen overflow-hidden bg-[var(--color-bg-primary)]">
+        <SettingsWindow onClose={() => window.close()} />
+      </div>
+    )
+  }
+
+  // AI 独立窗口
+  if (windowType === "ai") {
+    return (
+      <div className="flex flex-col h-screen overflow-hidden bg-[var(--color-bg-primary)]">
+        <AIWindow onClose={() => window.close()} />
+      </div>
+    )
+  }
+
   return (
     <div className="flex flex-col h-screen overflow-hidden">
       <div className="flex flex-1 overflow-hidden">
@@ -54,8 +78,6 @@ function AppInner() {
       </div>
       <StatusBar />
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
-      {settingsOpen && <SettingsWindow onClose={() => setSettingsOpen(false)} />}
-      {aiOpen && <AIWindow onClose={() => setAIOpen(false)} />}
     </div>
   )
 }
