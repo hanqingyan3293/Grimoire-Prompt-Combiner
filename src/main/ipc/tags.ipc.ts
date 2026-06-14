@@ -1,4 +1,4 @@
-﻿// 魔导书 Grimoire v7 — 标签 IPC 处理器
+// 魔导书 Grimoire v7 — 标签 IPC 处理器
 import { ipcMain, app } from "electron"
 import { getDatabase, saveDatabase } from "../database"
 import { getActiveGroupId } from "./tagGroups.ipc"
@@ -19,13 +19,13 @@ export function registerTagsIPC(): void {
   // 获取全部标签树
   ipcMain.handle(IPC_CHANNELS.TAGS_GET_ALL, async () => {
     const db = getDatabase()
-    const cats = db.exec("SELECT * FROM categories WHERE group_id='PLACEHOLDER' ORDER BY sort_order")
-    const subs = db.exec("SELECT * FROM subcategories ORDER BY sort_order")
-    const tags = db.exec("SELECT * FROM tags ORDER BY sort_order")
+    const cats = db.exec("SELECT * FROM categories WHERE group_id='" + getActiveGroupId() + "' ORDER BY sort_order")
+    const subs = db.exec("SELECT * FROM subcategories WHERE group_id='" + getActiveGroupId() + "' ORDER BY sort_order")
+    const tags = db.exec("SELECT * FROM tags WHERE group_id='" + getActiveGroupId() + "' ORDER BY sort_order")
     return {
-      categories: cats[0]?.values?.map((r: any) => ({ id: r[0], en: r[1], zh: r[2], sort_order: r[3], created_at: r[4] })) || [],
-      subcategories: subs[0]?.values?.map((r: any) => ({ id: r[0], category_id: r[1], en: r[2], zh: r[3], sort_order: r[4], created_at: r[5] })) || [],
-      tags: tags[0]?.values?.map((r: any) => ({ id: r[0], subcategory_id: r[1], en: r[2], zh: r[3], sort_order: r[4], source: r[5], created_at: r[6] })) || [],
+      categories: cats[0]?.values?.map((r: any) => ({ id: r[0], en: r[2], zh: r[3], sort_order: r[4], created_at: r[5] })) || [],
+      subcategories: subs[0]?.values?.map((r: any) => ({ id: r[0], category_id: r[2], en: r[3], zh: r[4], sort_order: r[5], created_at: r[6] })) || [],
+      tags: tags[0]?.values?.map((r: any) => ({ id: r[0], subcategory_id: r[2], en: r[3], zh: r[4], sort_order: r[5], source: r[6], created_at: r[7] })) || [],
     }
   })
 

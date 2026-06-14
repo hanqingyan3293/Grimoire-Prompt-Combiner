@@ -4,6 +4,7 @@ import { useTagsStore } from "../../stores/tags.store"
 import { useFavoritesStore } from "../../stores/favorites.store"
 import { usePromptsStore } from "../../stores/prompts.store"
 import { Modal } from "../ui/Modal"
+import { FavoritesPanel } from "./FavoritesPanel"
 
 type TabType = "tags" | "favorites"
 
@@ -22,34 +23,119 @@ export function Sidebar() {
   const [deleteConfirm, setDeleteConfirm] = useState<{ type: string; id: string; name: string } | null>(null)
   const [deleting, setDeleting] = useState(false)
   const [groupMenuOpen, setGroupMenuOpen] = useState(false)
+  const [groups, setGroups] = useState<any[]>([])
+  const [activeGroupId, setActiveGroupId] = useState<string>("default")
+  const [newGroupName, setNewGroupName] = useState("")
+  const [showNewGroupInput, setShowNewGroupInput] = useState(false)
+  const [renamingGroup, setRenamingGroup] = useState<{id:string,name:string}|null>(null)
 
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; type: "category" | "subcategory"; id: string; name: string; parentId?: string } | null>(null)
   const [favCtxMenu, setFavCtxMenu] = useState<{ x: number; y: number; tag: any; catZh: string; subZh: string; isNegative: boolean } | null>(null)
 
   useEffect(() => { setExpandedCats(prev => { const n = new Set(prev); categories.forEach(c => n.add(c.id)); return n }) }, [categories])
   useEffect(() => { favStore.loadFavorites() }, [])
+  useEffect(() => { loadGroups() }, [])
+
+  const loadGroups = async () => {
+    try {
+      const list = await window.api.tagGroups.list()
+      setGroups(list || [])
+      const active = (list || []).find((g: any) => g.is_active)
+      if (active) setActiveGroupId(active.id)
+    } catch (e) { /* ignore */ }
+  }
+
+  const switchGroup = async (id: string) => {
+    try {
+      await window.api.tagGroups.setActive(id)
+      setActiveGroupId(id)
+      await store.loadTags()
+      setGroupMenuOpen(false)
+      toast("已切换到标签组", "success")
+    } catch (e: any) { toast("切换失败: " + (e?.message || String(e)), "error") }
+  }
+
+  const createGroup = async () => {
+    const name = newGroupName.trim()
+    if (!name) return
+    try {
+      await window.api.tagGroups.create(name, activeGroupId)
+      setNewGroupName("")
+      setShowNewGroupInput(false)
+      await loadGroups()
+      toast("已创建标签组", "success")
+    } catch (e: any) { toast("创建失败: " + (e?.message || String(e)), "error") }
+  }
+
+  const deleteGroup = async (id: string) => {
+    const g = groups.find((x: any) => x.id === id)
+    if (!confirm(g ? '确定删除标签组 "' + g.name + '"？其下所有标签数据将被删除。' : '确定删除？')) return
+    try {
+      await window.api.tagGroups.delete(id)
+      await loadGroups()
+      if (id === activeGroupId) {
+        const list = await window.api.tagGroups.list()
+        const first = (list || []).find((x: any) => x.id !== id)
+        if (first) { await window.api.tagGroups.setActive(first.id); setActiveGroupId(first.id); await store.loadTags() }
+      }
+      toast("已删除", "success")
+    } catch (e: any) { toast("删除失败: " + (e?.message || String(e)), "error") }
+  }
+
+  const renameGroup = async () => {
+    if (!renamingGroup || !renamingGroup.name.trim()) return
+    try {
+      await window.api.tagGroups.rename(renamingGroup.id, renamingGroup.name.trim())
+      setRenamingGroup(null)
+      await loadGroups()
+      toast("已重命名", "success")
+    } catch (e: any) { toast("重命名失败: " + (e?.message || String(e)), "error") }
+  }
+
+  const exportGroup = async (id: string) => {
+    try {
+      const data = await window.api.tagGroups.export(id)
+      const g = groups.find((x: any) => x.id === id)
+      const fileName = (g?.name || "tag_group") + ".json"
+      if (window.api.dialog?.save) {
+        await window.api.dialog.save(JSON.stringify(data, null, 2), fileName)
+        toast("已导出", "success")
+      } else {
+        await navigator.clipboard.writeText(JSON.stringify(data, null, 2))
+        toast("已复制到剪贴板", "info")
+      }
+    } catch (e: any) { toast("导出失败: " + (e?.message || String(e)), "error") }
+  }
+
+  const importGroup = async () => {
+    try {
+      if (window.api.dialog?.open) {
+        const result = await window.api.dialog.open()
+        if (result) {
+          const data = JSON.parse(result)
+          const name = data.group?.name || "导入的标签组"
+          await window.api.tagGroups.import(data, name)
+          await loadGroups()
+          toast("导入成功", "success")
+        }
+      } else {
+        const text = prompt("请粘贴 JSON 内容:")
+        if (text) {
+          const data = JSON.parse(text)
+          const name = data.group?.name || "导入的标签组"
+          await window.api.tagGroups.import(data, name)
+          await loadGroups()
+          toast("导入成功", "success")
+        }
+      }
+    } catch (e: any) { toast("导入失败: " + (e?.message || String(e)), "error") }
+  }
 
   useEffect(() => {
     const handler = () => { setCtxMenu(null); setFavCtxMenu(null) }
     document.addEventListener("click", handler)
     return () => document.removeEventListener("click", handler)
   }, [])
-
-  const toggleCat = (catId: string) => {
-    setExpandedCats(prev => { const n = new Set(prev); if (n.has(catId)) n.delete(catId); else n.add(catId); return n })
-  }
-
-  const displayCategories = React.useMemo(() => {
-    if (!searchQuery.trim()) return categories
-    const q = searchQuery.toLowerCase()
-    return categories.map(cat => ({
-      ...cat,
-      subcategories: cat.subcategories.map(sub => ({
-        ...sub,
-        tags: sub.tags.filter(t => t.en.toLowerCase().includes(q) || t.zh.includes(q)),
-      })).filter(sub => sub.tags.length > 0 || sub.zh.includes(q) || cat.zh.includes(q)),
-    })).filter(cat => cat.subcategories.length > 0 || cat.zh.includes(q))
-  }, [categories, searchQuery])
 
   const handleSaveEdit = async () => {
     if (!editModal || !editZh.trim() || saving) return
@@ -66,8 +152,8 @@ export function Sidebar() {
       await new Promise(r => setTimeout(r, 150))
       await store.loadTags()
       setEditModal(null); setEditZh("")
-      toast("已保存", "success")
-    } catch (e: any) { toast("操作失败: " + (e?.message || String(e)), "error") }
+      toast("\u5df2\u4fdd\u5b58", "success")
+    } catch (e: any) { toast("\u64cd\u4f5c\u5931\u8d25: " + (e?.message || String(e)), "error") }
     setSaving(false)
   }
 
@@ -80,19 +166,12 @@ export function Sidebar() {
       await new Promise(r => setTimeout(r, 150))
       await store.loadTags()
       setDeleteConfirm(null)
-      toast("已删除", "success")
-    } catch (e: any) { toast("删除失败: " + (e?.message || String(e)), "error") }
+      toast("\u5df2\u5220\u9664", "success")
+    } catch (e: any) { toast("\u5220\u9664\u5931\u8d25: " + (e?.message || String(e)), "error") }
     setDeleting(false)
   }
 
-  const handleResetTags = async () => {
-    if (!confirm("确定重新导入标签库？当前所有标签将被替换为默认标签。")) return
-    setGroupMenuOpen(false)
-    try { await window.api.tags.reset(); await store.loadTags(); toast("标签库已重置", "success") }
-    catch (e: any) { toast("重置失败: " + (e?.message || String(e)), "error") }
-  }
-
-  const handleCtxEdit = () => {
+const handleCtxEdit = () => {
     if (!ctxMenu) return
     if (ctxMenu.type === "category") { setEditModal({ type: "category", id: ctxMenu.id, zh: ctxMenu.name }); setEditZh(ctxMenu.name) }
     else { setEditModal({ type: "subcategory", id: ctxMenu.id, parentId: ctxMenu.parentId, zh: ctxMenu.name }); setEditZh(ctxMenu.name) }
@@ -113,6 +192,24 @@ export function Sidebar() {
 
   const handleCtxFavSub = () => { if (!ctxMenu || ctxMenu.type !== "subcategory") return; favStore.toggleSubFav(ctxMenu.id); setCtxMenu(null) }
   const handleClearAll = () => { useTagsStore.setState({ selectedSubIds: new Set() }); toast("已清除全部选中", "info") }
+
+  const toggleCat = (catId: string) => {
+    setExpandedCats(prev => { const n = new Set(prev); if (n.has(catId)) n.delete(catId); else n.add(catId); return n })
+  }
+
+  const displayCategories = React.useMemo(() => {
+    if (!searchQuery.trim()) return categories
+    const q = searchQuery.toLowerCase()
+    return categories.map(cat => ({
+      ...cat,
+      subcategories: cat.subcategories.map(sub => ({
+        ...sub,
+        tags: sub.tags.filter(t => t.en.toLowerCase().includes(q) || t.zh.includes(q)),
+      })).filter(sub => sub.tags.length > 0 || sub.zh.includes(q) || cat.zh.includes(q)),
+    })).filter(cat => cat.subcategories.length > 0 || cat.zh.includes(q))
+  }, [categories, searchQuery])
+
+  
 
   if (loading) {
     return <div className="flex flex-col w-[260px] min-w-[260px] border-r border-[var(--color-border)] bg-[var(--color-bg-secondary)] p-4">
@@ -144,23 +241,76 @@ export function Sidebar() {
               className="px-2 py-2 bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded text-xs text-[var(--color-text-secondary)] hover:text-red-400 hover:border-red-400/30">✕</button>
           </div>
 
-          <div className="p-2 border-b border-[var(--color-border)]">
+                                        <div className="p-2 border-b border-[var(--color-border)]">
             <button onClick={() => setGroupMenuOpen(!groupMenuOpen)}
-              className="w-full flex items-center gap-2 px-3 py-2 bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded text-sm text-[var(--color-text-primary)] hover:border-[var(--color-accent)]">
-              📁 <span className="truncate">标签库管理</span> <span className="ml-auto text-xs">▼</span>
+              className="w-full flex items-center gap-2 px-3 py-2 bg-[var(--color-accent)]/10 border-2 border-[var(--color-accent)]/30 rounded text-sm text-[var(--color-text-primary)] hover:border-[var(--color-accent)] transition-colors font-medium">
+              <span className="text-base">{'📁'}</span>
+              <span className="truncate">标签组</span>
+              <span className="text-xs text-[var(--color-text-secondary)]">{groups.length}</span>
+              <span className="ml-auto text-xs transition-transform" style={{ transform: groupMenuOpen ? 'rotate(180deg)' : 'rotate(0deg)' }}>▼</span>
             </button>
             {groupMenuOpen && (
-              <div className="mt-1 bg-[var(--color-bg-tertiary)] border border-[var(--color-border)] rounded p-2 space-y-1">
-                <button onClick={handleResetTags} className="w-full text-left px-2 py-1 text-xs text-[var(--color-text-primary)] hover:bg-[var(--color-bg-primary)] rounded">🔄 重置为默认标签库</button>
-                <button onClick={async () => { if (window.api.db) { try { await window.api.db.export(); toast("已导出", "success") } catch (e: any) { toast("导出失败", "error") } } setGroupMenuOpen(false) }}
-                  className="w-full text-left px-2 py-1 text-xs text-[var(--color-text-primary)] hover:bg-[var(--color-bg-primary)] rounded">💾 导出数据库</button>
-                <button onClick={async () => { if (window.api.db) { try { await window.api.db.import(); await store.loadTags(); toast("已导入", "success") } catch (e: any) { toast("导入失败", "error") } } setGroupMenuOpen(false) }}
-                  className="w-full text-left px-2 py-1 text-xs text-[var(--color-text-primary)] hover:bg-[var(--color-bg-primary)] rounded">📥 导入数据库</button>
+              <div className="mt-1 bg-[var(--color-bg-tertiary)] border border-[var(--color-border)] rounded-lg overflow-hidden shadow-lg">
+                <div className="max-h-48 overflow-y-auto">
+                  {groups.length === 0 && (
+                    <div className="px-3 py-4 text-xs text-[var(--color-text-secondary)] text-center">暂无标签组</div>
+                  )}
+                  {groups.map((g: any) => (
+                    <div key={g.id}
+                      className={"flex items-center gap-2 px-3 py-2 text-sm transition-colors " + (g.id === activeGroupId ? "bg-[var(--color-accent)]/15 text-[var(--color-accent)] font-medium" : "text-[var(--color-text-primary)] hover:bg-[var(--color-bg-primary)]")}>
+                      {g.id === activeGroupId && <span className="text-xs">◉</span>}
+                      {renamingGroup?.id === g.id ? (
+                        <input value={renamingGroup.name}
+                          onChange={e => setRenamingGroup({ id: g.id, name: e.target.value })}
+                          onKeyDown={e => { if (e.key === 'Enter') renameGroup(); if (e.key === 'Escape') setRenamingGroup(null) }}
+                          onBlur={renameGroup}
+                          autoFocus
+                          className="flex-1 px-2 py-1 bg-[var(--color-bg-primary)] border border-[var(--color-accent)] rounded text-xs text-[var(--color-text-primary)] outline-none" />
+                      ) : (
+                        <span onClick={() => switchGroup(g.id)} className="flex-1 truncate cursor-pointer">{g.name}</span>
+                      )}
+                      {g.id === activeGroupId && !renamingGroup && (
+                        <div className="flex gap-0.5">
+                          <button onClick={(e) => { e.stopPropagation(); setRenamingGroup({ id: g.id, name: g.name }) }}
+                            className="px-1.5 py-0.5 text-xs text-[var(--color-text-secondary)] hover:text-[var(--color-accent)] rounded" title="重命名">✏</button>
+                          <button onClick={(e) => { e.stopPropagation(); exportGroup(g.id) }}
+                            className="px-1.5 py-0.5 text-xs text-[var(--color-text-secondary)] hover:text-[var(--color-accent)] rounded" title="导出">📤</button>
+                        </div>
+                      )}
+                      {g.id !== activeGroupId && !renamingGroup && (
+                        <button onClick={(e) => { e.stopPropagation(); deleteGroup(g.id) }}
+                          className="px-1.5 py-0.5 text-xs text-[var(--color-text-secondary)] hover:text-red-400 rounded" title="删除">✕</button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+                <div className="border-t border-[var(--color-border)] p-2 space-y-1">
+                  {showNewGroupInput ? (
+                    <div className="flex gap-1">
+                      <input value={newGroupName}
+                        onChange={e => setNewGroupName(e.target.value)}
+                        onKeyDown={e => { if (e.key === 'Enter') createGroup(); if (e.key === 'Escape') { setShowNewGroupInput(false); setNewGroupName("") } }}
+                        placeholder="输入组名..."
+                        autoFocus
+                        className="flex-1 px-3 py-1.5 bg-[var(--color-bg-primary)] border border-[var(--color-accent)] rounded text-xs text-[var(--color-text-primary)] outline-none" />
+                      <button onClick={createGroup} className="px-3 py-1.5 text-xs bg-[var(--color-accent)] text-white rounded">确定</button>
+                    </div>
+                  ) : (
+                    <button onClick={() => setShowNewGroupInput(true)}
+                      className="w-full text-left px-3 py-1.5 text-xs text-[var(--color-text-primary)] hover:bg-[var(--color-bg-primary)] rounded flex items-center gap-2">
+                      <span>➕</span> 新建标签组
+                    </button>
+                  )}
+                  <button onClick={importGroup}
+                    className="w-full text-left px-3 py-1.5 text-xs text-[var(--color-text-primary)] hover:bg-[var(--color-bg-primary)] rounded flex items-center gap-2">
+                    <span>📥</span> 导入标签组
+                  </button>
+                </div>
               </div>
             )}
           </div>
 
-          <div className="flex-1 overflow-y-auto p-2 space-y-1">
+<div className="flex-1 overflow-y-auto p-2 space-y-1">
             {displayCategories.length === 0 && <div className="text-xs text-[var(--color-text-secondary)] text-center py-4">没有匹配的标签</div>}
             {displayCategories.map(cat => {
               const isExpanded = expandedCats.has(cat.id)
@@ -214,97 +364,10 @@ export function Sidebar() {
           </div>
         </>
       ) : (
-        <div className="flex-1 overflow-y-auto p-2 space-y-3">
-          {favStore.loading ? (
-            <div className="text-xs text-[var(--color-text-secondary)] text-center py-4">加载中...</div>
-          ) : (
-            <>
-              {favStore.subFavs.length > 0 && (
-                <div>
-                  <div className="text-[10px] text-[var(--color-text-secondary)] px-1 mb-1 font-medium">收藏的子类</div>
-                  {favStore.subFavs.map(sub => {
-                    const sel = store.selectedSubIds.has(sub.id)
-                    return (
-                      <div key={sub.id}
-                        onClick={() => store.toggleSubSelect(sub.id)}
-                        onContextMenu={(e) => { e.preventDefault(); setCtxMenu({ x: e.clientX, y: e.clientY, type: "subcategory", id: sub.id, name: sub.zh, parentId: sub.category_id }) }}
-                        className={`flex items-center gap-2 px-3 py-1.5 cursor-pointer rounded text-xs transition-colors ${sel ? "bg-[var(--color-accent)]/15 text-[var(--color-accent)]" : "hover:bg-[var(--color-accent)]/5 text-[var(--color-text-secondary)]"}`}>
-                        <span>⭐</span>
-                        <span className="flex-1">{sub.zh}</span>
-                        <span className="text-[9px] opacity-50">{sub.cat_zh} · {sub.tag_count}</span>
-                        <button onClick={(e) => { e.stopPropagation(); favStore.toggleSubFav(sub.id) }}
-                          className="text-[10px] text-[var(--color-text-secondary)] hover:text-red-400" title="取消收藏">✕</button>
-                      </div>
-                    )
-                  })}
-                </div>
-              )}
-
-              {favStore.tagFavs.length > 0 && (
-                <div>
-                  <div className="text-[10px] text-[var(--color-text-secondary)] px-1 mb-1 font-medium">收藏的标签</div>
-                  {(() => {
-                    const promptsStore = usePromptsStore.getState()
-                    const posIds = new Set(promptsStore.positive.map(p => p.tag.id))
-                    const negIds = new Set(promptsStore.negative.map(p => p.tag.id))
-
-                    // Build tag lookup
-                    const tagLookup = new Map<string, { tag: any; catZh: string; subZh: string }>()
-                    for (const cat of categories) {
-                      for (const sub of cat.subcategories) {
-                        for (const t of sub.tags) {
-                          tagLookup.set(t.id, { tag: t, catZh: cat.zh, subZh: sub.zh })
-                        }
-                      }
-                    }
-
-                    return favStore.tagFavs.map(tag => {
-                      const isPos = posIds.has(tag.id)
-                      return (
-                        <div key={tag.id}
-                          onClick={() => {
-                            const found = tagLookup.get(tag.id)
-                            if (found) {
-                              const ps = usePromptsStore.getState()
-                              const curPosIds = new Set(ps.positive.map(p => p.tag.id))
-                              if (curPosIds.has(tag.id)) ps.removePositive(tag.id)
-                              else ps.addPositive(found.tag, found.catZh, found.subZh)
-                            }
-                          }}
-                          onContextMenu={(e) => {
-                            e.preventDefault()
-                            const found = tagLookup.get(tag.id)
-                            if (found) {
-                              const ps = usePromptsStore.getState()
-                              setFavCtxMenu({ x: e.clientX, y: e.clientY, tag: found.tag, catZh: found.catZh, subZh: found.subZh, isNegative: new Set(ps.negative.map(p => p.tag.id)).has(tag.id) })
-                            }
-                          }}
-                          className={`flex items-center gap-2 px-3 py-1.5 rounded text-xs cursor-pointer transition-colors ${isPos ? "bg-[var(--color-accent)]/15 text-[var(--color-accent)]" : "hover:bg-[var(--color-accent)]/5 text-[var(--color-text-secondary)]"}`}>
-                          <span>⭐</span>
-                          <span className="flex-1">
-                            <span className="text-[var(--color-text-primary)]">{tag.zh}</span>
-                            <span className="text-[9px] opacity-50 ml-1">{tag.en}</span>
-                          </span>
-                          <span className="text-[9px] opacity-40">{tag.cat_zh}/{tag.sub_zh}</span>
-                          <button onClick={(e) => { e.stopPropagation(); favStore.toggleTagFav(tag.id) }}
-                            className="text-[10px] text-[var(--color-text-secondary)] hover:text-red-400" title="取消收藏">✕</button>
-                        </div>
-                      )
-                    })
-                  })()}
-                </div>
-              )}
-
-              {favStore.subFavs.length === 0 && favStore.tagFavs.length === 0 && (
-                <div className="text-xs text-[var(--color-text-secondary)] text-center py-8">
-                  <div className="text-2xl mb-2">⭐</div>
-                  <div>还没有收藏</div>
-                  <div className="text-[10px] mt-1 opacity-70">右键子类或标签来添加收藏</div>
-                </div>
-              )}
-            </>
-          )}
-        </div>
+        <FavoritesPanel
+            onCtxMenu={(e: any, data: any) => setCtxMenu(data)}
+            onFavCtxMenu={(e: any, data: any) => setFavCtxMenu(data)}
+          />
       )}
 
       {/* Sidebar Context Menu */}

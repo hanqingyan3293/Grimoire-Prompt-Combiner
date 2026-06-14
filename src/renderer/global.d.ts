@@ -12,7 +12,8 @@ interface GrimoireAPI {
     create: (data: { subcategory_id: string; en: string; zh: string }) => Promise<{ id: string }>
     update: (data: { id: string; en: string; zh: string }) => Promise<boolean>
     delete: (id: string) => Promise<boolean>
-    import: (jsonData: string); reset: () => Promise<boolean> => Promise<boolean>
+    import: (jsonData: string) => Promise<boolean>
+    reset: () => Promise<boolean>
     createCategory: (data: { zh: string }) => Promise<{ id: string }>
     updateCategory: (data: { id: string; zh: string }) => Promise<boolean>
     deleteCategory: (id: string) => Promise<boolean>
@@ -42,6 +43,28 @@ interface GrimoireAPI {
     list: () => Promise<Array<{ id: number; file_path: string; created_at: string }>>
     add: () => Promise<{ id: number; file_path: string } | null>
     delete: (id: number) => Promise<boolean>
+  }
+  tagGroups: {
+    list: () => Promise<Array<{ id: string; name: string; is_active: number; created_at: string }>>
+    create: (name: string, copyFrom?: string) => Promise<{ id: string }>
+    delete: (id: string) => Promise<boolean>
+    rename: (id: string, name: string) => Promise<boolean>
+    copy: (id: string, name: string) => Promise<{ id: string }>
+    import: (data: any, name: string) => Promise<{ id: string }>
+    export: (id: string) => Promise<any>
+    setActive: (id: string) => Promise<boolean>
+  }
+  favorites: {
+    tagList: () => Promise<Array<any>>
+    subList: () => Promise<Array<any>>
+    tagAdd: (tagId: string) => Promise<boolean>
+    tagRemove: (tagId: string) => Promise<boolean>
+    subAdd: (subId: string) => Promise<boolean>
+    subRemove: (subId: string) => Promise<boolean>
+  }
+  dialog: {
+    save: (content: string, defaultName: string) => Promise<boolean>
+    open: () => Promise<string | null>
   }
   ai: {
     chat: (messages: Array<{ role: string; content: string | Array<{ type: string; text?: string; image_url?: { url: string } }> }>, model?: string) => Promise<{ success: boolean; text?: string; error?: string }>

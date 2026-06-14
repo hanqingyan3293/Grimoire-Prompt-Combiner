@@ -1,4 +1,4 @@
-﻿// 魔导书 Grimoire v7 — 提示词状态 Store（核心）
+// 魔导书 Grimoire v7 — 提示词状态 Store（核心）
 import { create } from "zustand"
 import type { PanelTag, UndoRedoEntry, Tag } from "@shared/types"
 import { DEFAULT_WEIGHT, WEIGHT_MIN, WEIGHT_MAX, MAX_UNDO_STEPS } from "@shared/types"
@@ -207,7 +207,7 @@ export const usePromptsStore = create<PromptsState>((set, get) => ({
     })
   },
   
-  getFormattedPrompt: (lang = "en") => {
+  getFormattedPrompt: (lang = "zh") => {
     const { positive } = get()
     if (positive.length === 0) return ""
     return positive
@@ -219,7 +219,7 @@ export const usePromptsStore = create<PromptsState>((set, get) => ({
       .join(", ")
   },
   
-  getFullPrompt: (lang = "en") => {
+  getFullPrompt: (lang = "zh") => {
     const { positive, negative } = get()
     let result = ""
     
