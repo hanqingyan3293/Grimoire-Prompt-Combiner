@@ -16,11 +16,11 @@ export function SimpleAIPanel() {
       <div className="flex border-b border-[var(--color-border)]">
         <button onClick={() => setSubTab("chat")}
           className={"flex-1 py-1.5 text-xs font-medium transition-colors " + (subTab === "chat" ? "text-[var(--color-accent)] border-b-2 border-[var(--color-accent)]" : "text-[var(--color-text-secondary)]")}>
-          Chat
+          聊天
         </button>
         <button onClick={() => setSubTab("vision")}
           className={"flex-1 py-1.5 text-xs font-medium transition-colors " + (subTab === "vision" ? "text-[var(--color-accent)] border-b-2 border-[var(--color-accent)]" : "text-[var(--color-text-secondary)]")}>
-          Vision
+          识图
         </button>
       </div>
       <div className="flex-1 overflow-hidden">
@@ -200,7 +200,7 @@ function SimpleChat() {
           />
           <button onClick={handleSend} disabled={isStreaming || !input.trim()}
             className="px-3 py-1 bg-[var(--color-accent)] text-white rounded text-[11px] disabled:opacity-50 hover:opacity-90 self-end">
-            Send
+            发送
           </button>
         </div>
       </div>
@@ -384,8 +384,8 @@ function SimpleVision() {
             </div>
           ) : (
             <div className="text-[11px] text-[var(--color-text-secondary)]">
-              <div className="text-2xl mb-1">Image</div>
-              <div>Click or drag images here</div>
+              <div className="text-2xl mb-1">图片</div>
+              <div>点击或拖拽图片到此处</div>
             </div>
           )}
           <input
@@ -449,7 +449,7 @@ function SimpleVision() {
         {suggestions.length > 0 && (
           <>
             <div className="flex items-center justify-between mb-1.5">
-              <span className="text-[10px] text-[var(--color-text-secondary)]">Results ({suggestions.length})</span>
+              <span className="text-[10px] text-[var(--color-text-secondary)]">结果 ({suggestions.length})</span>
               <div className="flex gap-1">
                 <button onClick={selectAll} className="text-[10px] text-[var(--color-accent)] hover:underline">全选</button>
                 <button onClick={clearSel} className="text-[10px] text-[var(--color-text-secondary)] hover:underline">取消</button>
