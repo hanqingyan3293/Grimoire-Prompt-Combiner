@@ -39,12 +39,12 @@ export function MessageBubble({ message, isStreaming }: Props) {
   // User messages: right-aligned, AI messages: left-aligned
   const rowClass = isUser ? 'flex-row-reverse' : 'flex-row'
   const bubbleBg = isUser
-    ? 'bg-[var(--color-accent)]/15 text-[var(--color-text-primary)]'
-    : 'bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)]'
+    ? 'bg-[var(--color-accent)] text-white'
+    : 'bg-[var(--color-bg-secondary)] border border-[var(--color-border)] text-[var(--color-text-primary)]'
   const timeAlign = isUser ? 'text-right' : 'text-left'
 
   return (
-    <div className={"flex gap-2 " + rowClass}>
+    <div className={"flex gap-2 items-start " + rowClass}>
       {/* Avatar */}
       <div className={"w-7 h-7 rounded-full flex items-center justify-center text-xs flex-shrink-0 mt-0.5 " + (isUser ? 'bg-[var(--color-accent)]/10' : 'bg-[var(--color-accent)]/20')}>
         {isUser ? '👤' : '🤖'}
@@ -54,7 +54,7 @@ export function MessageBubble({ message, isStreaming }: Props) {
       <div className="relative group max-w-[75%]">
         {/* Name label */}
         <div className={"text-[10px] text-[var(--color-text-secondary)] mb-0.5 opacity-60 " + timeAlign}>
-          {isUser ? '用户' : 'AI'}
+          {isUser ? '我' : '🤖 AI'}
         </div>
 
         <div

@@ -72,7 +72,7 @@ function SimpleChat() {
 
   const handleSend = async () => {
     if (!input.trim() || isStreaming) return
-    if (!activeProvider?.id) { showToast("No provider configured", "error"); return }
+    if (!activeProvider?.id) { showToast("未配置 API 供应商", "error"); return }
     const providerId = activeProvider.id
     const model = selectedModel || activeProvider.default_model || "gpt-4o"
     const msg = input.trim()
@@ -84,14 +84,14 @@ function SimpleChat() {
     }
     const state = useChatStore.getState()
     if (!state.activeConversationId) {
-      showToast("Failed to create conversation", "error")
+      showToast("创建对话失败", "error")
       return
     }
     await sendMessage(msg, providerId, model)
   }
 
   const handleNewConv = async () => {
-    if (!activeProvider?.id) { showToast("No provider configured", "error"); return }
+    if (!activeProvider?.id) { showToast("未配置 API 供应商", "error"); return }
     const model = selectedModel || activeProvider.default_model || "gpt-4o"
     await createConversation(activeProvider.id, model)
   }
@@ -110,7 +110,7 @@ function SimpleChat() {
             onClick={() => setConvOpen(!convOpen)}
             className="w-full text-left px-2 py-1 text-[11px] bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded truncate"
           >
-            {conversations.find(c => c.id === activeConversationId)?.title || "New Chat"}
+            {conversations.find(c => c.id === activeConversationId)?.title || "新对话"}
           </button>
           {convOpen && (
             <div className="absolute left-0 right-0 top-full mt-1 z-50 bg-[var(--color-bg-tertiary)] border border-[var(--color-border)] rounded-lg shadow-xl max-h-40 overflow-y-auto">
@@ -120,7 +120,7 @@ function SimpleChat() {
                   onClick={() => switchConv(c.id)}
                   className={"w-full text-left px-3 py-1.5 text-[11px] hover:bg-[var(--color-accent)]/10 " + (c.id === activeConversationId ? "text-[var(--color-accent)] font-medium" : "text-[var(--color-text-primary)]")}
                 >
-                  {c.title || "Untitled"}
+                  {c.title || "未命名"}
                 </button>
               ))}
               {conversations.length === 0 && (
@@ -131,7 +131,7 @@ function SimpleChat() {
         </div>
         <button onClick={handleNewConv}
           className="px-2 py-1 text-[11px] bg-[var(--color-accent)]/10 text-[var(--color-accent)] rounded hover:bg-[var(--color-accent)]/20 flex-shrink-0">
-          + New
+          + 新建
         </button>
       </div>
 
@@ -160,7 +160,7 @@ function SimpleChat() {
             onClick={() => setModelOpen(!modelOpen)}
             className="w-full flex items-center gap-1 px-2 py-1 text-[10px] bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded"
           >
-            <span className="flex-1 text-left truncate">{selectedModel || "Select model"}</span>
+            <span className="flex-1 text-left truncate">{selectedModel || "选择模型"}</span>
             <span className="text-[10px]">{modelOpen ? "▲" : "▼"}</span>
           </button>
           {modelOpen && (
@@ -194,7 +194,7 @@ function SimpleChat() {
                 e.preventDefault(); handleSend()
               }
             }}
-            placeholder="Type a message..."
+            placeholder="输入消息..."
             rows={2}
             className="flex-1 px-2 py-1.5 bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded text-[11px] resize-none text-[var(--color-text-primary)]"
           />
@@ -255,12 +255,12 @@ function SimpleVision() {
 
   const handleAnalyze = async () => {
     if (!images.length) return
-    if (!activeProvider?.id) { showToast("No provider configured", "error"); return }
+    if (!activeProvider?.id) { showToast("未配置 API 供应商", "error"); return }
     setAnalyzing(true)
     try {
       const base64 = images[0].split(",")[1] || images[0]
       const model = selectedModel || activeProvider.default_model || "gpt-4o"
-      const prompt = customPrompt || "Analyze this image and list relevant Stable Diffusion / NovelAI prompt tags. Return ONLY a JSON array of objects with 'en' and 'zh' fields. Example: [{'en':'1girl','zh':'女孩'}]"
+      const prompt = customPrompt || "Analyze this image and list relevant Stable Diffusion / NovelAI prompt tags. Return ONLY a JSON array of objects with 'en' 和 'zh' 字段. Example: [{'en':'1girl','zh':'女孩'}]"
       const result = await window.api.ai.vision({
         providerId: activeProvider.id,
         model,
@@ -268,7 +268,7 @@ function SimpleVision() {
         prompt,
       })
       if (result.error) {
-        showToast("Recognition failed: " + result.error, "error")
+        showToast("识别失败: " + result.error, "error")
         return
       }
       // Parse result text as JSON or line-by-line
@@ -297,7 +297,7 @@ function SimpleVision() {
         await window.api.chat.saveMessage({
           conv_id: convId,
           role: "user",
-          content: "[Image Analysis] " + (customPrompt || "Tag recognition"),
+          content: "[图片分析] " + (customPrompt || "标签识别"),
         })
         await window.api.chat.saveMessage({
           conv_id: convId,
@@ -306,7 +306,7 @@ function SimpleVision() {
         })
       }
     } catch (e: any) {
-      showToast("Error: " + (e?.message || String(e)), "error")
+      showToast("错误: " + (e?.message || String(e)), "error")
     } finally {
       setAnalyzing(false)
     }
@@ -323,21 +323,21 @@ function SimpleVision() {
 
   const copySel = () => {
     const text = Array.from(selected).map(i => suggestions[i].en).join(", ")
-    navigator.clipboard.writeText(text).then(() => showToast("Copied", "success"))
+    navigator.clipboard.writeText(text).then(() => showToast("已复制", "success"))
   }
 
   const addToPositive = () => {
     Array.from(selected).forEach(i => {
       addPositive({ tag_id: suggestions[i].en, weight: 1 } as any)
     })
-    showToast("Added to positive prompts", "success")
+    showToast("已添加到正面提示词", "success")
   }
 
   const addToNegative = () => {
     Array.from(selected).forEach(i => {
       addNegative({ tag_id: suggestions[i].en, weight: 1 } as any)
     })
-    showToast("Added to negative prompts", "success")
+    showToast("已添加到负面提示词", "success")
   }
 
   const addToLibrary = () => {
@@ -345,15 +345,15 @@ function SimpleVision() {
     // Simple: add to first subcategory
     const defaultSub = subcategories[0]
     if (!defaultSub) {
-      showToast("No subcategory available", "error")
+      showToast("没有可用子类", "error")
       return
     }
     Promise.all(selectedTags.map(t =>
       window.api.tags.create({ subcategory_id: defaultSub.id, en: t.en, zh: t.zh })
         .catch(() => {})
     )).then(() => {
-      showToast("Added to library", "success")
-    }).catch(() => showToast("Some tags failed to add", "error"))
+      showToast("已添加到标签库", "success")
+    }).catch(() => showToast("部分标签添加失败", "error"))
   }
 
   const exportJSON = () => {
@@ -402,7 +402,7 @@ function SimpleVision() {
         <input
           value={customPrompt}
           onChange={e => setCustomPrompt(e.target.value)}
-          placeholder="Custom prompt (optional)..."
+          placeholder="自定义提示词 (可选)..."
           className="w-full mt-1 px-2 py-1 text-[10px] bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded"
         />
 
@@ -413,7 +413,7 @@ function SimpleVision() {
               onClick={() => setModelOpen(!modelOpen)}
               className="w-full text-left px-2 py-1 text-[10px] bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded"
             >
-              {selectedModel || "Select model"}
+              {selectedModel || "选择模型"}
             </button>
             {modelOpen && (
               <div className="absolute left-0 right-0 bottom-full mb-1 z-50 bg-[var(--color-bg-tertiary)] border border-[var(--color-border)] rounded-lg shadow-xl max-h-32 overflow-y-auto">
@@ -434,11 +434,11 @@ function SimpleVision() {
             disabled={analyzing || !images.length}
             className="px-3 py-1 text-[11px] bg-[var(--color-accent)] text-white rounded disabled:opacity-50"
           >
-            {analyzing ? "Analyzing..." : "Analyze"}
+            {analyzing ? "分析中..." : "分析"}
           </button>
           {images.length > 0 && (
             <button onClick={() => setImages([])} className="px-2 py-1 text-[10px] border border-[var(--color-border)] rounded text-[var(--color-text-secondary)]">
-              Clear
+              清除
             </button>
           )}
         </div>
@@ -451,13 +451,13 @@ function SimpleVision() {
             <div className="flex items-center justify-between mb-1.5">
               <span className="text-[10px] text-[var(--color-text-secondary)]">Results ({suggestions.length})</span>
               <div className="flex gap-1">
-                <button onClick={selectAll} className="text-[10px] text-[var(--color-accent)] hover:underline">All</button>
-                <button onClick={clearSel} className="text-[10px] text-[var(--color-text-secondary)] hover:underline">None</button>
-                <button onClick={copySel} className="text-[10px] text-[var(--color-text-secondary)] hover:underline">Copy</button>
+                <button onClick={selectAll} className="text-[10px] text-[var(--color-accent)] hover:underline">全选</button>
+                <button onClick={clearSel} className="text-[10px] text-[var(--color-text-secondary)] hover:underline">取消</button>
+                <button onClick={copySel} className="text-[10px] text-[var(--color-text-secondary)] hover:underline">复制</button>
                 <button onClick={addToPositive} className="text-[10px] text-green-400 hover:underline">+Pos</button>
                 <button onClick={addToNegative} className="text-[10px] text-red-400 hover:underline">+Neg</button>
                 <button onClick={addToLibrary} className="text-[10px] text-[var(--color-accent)] hover:underline">+Lib</button>
-                <button onClick={exportJSON} className="text-[10px] text-[var(--color-text-secondary)] hover:underline">Export</button>
+                <button onClick={exportJSON} className="text-[10px] text-[var(--color-text-secondary)] hover:underline">导出</button>
               </div>
             </div>
             <div className="space-y-0.5">
@@ -482,7 +482,7 @@ function SimpleVision() {
         )}
         {!analyzing && suggestions.length === 0 && images.length > 0 && (
           <div className="text-center text-[var(--color-text-secondary)] mt-4 text-[11px]">
-            Click "Analyze" to recognize tags
+            Click "分析" to recognize tags
           </div>
         )}
       </div>

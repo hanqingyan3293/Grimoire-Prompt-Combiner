@@ -63,7 +63,7 @@ export function registerChatIPC(): void {
 
   ipcMain.handle('chat:deleteConversation', async (_e, id: string) => {
     const db = getDatabase()
-    db.run('DELETE FROM messages WHERE conv_id=?', [id])
+    db.run('DELETE FROM chat_messages WHERE conv_id=?', [id])
     db.run('DELETE FROM conversations WHERE id=?', [id])
     saveDatabase()
     return true
@@ -99,7 +99,7 @@ export function registerChatIPC(): void {
   // ========== 消息 ==========
   ipcMain.handle('chat:getMessages', async (_e, convId: string) => {
     const db = getDatabase()
-    const r = db.exec('SELECT * FROM messages WHERE conv_id=? ORDER BY created_at ASC', [convId])
+    const r = db.exec('SELECT * FROM chat_messages WHERE conv_id=? ORDER BY created_at ASC', [convId])
     return (r[0]?.values || []).map(row => ({
       id: row[0], conv_id: row[1], role: row[2], content: row[3],
       model: row[4], token_count: row[5], created_at: row[6],
@@ -111,12 +111,12 @@ export function registerChatIPC(): void {
   }) => {
     const db = getDatabase()
     const id = msg.id || genId()
-    const existing = db.exec('SELECT 1 FROM messages WHERE id=?', [id])
+    const existing = db.exec('SELECT 1 FROM chat_messages WHERE id=?', [id])
     if (existing[0]?.values?.length) {
-      db.run('UPDATE messages SET content=?, token_count=? WHERE id=?',
+      db.run('UPDATE chat_messages SET content=?, token_count=? WHERE id=?',
         [msg.content, msg.token_count || 0, id])
     } else {
-      db.run('INSERT INTO messages (id, conv_id, role, content, model, token_count) VALUES (?,?,?,?,?,?)',
+      db.run('INSERT INTO chat_messages (id, conv_id, role, content, model, token_count) VALUES (?,?,?,?,?,?)',
         [id, msg.conv_id, msg.role, msg.content, msg.model || '', msg.token_count || 0])
     }
     db.run("UPDATE conversations SET updated_at=datetime('now','localtime') WHERE id=?", [msg.conv_id])
@@ -126,14 +126,14 @@ export function registerChatIPC(): void {
 
   ipcMain.handle('chat:deleteMessage', async (_e, id: string) => {
     const db = getDatabase()
-    db.run('DELETE FROM messages WHERE id=?', [id])
+    db.run('DELETE FROM chat_messages WHERE id=?', [id])
     saveDatabase()
     return true
   })
 
   ipcMain.handle('chat:clearMessages', async (_e, convId: string) => {
     const db = getDatabase()
-    db.run('DELETE FROM messages WHERE conv_id=?', [convId])
+    db.run('DELETE FROM chat_messages WHERE conv_id=?', [convId])
     saveDatabase()
     return true
   })

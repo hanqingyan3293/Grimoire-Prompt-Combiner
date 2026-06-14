@@ -25,7 +25,7 @@ export function InputArea() {
   const model = conv?.model || activeProvider?.default_model || 'gpt-4o'
   const models = activeProvider?.models || []
   const tokenUsed = messages.reduce((sum, m) => sum + (m.token_count || 0), 0)
-  const tokenMax = activeProvider?.context_size || 8192
+  const tokenMax = activeProvider?.context_size || 128000
 
   // Provider 列表
   const providerList = providers.map(p => ({ id: p.id, name: p.name }))
@@ -76,9 +76,18 @@ export function InputArea() {
       const start = el.selectionStart
       const end = el.selectionEnd
       const val = el.value
-      el.value = val.slice(0, start) + '\n' + val.slice(end)
-      el.selectionStart = el.selectionEnd = start + 1
-      setInput(el.value)
+      const newVal = val.slice(0, start) + '\n' + val.slice(end)
+      setInput(newVal)
+      // Restore cursor position after React re-render
+      requestAnimationFrame(() => {
+        el.selectionStart = el.selectionEnd = start + 1
+        // Auto-resize
+        el.style.height = 'auto'
+        const lineHeight = 20
+        const minHeight = lineHeight * 2 + 12
+        const maxHeight = lineHeight * 5 + 12
+        el.style.height = Math.min(Math.max(el.scrollHeight, minHeight), maxHeight) + 'px'
+      })
     }
   }
 
