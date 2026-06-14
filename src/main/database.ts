@@ -97,11 +97,34 @@ CREATE TABLE IF NOT EXISTS image_refs (
   created_at TEXT DEFAULT (datetime('now','localtime'))
 );
 
+CREATE TABLE IF NOT EXISTS chat_groups (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  sort_order INTEGER DEFAULT 0,
+  created_at TEXT DEFAULT (datetime('now','localtime'))
+);
+
+INSERT OR IGNORE INTO chat_groups (id, name, sort_order) VALUES ('default', '默认', 0);
+
+CREATE TABLE IF NOT EXISTS conversations (
+  id TEXT PRIMARY KEY,
+  group_id TEXT DEFAULT '',
+  provider_id TEXT NOT NULL,
+  title TEXT DEFAULT '新对话',
+  model TEXT NOT NULL DEFAULT '',
+  system_prompt TEXT DEFAULT '',
+  pinned INTEGER DEFAULT 0,
+  created_at TEXT DEFAULT (datetime('now','localtime')),
+  updated_at TEXT DEFAULT (datetime('now','localtime'))
+);
+
 CREATE TABLE IF NOT EXISTS chat_messages (
   id TEXT PRIMARY KEY,
+  conv_id TEXT DEFAULT '',
   role TEXT NOT NULL CHECK(role IN ('user','assistant','system')),
   content TEXT NOT NULL,
   model TEXT DEFAULT '',
+  token_count INTEGER DEFAULT 0,
   created_at TEXT DEFAULT (datetime('now','localtime'))
 );
 
@@ -169,6 +192,14 @@ try {
 } catch {}
 try {
   db.run("ALTER TABLE tags ADD COLUMN group_id TEXT DEFAULT 'default'");
+} catch {}
+
+// Migration: add conv_id and token_count to existing chat_messages
+try {
+  db.run("ALTER TABLE chat_messages ADD COLUMN conv_id TEXT DEFAULT ''");
+} catch {}
+try {
+  db.run("ALTER TABLE chat_messages ADD COLUMN token_count INTEGER DEFAULT 0");
 } catch {}
 
   saveDatabase()

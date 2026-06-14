@@ -44,6 +44,21 @@ interface GrimoireAPI {
     add: () => Promise<{ id: number; file_path: string } | null>
     delete: (id: number) => Promise<boolean>
   }
+  chat: {
+    listGroups: () => Promise<Array<{ id: string; name: string; sort_order: number; created_at: string }>>
+    createGroup: (name: string) => Promise<{ id: string; name: string }>
+    deleteGroup: (id: string) => Promise<boolean>
+    renameGroup: (id: string, name: string) => Promise<boolean>
+    listConversations: () => Promise<Array<{ id: string; group_id: string; provider_id: string; title: string; model: string; system_prompt: string; pinned: number; created_at: string; updated_at: string }>>
+    createConversation: (data: { provider_id: string; model: string; title?: string; group_id?: string }) => Promise<{ id: string; title: string }>
+    deleteConversation: (id: string) => Promise<boolean>
+    updateConversation: (id: string, data: any) => Promise<boolean>
+    moveConversation: (convId: string, groupId: string) => Promise<boolean>
+    getMessages: (convId: string) => Promise<Array<{ id: string; conv_id: string; role: string; content: string; model: string; token_count: number; created_at: string }>>
+    saveMessage: (msg: { id?: string; conv_id: string; role: string; content: string; model?: string; token_count?: number }) => Promise<{ id: string }>
+    deleteMessage: (id: string) => Promise<boolean>
+    clearMessages: (convId: string) => Promise<boolean>
+  }
   tagGroups: {
     list: () => Promise<Array<{ id: string; name: string; is_active: number; created_at: string }>>
     create: (name: string, copyFrom?: string) => Promise<{ id: string }>

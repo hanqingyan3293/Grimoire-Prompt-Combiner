@@ -12,6 +12,7 @@ import { registerFavoritesIPC } from "./ipc/favorites.ipc"
 import { registerProvidersIPC, getActiveProvider } from "./ipc/providers.ipc"
 import { registerTagGroupsIPC } from "./ipc/tagGroups.ipc"
 import { registerAIIPC } from "./ipc/ai.ipc"
+import { registerChatIPC } from "./ipc/chat.ipc"
 import { chatStream, analyzeImage, saveChatMessage, getChatHistory } from "./services/ai.service"
 import { logError, getErrorLogs } from "./services/logger.service"
 import { IPC_CHANNELS } from "../shared/types"
@@ -185,6 +186,7 @@ async function registerAllIPC(): Promise<void> {
   registerProvidersIPC()
   registerTagGroupsIPC()
   registerAIIPC()
+  registerChatIPC()
   // 迁移旧 settings 到 providers 表
   await migrateOldSettings()
   // 确保默认标签组存在

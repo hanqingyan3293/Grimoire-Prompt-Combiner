@@ -80,6 +80,22 @@ const api = {
     openAI: () => ipcRenderer.invoke("window:openAI"),
   },
 
+  chat: {
+    listGroups: () => ipcRenderer.invoke('chat:listGroups'),
+    createGroup: (name: string) => ipcRenderer.invoke('chat:createGroup', name),
+    deleteGroup: (id: string) => ipcRenderer.invoke('chat:deleteGroup', id),
+    renameGroup: (id: string, name: string) => ipcRenderer.invoke('chat:renameGroup', id, name),
+    listConversations: () => ipcRenderer.invoke('chat:listConversations'),
+    createConversation: (data: any) => ipcRenderer.invoke('chat:createConversation', data),
+    deleteConversation: (id: string) => ipcRenderer.invoke('chat:deleteConversation', id),
+    updateConversation: (id: string, data: any) => ipcRenderer.invoke('chat:updateConversation', id, data),
+    moveConversation: (convId: string, groupId: string) => ipcRenderer.invoke('chat:moveConversation', convId, groupId),
+    getMessages: (convId: string) => ipcRenderer.invoke('chat:getMessages', convId),
+    saveMessage: (msg: any) => ipcRenderer.invoke('chat:saveMessage', msg),
+    deleteMessage: (id: string) => ipcRenderer.invoke('chat:deleteMessage', id),
+    clearMessages: (convId: string) => ipcRenderer.invoke('chat:clearMessages', convId),
+  },
+
   tagGroups: {
     list: () => ipcRenderer.invoke(IPC_CHANNELS.TAG_GROUPS_LIST),
     create: (name: string, copyFrom?: string) => ipcRenderer.invoke(IPC_CHANNELS.TAG_GROUPS_CREATE, name, copyFrom),
