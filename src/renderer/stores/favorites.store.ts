@@ -23,45 +23,57 @@ export const useFavoritesStore = create<FavoritesState>((set, get) => ({
   subFavIds: new Set(),
   loading: false,
 
+  _loadingPromise: null as Promise<void> | null,
   loadFavorites: async () => {
-    set({ loading: true })
-    try {
-      const [tagFavs, subFavs] = await Promise.all([
-        window.api.favorites.tagList(),
-        window.api.favorites.subList(),
-      ])
-      set({
-        tagFavs, subFavs,
-        tagFavIds: new Set(tagFavs.map(f => f.id)),
-        subFavIds: new Set(subFavs.map(f => f.id)),
-        loading: false,
-      })
-    } catch (e) {
-      console.error("loadFavorites failed:", e)
-      set({ loading: false })
-    }
+    // Prevent concurrent calls
+    const existing = get()._loadingPromise
+    if (existing) return existing
+    const promise = (async () => {
+      try {
+        const [tagFavs, subFavs] = await Promise.all([
+          window.api.favorites.tagList(),
+          window.api.favorites.subList(),
+        ])
+        set({
+          tagFavs, subFavs,
+          tagFavIds: new Set(tagFavs.map(f => f.id)),
+          subFavIds: new Set(subFavs.map(f => f.id)),
+          loading: false,
+        })
+      } catch (e) {
+        console.error("loadFavorites failed:", e)
+        set({ loading: false })
+      } finally {
+        set({ _loadingPromise: null })
+      }
+    })()
+    set({ loading: true, _loadingPromise: promise })
+    return promise
   },
 
   toggleTagFav: async (tagId) => {
-    const { tagFavIds } = get()
     try {
-      if (tagFavIds.has(tagId)) {
+      if (get().tagFavIds.has(tagId)) {
         await window.api.favorites.tagRemove(tagId)
       } else {
         await window.api.favorites.tagAdd(tagId)
       }
+      // Always reload after toggle
+      const { _loadingPromise } = get()
+      if (_loadingPromise) await _loadingPromise
       await get().loadFavorites()
     } catch (e) { console.error("toggleTagFav failed:", e) }
   },
 
   toggleSubFav: async (subId) => {
-    const { subFavIds } = get()
     try {
-      if (subFavIds.has(subId)) {
+      if (get().subFavIds.has(subId)) {
         await window.api.favorites.subRemove(subId)
       } else {
         await window.api.favorites.subAdd(subId)
       }
+      const { _loadingPromise } = get()
+      if (_loadingPromise) await _loadingPromise
       await get().loadFavorites()
     } catch (e) { console.error("toggleSubFav failed:", e) }
   },
