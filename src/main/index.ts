@@ -63,7 +63,47 @@ function createWindow(): void {
   mainWindow.on("closed", () => { mainWindow = null })
 }
 
-function registerAllIPC(): void {
+
+/** 将旧的 settings 表 api_key/api_endpoint/api_model 迁移为默认供应商 */
+async function migrateOldSettings(): Promise<void> {
+  const db = getDatabase()
+  // 检查 providers 是否已有数据
+  const hasProviders = db.exec("SELECT COUNT(*) as c FROM providers")
+  if ((hasProviders[0]?.values?.[0]?.[0] as number) > 0) return
+
+  // 读取旧 settings
+  const old = db.exec("SELECT key, value FROM settings WHERE key IN ('api_key','api_endpoint','api_model')")
+  const oldSettings: Record<string, string> = {}
+  for (const row of old[0]?.values || []) {
+    oldSettings[row[0] as string] = (row[1] as string) || ''
+  }
+
+  const apiKey = oldSettings.api_key || ''
+  const apiEndpoint = oldSettings.api_endpoint || 'https://api.openai.com/v1'
+  const apiModel = oldSettings.api_model || 'gpt-4o'
+
+  // 只有有 key 或 endpoint 被修改过才迁移
+  if (!apiKey && apiEndpoint === 'https://api.openai.com/v1') return
+
+  const { safeStorage } = await import('electron')
+  let encryptedKey = apiKey
+  if (apiKey && safeStorage.isEncryptionAvailable()) {
+    try {
+      encryptedKey = safeStorage.encryptString(apiKey).toString('base64')
+    } catch { /* keep raw */ }
+  }
+
+  const id = 'pvd_migrated'
+  const name = '默认供应商'
+  db.run(
+    `INSERT INTO providers (id,name,access_mode,protocol,base_url,api_key,default_model,test_model,models,is_active,config_toml,auth_json)
+     VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`,
+    [id, name, 'api', 'chat_completions', apiEndpoint, encryptedKey, apiModel, apiModel, JSON.stringify([apiModel]), 1, '', '']
+  )
+  getDatabase()
+}
+
+async function registerAllIPC(): Promise<void> {
   // tags.ipc.ts already registers all tag + category + subcategory handlers
   registerTagsIPC()
   registerPresetsIPC()
@@ -72,6 +112,8 @@ function registerAllIPC(): void {
   registerImagesIPC()
   registerFavoritesIPC()
   registerProvidersIPC()
+  // 迁移旧 settings 到 providers 表
+  await migrateOldSettings()
 
   ipcMain.handle(IPC_CHANNELS.AI_CHAT, async (_event, messages, modelOverride?: string) => {
     return new Promise(async (resolve) => {
@@ -100,7 +142,7 @@ function registerAllIPC(): void {
       const provider = await getActiveProvider()
       if (!provider) return { success: false, error: "请先在设置中配置供应商" }
       const prompt = customPrompt || "请分析这张图片，列出适合作为 Stable Diffusion / NovelAI 提示词 (prompt tags) 的关键词标签。请用逗号分隔的英文标签列表格式输出。"
-      const result = await analyzeImage(imageBase64, prompt, provider)
+      const result = await analyzeImage(imageBase64, prompt, { api_key: provider.api_key, api_endpoint: provider.base_url, api_model: provider.default_model })
       return { success: true, text: result }
     } catch (err) { return { success: false, error: err instanceof Error ? err.message : "未知错误" } }
   })

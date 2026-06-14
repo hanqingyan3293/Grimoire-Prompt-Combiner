@@ -278,8 +278,6 @@ export function SettingsWindow({ onClose }: { onClose: () => void }) {
           </div>
         </div>
 
-        {/* Resize handle */}
-        <div onMouseDown={
         {showProviderEditor && (
           <div className="absolute inset-0 bg-black/50 z-20 flex items-center justify-center">
             <div className="bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded shadow-2xl flex flex-col overflow-hidden" style={{ width: 680, maxWidth: "94vw", maxHeight: "88vh" }}>

@@ -60,13 +60,13 @@ export function registerProvidersIPC(): void {
       // 更新
       db.run(
         `UPDATE providers SET name=?,access_mode=?,protocol=?,base_url=?,api_key=?,default_model=?,test_model=?,context_size=?,models=?,config_toml=?,auth_json=?,updated_at=datetime('now','localtime') WHERE id=?`,
-        [data.name, data.access_mode||"api", data.protocol||"chat_completions", data.base_url, encryptKey(data.api_key||""), data.default_model, data.test_model, data.context_size||null, JSON.stringify(data.models||[]), data.config_toml||"", data.auth_json||"", id]
+        [data.name||"", data.access_mode||"api", data.protocol||"chat_completions", data.base_url||"", encryptKey(data.api_key||""), data.default_model||"", data.test_model||"", data.context_size||null, JSON.stringify(data.models||[]), data.config_toml||"", data.auth_json||"", id]
       )
     } else {
       // 新建
       db.run(
         `INSERT INTO providers (id,name,access_mode,protocol,base_url,api_key,default_model,test_model,context_size,models,config_toml,auth_json) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`,
-        [id, data.name, data.access_mode||"api", data.protocol||"chat_completions", data.base_url, encryptKey(data.api_key||""), data.default_model, data.test_model, data.context_size||null, JSON.stringify(data.models||[]), data.config_toml||"", data.auth_json||""]
+        [id, data.name||"", data.access_mode||"api", data.protocol||"chat_completions", data.base_url||"", encryptKey(data.api_key||""), data.default_model||"", data.test_model||"", data.context_size||null, JSON.stringify(data.models||[]), data.config_toml||"", data.auth_json||""]
       )
     }
     saveDatabase()

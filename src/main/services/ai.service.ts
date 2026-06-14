@@ -1,4 +1,5 @@
 // 魔导书 Grimoire v7 — AI 服务（OpenAI 兼容 API）
+import { getDatabase, saveDatabase } from '../database'
 import crypto from 'crypto'
 
 // Provider 配置由调用方传入
