@@ -67,10 +67,11 @@ interface GrimoireAPI {
     open: () => Promise<string | null>
   }
   ai: {
-    chat: (messages: Array<{ role: string; content: string | Array<{ type: string; text?: string; image_url?: { url: string } }> }>, model?: string) => Promise<{ success: boolean; text?: string; error?: string }>
-    vision: (imageBase64: string, prompt?: string) => Promise<{ success: boolean; text?: string; error?: string }>
-    chatHistory: () => Promise<Array<{ id: string; role: string; content: string; model: string; created_at: string }>>
-    onChunk: (callback: (text: string) => void) => () => void
+    sendMessage: (args: { providerId: string; model: string; messages: Array<{ role: string; content: any }> }) => Promise<{ success?: boolean; text?: string; error?: string }>
+    vision: (args: { providerId: string; model: string; imageBase64: string; prompt?: string }) => Promise<{ success?: boolean; text?: string; error?: string }>
+    generateImage: (args: { providerId: string; model: string; prompt: string }) => Promise<{ success?: boolean; url?: string; error?: string }>
+    fetchModels: (args: { baseUrl: string; apiKey: string }) => Promise<{ success?: boolean; models?: string[]; error?: string }>
+    onChunk: (callback: (data: any) => void) => () => void
   }
   error: {
     getAll: () => Promise<Array<{ id: number; message: string; stack: string; context: string; created_at: string }>>

@@ -54,15 +54,18 @@ const api = {
   },
 
   ai: {
-    chat: (messages: Array<{ role: string; content: string | Array<{ type: string; text?: string; image_url?: { url: string } }> }>, model?: string) =>
-      ipcRenderer.invoke(IPC_CHANNELS.AI_CHAT, messages, model),
-    vision: (imageBase64: string, prompt?: string) =>
-      ipcRenderer.invoke(IPC_CHANNELS.AI_VISION, imageBase64, prompt),
-    chatHistory: (): Promise<ChatMessage[]> => ipcRenderer.invoke(IPC_CHANNELS.AI_CHAT_HISTORY),
-    onChunk: (callback: (text: string) => void) => {
-      const handler = (_event: unknown, text: string) => callback(text)
-      ipcRenderer.on("ai:chunk", handler)
-      return () => ipcRenderer.removeListener("ai:chunk", handler)
+    sendMessage: (args: { providerId: string; model: string; messages: Array<{ role: string; content: any }> }) =>
+      ipcRenderer.invoke('ai:sendMessage', args),
+    vision: (args: { providerId: string; model: string; imageBase64: string; prompt?: string }) =>
+      ipcRenderer.invoke('ai:vision', args),
+    generateImage: (args: { providerId: string; model: string; prompt: string }) =>
+      ipcRenderer.invoke('ai:generateImage', args),
+    fetchModels: (args: { baseUrl: string; apiKey: string }) =>
+      ipcRenderer.invoke('ai:fetchModels', args),
+    onChunk: (callback: (data: any) => void) => {
+      const handler = (_event: unknown, data: any) => callback(data)
+      ipcRenderer.on('ai:chunk', handler)
+      return () => ipcRenderer.removeListener('ai:chunk', handler)
     },
   },
 

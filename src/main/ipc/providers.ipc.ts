@@ -9,7 +9,7 @@ function encryptKey(key: string): string {
   return safeStorage.encryptString(key).toString("base64")
 }
 
-function decryptKey(encrypted: string): string {
+export function decryptKey(encrypted: string): string {
   if (!encrypted || !safeStorage.isEncryptionAvailable()) return encrypted
   try {
     return safeStorage.decryptString(Buffer.from(encrypted, "base64"))
