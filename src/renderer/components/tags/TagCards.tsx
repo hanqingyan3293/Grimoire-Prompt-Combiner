@@ -148,9 +148,12 @@ export function TagCards() {
                       <button key={tag.id}
                         onClick={() => handleLeftClick(tag, sub, cat)}
                         onContextMenu={(e) => handleRightClick(e, tag)}
-                        className={`${scale.card} flex flex-col items-center justify-center border rounded cursor-pointer transition-all hover:shadow-md p-1`}
+                        className={`${scale.card} flex flex-col items-center justify-center border rounded cursor-pointer transition-all hover:shadow-md p-1 relative overflow-hidden`}
                         style={{ ...bgStyle, ...borderStyle }}>
-                        <div className={`${scale.text} font-medium text-[var(--color-text-primary)] text-center leading-tight line-clamp-2`}>{tag.zh}</div>
+                        {isPositive && isNegative && (
+                          <div className="absolute left-0 top-0 bottom-0 w-[3px]" style={{ backgroundColor: negativeBorderColor }} />
+                        )}
+                        <div className="flex items-start justify-center gap-0.5"><span className={`${scale.text} font-medium text-[var(--color-text-primary)] text-center leading-tight line-clamp-2`}>{tag.zh}</span>{favStore.isTagFav(tag.id) && <span className="text-[10px] leading-none shrink-0 mt-0.5">⭐</span>}</div>
                         <div className={`${scale.subtext} opacity-50 truncate mt-0.5 max-w-full`}>{tag.en}</div>
                       </button>
                     )
