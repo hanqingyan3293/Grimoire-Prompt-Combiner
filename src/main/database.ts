@@ -159,6 +159,18 @@ export async function initDatabase(): Promise<SqlJsDatabase> {
   db.run('PRAGMA busy_timeout=5000;')
   
   db.run(SCHEMA_SQL)
+
+// Migration: add group_id to existing tables
+try {
+  db.run("ALTER TABLE categories ADD COLUMN group_id TEXT DEFAULT 'default'");
+} catch {}
+try {
+  db.run("ALTER TABLE subcategories ADD COLUMN group_id TEXT DEFAULT 'default'");
+} catch {}
+try {
+  db.run("ALTER TABLE tags ADD COLUMN group_id TEXT DEFAULT 'default'");
+} catch {}
+
   saveDatabase()
   
   return db
