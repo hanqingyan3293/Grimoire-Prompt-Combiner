@@ -1,4 +1,0 @@
-启动失败: Error: Attempted to register a second handler for 'ai:vision'
-    at IpcMainImpl.handle (node:electron/js2c/browser_init:2:116336)
-    at registerAllIPC (D:\File\Data\魔导书\grimoire\dist\main\main\index.js:248:24)
-    at async D:\File\Data\魔导书\grimoire\dist\main\main\index.js:302:9
