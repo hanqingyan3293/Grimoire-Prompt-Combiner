@@ -184,7 +184,7 @@ process.on("unhandledRejection", (reason) => { logError("未处理的 Promise: "
 app.whenReady().then(async () => {
   try {
     await initDatabase()
-    registerAllIPC()
+    await registerAllIPC()
     await initDefaultTags()
     createWindow()
   } catch (err) { console.error("启动失败:", err); dialog.showErrorBox("启动失败", err instanceof Error ? err.message : "未知错误") }
