@@ -3,7 +3,7 @@
 html {
   font-size: calc(14px * var(--ui-scale, 1));
 }
-﻿/* 魔导书 Grimoire v7 — 主题系统 */
+/* 魔导书 Grimoire v7 — 主题系统 */
 /* 通过在 <html> 上设置 data-theme 属性切换主题 */
 
 /* ===== Neon 霓虹（默认）===== */
