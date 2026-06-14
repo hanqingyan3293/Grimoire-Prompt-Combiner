@@ -4,6 +4,7 @@ import { useChatStore } from "../../stores/chat.store"
 import { useProviderStore } from "../../stores/providers.store"
 import { usePromptsStore } from "../../stores/prompts.store"
 import { useTagsStore } from "../../stores/tags.store"
+import { useSettingsStore } from "../../stores/settings.store"
 import { MessageBubble } from "./MessageBubble"
 
 type SubTab = "chat" | "vision"
@@ -183,7 +184,15 @@ function SimpleChat() {
             value={input}
             onChange={e => setInput(e.target.value)}
             onKeyDown={e => {
-              if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend() }
+              const { getShortcut } = useSettingsStore.getState()
+              const sendKey = getShortcut('chat.send') || 'Enter'
+              const parts = sendKey.split('+')
+              const mainKey = parts[parts.length - 1]
+              const needShift = parts.includes('Shift')
+              const needCtrl = parts.includes('Ctrl')
+              if (e.key === mainKey && e.shiftKey === needShift && (e.ctrlKey || e.metaKey) === needCtrl) {
+                e.preventDefault(); handleSend()
+              }
             }}
             placeholder="Type a message..."
             rows={2}

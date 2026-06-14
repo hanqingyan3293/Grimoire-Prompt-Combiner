@@ -1,6 +1,7 @@
 // 魔导书 Grimoire v7 — 输入区域
 import React, { useState, useRef, useCallback } from 'react'
 import { useChatStore } from '../../stores/chat.store'
+import { useSettingsStore } from '../../stores/settings.store'
 import { useProviderStore } from '../../stores/providers.store'
 import { ToolbarRow } from './ToolbarRow'
 import { SendBar } from './SendBar'
@@ -41,9 +42,43 @@ export function InputArea() {
   }, [input, activeProvider, model, sendMessage])
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
+    const { getShortcut } = useSettingsStore.getState()
+    const sendKey = getShortcut('chat.send') || 'Enter'
+    const newlineKey = getShortcut('chat.newline') || 'Shift+Enter'
+
+    // Parse send shortcut
+    const sendParts = sendKey.split('+')
+    const sendMain = sendParts[sendParts.length - 1]
+    const sendShift = sendParts.includes('Shift')
+    const sendCtrl = sendParts.includes('Ctrl')
+
+    // Parse newline shortcut
+    const nlParts = newlineKey.split('+')
+    const nlMain = nlParts[nlParts.length - 1]
+    const nlShift = nlParts.includes('Shift')
+    const nlCtrl = nlParts.includes('Ctrl')
+
+    // Check send shortcut
+    if (e.key === sendMain &&
+        e.shiftKey === sendShift &&
+        (e.ctrlKey || e.metaKey) === sendCtrl) {
       e.preventDefault()
       handleSend()
+      return
+    }
+
+    // Check newline shortcut
+    if (e.key === nlMain &&
+        e.shiftKey === nlShift &&
+        (e.ctrlKey || e.metaKey) === nlCtrl) {
+      e.preventDefault()
+      const el = e.target as HTMLTextAreaElement
+      const start = el.selectionStart
+      const end = el.selectionEnd
+      const val = el.value
+      el.value = val.slice(0, start) + '\n' + val.slice(end)
+      el.selectionStart = el.selectionEnd = start + 1
+      setInput(el.value)
     }
   }
 
@@ -113,7 +148,7 @@ export function InputArea() {
         value={input}
         onChange={handleInput}
         onKeyDown={handleKeyDown}
-        placeholder="输入消息... (Enter 发送, Shift+Enter 换行)"
+        placeholder="输入消息..."
         rows={2}
         className="w-full px-3 py-2 text-sm bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded-xl resize-none outline-none focus:border-[var(--color-accent)] text-[var(--color-text-primary)] placeholder-[var(--color-text-secondary)] transition-colors"
         style={{ minHeight: '48px', maxHeight: '112px' }}

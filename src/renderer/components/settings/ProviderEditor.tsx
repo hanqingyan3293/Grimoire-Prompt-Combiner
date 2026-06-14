@@ -245,14 +245,14 @@ export function ProviderEditor({ provider, onSave, onCancel }: Props) {
           </Field>
         )}
 
-        <Field label="config.toml 预览" desc="通用配置文件（可编辑）">
+        <Field label="config.toml 编辑" desc="通用配置文件">
           <textarea value={configToml} onChange={e => setConfigToml(e.target.value)}
             rows={6}
             placeholder={`# config.toml\n[provider]\nname = "${name || "my-provider"}"\nbase_url = "${baseUrl}"\nmodel = "${defaultModel}"`}
             className="w-full px-3 py-2 bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded text-xs font-mono text-[var(--color-text-primary)] focus:outline-none focus:border-[var(--color-accent)] resize-y" />
         </Field>
 
-        <Field label="auth.json 预览" desc="认证配置文件（可编辑）">
+        <Field label="auth.json 编辑" desc="认证配置文件">
           <textarea value={authJson} onChange={e => setAuthJson(e.target.value)}
             rows={6}
             placeholder={`{\n  "api_key": "...",\n  "base_url": "${baseUrl}",\n  "model": "${defaultModel}"\n}`}

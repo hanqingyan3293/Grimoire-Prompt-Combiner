@@ -115,6 +115,17 @@ export function SettingsWindow({ onClose }: { onClose: () => void }) {
                 <option value="en">English</option>
               </select>
             </Field>
+
+            <Field label="字体大小" desc="调整全局字体和界面大小">
+              <div className="flex gap-2">
+                {["small","medium","large"].map(s => (
+                  <button key={s} onClick={() => setSetting("ui_scale", s)}
+                    className={"flex-1 py-2 text-sm rounded-lg border transition-colors " + (ui_scale === s ? "bg-[var(--color-accent)]/15 border-[var(--color-accent)] text-[var(--color-accent)] font-medium" : "border-[var(--color-border)] text-[var(--color-text-secondary)] hover:border-[var(--color-accent)]/50")}>
+                    {s === "small" ? "小" : s === "medium" ? "中" : "大"}
+                  </button>
+                ))}
+              </div>
+            </Field>
             <Field label="随机标签数范围">
               <div className="flex items-center gap-3">
                 <input type="number" value={random_min} onChange={e => setSetting("random_min", e.target.value)}
