@@ -168,7 +168,15 @@ CREATE INDEX IF NOT EXISTS idx_history_time ON history(created_at DESC);
 
 export async function initDatabase(): Promise<SqlJsDatabase> {
   SQL = await initSqlJs()
-  dbPath = path.join(app.getPath('userData'), 'grimoire.db')
+  // 便携模式：exe同目录有 portable 文件则数据存本地 data/ 文件夹
+  const exeDir = path.dirname(app.getPath('exe'))
+  if (fs.existsSync(path.join(exeDir, 'portable'))) {
+    const pDir = path.join(exeDir, 'data')
+    if (!fs.existsSync(pDir)) fs.mkdirSync(pDir, { recursive: true })
+    dbPath = path.join(pDir, 'grimoire.db')
+  } else {
+    dbPath = path.join(app.getPath('userData'), 'grimoire.db')
+  }
   
   if (fs.existsSync(dbPath)) {
     const buffer = fs.readFileSync(dbPath)

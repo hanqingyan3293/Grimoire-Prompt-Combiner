@@ -135,6 +135,9 @@ export function SettingsWindow({ onClose }: { onClose: () => void }) {
                   className="w-24 px-4 py-2.5 bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded-lg text-sm" />
               </div>
             </Field>
+            <div className="mt-6 px-4 py-3 rounded-lg border border-[var(--color-accent)]/30 bg-[var(--color-accent)]/5 text-sm text-[var(--color-text-secondary)]">
+              提示：由于多窗口限制，若设置或历史记录未同步，请手动按 Ctrl+R 刷新页面。
+            </div>
           </div>
         )}
 
