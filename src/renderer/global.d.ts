@@ -1,0 +1,69 @@
+// Vite 环境变量类型
+/// <reference types="vite/client" />
+
+// 预加载 API 类型
+interface GrimoireAPI {
+  tags: {
+    getAll: () => Promise<{
+      categories: Array<{ id: string; en: string; zh: string; sort_order: number; created_at: string }>
+      subcategories: Array<{ id: string; category_id: string; en: string; zh: string; sort_order: number; created_at: string }>
+      tags: Array<{ id: string; subcategory_id: string; en: string; zh: string; sort_order: number; source: string; created_at: string }>
+    }>
+    create: (data: { subcategory_id: string; en: string; zh: string }) => Promise<{ id: string }>
+    update: (data: { id: string; en: string; zh: string }) => Promise<boolean>
+    delete: (id: string) => Promise<boolean>
+    import: (jsonData: string); reset: () => Promise<boolean> => Promise<boolean>
+    createCategory: (data: { zh: string }) => Promise<{ id: string }>
+    updateCategory: (data: { id: string; zh: string }) => Promise<boolean>
+    deleteCategory: (id: string) => Promise<boolean>
+    createSubcategory: (data: { category_id: string; zh: string }) => Promise<{ id: string }>
+    updateSubcategory: (data: { id: string; zh: string }) => Promise<boolean>
+    deleteSubcategory: (id: string) => Promise<boolean>
+  }
+  presets: {
+    list: () => Promise<Array<{ id: string; name: string; data: { positive: Array<{ tag_id: string; weight: number }>; negative: Array<{ tag_id: string; weight: number }> }; created_at: string; updated_at: string }>>
+    save: (data: { id?: string; name: string; data: object }) => Promise<{ id: string; name: string }>
+    delete: (id: string) => Promise<boolean>
+  }
+  history: {
+    list: () => Promise<Array<{ id: string; prompt: string; positive_count: number; negative_count: number; created_at: string }>>
+    add: (data: { prompt: string; positive_count: number; negative_count: number }) => Promise<boolean>
+    clear: () => Promise<boolean>
+  }
+  settings: {
+    getAll: () => Promise<{
+      api_key: string; api_endpoint: string; api_model: string;
+      theme: string; language: string; custom_accent: string; ui_scale: string; max_undo_steps: number
+      random_min: string; random_max: string
+    }>
+    set: (key: string, value: string) => Promise<boolean>
+  }
+  images: {
+    list: () => Promise<Array<{ id: number; file_path: string; created_at: string }>>
+    add: () => Promise<{ id: number; file_path: string } | null>
+    delete: (id: number) => Promise<boolean>
+  }
+  ai: {
+    chat: (messages: Array<{ role: string; content: string | Array<{ type: string; text?: string; image_url?: { url: string } }> }>) => Promise<{ success: boolean; text?: string; error?: string }>
+    vision: (imageBase64: string, prompt?: string) => Promise<{ success: boolean; text?: string; error?: string }>
+    chatHistory: () => Promise<Array<{ id: string; role: string; content: string; model: string; created_at: string }>>
+    onChunk: (callback: (text: string) => void) => () => void
+  }
+  error: {
+    getAll: () => Promise<Array<{ id: number; message: string; stack: string; context: string; created_at: string }>>
+    log: (message: string, stack?: string, context?: string) => Promise<boolean>
+  }
+  db: {
+    export: () => Promise<boolean>
+    import: () => Promise<boolean>
+    onReload: (callback: () => void) => () => void
+  }
+}
+
+declare global {
+  interface Window {
+    api: GrimoireAPI
+  }
+}
+
+export {}

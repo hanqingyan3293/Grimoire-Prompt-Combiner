@@ -1,0 +1,11 @@
+﻿node_modules/
+dist/
+release/
+*.db
+_log.txt
+_stdout.log
+_stderr.log
+_out.log
+_check_*.py
+_verify*.py
+extract_tags_v2.py
