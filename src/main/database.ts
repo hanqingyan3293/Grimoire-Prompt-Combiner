@@ -9,8 +9,17 @@ let db: SqlJsDatabase | null = null
 let dbPath = ''
 
 const SCHEMA_SQL = `
+
+CREATE TABLE IF NOT EXISTS tag_groups (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  is_active INTEGER DEFAULT 0,
+  created_at TEXT DEFAULT (datetime('now','localtime'))
+);
+
 CREATE TABLE IF NOT EXISTS categories (
   id TEXT PRIMARY KEY,
+  group_id TEXT DEFAULT 'default',
   en TEXT NOT NULL,
   zh TEXT NOT NULL,
   sort_order INTEGER DEFAULT 0,
@@ -19,6 +28,7 @@ CREATE TABLE IF NOT EXISTS categories (
 
 CREATE TABLE IF NOT EXISTS subcategories (
   id TEXT PRIMARY KEY,
+  group_id TEXT DEFAULT 'default',
   category_id TEXT NOT NULL,
   en TEXT NOT NULL,
   zh TEXT NOT NULL,
@@ -29,6 +39,7 @@ CREATE TABLE IF NOT EXISTS subcategories (
 
 CREATE TABLE IF NOT EXISTS tags (
   id TEXT PRIMARY KEY,
+  group_id TEXT DEFAULT 'default',
   subcategory_id TEXT NOT NULL,
   en TEXT NOT NULL,
   zh TEXT NOT NULL,
@@ -123,6 +134,9 @@ CREATE TABLE IF NOT EXISTS error_logs (
 
 CREATE INDEX IF NOT EXISTS idx_sub_cat ON subcategories(category_id);
 CREATE INDEX IF NOT EXISTS idx_tag_sub ON tags(subcategory_id);
+CREATE INDEX IF NOT EXISTS idx_cat_group ON categories(group_id);
+CREATE INDEX IF NOT EXISTS idx_sub_group ON subcategories(group_id);
+CREATE INDEX IF NOT EXISTS idx_tag_group ON tags(group_id);
 CREATE INDEX IF NOT EXISTS idx_sub_fav ON sub_favorites(subcategory_id);
 CREATE INDEX IF NOT EXISTS idx_fav_tag ON favorites(tag_id);
 CREATE INDEX IF NOT EXISTS idx_presets_name ON presets(name);

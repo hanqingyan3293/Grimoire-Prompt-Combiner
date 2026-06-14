@@ -10,6 +10,7 @@ import { registerSettingsIPC } from "./ipc/settings.ipc"
 import { registerImagesIPC } from "./ipc/images.ipc"
 import { registerFavoritesIPC } from "./ipc/favorites.ipc"
 import { registerProvidersIPC, getActiveProvider } from "./ipc/providers.ipc"
+import { registerTagGroupsIPC } from "./ipc/tagGroups.ipc"
 import { chatStream, analyzeImage, saveChatMessage, getChatHistory } from "./services/ai.service"
 import { logError, getErrorLogs } from "./services/logger.service"
 import { IPC_CHANNELS } from "../shared/types"
@@ -36,7 +37,7 @@ function createSettingsWindow(): void {
     return
   }
   settingsWindow = new BrowserWindow({
-    width: 820, height: 640, minWidth: 600, minHeight: 500,
+    width: 900, height: 680, minWidth: 680, minHeight: 520,
     title: "设置 - 魔导书",
     parent: mainWindow || undefined,
     webPreferences: {
@@ -181,8 +182,11 @@ async function registerAllIPC(): Promise<void> {
   registerImagesIPC()
   registerFavoritesIPC()
   registerProvidersIPC()
+  registerTagGroupsIPC()
   // 迁移旧 settings 到 providers 表
   await migrateOldSettings()
+  // 确保默认标签组存在
+  const db2 = getDatabase(); const hasGrp = db2.exec('SELECT COUNT(*) as c FROM tag_groups'); if ((hasGrp[0]?.values?.[0]?.[0] as number)===0) { db2.run('INSERT INTO tag_groups (id,name,is_active) VALUES (?,?,?)',['default','默认标签库',1]); saveDatabase() }
 
   // 窗口管理
   ipcMain.handle("window:openSettings", async () => { createSettingsWindow() })

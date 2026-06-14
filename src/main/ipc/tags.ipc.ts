@@ -1,6 +1,7 @@
 ﻿// 魔导书 Grimoire v7 — 标签 IPC 处理器
 import { ipcMain, app } from "electron"
 import { getDatabase, saveDatabase } from "../database"
+import { getActiveGroupId } from "./tagGroups.ipc"
 import { IPC_CHANNELS } from "../../shared/types"
 import path from "path"
 import fs from "fs"
@@ -9,11 +10,16 @@ function genId(prefix: string): string {
   return prefix + Date.now().toString(36) + Math.random().toString(36).slice(2, 6)
 }
 
+
+function whereGroup(): string {
+  return " WHERE group_id='" + getActiveGroupId() + "'"
+}
+
 export function registerTagsIPC(): void {
   // 获取全部标签树
   ipcMain.handle(IPC_CHANNELS.TAGS_GET_ALL, async () => {
     const db = getDatabase()
-    const cats = db.exec("SELECT * FROM categories ORDER BY sort_order")
+    const cats = db.exec("SELECT * FROM categories WHERE group_id='PLACEHOLDER' ORDER BY sort_order")
     const subs = db.exec("SELECT * FROM subcategories ORDER BY sort_order")
     const tags = db.exec("SELECT * FROM tags ORDER BY sort_order")
     return {
@@ -57,7 +63,7 @@ export function registerTagsIPC(): void {
     const id = genId("cat_")
     const zh = data.zh.trim()
     if (!zh) throw new Error("大类名称不能为空")
-    const r = db.exec("SELECT COALESCE(MAX(sort_order),0)+1 as s FROM categories")
+    const r = db.exec("SELECT COALESCE(MAX(sort_order),0)+1 as s FROM categories WHERE group_id='PLACEHOLDER'")
     const so = (r[0]?.values?.[0]?.[0] as number) || 1
     db.run("INSERT INTO categories (id,en,zh,sort_order) VALUES (?,?,?,?)", [id, zh, zh, so])
     saveDatabase()
@@ -119,7 +125,7 @@ export function registerTagsIPC(): void {
     // Clear all tag data
     db.run("DELETE FROM tags")
     db.run("DELETE FROM subcategories")
-    db.run("DELETE FROM categories")
+    db.run("DELETE FROM categories WHERE group_id='PLACEHOLDER'")
 
     // Try multiple paths for tags.json
     const candidates = [

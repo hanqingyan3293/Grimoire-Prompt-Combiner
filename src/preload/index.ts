@@ -77,6 +77,17 @@ const api = {
     openAI: () => ipcRenderer.invoke("window:openAI"),
   },
 
+  tagGroups: {
+    list: () => ipcRenderer.invoke(IPC_CHANNELS.TAG_GROUPS_LIST),
+    create: (name: string, copyFrom?: string) => ipcRenderer.invoke(IPC_CHANNELS.TAG_GROUPS_CREATE, name, copyFrom),
+    delete: (id: string) => ipcRenderer.invoke(IPC_CHANNELS.TAG_GROUPS_DELETE, id),
+    rename: (id: string, name: string) => ipcRenderer.invoke(IPC_CHANNELS.TAG_GROUPS_RENAME, id, name),
+    copy: (id: string, name: string) => ipcRenderer.invoke(IPC_CHANNELS.TAG_GROUPS_COPY, id, name),
+    import: (data: any, name: string) => ipcRenderer.invoke(IPC_CHANNELS.TAG_GROUPS_IMPORT, data, name),
+    export: (id: string) => ipcRenderer.invoke(IPC_CHANNELS.TAG_GROUPS_EXPORT, id),
+    setActive: (id: string) => ipcRenderer.invoke(IPC_CHANNELS.TAG_GROUPS_SET_ACTIVE, id),
+  },
+
   providers: {
     list: (): Promise<import("../shared/types").Provider[]> =>
       ipcRenderer.invoke(IPC_CHANNELS.PROVIDERS_LIST),

@@ -2,6 +2,14 @@
 // Grimoire v7 — Shared Types
 // ============================================================
 
+/** Tag Group (标签库组) */
+export interface TagGroup {
+  id: string
+  name: string
+  is_active: boolean
+  created_at: string
+}
+
 /** Tag structure */
 export interface Tag {
   id: string
@@ -221,6 +229,16 @@ export const IPC_CHANNELS = {
   PROVIDERS_SET_ACTIVE: "providers:setActive",
   PROVIDERS_FETCH_MODELS: "providers:fetchModels",
   PROVIDERS_TEST: "providers:test",
+
+  // Tag Groups
+  TAG_GROUPS_LIST: "tagGroups:list",
+  TAG_GROUPS_CREATE: "tagGroups:create",
+  TAG_GROUPS_DELETE: "tagGroups:delete",
+  TAG_GROUPS_RENAME: "tagGroups:rename",
+  TAG_GROUPS_COPY: "tagGroups:copy",
+  TAG_GROUPS_IMPORT: "tagGroups:import",
+  TAG_GROUPS_EXPORT: "tagGroups:export",
+  TAG_GROUPS_SET_ACTIVE: "tagGroups:setActive",
 
   // Favorites
   FAV_TAG_LIST: "fav:tagList",
