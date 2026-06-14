@@ -249,14 +249,16 @@ export function ProviderEditor({ provider, onSave, onCancel }: Props) {
           <textarea value={configToml} onChange={e => setConfigToml(e.target.value)}
             rows={6}
             placeholder={`# config.toml\n[provider]\nname = "${name || "my-provider"}"\nbase_url = "${baseUrl}"\nmodel = "${defaultModel}"`}
-            className="w-full px-3 py-2 bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded text-xs font-mono text-[var(--color-text-primary)] focus:outline-none focus:border-[var(--color-accent)] resize-y" />
+            className="w-full px-3 py-2 bg-[var(--color-bg-tertiary)] border-2 border-[var(--color-border)] rounded text-xs font-mono text-[var(--color-text-primary)] cursor-text focus:outline-none focus:border-[var(--color-accent)] focus:ring-2 focus:ring-[var(--color-accent)]/20 focus:bg-[var(--color-bg-primary)] resize-y transition-colors"
+            spellCheck={false} />
         </Field>
 
         <Field label="auth.json 编辑" desc="认证配置文件">
           <textarea value={authJson} onChange={e => setAuthJson(e.target.value)}
             rows={6}
             placeholder={`{\n  "api_key": "...",\n  "base_url": "${baseUrl}",\n  "model": "${defaultModel}"\n}`}
-            className="w-full px-3 py-2 bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded text-xs font-mono text-[var(--color-text-primary)] focus:outline-none focus:border-[var(--color-accent)] resize-y" />
+            className="w-full px-3 py-2 bg-[var(--color-bg-tertiary)] border-2 border-[var(--color-border)] rounded text-xs font-mono text-[var(--color-text-primary)] cursor-text focus:outline-none focus:border-[var(--color-accent)] focus:ring-2 focus:ring-[var(--color-accent)]/20 focus:bg-[var(--color-bg-primary)] resize-y transition-colors"
+            spellCheck={false} />
         </Field>
       </div>
 

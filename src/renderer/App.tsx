@@ -51,6 +51,17 @@ function AppInner() {
     }
   }, [])
 
+  // 跨窗口数据同步：监听主进程广播的 data:refresh
+  useEffect(() => {
+    let cleanup: (() => void) | null = null
+    try {
+      cleanup = window.api.db.onRefresh(() => {
+        window.dispatchEvent(new CustomEvent('grimoire:refresh'))
+      })
+    } catch {}
+    return () => { if (cleanup) cleanup() }
+  }, [])
+
     // 设置独立窗口
   if (windowType === "settings") {
     return (

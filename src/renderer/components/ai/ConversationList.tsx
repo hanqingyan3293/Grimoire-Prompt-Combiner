@@ -106,48 +106,41 @@ export function ConversationList({ onClose }: Props) {
         </div>
       </div>
 
-      {/* 分组下拉 */}
-      <div className="px-3 py-2 border-b border-[var(--color-border)]/50">
-        <button onClick={() => setGroupMenuOpen(!groupMenuOpen)}
-          className="w-full flex items-center gap-2 text-xs text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]">
-          <span>📁</span>
-          <span className="flex-1 text-left">
-            {activeGroup === 'all' ? '按时间分组' :
-             activeGroup === 'time' ? '按时间分组' :
-             groups.find(g => g.id === activeGroup)?.name || '选择分组'}
-          </span>
-          <span className="text-[10px]">{groupMenuOpen ? '▲' : '▼'}</span>
+      {/* 分组标签栏 */}
+      <div className="px-2 py-1.5 border-b border-[var(--color-border)]/50 flex items-center gap-1 flex-wrap">
+        <button
+          onClick={() => setActiveGroup('all')}
+          className={"px-2 py-1 text-[11px] rounded-full border transition-colors " + (activeGroup === 'all' ? 'bg-[var(--color-accent)]/15 border-[var(--color-accent)]/30 text-[var(--color-accent)] font-medium' : 'border-[var(--color-border)] text-[var(--color-text-secondary)] hover:bg-[var(--color-accent)]/10')}>
+          🕐 时间
         </button>
-        {groupMenuOpen && (
-          <div className="mt-1 bg-[var(--color-bg-tertiary)] border border-[var(--color-border)] rounded-lg p-1 shadow-lg">
-            <button onClick={() => { setActiveGroup('all'); setGroupMenuOpen(false) }}
-              className={"w-full text-left px-3 py-1.5 text-xs rounded " + (activeGroup === 'all' ? 'bg-[var(--color-accent)]/15 text-[var(--color-accent)]' : 'text-[var(--color-text-primary)] hover:bg-[var(--color-bg-primary)]')}>
-              按时间分组
-            </button>
-            <div className="border-t border-[var(--color-border)]/30 my-1" />
-            {groups.map(g => (
-              <button key={g.id} onClick={() => { setActiveGroup(g.id); setGroupMenuOpen(false) }}
-                className={"w-full text-left px-3 py-1.5 text-xs rounded " + (activeGroup === g.id ? 'bg-[var(--color-accent)]/15 text-[var(--color-accent)]' : 'text-[var(--color-text-primary)] hover:bg-[var(--color-bg-primary)]')}>
-                {g.name}
-              </button>
-            ))}
-            <div className="border-t border-[var(--color-border)]/30 my-1" />
-            {showNewGroup ? (
-              <div className="flex gap-1 px-1">
-                <input value={newGroupName} onChange={e => setNewGroupName(e.target.value)}
-                  onKeyDown={e => { if (e.key === 'Enter') { createGroup(newGroupName); setNewGroupName(''); setShowNewGroup(false) } if (e.key === 'Escape') setShowNewGroup(false) }}
-                  placeholder="分组名" autoFocus
-                  className="flex-1 px-2 py-1 text-xs bg-[var(--color-bg-primary)] border border-[var(--color-accent)] rounded" />
-                <button onClick={() => { createGroup(newGroupName); setNewGroupName(''); setShowNewGroup(false) }}
-                  className="px-2 py-1 text-xs bg-[var(--color-accent)] text-white rounded">确定</button>
-              </div>
-            ) : (
-              <button onClick={() => setShowNewGroup(true)}
-                className="w-full text-left px-3 py-1.5 text-xs text-[var(--color-text-primary)] hover:bg-[var(--color-bg-primary)] rounded">
-                + 新建分组
-              </button>
-            )}
+        {groups.map(g => (
+          <button key={g.id}
+            onClick={() => setActiveGroup(g.id)}
+            className={"px-2 py-1 text-[11px] rounded-full border transition-colors max-w-[100px] truncate " + (activeGroup === g.id ? 'bg-[var(--color-accent)]/15 border-[var(--color-accent)]/30 text-[var(--color-accent)] font-medium' : 'border-[var(--color-border)] text-[var(--color-text-secondary)] hover:bg-[var(--color-accent)]/10')}>
+            {g.name}
+          </button>
+        ))}
+        {showNewGroup ? (
+          <div className="flex items-center gap-1">
+            <input
+              value={newGroupName}
+              onChange={e => setNewGroupName(e.target.value)}
+              onKeyDown={e => {
+                if (e.key === 'Enter') { createGroup(newGroupName); setNewGroupName(''); setShowNewGroup(false) }
+                if (e.key === 'Escape') { setNewGroupName(''); setShowNewGroup(false) }
+              }}
+              placeholder="分组名"
+              autoFocus
+              className="w-16 px-1.5 py-0.5 text-[10px] bg-[var(--color-bg-primary)] border border-[var(--color-accent)] rounded-full outline-none"
+            />
           </div>
+        ) : (
+          <button
+            onClick={() => setShowNewGroup(true)}
+            className="px-2 py-1 text-[11px] rounded-full border border-dashed border-[var(--color-border)] text-[var(--color-text-secondary)] hover:border-[var(--color-accent)]/50 hover:text-[var(--color-accent)] transition-colors"
+            title="新建分组">
+            + 新建
+          </button>
         )}
       </div>
 

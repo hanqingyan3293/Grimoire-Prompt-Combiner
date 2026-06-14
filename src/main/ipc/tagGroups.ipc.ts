@@ -1,5 +1,11 @@
 // 魔导书 Grimoire v7 — 标签组 IPC
-import { ipcMain } from "electron"
+import { ipcMain, BrowserWindow } from "electron"
+
+function broadcastRefresh() {
+  for (const win of BrowserWindow.getAllWindows()) {
+    if (!win.isDestroyed()) win.webContents.send('data:refresh')
+  }
+}
 import { getDatabase, saveDatabase } from "../database"
 import { IPC_CHANNELS } from "../../shared/types"
 import crypto from "crypto"
@@ -35,6 +41,7 @@ export function registerTagGroupsIPC(): void {
       for (const t of tags[0]?.values || []) db.run("INSERT INTO tags (id,group_id,subcategory_id,en,zh,sort_order,source) VALUES (?,?,?,?,?,?,?)", [t[0], id, t[2], t[3], t[4], t[5], t[6]])
     }
     saveDatabase()
+    broadcastRefresh()
     return { id }
   })
 
@@ -46,6 +53,7 @@ export function registerTagGroupsIPC(): void {
     db.run("DELETE FROM categories WHERE group_id=?", [id])
     db.run("DELETE FROM tag_groups WHERE id=?", [id])
     saveDatabase()
+    broadcastRefresh()
     return true
   })
 
@@ -54,6 +62,7 @@ export function registerTagGroupsIPC(): void {
     const db = getDatabase()
     db.run("UPDATE tag_groups SET name=? WHERE id=?", [name, id])
     saveDatabase()
+    broadcastRefresh()
     return true
   })
 
@@ -69,6 +78,7 @@ export function registerTagGroupsIPC(): void {
     for (const s of subs[0]?.values || []) db.run("INSERT INTO subcategories (id,group_id,category_id,en,zh,sort_order) VALUES (?,?,?,?,?,?)", [s[0], newId, s[2], s[3], s[4], s[5]])
     for (const t of tags[0]?.values || []) db.run("INSERT INTO tags (id,group_id,subcategory_id,en,zh,sort_order,source) VALUES (?,?,?,?,?,?,?)", [t[0], newId, t[2], t[3], t[4], t[5], t[6]])
     saveDatabase()
+    broadcastRefresh()
     return { id: newId }
   })
 
@@ -78,6 +88,7 @@ export function registerTagGroupsIPC(): void {
     db.run("UPDATE tag_groups SET is_active=0")
     db.run("UPDATE tag_groups SET is_active=1 WHERE id=?", [id])
     saveDatabase()
+    broadcastRefresh()
     return true
   })
 
@@ -105,6 +116,7 @@ export function registerTagGroupsIPC(): void {
     for (const s of data.subcategories || []) db.run("INSERT OR REPLACE INTO subcategories (id,group_id,category_id,en,zh,sort_order) VALUES (?,?,?,?,?,?)", [s.id, id, s.category_id, s.en, s.zh, s.sort_order||0])
     for (const t of data.tags || []) db.run("INSERT OR REPLACE INTO tags (id,group_id,subcategory_id,en,zh,sort_order,source) VALUES (?,?,?,?,?,?,?)", [t.id, id, t.subcategory_id, t.en, t.zh, t.sort_order||0, t.source||'custom'])
     saveDatabase()
+    broadcastRefresh()
     return { id }
   })
 }

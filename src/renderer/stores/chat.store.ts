@@ -44,6 +44,7 @@ interface ChatState {
 
   // 写操作队列
   _writeQueue: Promise<void>
+  _chunkCleanup: (() => void) | null
 
   // 分组
   loadGroups: () => Promise<void>
@@ -72,6 +73,18 @@ function toast(msg: string, type: 'success' | 'error' | 'info' = 'info') {
   window.dispatchEvent(new CustomEvent('grimoire:toast', { detail: { message: msg, type } }))
 }
 
+// 跨窗口刷新监听
+if (typeof window !== 'undefined') {
+  window.addEventListener('grimoire:refresh', () => {
+    const state = useChatStore.getState()
+    state.loadConversations().catch(() => {})
+    state.loadGroups().catch(() => {})
+    if (state.activeConversationId) {
+      state.loadMessages(state.activeConversationId).catch(() => {})
+    }
+  })
+}
+
 export const useChatStore = create<ChatState>((set, get) => ({
   conversations: [],
   activeConversationId: null,
@@ -81,6 +94,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
   loadingConv: false,
   loadingMsg: false,
   _writeQueue: Promise.resolve(),
+  _chunkCleanup: null,
 
   // ========== 分组 ==========
   loadGroups: async () => {
@@ -243,7 +257,9 @@ export const useChatStore = create<ChatState>((set, get) => ({
       apiMessages.unshift({ role: 'system', content: conv.system_prompt })
     }
 
-    // 6. 注册流式回调
+    // 6. 注册流式回调（先清理旧的）
+    const { _chunkCleanup: oldCleanup } = get()
+    if (oldCleanup) { oldCleanup(); set({ _chunkCleanup: null }) }
     let cleanup: (() => void) | null = null
     try {
       cleanup = window.api.ai.onChunk((data: any) => {

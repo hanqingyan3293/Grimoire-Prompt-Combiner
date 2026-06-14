@@ -124,7 +124,7 @@ function SimpleChat() {
                 </button>
               ))}
               {conversations.length === 0 && (
-                <div className="px-3 py-2 text-[10px] text-[var(--color-text-secondary)]">No conversations</div>
+                <div className="px-3 py-2 text-[10px] text-[var(--color-text-secondary)]">暂无对话</div>
               )}
             </div>
           )}
@@ -140,7 +140,7 @@ function SimpleChat() {
         {messages.length === 0 && !isStreaming && (
           <div className="text-center text-[var(--color-text-secondary)] mt-8">
             <div className="text-3xl mb-2">AI</div>
-            <div className="text-[11px]">Send a message to start</div>
+            <div className="text-[11px]">发送消息开始对话</div>
           </div>
         )}
         {messages.map(msg => (
@@ -454,9 +454,9 @@ function SimpleVision() {
                 <button onClick={selectAll} className="text-[10px] text-[var(--color-accent)] hover:underline">全选</button>
                 <button onClick={clearSel} className="text-[10px] text-[var(--color-text-secondary)] hover:underline">取消</button>
                 <button onClick={copySel} className="text-[10px] text-[var(--color-text-secondary)] hover:underline">复制</button>
-                <button onClick={addToPositive} className="text-[10px] text-green-400 hover:underline">+Pos</button>
-                <button onClick={addToNegative} className="text-[10px] text-red-400 hover:underline">+Neg</button>
-                <button onClick={addToLibrary} className="text-[10px] text-[var(--color-accent)] hover:underline">+Lib</button>
+                <button onClick={addToPositive} className="text-[10px] text-green-400 hover:underline">+正面</button>
+                <button onClick={addToNegative} className="text-[10px] text-red-400 hover:underline">+负面</button>
+                <button onClick={addToLibrary} className="text-[10px] text-[var(--color-accent)] hover:underline">+标签库</button>
                 <button onClick={exportJSON} className="text-[10px] text-[var(--color-text-secondary)] hover:underline">导出</button>
               </div>
             </div>
@@ -482,7 +482,7 @@ function SimpleVision() {
         )}
         {!analyzing && suggestions.length === 0 && images.length > 0 && (
           <div className="text-center text-[var(--color-text-secondary)] mt-4 text-[11px]">
-            Click "分析" to recognize tags
+            点击分析按钮进行识图
           </div>
         )}
       </div>

@@ -1,4 +1,4 @@
-// 魔导书 Grimoire v7 — Electron 主进程入口
+﻿// 魔导书 Grimoire v7 — Electron 主进程入口
 import { app, BrowserWindow, ipcMain, Menu, dialog, shell } from "electron"
 import path from "path"
 import fs from "fs"
@@ -9,11 +9,10 @@ import { registerHistoryIPC } from "./ipc/history.ipc"
 import { registerSettingsIPC } from "./ipc/settings.ipc"
 import { registerImagesIPC } from "./ipc/images.ipc"
 import { registerFavoritesIPC } from "./ipc/favorites.ipc"
-import { registerProvidersIPC, getActiveProvider } from "./ipc/providers.ipc"
+import { registerProvidersIPC } from "./ipc/providers.ipc"
 import { registerTagGroupsIPC } from "./ipc/tagGroups.ipc"
 import { registerAIIPC } from "./ipc/ai.ipc"
 import { registerChatIPC } from "./ipc/chat.ipc"
-import { chatStream, analyzeImage, saveChatMessage, getChatHistory } from "./services/ai.service"
 import { logError, getErrorLogs } from "./services/logger.service"
 import { IPC_CHANNELS } from "../shared/types"
 
@@ -196,30 +195,7 @@ async function registerAllIPC(): Promise<void> {
   ipcMain.handle("window:openSettings", async () => { createSettingsWindow() })
   ipcMain.handle("window:openAI", async () => { createAIWindow() })
 
-  ipcMain.handle(IPC_CHANNELS.AI_CHAT, async (_event, messages, modelOverride?: string) => {
-    return new Promise(async (resolve) => {
-      const provider = await getActiveProvider()
-      if (!provider) { resolve({ success: false, error: "请先在设置中配置供应商" }); return }
-      let fullText = ""
-      chatStream(messages as any, { api_key: provider.api_key, api_endpoint: provider.base_url, api_model: modelOverride || provider.default_model },
-        (chunk) => { mainWindow?.webContents.send("ai:chunk", chunk) },
-        (text) => {
-          fullText = text
-          if (messages.length > 0) {
-            const lastMsg = messages[messages.length - 1]
-            const content = typeof lastMsg.content === "string" ? lastMsg.content : "[image]"
-            saveChatMessage("user", content, "")
-          }
-          saveChatMessage("assistant", fullText, "")
-          resolve({ success: true, text: fullText })
-        },
-        (error) => { resolve({ success: false, error }) }
-      )
-    })
-  })
 
-
-  ipcMain.handle(IPC_CHANNELS.AI_CHAT_HISTORY, async () => getChatHistory(100))
   ipcMain.handle(IPC_CHANNELS.ERROR_GET_ALL, async () => getErrorLogs(50))
   ipcMain.handle(IPC_CHANNELS.ERROR_LOG, async (_event, message: string, stack: string, context: string) => { logError(message, stack, context) })
 
@@ -237,7 +213,7 @@ async function registerAllIPC(): Promise<void> {
 
 async function initDefaultTags(): Promise<void> {
   const db = getDatabase()
-  const count = db.exec("SELECT COUNT(*) as c FROM tags")
+  const count = db.exec("SELECT COUNT(*) as c FROM tags WHERE group_id='default'")
   const tagCount = count[0]?.values?.[0]?.[0] as number || 0
   if (tagCount === 0) {
     const devPath = path.join(__dirname, "../../../data/tags.json")

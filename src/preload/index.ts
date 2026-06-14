@@ -142,6 +142,11 @@ const api = {
       ipcRenderer.on("db:reloaded", handler)
       return () => ipcRenderer.removeListener("db:reloaded", handler)
     },
+    onRefresh: (callback: () => void) => {
+      const handler = () => callback()
+      ipcRenderer.on("data:refresh", handler)
+      return () => ipcRenderer.removeListener("data:refresh", handler)
+    },
   },
 }
 

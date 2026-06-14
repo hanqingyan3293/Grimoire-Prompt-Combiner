@@ -1,4 +1,4 @@
-// 魔导书 Grimoire v7 — SQLite 数据库管理
+﻿// 魔导书 Grimoire v7 — SQLite 数据库管理
 import initSqlJs, { Database as SqlJsDatabase, SqlJsStatic } from 'sql.js'
 import path from 'path'
 import fs from 'fs'
@@ -265,13 +265,13 @@ export async function importDefaultTags(tagsData: string): Promise<void> {
   }>
   
   const insertCat = database.prepare(
-    'INSERT OR REPLACE INTO categories (id, en, zh, sort_order) VALUES (?, ?, ?, ?)'
+    `INSERT OR REPLACE INTO categories (id, group_id, en, zh, sort_order) VALUES (?,'default', ?, ?, ?)`
   )
   const insertSub = database.prepare(
-    'INSERT OR REPLACE INTO subcategories (id, category_id, en, zh, sort_order) VALUES (?, ?, ?, ?, ?)'
+    `INSERT OR REPLACE INTO subcategories (id, group_id, category_id, en, zh, sort_order) VALUES (?,'default', ?, ?, ?, ?)`
   )
   const insertTag = database.prepare(
-    'INSERT OR REPLACE INTO tags (id, subcategory_id, en, zh, sort_order, source) VALUES (?, ?, ?, ?, ?, ?)'
+    `INSERT OR REPLACE INTO tags (id, group_id, subcategory_id, en, zh, sort_order, source) VALUES (?,'default', ?, ?, ?, ?, ?)`
   )
   
   for (const cat of categories) {
