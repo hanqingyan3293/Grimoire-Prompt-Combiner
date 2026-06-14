@@ -184,6 +184,10 @@ async function registerAllIPC(): Promise<void> {
   // 迁移旧 settings 到 providers 表
   await migrateOldSettings()
 
+  // 窗口管理
+  ipcMain.handle("window:openSettings", async () => { createSettingsWindow() })
+  ipcMain.handle("window:openAI", async () => { createAIWindow() })
+
   ipcMain.handle(IPC_CHANNELS.AI_CHAT, async (_event, messages, modelOverride?: string) => {
     return new Promise(async (resolve) => {
       const provider = await getActiveProvider()

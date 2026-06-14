@@ -148,7 +148,7 @@ function SimpleVision() {
     <div className="flex flex-col h-full">
       <div className="p-2 border-b border-[var(--color-border)]">
         <div onDrop={handleDrop} onDragOver={handleDragOver} onDragLeave={() => setDragging(false)}
-          className={"border-2 border-dashed rounded p-3 text-center cursor-pointer transition-colors " + (dragging ? "border-[var(--color-accent)] bg-[var(--color-accent)]/5" : "border-[var(--color-border)] hover:border-[var(--color-accent)]/40")}
+          className={"border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors min-h-[120px] flex items-center justify-center " + (dragging ? "border-[var(--color-accent)] bg-[var(--color-accent)]/5" : "border-[var(--color-border)] hover:border-[var(--color-accent)]/40")}
           onClick={() => document.getElementById("sv-input")?.click()}>
           {images.length > 0 ? (
             <div className="flex gap-1 overflow-x-auto">
