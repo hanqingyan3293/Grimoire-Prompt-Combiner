@@ -48,6 +48,8 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
 
       document.documentElement.setAttribute("data-theme", raw.theme || "neon")
       document.documentElement.setAttribute("data-lang", raw.language || "zh")
+      const scaleNum = parseInt(raw.ui_scale) || 100
+      document.documentElement.style.setProperty("--ui-scale", String(scaleNum / 100))
       document.documentElement.setAttribute("data-ui-scale", scale)
       document.documentElement.style.setProperty("--color-accent", acc)
     } catch {
@@ -61,7 +63,10 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
 
     if (key === "theme") document.documentElement.setAttribute("data-theme", value)
     if (key === "language") document.documentElement.setAttribute("data-lang", value)
-    if (key === "ui_scale") document.documentElement.setAttribute("data-ui-scale", value)
+    if (key === "ui_scale") {
+      const numVal = parseInt(value) || 100
+      document.documentElement.style.setProperty("--ui-scale", String(numVal / 100))
+    }
     if (key === "custom_accent") document.documentElement.style.setProperty("--color-accent", value)
     if (key.startsWith("shortcut_")) {
       const sk = key.replace("shortcut_", "")

@@ -1,12 +1,6 @@
 
 // 魔导书 Grimoire v7 — Provider IPC 处理器
-import { ipcMain, safeStorage, BrowserWindow } from "electron"
-
-function broadcastRefresh() {
-  for (const win of BrowserWindow.getAllWindows()) {
-    if (!win.isDestroyed()) win.webContents.send('data:refresh')
-  }
-}
+import { ipcMain, safeStorage } from "electron"
 import { getDatabase, saveDatabase } from "../database"
 import { IPC_CHANNELS, Provider } from "../../shared/types"
 
@@ -76,7 +70,6 @@ export function registerProvidersIPC(): void {
       )
     }
     saveDatabase()
-    broadcastRefresh()
     return { id }
   })
 
@@ -85,7 +78,6 @@ export function registerProvidersIPC(): void {
     const db = getDatabase()
     db.run("DELETE FROM providers WHERE id=?", [id])
     saveDatabase()
-    broadcastRefresh()
     return true
   })
 
@@ -95,7 +87,6 @@ export function registerProvidersIPC(): void {
     db.run("UPDATE providers SET is_active=0")
     db.run("UPDATE providers SET is_active=1 WHERE id=?", [id])
     saveDatabase()
-    broadcastRefresh()
     return true
   })
 

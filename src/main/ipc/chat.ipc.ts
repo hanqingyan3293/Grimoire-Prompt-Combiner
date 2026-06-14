@@ -1,15 +1,7 @@
 // 魔导书 Grimoire v7 — 对话/消息 IPC
-import { ipcMain, BrowserWindow } from 'electron'
+import { ipcMain } from 'electron'
 import { getDatabase, saveDatabase } from '../database'
 import crypto from 'crypto'
-
-function broadcastRefresh() {
-  for (const win of BrowserWindow.getAllWindows()) {
-    if (!win.isDestroyed()) {
-      win.webContents.send('data:refresh')
-    }
-  }
-}
 
 const genId = () => crypto.randomUUID()
 
@@ -28,7 +20,6 @@ export function registerChatIPC(): void {
     const id = genId()
     db.run('INSERT INTO chat_groups (id, name) VALUES (?,?)', [id, name])
     saveDatabase()
-    broadcastRefresh()
     return { id, name }
   })
 
@@ -36,7 +27,6 @@ export function registerChatIPC(): void {
     const db = getDatabase()
     db.run('DELETE FROM chat_groups WHERE id=? AND id!=?', [id, 'default'])
     saveDatabase()
-    broadcastRefresh()
     return true
   })
 
@@ -44,7 +34,6 @@ export function registerChatIPC(): void {
     const db = getDatabase()
     db.run('UPDATE chat_groups SET name=? WHERE id=?', [name, id])
     saveDatabase()
-    broadcastRefresh()
     return true
   })
 
@@ -69,7 +58,6 @@ export function registerChatIPC(): void {
       [id, data.group_id || '', data.provider_id, data.title || '新对话', data.model]
     )
     saveDatabase()
-    broadcastRefresh()
     return { id, title: data.title || '新对话' }
   })
 
@@ -78,7 +66,6 @@ export function registerChatIPC(): void {
     db.run('DELETE FROM chat_messages WHERE conv_id=?', [id])
     db.run('DELETE FROM conversations WHERE id=?', [id])
     saveDatabase()
-    broadcastRefresh()
     return true
   })
 
@@ -106,7 +93,6 @@ export function registerChatIPC(): void {
     const db = getDatabase()
     db.run("UPDATE conversations SET group_id=?, updated_at=datetime('now','localtime') WHERE id=?", [groupId, convId])
     saveDatabase()
-    broadcastRefresh()
     return true
   })
 
@@ -135,7 +121,6 @@ export function registerChatIPC(): void {
     }
     db.run("UPDATE conversations SET updated_at=datetime('now','localtime') WHERE id=?", [msg.conv_id])
     saveDatabase()
-    broadcastRefresh()
     return { id }
   })
 
@@ -143,7 +128,6 @@ export function registerChatIPC(): void {
     const db = getDatabase()
     db.run('DELETE FROM chat_messages WHERE id=?', [id])
     saveDatabase()
-    broadcastRefresh()
     return true
   })
 
@@ -151,7 +135,6 @@ export function registerChatIPC(): void {
     const db = getDatabase()
     db.run('DELETE FROM chat_messages WHERE conv_id=?', [convId])
     saveDatabase()
-    broadcastRefresh()
     return true
   })
 }
