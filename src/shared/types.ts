@@ -140,6 +140,32 @@ export interface ErrorLog {
 }
 
 /** IPC channel names */
+
+/** Provider / API 供应商配置 */
+export interface Provider {
+  id: string
+  name: string
+  access_mode: "login" | "api"
+  protocol: "chat_completions" | "responses"
+  base_url: string
+  api_key: string
+  default_model: string
+  test_model: string
+  context_size: number | null
+  models: string[]
+  is_active: boolean
+  config_toml: string
+  auth_json: string
+  created_at: string
+  updated_at: string
+}
+
+/** 上游模型信息 */
+export interface AIModelInfo {
+  id: string
+  object: string
+  owned_by?: string
+}
 export const IPC_CHANNELS = {
   // Tags
   TAGS_GET_ALL: "tags:getAll",
@@ -187,6 +213,14 @@ export const IPC_CHANNELS = {
   // Database
   DB_EXPORT: "db:export",
   DB_IMPORT: "db:import",
+
+  // Providers
+  PROVIDERS_LIST: "providers:list",
+  PROVIDERS_SAVE: "providers:save",
+  PROVIDERS_DELETE: "providers:delete",
+  PROVIDERS_SET_ACTIVE: "providers:setActive",
+  PROVIDERS_FETCH_MODELS: "providers:fetchModels",
+  PROVIDERS_TEST: "providers:test",
 
   // Favorites
   FAV_TAG_LIST: "fav:tagList",

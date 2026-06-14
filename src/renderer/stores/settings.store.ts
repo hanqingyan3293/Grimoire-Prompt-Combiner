@@ -9,9 +9,6 @@ interface SettingsState extends AppSettings {
 }
 
 export const useSettingsStore = create<SettingsState>((set, get) => ({
-  api_key: "",
-  api_endpoint: "https://api.openai.com/v1",
-  api_model: "gpt-4o",
   theme: "neon",
   language: "zh",
   custom_accent: "#a855f7",
@@ -28,9 +25,6 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
       const acc = raw.custom_accent || "#a855f7"
       const scale = raw.ui_scale || "medium"
       set({
-        api_key: raw.api_key || "",
-        api_endpoint: raw.api_endpoint || "https://api.openai.com/v1",
-        api_model: raw.api_model || "gpt-4o",
         theme: raw.theme || "neon",
         language: (raw.language as "zh" | "en") || "zh",
         custom_accent: acc,

@@ -94,6 +94,25 @@ CREATE TABLE IF NOT EXISTS chat_messages (
   created_at TEXT DEFAULT (datetime('now','localtime'))
 );
 
+
+CREATE TABLE IF NOT EXISTS providers (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  access_mode TEXT DEFAULT 'api',
+  protocol TEXT DEFAULT 'chat_completions',
+  base_url TEXT NOT NULL DEFAULT 'https://api.openai.com/v1',
+  api_key TEXT DEFAULT '',
+  default_model TEXT DEFAULT 'gpt-4o',
+  test_model TEXT DEFAULT 'gpt-4o-mini',
+  context_size INTEGER,
+  models TEXT DEFAULT '[]',
+  is_active INTEGER DEFAULT 0,
+  config_toml TEXT DEFAULT '',
+  auth_json TEXT DEFAULT '',
+  created_at TEXT DEFAULT (datetime('now','localtime')),
+  updated_at TEXT DEFAULT (datetime('now','localtime'))
+);
+
 CREATE TABLE IF NOT EXISTS error_logs (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   message TEXT NOT NULL,

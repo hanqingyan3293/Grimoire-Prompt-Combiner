@@ -54,8 +54,8 @@ const api = {
   },
 
   ai: {
-    chat: (messages: Array<{ role: string; content: string | Array<{ type: string; text?: string; image_url?: { url: string } }> }>) =>
-      ipcRenderer.invoke(IPC_CHANNELS.AI_CHAT, messages),
+    chat: (messages: Array<{ role: string; content: string | Array<{ type: string; text?: string; image_url?: { url: string } }> }>, model?: string) =>
+      ipcRenderer.invoke(IPC_CHANNELS.AI_CHAT, messages, model),
     vision: (imageBase64: string, prompt?: string) =>
       ipcRenderer.invoke(IPC_CHANNELS.AI_VISION, imageBase64, prompt),
     chatHistory: (): Promise<ChatMessage[]> => ipcRenderer.invoke(IPC_CHANNELS.AI_CHAT_HISTORY),
@@ -70,6 +70,21 @@ const api = {
     getAll: (): Promise<ErrorLog[]> => ipcRenderer.invoke(IPC_CHANNELS.ERROR_GET_ALL),
     log: (message: string, stack?: string, context?: string) =>
       ipcRenderer.invoke(IPC_CHANNELS.ERROR_LOG, message, stack || "", context || ""),
+  },
+
+  providers: {
+    list: (): Promise<import("../shared/types").Provider[]> =>
+      ipcRenderer.invoke(IPC_CHANNELS.PROVIDERS_LIST),
+    save: (data: Partial<import("../shared/types").Provider> & { id?: string }) =>
+      ipcRenderer.invoke(IPC_CHANNELS.PROVIDERS_SAVE, data),
+    delete: (id: string) =>
+      ipcRenderer.invoke(IPC_CHANNELS.PROVIDERS_DELETE, id),
+    setActive: (id: string) =>
+      ipcRenderer.invoke(IPC_CHANNELS.PROVIDERS_SET_ACTIVE, id),
+    fetchModels: (baseUrl: string, apiKey: string) =>
+      ipcRenderer.invoke(IPC_CHANNELS.PROVIDERS_FETCH_MODELS, baseUrl, apiKey),
+    test: (baseUrl: string, apiKey: string, model: string) =>
+      ipcRenderer.invoke(IPC_CHANNELS.PROVIDERS_TEST, baseUrl, apiKey, model),
   },
 
   favorites: {

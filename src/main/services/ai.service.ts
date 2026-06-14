@@ -1,28 +1,7 @@
 // 魔导书 Grimoire v7 — AI 服务（OpenAI 兼容 API）
-import { getDatabase, saveDatabase } from '../database'
 import crypto from 'crypto'
 
-interface AISettings {
-  api_key: string
-  api_endpoint: string
-  api_model: string
-}
-
-function getAISettings(): AISettings {
-  const db = getDatabase()
-  const result = db.exec("SELECT key, value FROM settings WHERE key IN ('api_key','api_endpoint','api_model')")
-  const settings: Record<string, string> = {}
-  // Decrypt logic handled in settings IPC; here we read raw
-  for (const row of result[0]?.values || []) {
-    settings[row[0] as string] = (row[1] as string) || ''
-  }
-  
-  return {
-    api_key: settings.api_key || '',
-    api_endpoint: settings.api_endpoint || 'https://api.openai.com/v1',
-    api_model: settings.api_model || 'gpt-4o',
-  }
-}
+// Provider 配置由调用方传入
 
 /** 聊天消息格式 */
 interface AIMessage {
@@ -45,12 +24,13 @@ function normalizeMessages(messages: AIMessage[]): Array<{ role: string; content
 /** 发送聊天请求（流式） */
 export async function chatStream(
   messages: AIMessage[],
+  provider: { api_key: string; api_endpoint: string; api_model: string },
   onChunk: (text: string) => void,
   onDone: (fullText: string) => void,
   onError: (error: string) => void,
   signal?: AbortSignal
 ): Promise<void> {
-  const settings = getAISettings()
+  const settings = { api_key: provider.api_key, api_endpoint: provider.api_endpoint, api_model: provider.api_model }
   
   if (!settings.api_key) {
     onError('请先在设置中填入 API Key')
@@ -134,9 +114,10 @@ export async function chatStream(
 /** 图片识别 */
 export async function analyzeImage(
   imageBase64: string,
-  prompt: string
+  prompt: string,
+  provider?: { api_key: string; api_endpoint: string; api_model: string }
 ): Promise<string> {
-  const settings = getAISettings()
+  const settings = provider || { api_key: '', api_endpoint: 'https://api.openai.com/v1', api_model: 'gpt-4o' }
   
   if (!settings.api_key) {
     throw new Error('请先在设置中填入 API Key')

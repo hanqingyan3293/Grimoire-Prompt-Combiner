@@ -81,7 +81,7 @@ export const useAIStore = create<AIState>((set, get) => ({
         content: m.content,
       }))
       
-      const result = await window.api.ai.chat(allMessages)
+      const result = await window.api.ai.chat(allMessages, model)
       
       if (result.success) {
         const assistantMsg: AIMessage = {

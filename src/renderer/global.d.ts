@@ -44,7 +44,7 @@ interface GrimoireAPI {
     delete: (id: number) => Promise<boolean>
   }
   ai: {
-    chat: (messages: Array<{ role: string; content: string | Array<{ type: string; text?: string; image_url?: { url: string } }> }>) => Promise<{ success: boolean; text?: string; error?: string }>
+    chat: (messages: Array<{ role: string; content: string | Array<{ type: string; text?: string; image_url?: { url: string } }> }>, model?: string) => Promise<{ success: boolean; text?: string; error?: string }>
     vision: (imageBase64: string, prompt?: string) => Promise<{ success: boolean; text?: string; error?: string }>
     chatHistory: () => Promise<Array<{ id: string; role: string; content: string; model: string; created_at: string }>>
     onChunk: (callback: (text: string) => void) => () => void

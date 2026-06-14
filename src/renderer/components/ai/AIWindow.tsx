@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useRef } from "react"
 import { useAIStore } from "../../stores/ai.store"
 import { useSettingsStore } from "../../stores/settings.store"
+import { useProviderStore } from "../../stores/providers.store"
 import { usePromptsStore } from "../../stores/prompts.store"
 import { useTagsStore } from "../../stores/tags.store"
 import ReactMarkdown from "react-markdown"
@@ -89,12 +90,17 @@ export function AIWindow({ onClose }: { onClose: () => void }) {
 
 function ChatView() {
   const { messages, streaming, streamingText, error, sendMessage, loadHistory, clearMessages, clearError } = useAIStore()
-  const { api_model, api_key } = useSettingsStore()
+  const { activeProvider } = useProviderStore()
+  const selectedModels = activeProvider?.models || []
+  const defaultModel = activeProvider?.default_model || "gpt-4o"
+  const hasApiKey = !!activeProvider?.api_key
+  const [selectedModel, setSelectedModel] = useState(defaultModel)
   const [input, setInput] = useState("")
   const [historyList, setHistoryList] = useState<Array<{ id: string; role: string; content: string; model: string; created_at: string }>>([])
   const bottomRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => { loadHistory(); loadHistoryList() }, [])
+  useEffect(() => { setSelectedModel(defaultModel) }, [defaultModel])
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "smooth" }) }, [messages, streamingText])
 
   const loadHistoryList = async () => {
@@ -103,9 +109,9 @@ function ChatView() {
 
   const handleSend = async () => {
     if (!input.trim() || streaming) return
-    if (!api_key) { showToast("请先在设置中配置 API Key", "error"); return }
+    if (!hasApiKey) { showToast("请先在设置中配置 API 供应商", "error"); return }
     const msg = input.trim(); setInput("")
-    await sendMessage(msg, api_model)
+    await sendMessage(msg, selectedModel || defaultModel)
   }
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -159,6 +165,15 @@ function ChatView() {
 
         {/* Input */}
         <div className="p-3 border-t border-[var(--color-border)] bg-[var(--color-bg-primary)]/30">
+          {selectedModels.length > 0 && (
+            <div className="flex items-center gap-2 mb-2 pr-5">
+              <span className="text-xs text-[var(--color-text-secondary)] shrink-0">模型:</span>
+              <select value={selectedModel} onChange={e => setSelectedModel(e.target.value)}
+                className="flex-1 px-2 py-1 bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded text-xs text-[var(--color-text-primary)] focus:outline-none focus:border-[var(--color-accent)]">
+                {selectedModels.map(m => <option key={m} value={m}>{m}</option>)}
+              </select>
+            </div>
+          )}
           <div className="flex gap-2 items-end pr-5">
             <textarea value={input} onChange={e => setInput(e.target.value)} onKeyDown={handleKeyDown}
               placeholder="输入消息... (Enter 发送)" rows={2} disabled={streaming}

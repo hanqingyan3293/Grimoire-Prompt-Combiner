@@ -9,6 +9,7 @@ import { registerHistoryIPC } from "./ipc/history.ipc"
 import { registerSettingsIPC } from "./ipc/settings.ipc"
 import { registerImagesIPC } from "./ipc/images.ipc"
 import { registerFavoritesIPC } from "./ipc/favorites.ipc"
+import { registerProvidersIPC, getActiveProvider } from "./ipc/providers.ipc"
 import { chatStream, analyzeImage, saveChatMessage, getChatHistory } from "./services/ai.service"
 import { logError, getErrorLogs } from "./services/logger.service"
 import { IPC_CHANNELS } from "../shared/types"
@@ -70,11 +71,14 @@ function registerAllIPC(): void {
   registerSettingsIPC()
   registerImagesIPC()
   registerFavoritesIPC()
+  registerProvidersIPC()
 
-  ipcMain.handle(IPC_CHANNELS.AI_CHAT, async (_event, messages) => {
-    return new Promise((resolve) => {
+  ipcMain.handle(IPC_CHANNELS.AI_CHAT, async (_event, messages, modelOverride?: string) => {
+    return new Promise(async (resolve) => {
+      const provider = await getActiveProvider()
+      if (!provider) { resolve({ success: false, error: "请先在设置中配置供应商" }); return }
       let fullText = ""
-      chatStream(messages as any,
+      chatStream(messages as any, { api_key: provider.api_key, api_endpoint: provider.base_url, api_model: modelOverride || provider.default_model },
         (chunk) => { mainWindow?.webContents.send("ai:chunk", chunk) },
         (text) => {
           fullText = text
@@ -93,8 +97,10 @@ function registerAllIPC(): void {
 
   ipcMain.handle(IPC_CHANNELS.AI_VISION, async (_event, imageBase64: string, customPrompt?: string) => {
     try {
+      const provider = await getActiveProvider()
+      if (!provider) return { success: false, error: "请先在设置中配置供应商" }
       const prompt = customPrompt || "请分析这张图片，列出适合作为 Stable Diffusion / NovelAI 提示词 (prompt tags) 的关键词标签。请用逗号分隔的英文标签列表格式输出。"
-      const result = await analyzeImage(imageBase64, prompt)
+      const result = await analyzeImage(imageBase64, prompt, provider)
       return { success: true, text: result }
     } catch (err) { return { success: false, error: err instanceof Error ? err.message : "未知错误" } }
   })

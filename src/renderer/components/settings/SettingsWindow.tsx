@@ -1,6 +1,9 @@
-﻿// 魔导书 Grimoire v7 — 设置窗口（PS 首选项风格）
+// 魔导书 Grimoire v7 — 设置窗口（PS 首选项风格）
 import React, { useState, useEffect, useRef } from "react"
 import { useSettingsStore } from "../../stores/settings.store"
+import { useProviderStore } from "../../stores/providers.store"
+import { ProviderEditor } from "./ProviderEditor"
+import type { Provider } from "@shared/types"
 
 const THEMES = [
   { key: "neon", zh: "霓虹", color: "#a855f7" },
@@ -21,15 +24,15 @@ const UI_SCALES = [
 type Section = "general" | "appearance" | "api" | "data" | "about"
 
 export function SettingsWindow({ onClose }: { onClose: () => void }) {
-  const { api_key, api_endpoint, api_model, theme, language, custom_accent, ui_scale, random_min, random_max, setSetting } = useSettingsStore()
+  const { theme, language, custom_accent, ui_scale, random_min, random_max, setSetting } = useSettingsStore()
   const [section, setSection] = useState<Section>("general")
-  const [keyInput, setKeyInput] = useState("")
-  const [endpointInput, setEndpointInput] = useState(api_endpoint)
-  const [modelInput, setModelInput] = useState(api_model)
+  const { providers, activeProvider, loadProviders, saveProvider, deleteProvider, setActive } = useProviderStore()
+  const [editingProvider, setEditingProvider] = useState<Provider | null>(null)
+  const [showProviderEditor, setShowProviderEditor] = useState(false)
   const [accentInput, setAccentInput] = useState(custom_accent)
-  const [keyVisible, setKeyVisible] = useState(false)
   const [testResult, setTestResult] = useState<string | null>(null)
   const [testing, setTesting] = useState(false)
+  
   const [minimized, setMinimized] = useState(false)
   const [winSize, setWinSize] = useState({ w: 780, h: 560 })
   const [pos, setPos] = useState({ x: 0, y: 0 })
@@ -42,7 +45,8 @@ export function SettingsWindow({ onClose }: { onClose: () => void }) {
   useEffect(() => {
     if (!initialized.current) {
       initialized.current = true
-      setEndpointInput(api_endpoint); setModelInput(api_model); setAccentInput(custom_accent)
+      setAccentInput(custom_accent)
+      loadProviders()
     }
   }, [])
 
@@ -79,21 +83,8 @@ export function SettingsWindow({ onClose }: { onClose: () => void }) {
     { key: "about", label: "关于" },
   ]
 
-  const handleTestConnection = async () => {
-    if (!keyInput && !api_key) { setTestResult("请先输入 API Key"); return }
-    setTesting(true); setTestResult(null)
-    const key = keyInput || api_key
-    const ep = endpointInput.replace(/\/+$/, "") + "/chat/completions"
-    try {
-      const res = await fetch(ep, { method: "POST", headers: { "Content-Type": "application/json", "Authorization": `Bearer ${key}` }, body: JSON.stringify({ model: modelInput || "gpt-4o", messages: [{ role: "user", content: "hi" }], max_tokens: 1 }) })
-      if (res.ok || res.status === 400) setTestResult("连接成功！API Key 有效")
-      else if (res.status === 401) setTestResult("API Key 无效")
-      else setTestResult("状态码 " + res.status)
-    } catch (e) { setTestResult("网络错误: " + (e instanceof Error ? e.message : "未知")) }
-    setTesting(false)
-  }
 
-  const handleSaveKey = async () => { if (keyInput) { await setSetting("api_key", keyInput); setKeyInput(""); showToast("已保存", "success") } }
+
 
   if (minimized) {
     return (
@@ -180,27 +171,88 @@ export function SettingsWindow({ onClose }: { onClose: () => void }) {
 
             {section === "api" && (
               <div className="space-y-4">
-                <Field label="API Key">
-                  <div className="flex gap-2">
-                    <input type={keyVisible ? "text" : "password"} value={keyInput || (api_key ? "••••••••" : "")} onChange={e => setKeyInput(e.target.value)} placeholder="sk-..." className="flex-1 px-3 py-2 bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded text-sm" />
-                    <button onClick={() => setKeyVisible(!keyVisible)} className="px-3 py-2 text-sm border border-[var(--color-border)] rounded">👁</button>
-                    <button onClick={handleSaveKey} className="px-4 py-2 text-sm bg-[var(--color-accent)] text-white rounded">保存</button>
+                {/* Provider list */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-[var(--color-text-primary)]">供应商列表</span>
+                    <button onClick={() => { setEditingProvider(null); setShowProviderEditor(true) }}
+                      className="px-3 py-1 text-xs bg-[var(--color-accent)] text-white rounded hover:opacity-90">
+                      + 新增
+                    </button>
                   </div>
-                </Field>
-                <Field label="API 地址">
-                  <div className="flex gap-2">
-                    <input value={endpointInput} onChange={e => { setEndpointInput(e.target.value); setSetting("api_endpoint", e.target.value) }} className="flex-1 px-3 py-2 bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded text-sm" />
-                  </div>
-                </Field>
-                <Field label="模型">
-                  <select value={modelInput} onChange={e => { setModelInput(e.target.value); setSetting("api_model", e.target.value) }} className="w-full px-3 py-2 bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded text-sm">
-                    {["gpt-4o","gpt-4o-mini","gpt-4-turbo","gpt-3.5-turbo","claude-3-5-sonnet-20241022"].map(m => <option key={m} value={m}>{m}</option>)}
-                  </select>
-                </Field>
-                <div className="pt-2 border-t border-[var(--color-border)]">
-                  <button onClick={handleTestConnection} disabled={testing} className="px-4 py-2 text-sm bg-[var(--color-accent)]/15 text-[var(--color-accent)] rounded border border-[var(--color-accent)]/30 hover:bg-[var(--color-accent)]/25 disabled:opacity-50">{testing ? "测试中..." : "测试连接"}</button>
-                  {testResult && <div className={`mt-2 p-3 rounded text-sm ${testResult.startsWith("连接成功") ? "bg-green-500/10 text-green-400" : "bg-red-500/10 text-red-400"}`}>{testResult}</div>}
+                  {providers.length === 0 ? (
+                    <div className="text-center py-8 text-[var(--color-text-secondary)] text-sm">
+                      <div className="text-3xl mb-2">🔌</div>
+                      <div>尚未配置供应商</div>
+                      <div className="text-xs mt-1">点击「新增」添加 API 供应商</div>
+                    </div>
+                  ) : (
+                    providers.map(p => (
+                      <div key={p.id}
+                        className={`flex items-center gap-3 px-4 py-3 rounded border transition-colors ${
+                          p.is_active
+                            ? "border-[var(--color-accent)] bg-[var(--color-accent)]/10"
+                            : "border-[var(--color-border)] hover:border-[var(--color-accent)]/40"
+                        }`}>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-medium text-[var(--color-text-primary)] truncate">{p.name}</span>
+                            {p.is_active && (
+                              <span className="text-[10px] px-1.5 py-0.5 bg-[var(--color-accent)]/20 text-[var(--color-accent)] rounded">当前</span>
+                            )}
+                          </div>
+                          <div className="text-xs text-[var(--color-text-secondary)] truncate mt-0.5">
+                            {p.base_url} · {p.default_model || "未设置模型"}
+                          </div>
+                          <div className="flex gap-1 mt-1 flex-wrap">
+                            {p.models.slice(0, 5).map(m => (
+                              <span key={m} className="text-[10px] px-1.5 py-0.5 bg-[var(--color-bg-primary)] rounded text-[var(--color-text-secondary)]">{m}</span>
+                            ))}
+                            {p.models.length > 5 && (
+                              <span className="text-[10px] text-[var(--color-text-secondary)]">+{p.models.length - 5}</span>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex gap-1 shrink-0">
+                          {!p.is_active && (
+                            <button onClick={() => setActive(p.id)}
+                              className="px-2 py-1 text-xs border border-[var(--color-accent)]/30 text-[var(--color-accent)] rounded hover:bg-[var(--color-accent)]/15">
+                              切换
+                            </button>
+                          )}
+                          <button onClick={() => { setEditingProvider(p); setShowProviderEditor(true) }}
+                            className="px-2 py-1 text-xs border border-[var(--color-border)] text-[var(--color-text-secondary)] rounded hover:border-[var(--color-accent)]/40">
+                            ✏️
+                          </button>
+                          <button onClick={() => { if (confirm(`确定删除供应商「${p.name}」？`)) deleteProvider(p.id) }}
+                            className="px-2 py-1 text-xs border border-[var(--color-border)] text-[var(--color-text-secondary)] rounded hover:border-red-400 hover:text-red-400">
+                            🗑
+                          </button>
+                        </div>
+                      </div>
+                    ))
+                  )}
                 </div>
+
+                {/* Active provider quick info */}
+                {activeProvider && (
+                  <div className="pt-2 border-t border-[var(--color-border)]">
+                    <div className="text-xs text-[var(--color-text-secondary)] space-y-1">
+                      <div className="flex justify-between">
+                        <span>当前供应商</span>
+                        <span className="text-[var(--color-accent)]">{activeProvider.name}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>模型</span>
+                        <span>{activeProvider.default_model}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>协议</span>
+                        <span>{activeProvider.protocol === "chat_completions" ? "Chat Completions" : "Responses API"}</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
@@ -225,6 +277,25 @@ export function SettingsWindow({ onClose }: { onClose: () => void }) {
             )}
           </div>
         </div>
+
+        {/* Resize handle */}
+        <div onMouseDown={
+        {showProviderEditor && (
+          <div className="absolute inset-0 bg-black/50 z-20 flex items-center justify-center">
+            <div className="bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded shadow-2xl flex flex-col overflow-hidden" style={{ width: 680, maxWidth: "94vw", maxHeight: "88vh" }}>
+              <ProviderEditor
+                provider={editingProvider}
+                onSave={async (data) => {
+                  await saveProvider(data)
+                  setShowProviderEditor(false)
+                  setEditingProvider(null)
+                  showToast("供应商已保存", "success")
+                }}
+                onCancel={() => { setShowProviderEditor(false); setEditingProvider(null) }}
+              />
+            </div>
+          </div>
+        )}
 
         {/* Resize handle */}
         <div onMouseDown={onResizeMouseDown} className="absolute bottom-0 right-0 w-4 h-4 cursor-se-resize z-10" style={{ background: "linear-gradient(135deg, transparent 60%, var(--color-border) 60%)" }} />
