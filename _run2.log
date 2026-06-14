@@ -1,0 +1,12 @@
+
+[296760:0614/141542.886:ERROR:net\disk_cache\cache_util_win.cc:25] Unable to move the cache: 拒绝访问。 (0x5)
+[296760:0614/141542.886:ERROR:net\disk_cache\cache_util_win.cc:25] Unable to move the cache: 拒绝访问。 (0x5)
+[296760:0614/141542.886:ERROR:net\disk_cache\cache_util_win.cc:25] Unable to move the cache: 拒绝访问。 (0x5)
+[296760:0614/141542.887:ERROR:net\disk_cache\disk_cache.cc:284] Unable to create cache
+[296760:0614/141542.887:ERROR:gpu\ipc\host\gpu_disk_cache.cc:737] Gpu Cache Creation failed: -2
+[296760:0614/141542.887:ERROR:net\disk_cache\disk_cache.cc:284] Unable to create cache
+[296760:0614/141542.887:ERROR:gpu\ipc\host\gpu_disk_cache.cc:737] Gpu Cache Creation failed: -2
+[296760:0614/141542.887:ERROR:net\disk_cache\disk_cache.cc:284] Unable to create cache
+[296760:0614/141542.890:ERROR:gpu\ipc\host\gpu_disk_cache.cc:737] Gpu Cache Creation failed: -2
+[296760:0614/141633.274:ERROR:content\browser\network_service_instance_impl.cc:703] Network service crashed or was terminated, restarting service.
+[296760:0614/141633.330:ERROR:content\browser\gpu\gpu_process_host.cc:998] GPU process exited unexpectedly: exit_code=-1

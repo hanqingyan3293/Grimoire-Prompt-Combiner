@@ -1,0 +1,27 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' data: file:; script-src 'self' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: file:; connect-src 'self' https: wss:; font-src 'self' data:" />
+    <title>魔导书 Grimoire</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/renderer/main.tsx"></script>
+  
+  <script>
+    window.addEventListener('error', function(e) {
+      var msg = 'RENDERER_ERROR: ' + (e.message || e.error?.message || 'unknown') + '\n' + (e.error?.stack || '');
+      localStorage.setItem('__crash_log', msg);
+      document.body.innerHTML = '<pre style="color:red;padding:20px;white-space:pre-wrap;font-size:12px">' + msg + '</pre>';
+    });
+    window.addEventListener('unhandledrejection', function(e) {
+      var msg = 'PROMISE_ERROR: ' + (e.reason?.message || String(e.reason));
+      localStorage.setItem('__crash_log', msg);
+      document.body.innerHTML = '<pre style="color:red;padding:20px;white-space:pre-wrap;font-size:12px">' + msg + '</pre>';
+    });
+  </script>
+</body>
+</html>
+
