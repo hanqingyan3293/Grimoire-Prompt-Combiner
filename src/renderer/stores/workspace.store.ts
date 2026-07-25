@@ -7,6 +7,11 @@ export interface WorkspaceSlot {
   className: string
 }
 
+export interface WorkspacePanelWidths {
+  left: number
+  right: number
+}
+
 export interface WorkspaceDefinition {
   id: string
   title: string
@@ -63,12 +68,17 @@ export const WORKSPACES: WorkspaceDefinition[] = [
 
 interface WorkspaceState {
   activeWorkspaceId: string
+  panelWidths: Record<string, WorkspacePanelWidths>
   setActiveWorkspace: (id: string) => void
+  setPanelWidths: (workspaceId: string, widths: WorkspacePanelWidths) => void
   resetWorkspace: () => void
   getActiveWorkspace: () => WorkspaceDefinition
+  getPanelWidths: (workspaceId: string) => WorkspacePanelWidths
 }
 
 const STORAGE_KEY = "grimoire.activeWorkspace"
+const WIDTHS_STORAGE_KEY = "grimoire.workspaceWidths"
+const DEFAULT_WIDTHS: WorkspacePanelWidths = { left: 260, right: 320 }
 
 function getInitialWorkspaceId() {
   if (typeof window === "undefined") return "compose"
@@ -76,20 +86,47 @@ function getInitialWorkspaceId() {
   return WORKSPACES.some(w => w.id === saved) ? saved! : "compose"
 }
 
+function getInitialWidths(): Record<string, WorkspacePanelWidths> {
+  if (typeof window === "undefined") return {}
+  try {
+    const raw = window.localStorage.getItem(WIDTHS_STORAGE_KEY)
+    if (!raw) return {}
+    const parsed = JSON.parse(raw) as Record<string, WorkspacePanelWidths>
+    return parsed && typeof parsed === "object" ? parsed : {}
+  } catch {
+    return {}
+  }
+}
+
+function saveWidths(widths: Record<string, WorkspacePanelWidths>) {
+  if (typeof window === "undefined") return
+  window.localStorage.setItem(WIDTHS_STORAGE_KEY, JSON.stringify(widths))
+}
+
 export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   activeWorkspaceId: getInitialWorkspaceId(),
+  panelWidths: getInitialWidths(),
   setActiveWorkspace: (id) => {
     if (!WORKSPACES.some(w => w.id === id)) return
     if (typeof window !== "undefined") window.localStorage.setItem(STORAGE_KEY, id)
     set({ activeWorkspaceId: id })
   },
+  setPanelWidths: (workspaceId, widths) => {
+    const next = { ...get().panelWidths, [workspaceId]: widths }
+    saveWidths(next)
+    set({ panelWidths: next })
+  },
   resetWorkspace: () => {
     if (typeof window !== "undefined") window.localStorage.removeItem(STORAGE_KEY)
-    set({ activeWorkspaceId: "compose" })
+    const { activeWorkspaceId, panelWidths } = get()
+    const nextWidths = { ...panelWidths }
+    delete nextWidths[activeWorkspaceId]
+    saveWidths(nextWidths)
+    set({ activeWorkspaceId: "compose", panelWidths: nextWidths })
   },
   getActiveWorkspace: () => {
     const id = get().activeWorkspaceId
     return WORKSPACES.find(w => w.id === id) || WORKSPACES[0]
   },
+  getPanelWidths: (workspaceId) => get().panelWidths[workspaceId] || DEFAULT_WIDTHS,
 }))
-

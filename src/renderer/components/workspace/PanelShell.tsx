@@ -8,6 +8,7 @@ interface PanelShellProps {
   children: React.ReactNode
   className?: string
   showHeader?: boolean
+  style?: React.CSSProperties
 }
 
 export function PanelShell({
@@ -17,12 +18,14 @@ export function PanelShell({
   children,
   className = "",
   showHeader = false,
+  style,
 }: PanelShellProps) {
   return (
     <section
       data-panel-id={id}
       data-panel-type={type}
       className={"min-h-0 min-w-0 flex flex-col bg-[var(--color-bg-primary)] " + className}
+      style={style}
     >
       {showHeader && (
         <div className="h-8 shrink-0 flex items-center justify-between px-2 border-b border-[var(--color-border)] bg-[var(--color-bg-tertiary)]">
@@ -41,4 +44,3 @@ export function PanelShell({
     </section>
   )
 }
-
