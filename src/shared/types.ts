@@ -223,6 +223,10 @@ export const IPC_CHANNELS = {
   DB_EXPORT: "db:export",
   DB_IMPORT: "db:import",
 
+  // File dialog
+  DIALOG_SAVE_TEXT: "dialog:saveText",
+  DIALOG_OPEN_TEXT: "dialog:openText",
+
   // Providers
   PROVIDERS_LIST: "providers:list",
   PROVIDERS_SAVE: "providers:save",

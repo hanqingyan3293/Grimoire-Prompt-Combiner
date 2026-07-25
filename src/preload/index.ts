@@ -80,6 +80,13 @@ const api = {
     openAI: () => ipcRenderer.invoke("window:openAI"),
   },
 
+  dialog: {
+    save: (content: string, defaultName: string): Promise<boolean> =>
+      ipcRenderer.invoke(IPC_CHANNELS.DIALOG_SAVE_TEXT, content, defaultName),
+    open: (): Promise<string | null> =>
+      ipcRenderer.invoke(IPC_CHANNELS.DIALOG_OPEN_TEXT),
+  },
+
   chat: {
     listGroups: () => ipcRenderer.invoke('chat:listGroups'),
     createGroup: (name: string) => ipcRenderer.invoke('chat:createGroup', name),

@@ -222,6 +222,32 @@ async function registerAllIPC(): Promise<void> {
     if (!r.canceled && r.filePaths.length) { await importDatabase(r.filePaths[0]); mainWindow?.webContents.send("db:reloaded"); return true }
     return false
   })
+
+  ipcMain.handle(IPC_CHANNELS.DIALOG_SAVE_TEXT, async (_event, content: string, defaultName: string) => {
+    const r = await dialog.showSaveDialog({
+      defaultPath: defaultName,
+      filters: [
+        { name: "JSON 文件", extensions: ["json"] },
+        { name: "文本文件", extensions: ["txt"] },
+        { name: "所有文件", extensions: ["*"] },
+      ],
+    })
+    if (r.canceled || !r.filePath) return false
+    fs.writeFileSync(r.filePath, content, "utf-8")
+    return true
+  })
+
+  ipcMain.handle(IPC_CHANNELS.DIALOG_OPEN_TEXT, async () => {
+    const r = await dialog.showOpenDialog({
+      properties: ["openFile"],
+      filters: [
+        { name: "JSON / 文本文件", extensions: ["json", "txt"] },
+        { name: "所有文件", extensions: ["*"] },
+      ],
+    })
+    if (r.canceled || r.filePaths.length === 0) return null
+    return fs.readFileSync(r.filePaths[0], "utf-8")
+  })
 }
 
 async function initDefaultTags(): Promise<void> {
