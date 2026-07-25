@@ -2,34 +2,31 @@ import React, { useRef } from "react"
 import { PanelShell } from "./PanelShell"
 import { ENABLED_PANEL_OPTIONS, PANEL_DEFINITIONS, renderPanel } from "./PanelRegistry"
 import { useWorkspaceStore } from "../../stores/workspace.store"
+import type { WorkspaceLayoutNode } from "../../stores/workspace.store"
 
-const MIN_LEFT_WIDTH = 180
-const MIN_RIGHT_WIDTH = 220
-const MIN_CENTER_WIDTH = 360
+const MIN_PANEL_SIZE = 120
 
 export function FixedWorkspace() {
   const workspace = useWorkspaceStore(s => s.getActiveWorkspace())
-  const widths = useWorkspaceStore(s => s.getPanelWidths(workspace.id))
-  const setPanelWidths = useWorkspaceStore(s => s.setPanelWidths)
-  const setSlotPanelType = useWorkspaceStore(s => s.setSlotPanelType)
+  const layout = useWorkspaceStore(s => s.getLayout(workspace.id))
+  const setPanelType = useWorkspaceStore(s => s.setPanelType)
+  const splitPanel = useWorkspaceStore(s => s.splitPanel)
+  const setSplitRatio = useWorkspaceStore(s => s.setSplitRatio)
   const containerRef = useRef<HTMLDivElement>(null)
 
-  const startResize = (dividerIndex: number, event: React.MouseEvent) => {
+  const startResize = (node: Extract<WorkspaceLayoutNode, { kind: "split" }>, event: React.MouseEvent) => {
     event.preventDefault()
-    const container = containerRef.current
+    const container = (event.currentTarget.parentElement || containerRef.current) as HTMLElement | null
     if (!container) return
 
     const rect = container.getBoundingClientRect()
     const onMove = (moveEvent: MouseEvent) => {
-      const maxLeft = Math.max(MIN_LEFT_WIDTH, rect.width - widths.right - MIN_CENTER_WIDTH)
-      const maxRight = Math.max(MIN_RIGHT_WIDTH, rect.width - widths.left - MIN_CENTER_WIDTH)
-
-      if (dividerIndex === 0) {
-        const nextLeft = Math.min(maxLeft, Math.max(MIN_LEFT_WIDTH, moveEvent.clientX - rect.left))
-        setPanelWidths(workspace.id, { ...widths, left: Math.round(nextLeft) })
+      if (node.direction === "horizontal") {
+        const ratio = (moveEvent.clientX - rect.left) / rect.width
+        setSplitRatio(workspace.id, node.id, ratio)
       } else {
-        const nextRight = Math.min(maxRight, Math.max(MIN_RIGHT_WIDTH, rect.right - moveEvent.clientX))
-        setPanelWidths(workspace.id, { ...widths, right: Math.round(nextRight) })
+        const ratio = (moveEvent.clientY - rect.top) / rect.height
+        setSplitRatio(workspace.id, node.id, ratio)
       }
     }
 
@@ -40,47 +37,59 @@ export function FixedWorkspace() {
       window.removeEventListener("mouseup", onUp)
     }
 
-    document.body.style.cursor = "col-resize"
+    document.body.style.cursor = node.direction === "horizontal" ? "col-resize" : "row-resize"
     document.body.style.userSelect = "none"
     window.addEventListener("mousemove", onMove)
     window.addEventListener("mouseup", onUp)
   }
 
-  const getSlotStyle = (index: number): React.CSSProperties => {
-    if (index === 0) return { width: widths.left, minWidth: MIN_LEFT_WIDTH }
-    if (index === 2) return { width: widths.right, minWidth: MIN_RIGHT_WIDTH }
-    return { flex: 1, minWidth: MIN_CENTER_WIDTH }
+  const renderNode = (node: WorkspaceLayoutNode): React.ReactNode => {
+    if (node.kind === "panel") {
+      const definition = PANEL_DEFINITIONS[node.type]
+      return (
+        <PanelShell
+          id={node.id}
+          type={node.type}
+          title={definition.title}
+          style={{ minWidth: MIN_PANEL_SIZE, minHeight: MIN_PANEL_SIZE }}
+          showHeader
+          panelOptions={ENABLED_PANEL_OPTIONS}
+          onTypeChange={(type) => setPanelType(workspace.id, node.id, type)}
+          onSplit={(direction) => splitPanel(workspace.id, node.id, direction)}
+        >
+          {renderPanel(node.type)}
+        </PanelShell>
+      )
+    }
+
+    const isHorizontal = node.direction === "horizontal"
+    return (
+      <div className={(isHorizontal ? "flex-row" : "flex-col") + " flex h-full w-full min-h-0 min-w-0 overflow-hidden"}>
+        <div
+          className="min-h-0 min-w-0 overflow-hidden"
+          style={{ flexBasis: `${node.ratio * 100}%`, flexGrow: 0, flexShrink: 0 }}
+        >
+          {renderNode(node.first)}
+        </div>
+        <button
+          onMouseDown={(event) => startResize(node, event)}
+          className={
+            (isHorizontal ? "w-1 cursor-col-resize" : "h-1 cursor-row-resize") +
+            " shrink-0 bg-[var(--color-border)] hover:bg-[var(--color-accent)] transition-colors"
+          }
+          title="拖动调整面板大小"
+          aria-label="拖动调整面板大小"
+        />
+        <div className="min-h-0 min-w-0 flex-1 overflow-hidden">
+          {renderNode(node.second)}
+        </div>
+      </div>
+    )
   }
 
   return (
     <div ref={containerRef} className="flex flex-1 overflow-hidden">
-      {workspace.slots.map((slot, index) => {
-        const definition = PANEL_DEFINITIONS[slot.type]
-        return (
-          <React.Fragment key={slot.id}>
-            <PanelShell
-              id={slot.id}
-              type={slot.type}
-              title={definition.title}
-              className={slot.className}
-              style={getSlotStyle(index)}
-              showHeader
-              panelOptions={ENABLED_PANEL_OPTIONS}
-              onTypeChange={(type) => setSlotPanelType(workspace.id, slot.id, type)}
-            >
-              {renderPanel(slot.type)}
-            </PanelShell>
-            {index < workspace.slots.length - 1 && (
-              <button
-                onMouseDown={(event) => startResize(index, event)}
-                className="w-1 shrink-0 cursor-col-resize bg-[var(--color-border)] hover:bg-[var(--color-accent)] transition-colors"
-                title="拖动调整面板宽度"
-                aria-label="拖动调整面板宽度"
-              />
-            )}
-          </React.Fragment>
-        )
-      })}
+      {renderNode(layout)}
     </div>
   )
 }

@@ -11,6 +11,7 @@ interface PanelShellProps {
   style?: React.CSSProperties
   panelOptions?: PanelDefinition[]
   onTypeChange?: (type: PanelType) => void
+  onSplit?: (direction: "horizontal" | "vertical") => void
 }
 
 export function PanelShell({
@@ -23,6 +24,7 @@ export function PanelShell({
   style,
   panelOptions = [],
   onTypeChange,
+  onSplit,
 }: PanelShellProps) {
   return (
     <section
@@ -47,16 +49,16 @@ export function PanelShell({
           </select>
           <div className="flex-1 min-w-0" />
           <button
-            className="w-6 h-6 rounded text-[12px] text-[var(--color-text-secondary)] hover:text-[var(--color-accent)] hover:bg-[var(--color-accent)]/10 disabled:opacity-40"
-            title="横向分割"
-            disabled
+            onClick={() => onSplit?.("horizontal")}
+            className="w-6 h-6 rounded text-[12px] text-[var(--color-text-secondary)] hover:text-[var(--color-accent)] hover:bg-[var(--color-accent)]/10"
+            title="左右分割"
           >
             ↔
           </button>
           <button
-            className="w-6 h-6 rounded text-[12px] text-[var(--color-text-secondary)] hover:text-[var(--color-accent)] hover:bg-[var(--color-accent)]/10 disabled:opacity-40"
-            title="纵向分割"
-            disabled
+            onClick={() => onSplit?.("vertical")}
+            className="w-6 h-6 rounded text-[12px] text-[var(--color-text-secondary)] hover:text-[var(--color-accent)] hover:bg-[var(--color-accent)]/10"
+            title="上下分割"
           >
             ↕
           </button>
