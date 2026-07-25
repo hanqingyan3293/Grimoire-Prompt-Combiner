@@ -177,7 +177,7 @@ function createDefaultLayout(workspace: WorkspaceDefinition): WorkspaceLayoutNod
   }
 }
 
-function getDefaultLayout(workspaceId: string): WorkspaceLayoutNode {
+export function getDefaultLayout(workspaceId: string): WorkspaceLayoutNode {
   const workspace = WORKSPACES.find(w => w.id === workspaceId) || WORKSPACES[0]
   return createDefaultLayout(workspace)
 }
@@ -242,7 +242,7 @@ function removePanelNode(node: WorkspaceLayoutNode, panelId: string): WorkspaceL
   return { ...node, first, second }
 }
 
-function findPanelNode(
+export function findPanelNode(
   node: WorkspaceLayoutNode,
   panelId: string
 ): Extract<WorkspaceLayoutNode, { kind: "panel" }> | null {

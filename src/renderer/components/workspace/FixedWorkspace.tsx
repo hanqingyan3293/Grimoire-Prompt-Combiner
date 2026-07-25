@@ -1,22 +1,34 @@
-import React, { useRef } from "react"
+import React, { useMemo, useRef } from "react"
 import { PanelShell } from "./PanelShell"
 import { ENABLED_PANEL_OPTIONS, PANEL_DEFINITIONS, renderPanel } from "./PanelRegistry"
-import { useWorkspaceStore } from "../../stores/workspace.store"
+import { WORKSPACES, findPanelNode, getDefaultLayout, useWorkspaceStore } from "../../stores/workspace.store"
 import type { WorkspaceLayoutNode } from "../../stores/workspace.store"
 
 const MIN_PANEL_SIZE = 120
 
 export function FixedWorkspace() {
-  const workspace = useWorkspaceStore(s => s.getActiveWorkspace())
-  const layout = useWorkspaceStore(s => s.getLayout(workspace.id))
-  const maximizedPanelId = useWorkspaceStore(s => s.getMaximizedPanelId(workspace.id))
-  const maximizedPanel = useWorkspaceStore(s => maximizedPanelId ? s.findPanel(workspace.id, maximizedPanelId) : null)
+  const activeWorkspaceId = useWorkspaceStore(s => s.activeWorkspaceId)
+  const layouts = useWorkspaceStore(s => s.layouts)
+  const maximizedPanels = useWorkspaceStore(s => s.maximizedPanels)
   const setPanelType = useWorkspaceStore(s => s.setPanelType)
   const splitPanel = useWorkspaceStore(s => s.splitPanel)
   const closePanel = useWorkspaceStore(s => s.closePanel)
   const setSplitRatio = useWorkspaceStore(s => s.setSplitRatio)
   const setMaximizedPanel = useWorkspaceStore(s => s.setMaximizedPanel)
   const containerRef = useRef<HTMLDivElement>(null)
+  const workspace = useMemo(
+    () => WORKSPACES.find(w => w.id === activeWorkspaceId) || WORKSPACES[0],
+    [activeWorkspaceId]
+  )
+  const layout = useMemo(
+    () => layouts[workspace.id] || getDefaultLayout(workspace.id),
+    [layouts, workspace.id]
+  )
+  const maximizedPanelId = maximizedPanels[workspace.id] || null
+  const maximizedPanel = useMemo(
+    () => maximizedPanelId ? findPanelNode(layout, maximizedPanelId) : null,
+    [layout, maximizedPanelId]
+  )
 
   const startResize = (node: Extract<WorkspaceLayoutNode, { kind: "split" }>, event: React.MouseEvent) => {
     event.preventDefault()
