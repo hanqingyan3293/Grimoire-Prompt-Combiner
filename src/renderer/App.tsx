@@ -10,6 +10,7 @@ import { ErrorBoundary } from './components/ui/ErrorBoundary'
 import { SettingsWindow } from './components/settings/SettingsWindow'
 import { AIWindow } from './components/ai/AIWindow'
 import { FixedWorkspace } from './components/workspace/FixedWorkspace'
+import { WorkspaceBar } from './components/workspace/WorkspaceBar'
 import './styles/themes.css'
 
 function AppInner() {
@@ -77,6 +78,7 @@ function AppInner() {
 
   return (
     <div className="flex flex-col h-screen overflow-hidden">
+      <WorkspaceBar />
       <FixedWorkspace />
       <StatusBar />
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}

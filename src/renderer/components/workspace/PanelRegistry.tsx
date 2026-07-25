@@ -2,6 +2,11 @@ import React from "react"
 import { Sidebar } from "../layout/Sidebar"
 import { MainContent } from "../layout/MainContent"
 import { RightPanel } from "../layout/RightPanel"
+import { PresetsPanel } from "../presets/PresetsPanel"
+import { HistoryPanel } from "../history/HistoryPanel"
+import { ImagesPanel } from "../images/ImagesPanel"
+import { ChatLayout } from "../ai/ChatLayout"
+import { AIVisionPanel } from "../ai/AIVisionPanel"
 import type { PanelDefinition, PanelType } from "./panelTypes"
 
 export const PANEL_DEFINITIONS: Record<PanelType, PanelDefinition> = {
@@ -28,11 +33,11 @@ export const PANEL_DEFINITIONS: Record<PanelType, PanelDefinition> = {
   "tag-cards": { type: "tag-cards", title: "标签卡片", description: "标签卡片选择区", enabled: false },
   "prompt-editor": { type: "prompt-editor", title: "提示词编辑", description: "正负面提示词编辑区", enabled: false },
   output: { type: "output", title: "输出", description: "最终提示词输出区", enabled: false },
-  presets: { type: "presets", title: "预设", description: "提示词预设", enabled: false },
-  history: { type: "history", title: "历史", description: "提示词历史记录", enabled: false },
-  images: { type: "images", title: "图片", description: "参考图片", enabled: false },
-  "ai-chat": { type: "ai-chat", title: "AI 聊天", description: "AI 对话面板", enabled: false },
-  "ai-vision": { type: "ai-vision", title: "AI 识图", description: "图片识别和标签建议", enabled: false },
+  presets: { type: "presets", title: "预设", description: "提示词预设", enabled: true },
+  history: { type: "history", title: "历史", description: "提示词历史记录", enabled: true },
+  images: { type: "images", title: "图片", description: "参考图片", enabled: true },
+  "ai-chat": { type: "ai-chat", title: "AI 聊天", description: "AI 对话面板", enabled: true },
+  "ai-vision": { type: "ai-vision", title: "AI 识图", description: "图片识别和标签建议", enabled: true },
   settings: { type: "settings", title: "设置", description: "应用设置", enabled: false },
   errors: { type: "errors", title: "错误", description: "错误日志", enabled: false },
 }
@@ -45,6 +50,16 @@ export function renderPanel(type: PanelType): React.ReactNode {
       return <MainContent />
     case "utility-sidebar":
       return <RightPanel />
+    case "presets":
+      return <PresetsPanel />
+    case "history":
+      return <HistoryPanel />
+    case "images":
+      return <ImagesPanel />
+    case "ai-chat":
+      return <ChatLayout />
+    case "ai-vision":
+      return <AIVisionPanel />
     default:
       return (
         <div className="h-full flex items-center justify-center text-sm text-[var(--color-text-secondary)]">
@@ -53,4 +68,3 @@ export function renderPanel(type: PanelType): React.ReactNode {
       )
   }
 }
-
