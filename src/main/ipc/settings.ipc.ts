@@ -12,7 +12,7 @@ export function registerSettingsIPC(): void {
     theme: "neon",
     language: "zh",
     custom_accent: "#a855f7",
-    ui_scale: "medium",
+    ui_scale: "14",
     ui_density: "normal",
     max_undo_steps: "50",
     random_min: "3",

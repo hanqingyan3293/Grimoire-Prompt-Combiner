@@ -10,15 +10,24 @@ interface SettingsState extends AppSettings {
   getShortcut: (key: string) => string
 }
 
-const UI_SCALE_VALUES: Record<string, number> = {
-  small: 0.92,
-  medium: 1,
-  large: 1.1,
+const LEGACY_UI_SCALE_VALUES: Record<string, number> = {
+  small: 13,
+  medium: 14,
+  large: 16,
 }
 
-function applyUiScale(scale: string) {
-  document.documentElement.setAttribute("data-ui-scale", scale)
-  document.documentElement.style.setProperty("--ui-scale", String(UI_SCALE_VALUES[scale] || 1))
+function normalizeUiFontSize(value: string) {
+  const mapped = LEGACY_UI_SCALE_VALUES[value]
+  if (mapped) return String(mapped)
+  const parsed = Number.parseInt(value, 10)
+  if (!Number.isFinite(parsed)) return "14"
+  return String(Math.min(20, Math.max(12, parsed)))
+}
+
+function applyUiScale(value: string) {
+  const fontSize = normalizeUiFontSize(value)
+  document.documentElement.setAttribute("data-ui-scale", fontSize)
+  document.documentElement.style.setProperty("--ui-font-size", `${fontSize}px`)
 }
 
 function applyUiDensity(density: string) {
@@ -29,7 +38,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   theme: "neon",
   language: "zh",
 	  custom_accent: "#a855f7",
-	  ui_scale: "medium",
+	  ui_scale: "14",
 	  ui_density: "normal",
 	  max_undo_steps: 50,
   random_min: "3",
@@ -42,7 +51,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     try {
       const raw = await window.api.settings.getAll() as Record<string, string>
 	      const acc = raw.custom_accent || "#a855f7"
-	      const scale = raw.ui_scale || "medium"
+	      const scale = normalizeUiFontSize(raw.ui_scale || "14")
 	      const density = raw.ui_density || "normal"
 	      set({
 	        theme: raw.theme || "neon",
@@ -80,7 +89,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
 
     if (key === "theme") document.documentElement.setAttribute("data-theme", value)
     if (key === "language") document.documentElement.setAttribute("data-lang", value)
-	    if (key === "ui_scale") applyUiScale(value)
+    if (key === "ui_scale") applyUiScale(value)
 	    if (key === "ui_density") applyUiDensity(value)
     if (key === "custom_accent") document.documentElement.style.setProperty("--color-accent", value)
     if (key.startsWith("shortcut_")) {

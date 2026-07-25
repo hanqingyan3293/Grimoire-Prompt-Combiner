@@ -1,7 +1,7 @@
 
 /* UI Scale */
 html {
-  font-size: calc(14px * var(--ui-scale, 1));
+  font-size: var(--ui-font-size, 14px);
   --panel-header-height: 32px;
   --panel-splitter-size: 4px;
   --panel-control-size: 24px;

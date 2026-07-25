@@ -116,14 +116,26 @@ export function SettingsWindow({ onClose }: { onClose: () => void }) {
               </select>
             </Field>
 
-	            <Field label="字体大小" desc="调整全局字体和界面大小">
-	              <div className="flex gap-2">
-	                {["small","medium","large"].map(s => (
-                  <button key={s} onClick={() => setSetting("ui_scale", s)}
-                    className={"flex-1 py-2 text-sm rounded-lg border transition-colors " + (ui_scale === s ? "bg-[var(--color-accent)]/15 border-[var(--color-accent)] text-[var(--color-accent)] font-medium" : "border-[var(--color-border)] text-[var(--color-text-secondary)] hover:border-[var(--color-accent)]/50")}>
-                    {s === "small" ? "小" : s === "medium" ? "中" : "大"}
-                  </button>
-                ))}
+	            <Field label="字体大小" desc="使用像素值调整全局字体大小">
+	              <div className="flex items-center gap-4">
+	                <input
+	                  type="range"
+	                  min="12"
+	                  max="20"
+	                  step="1"
+	                  value={ui_scale}
+	                  onChange={e => setSetting("ui_scale", e.target.value)}
+	                  className="flex-1 accent-[var(--color-accent)]"
+	                />
+	                <input
+	                  type="number"
+	                  min="12"
+	                  max="20"
+	                  value={ui_scale}
+	                  onChange={e => setSetting("ui_scale", e.target.value)}
+	                  className="w-20 px-3 py-2 bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded-lg text-sm text-[var(--color-text-primary)]"
+	                />
+	                <span className="w-8 text-sm text-[var(--color-text-secondary)]">px</span>
 	              </div>
 	            </Field>
 	            <Field label="界面密度" desc="调整面板标题栏、分割线和控件尺寸">
