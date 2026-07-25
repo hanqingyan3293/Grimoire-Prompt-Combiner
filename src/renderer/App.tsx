@@ -4,14 +4,12 @@ import { I18nProvider } from './i18n/context'
 import { useTagsStore } from './stores/tags.store'
 import { useSettingsStore } from './stores/settings.store'
 import { useI18n } from './i18n/context'
-import { Sidebar } from './components/layout/Sidebar'
-import { MainContent } from './components/layout/MainContent'
-import { RightPanel } from './components/layout/RightPanel'
 import { StatusBar } from './components/layout/StatusBar'
 import { Toast } from './components/ui/Toast'
 import { ErrorBoundary } from './components/ui/ErrorBoundary'
 import { SettingsWindow } from './components/settings/SettingsWindow'
 import { AIWindow } from './components/ai/AIWindow'
+import { FixedWorkspace } from './components/workspace/FixedWorkspace'
 import './styles/themes.css'
 
 function AppInner() {
@@ -79,11 +77,7 @@ function AppInner() {
 
   return (
     <div className="flex flex-col h-screen overflow-hidden">
-      <div className="flex flex-1 overflow-hidden">
-        <Sidebar />
-        <MainContent />
-        <RightPanel />
-      </div>
+      <FixedWorkspace />
       <StatusBar />
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
     </div>
