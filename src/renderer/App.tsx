@@ -25,7 +25,7 @@ function AppInner() {
     window.addEventListener("hashchange", onHashChange)
     return () => window.removeEventListener("hashchange", onHashChange)
   }, [])
-  useEffect(() => { loadSettings(); loadTags() }, [])
+  useEffect(() => { loadSettings(); loadTags() }, [loadSettings, loadTags])
   useEffect(() => { if (language !== lang) setLang(language as 'zh' | 'en') }, [language])
 
   useEffect(() => {
@@ -41,22 +41,24 @@ function AppInner() {
     let cleanup = null
     try {
       cleanup = window.api.db.onFocus(() => {
+        loadSettings().catch(() => {})
         window.dispatchEvent(new CustomEvent('grimoire:refresh'))
       })
     } catch {}
     return () => { if (cleanup) cleanup() }
-  }, [])
+  }, [loadSettings])
 
   // 跨窗口数据同步：监听主进程广播的 data:refresh
   useEffect(() => {
     let cleanup: (() => void) | null = null
     try {
       cleanup = window.api.db.onRefresh(() => {
+        loadSettings().catch(() => {})
         window.dispatchEvent(new CustomEvent('grimoire:refresh'))
       })
     } catch {}
     return () => { if (cleanup) cleanup() }
-  }, [])
+  }, [loadSettings])
 
     // 设置独立窗口
   if (windowType === "settings") {

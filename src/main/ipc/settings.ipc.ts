@@ -1,5 +1,5 @@
 ﻿// 魔导书 Grimoire v7 — 设置 IPC 处理器
-import { ipcMain, safeStorage } from "electron"
+import { BrowserWindow, ipcMain, safeStorage } from "electron"
 import { getDatabase, saveDatabase } from "../database"
 import { IPC_CHANNELS } from "../../shared/types"
 
@@ -13,6 +13,7 @@ export function registerSettingsIPC(): void {
     language: "zh",
     custom_accent: "#a855f7",
     ui_scale: "medium",
+    ui_density: "normal",
     max_undo_steps: "50",
     random_min: "3",
     random_max: "16",
@@ -54,6 +55,9 @@ export function registerSettingsIPC(): void {
       [key, storedValue, storedValue]
     )
     saveDatabase()
+    for (const win of BrowserWindow.getAllWindows()) {
+      if (!win.isDestroyed()) win.webContents.send("data:refresh")
+    }
     return true
   })
 }
