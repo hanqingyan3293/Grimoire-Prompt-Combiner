@@ -10,12 +10,28 @@ interface SettingsState extends AppSettings {
   getShortcut: (key: string) => string
 }
 
+const UI_SCALE_VALUES: Record<string, number> = {
+  small: 0.92,
+  medium: 1,
+  large: 1.1,
+}
+
+function applyUiScale(scale: string) {
+  document.documentElement.setAttribute("data-ui-scale", scale)
+  document.documentElement.style.setProperty("--ui-scale", String(UI_SCALE_VALUES[scale] || 1))
+}
+
+function applyUiDensity(density: string) {
+  document.documentElement.setAttribute("data-ui-density", density)
+}
+
 export const useSettingsStore = create<SettingsState>((set, get) => ({
   theme: "neon",
   language: "zh",
-  custom_accent: "#a855f7",
-  ui_scale: "medium",
-  max_undo_steps: 50,
+	  custom_accent: "#a855f7",
+	  ui_scale: "medium",
+	  ui_density: "normal",
+	  max_undo_steps: 50,
   random_min: "3",
   random_max: "16",
   shortcuts: {},
@@ -25,14 +41,16 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     set({ loading: true })
     try {
       const raw = await window.api.settings.getAll() as Record<string, string>
-      const acc = raw.custom_accent || "#a855f7"
-      const scale = raw.ui_scale || "medium"
-      set({
-        theme: raw.theme || "neon",
-        language: (raw.language as "zh" | "en") || "zh",
-        custom_accent: acc,
-        ui_scale: scale,
-        max_undo_steps: parseInt(raw.max_undo_steps) || 50,
+	      const acc = raw.custom_accent || "#a855f7"
+	      const scale = raw.ui_scale || "medium"
+	      const density = raw.ui_density || "normal"
+	      set({
+	        theme: raw.theme || "neon",
+	        language: (raw.language as "zh" | "en") || "zh",
+	        custom_accent: acc,
+	        ui_scale: scale,
+	        ui_density: density,
+	        max_undo_steps: parseInt(raw.max_undo_steps) || 50,
         random_min: raw.random_min || "3",
         random_max: raw.random_max || "16",
         loading: false,
@@ -46,12 +64,11 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
       }
       set({ shortcuts })
 
-      document.documentElement.setAttribute("data-theme", raw.theme || "neon")
-      document.documentElement.setAttribute("data-lang", raw.language || "zh")
-      const scaleNum = parseInt(raw.ui_scale) || 100
-      document.documentElement.style.setProperty("--ui-scale", String(scaleNum / 100))
-      document.documentElement.setAttribute("data-ui-scale", scale)
-      document.documentElement.style.setProperty("--color-accent", acc)
+	      document.documentElement.setAttribute("data-theme", raw.theme || "neon")
+	      document.documentElement.setAttribute("data-lang", raw.language || "zh")
+	      applyUiScale(scale)
+	      applyUiDensity(density)
+	      document.documentElement.style.setProperty("--color-accent", acc)
     } catch {
       set({ loading: false })
     }
@@ -63,10 +80,8 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
 
     if (key === "theme") document.documentElement.setAttribute("data-theme", value)
     if (key === "language") document.documentElement.setAttribute("data-lang", value)
-    if (key === "ui_scale") {
-      const numVal = parseInt(value) || 100
-      document.documentElement.style.setProperty("--ui-scale", String(numVal / 100))
-    }
+	    if (key === "ui_scale") applyUiScale(value)
+	    if (key === "ui_density") applyUiDensity(value)
     if (key === "custom_accent") document.documentElement.style.setProperty("--color-accent", value)
     if (key.startsWith("shortcut_")) {
       const sk = key.replace("shortcut_", "")

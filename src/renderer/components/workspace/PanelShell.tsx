@@ -40,7 +40,7 @@ export function PanelShell({
       style={style}
     >
       {showHeader && (
-        <div className="h-8 shrink-0 flex items-center gap-1 px-2 border-b border-[var(--color-border)] bg-[var(--color-bg-tertiary)] overflow-hidden">
+        <div className="shrink-0 flex items-center gap-1 px-2 border-b border-[var(--color-border)] bg-[var(--color-bg-tertiary)] overflow-hidden" style={{ height: "var(--panel-header-height)" }}>
           <select
             value={type}
             onChange={e => onTypeChange?.(e.target.value as PanelType)}
@@ -55,28 +55,32 @@ export function PanelShell({
           </select>
           <button
             onClick={() => onSplit?.("horizontal")}
-            className="w-6 h-6 shrink-0 rounded text-[12px] text-[var(--color-text-secondary)] hover:text-[var(--color-accent)] hover:bg-[var(--color-accent)]/10"
+            className="shrink-0 rounded text-[12px] text-[var(--color-text-secondary)] hover:text-[var(--color-accent)] hover:bg-[var(--color-accent)]/10"
+            style={{ width: "var(--panel-control-size)", height: "var(--panel-control-size)" }}
             title="左右分割"
           >
             ↔
           </button>
           <button
             onClick={() => onSplit?.("vertical")}
-            className="w-6 h-6 shrink-0 rounded text-[12px] text-[var(--color-text-secondary)] hover:text-[var(--color-accent)] hover:bg-[var(--color-accent)]/10"
+            className="shrink-0 rounded text-[12px] text-[var(--color-text-secondary)] hover:text-[var(--color-accent)] hover:bg-[var(--color-accent)]/10"
+            style={{ width: "var(--panel-control-size)", height: "var(--panel-control-size)" }}
             title="上下分割"
           >
             ↕
           </button>
           <button
             onClick={onMaximize}
-            className="w-6 h-6 shrink-0 rounded text-[12px] text-[var(--color-text-secondary)] hover:text-[var(--color-accent)] hover:bg-[var(--color-accent)]/10"
+            className="shrink-0 rounded text-[12px] text-[var(--color-text-secondary)] hover:text-[var(--color-accent)] hover:bg-[var(--color-accent)]/10"
+            style={{ width: "var(--panel-control-size)", height: "var(--panel-control-size)" }}
             title={maximized ? "还原面板" : "最大化面板"}
           >
             {maximized ? "▣" : "□"}
           </button>
           <button
             onClick={onClose}
-            className="w-6 h-6 shrink-0 rounded text-[12px] text-[var(--color-text-secondary)] hover:text-red-400 hover:bg-red-500/10"
+            className="shrink-0 rounded text-[12px] text-[var(--color-text-secondary)] hover:text-red-400 hover:bg-red-500/10"
+            style={{ width: "var(--panel-control-size)", height: "var(--panel-control-size)" }}
             title="关闭面板"
           >
             ×

@@ -115,9 +115,10 @@ export interface AppSettings {
   api_model: string
   theme: string
   language: "zh" | "en"
-  custom_accent: string
-  ui_scale: string
-  max_undo_steps: number
+	  custom_accent: string
+	  ui_scale: string
+	  ui_density: string
+	  max_undo_steps: number
   random_min: string
   random_max: string
 }

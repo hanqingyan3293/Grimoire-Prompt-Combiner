@@ -2,6 +2,24 @@
 /* UI Scale */
 html {
   font-size: calc(14px * var(--ui-scale, 1));
+  --panel-header-height: 32px;
+  --panel-splitter-size: 4px;
+  --panel-control-size: 24px;
+  --panel-padding: 8px;
+}
+
+[data-ui-density="compact"] {
+  --panel-header-height: 26px;
+  --panel-splitter-size: 3px;
+  --panel-control-size: 20px;
+  --panel-padding: 6px;
+}
+
+[data-ui-density="comfortable"] {
+  --panel-header-height: 38px;
+  --panel-splitter-size: 6px;
+  --panel-control-size: 28px;
+  --panel-padding: 10px;
 }
 /* 魔导书 Grimoire v7 — 主题系统 */
 /* 通过在 <html> 上设置 data-theme 属性切换主题 */
