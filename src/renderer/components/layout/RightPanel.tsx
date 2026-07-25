@@ -25,7 +25,7 @@ export function RightPanel() {
   ]
 
   return (
-    <div className="flex flex-col w-[320px] min-w-[320px] border-l border-[var(--color-border)] bg-[var(--color-bg-secondary)]">
+    <div className="flex h-full w-full min-w-0 flex-col border-l border-[var(--color-border)] bg-[var(--color-bg-secondary)]">
       {/* Tab Bar */}
       <div className="flex border-b border-[var(--color-border)]">
         {tabs.map(tab => (

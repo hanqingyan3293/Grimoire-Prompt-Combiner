@@ -212,13 +212,13 @@ const handleCtxEdit = () => {
   
 
   if (loading) {
-    return <div className="flex flex-col w-[260px] min-w-[260px] border-r border-[var(--color-border)] bg-[var(--color-bg-secondary)] p-4">
+    return <div className="flex h-full w-full min-w-0 flex-col border-r border-[var(--color-border)] bg-[var(--color-bg-secondary)] p-4">
       <div className="text-sm text-[var(--color-text-secondary)]">加载中...</div>
     </div>
   }
 
   return (
-    <div className="flex flex-col w-[260px] min-w-[260px] border-r border-[var(--color-border)] bg-[var(--color-bg-secondary)]">
+    <div className="flex h-full w-full min-w-0 flex-col border-r border-[var(--color-border)] bg-[var(--color-bg-secondary)]">
       {/* Tab bar */}
       <div className="flex border-b border-[var(--color-border)]">
         <button onClick={() => setActiveTab("tags")}

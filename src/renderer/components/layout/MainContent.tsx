@@ -81,7 +81,7 @@ export function MainContent() {
   }, [positive, negative])
 
   return (
-    <div className="flex-1 flex flex-col overflow-hidden">
+    <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
       <div className="flex items-center gap-1 px-3 py-1.5 border-b border-[var(--color-border)] bg-[var(--color-bg-secondary)]">
         <ToolBtn onClick={undo} disabled={!canUndo()} title="Ctrl+Z">↩</ToolBtn>
         <ToolBtn onClick={redo} disabled={!canRedo()} title="Ctrl+Y">↪</ToolBtn>
@@ -94,7 +94,7 @@ export function MainContent() {
         <button onClick={clearAll} className="px-2 py-1 text-xs text-[var(--color-text-secondary)] hover:bg-[var(--color-accent)]/10 rounded">全部清空</button>
       </div>
 
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
         <div className="flex-1 overflow-auto border-b border-[var(--color-border)]">
           <TagCards />
         </div>
@@ -110,7 +110,7 @@ export function MainContent() {
           </div>
         </div>
 
-        <div className="p-3 bg-[var(--color-bg-secondary)]">
+        <div className="shrink-0 p-3 bg-[var(--color-bg-secondary)]">
           <div className="flex items-center justify-between mb-2 flex-wrap gap-1">
             <span className="text-xs font-medium text-[var(--color-text-secondary)]">输出</span>
             <div className="flex items-center gap-1">

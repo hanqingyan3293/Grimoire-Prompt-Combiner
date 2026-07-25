@@ -51,11 +51,11 @@ export function renderPanel(type: PanelType): React.ReactNode {
     case "utility-sidebar":
       return <RightPanel />
     case "presets":
-      return <PresetsPanel />
+      return <ScrollablePanel><PresetsPanel /></ScrollablePanel>
     case "history":
-      return <HistoryPanel />
+      return <ScrollablePanel><HistoryPanel /></ScrollablePanel>
     case "images":
-      return <ImagesPanel />
+      return <ScrollablePanel><ImagesPanel /></ScrollablePanel>
     case "ai-chat":
       return <ChatLayout />
     case "ai-vision":
@@ -67,4 +67,12 @@ export function renderPanel(type: PanelType): React.ReactNode {
         </div>
       )
   }
+}
+
+function ScrollablePanel({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="h-full min-h-0 overflow-y-auto bg-[var(--color-bg-secondary)]">
+      {children}
+    </div>
+  )
 }
