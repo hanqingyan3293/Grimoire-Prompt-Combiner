@@ -6,6 +6,7 @@ import { usePromptsStore } from "../../stores/prompts.store"
 import { useTagsStore } from "../../stores/tags.store"
 import { useSettingsStore } from "../../stores/settings.store"
 import { MessageBubble } from "./MessageBubble"
+import type { Tag } from "../../../shared/types"
 
 type SubTab = "chat" | "vision"
 
@@ -326,16 +327,55 @@ function SimpleVision() {
     navigator.clipboard.writeText(text).then(() => showToast("已复制", "success"))
   }
 
+  const resolvePromptTag = (suggestion: { en: string; zh: string }): {
+    tag: Tag
+    category: string
+    subcategory: string
+  } => {
+    const normalizedEn = suggestion.en.trim().toLowerCase()
+    const existing = tags.find(t =>
+      t.en.trim().toLowerCase() === normalizedEn ||
+      (!!suggestion.zh && t.zh.trim() === suggestion.zh.trim())
+    )
+    if (existing) {
+      const sub = subcategories.find(s => s.id === existing.subcategory_id)
+      const cat = categories.find(c => c.id === sub?.category_id)
+      return {
+        tag: existing,
+        category: cat?.zh || "",
+        subcategory: sub?.zh || "",
+      }
+    }
+
+    return {
+      tag: {
+        id: "vision_" + normalizedEn,
+        subcategory_id: "vision",
+        en: suggestion.en.trim(),
+        zh: suggestion.zh.trim() || suggestion.en.trim(),
+        sort_order: 0,
+        source: "custom",
+        created_at: new Date().toISOString(),
+      },
+      category: "识图",
+      subcategory: "AI 识图",
+    }
+  }
+
   const addToPositive = () => {
+    if (selected.size === 0) return
     Array.from(selected).forEach(i => {
-      addPositive({ tag_id: suggestions[i].en, weight: 1 } as any)
+      const item = resolvePromptTag(suggestions[i])
+      addPositive(item.tag, item.category, item.subcategory)
     })
     showToast("已添加到正面提示词", "success")
   }
 
   const addToNegative = () => {
+    if (selected.size === 0) return
     Array.from(selected).forEach(i => {
-      addNegative({ tag_id: suggestions[i].en, weight: 1 } as any)
+      const item = resolvePromptTag(suggestions[i])
+      addNegative(item.tag, item.category, item.subcategory)
     })
     showToast("已添加到负面提示词", "success")
   }

@@ -147,6 +147,11 @@ const api = {
       ipcRenderer.on("data:refresh", handler)
       return () => ipcRenderer.removeListener("data:refresh", handler)
     },
+    onFocus: (callback: () => void) => {
+      const handler = () => callback()
+      ipcRenderer.on("window:focused", handler)
+      return () => ipcRenderer.removeListener("window:focused", handler)
+    },
   },
 }
 

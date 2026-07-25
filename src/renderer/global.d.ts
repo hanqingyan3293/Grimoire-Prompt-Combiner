@@ -97,6 +97,7 @@ interface GrimoireAPI {
     import: () => Promise<boolean>
     onReload: (callback: () => void) => () => void
     onRefresh: (callback: () => void) => () => void
+    onFocus: (callback: () => void) => () => void
   }
 }
 
