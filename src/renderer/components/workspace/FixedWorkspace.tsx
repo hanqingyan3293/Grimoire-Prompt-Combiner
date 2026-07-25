@@ -4,8 +4,6 @@ import { ENABLED_PANEL_OPTIONS, PANEL_DEFINITIONS, renderPanel } from "./PanelRe
 import { WORKSPACES, findPanelNode, getDefaultLayout, useWorkspaceStore } from "../../stores/workspace.store"
 import type { WorkspaceLayoutNode } from "../../stores/workspace.store"
 
-const MIN_PANEL_SIZE = 120
-
 export function FixedWorkspace() {
   const activeWorkspaceId = useWorkspaceStore(s => s.activeWorkspaceId)
   const layouts = useWorkspaceStore(s => s.layouts)
@@ -67,7 +65,7 @@ export function FixedWorkspace() {
           id={node.id}
           type={node.type}
           title={definition.title}
-          style={{ minWidth: MIN_PANEL_SIZE, minHeight: MIN_PANEL_SIZE }}
+          style={{ width: "100%", height: "100%" }}
           showHeader
           panelOptions={ENABLED_PANEL_OPTIONS}
           onTypeChange={(type) => setPanelType(workspace.id, node.id, type)}

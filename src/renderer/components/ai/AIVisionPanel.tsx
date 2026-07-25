@@ -140,9 +140,9 @@ export function AIVisionPanel() {
   }
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden">
       {/* Upload zone */}
-      <div className="p-4 border-b border-[var(--color-border)]">
+      <div className="shrink-0 p-4 border-b border-[var(--color-border)]">
         <div
           onDrop={handleDrop} onDragOver={handleDragOver} onDragLeave={() => setDragging(false)}
           className={'border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-colors min-h-[120px] flex items-center justify-center ' + (dragging ? 'border-[var(--color-accent)] bg-[var(--color-accent)]/5' : 'border-[var(--color-border)] hover:border-[var(--color-accent)]/40')}

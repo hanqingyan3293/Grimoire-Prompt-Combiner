@@ -73,7 +73,7 @@ export function renderPanel(type: PanelType): React.ReactNode {
 
 function ScrollablePanel({ children }: { children: React.ReactNode }) {
   return (
-    <div className="h-full min-h-0 overflow-y-auto bg-[var(--color-bg-secondary)]">
+    <div className="h-full min-h-0 min-w-0 overflow-auto bg-[var(--color-bg-secondary)]">
       {children}
     </div>
   )
