@@ -56,6 +56,10 @@ English: [README.en.md](./README.en.md)
 
 **方式三：源码运行**
 
+双击项目目录中的 `启动.bat`。脚本会自动检查依赖、必要时构建，然后启动应用。
+
+也可以手动执行：
+
 ```bash
 git clone https://github.com/hanqingyan3293/grimoire.git
 cd grimoire
@@ -63,6 +67,8 @@ npm install
 npm run build
 npm start
 ```
+
+如需生成可双击的便携版 `Grimoire.exe`，双击 `打包便携版.bat`，输出文件在 `release/` 目录。
 
 ## 项目结构
 

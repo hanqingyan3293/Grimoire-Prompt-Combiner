@@ -1,11 +1,11 @@
 @echo off
 chcp 65001 >nul
 setlocal
-title Grimoire v7
+title Build Grimoire Portable
 cd /d "%~dp0"
 
 echo ================================================
-echo  Grimoire v7 - source launcher
+echo  Grimoire v7 - portable EXE builder
 echo ================================================
 echo.
 
@@ -26,28 +26,16 @@ if not exist "node_modules\" (
     )
 )
 
-if not exist "dist\main\main\index.js" goto build_app
-if not exist "dist\renderer\index.html" goto build_app
-goto launch_app
-
-:build_app
-echo [INFO] Building application...
-call npm run build
+echo [INFO] Building portable package...
+call npm run pack:portable
 if errorlevel 1 (
-    echo [ERROR] Build failed.
+    echo [ERROR] Portable package build failed.
     pause
     exit /b 1
 )
 
-:launch_app
-echo [INFO] Starting Grimoire...
 echo.
-call npm start
-if errorlevel 1 (
-    echo.
-    echo [ERROR] Grimoire exited with an error.
-    pause
-    exit /b 1
-)
-
+echo [OK] Portable EXE has been generated under the release folder.
+echo Open: release
+pause
 endlocal
