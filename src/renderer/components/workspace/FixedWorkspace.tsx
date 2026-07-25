@@ -1,6 +1,6 @@
 import React, { useRef } from "react"
 import { PanelShell } from "./PanelShell"
-import { PANEL_DEFINITIONS, renderPanel } from "./PanelRegistry"
+import { ENABLED_PANEL_OPTIONS, PANEL_DEFINITIONS, renderPanel } from "./PanelRegistry"
 import { useWorkspaceStore } from "../../stores/workspace.store"
 
 const MIN_LEFT_WIDTH = 180
@@ -11,6 +11,7 @@ export function FixedWorkspace() {
   const workspace = useWorkspaceStore(s => s.getActiveWorkspace())
   const widths = useWorkspaceStore(s => s.getPanelWidths(workspace.id))
   const setPanelWidths = useWorkspaceStore(s => s.setPanelWidths)
+  const setSlotPanelType = useWorkspaceStore(s => s.setSlotPanelType)
   const containerRef = useRef<HTMLDivElement>(null)
 
   const startResize = (dividerIndex: number, event: React.MouseEvent) => {
@@ -63,6 +64,9 @@ export function FixedWorkspace() {
               title={definition.title}
               className={slot.className}
               style={getSlotStyle(index)}
+              showHeader
+              panelOptions={ENABLED_PANEL_OPTIONS}
+              onTypeChange={(type) => setSlotPanelType(workspace.id, slot.id, type)}
             >
               {renderPanel(slot.type)}
             </PanelShell>

@@ -12,6 +12,8 @@ export interface WorkspacePanelWidths {
   right: number
 }
 
+type WorkspaceSlotOverrides = Record<string, Record<string, PanelType>>
+
 export interface WorkspaceDefinition {
   id: string
   title: string
@@ -69,8 +71,10 @@ export const WORKSPACES: WorkspaceDefinition[] = [
 interface WorkspaceState {
   activeWorkspaceId: string
   panelWidths: Record<string, WorkspacePanelWidths>
+  slotOverrides: WorkspaceSlotOverrides
   setActiveWorkspace: (id: string) => void
   setPanelWidths: (workspaceId: string, widths: WorkspacePanelWidths) => void
+  setSlotPanelType: (workspaceId: string, slotId: string, type: PanelType) => void
   resetWorkspace: () => void
   getActiveWorkspace: () => WorkspaceDefinition
   getPanelWidths: (workspaceId: string) => WorkspacePanelWidths
@@ -78,6 +82,7 @@ interface WorkspaceState {
 
 const STORAGE_KEY = "grimoire.activeWorkspace"
 const WIDTHS_STORAGE_KEY = "grimoire.workspaceWidths"
+const OVERRIDES_STORAGE_KEY = "grimoire.workspaceSlotOverrides"
 const DEFAULT_WIDTHS: WorkspacePanelWidths = { left: 260, right: 320 }
 
 function getInitialWorkspaceId() {
@@ -103,9 +108,27 @@ function saveWidths(widths: Record<string, WorkspacePanelWidths>) {
   window.localStorage.setItem(WIDTHS_STORAGE_KEY, JSON.stringify(widths))
 }
 
+function getInitialOverrides(): WorkspaceSlotOverrides {
+  if (typeof window === "undefined") return {}
+  try {
+    const raw = window.localStorage.getItem(OVERRIDES_STORAGE_KEY)
+    if (!raw) return {}
+    const parsed = JSON.parse(raw) as WorkspaceSlotOverrides
+    return parsed && typeof parsed === "object" ? parsed : {}
+  } catch {
+    return {}
+  }
+}
+
+function saveOverrides(overrides: WorkspaceSlotOverrides) {
+  if (typeof window === "undefined") return
+  window.localStorage.setItem(OVERRIDES_STORAGE_KEY, JSON.stringify(overrides))
+}
+
 export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   activeWorkspaceId: getInitialWorkspaceId(),
   panelWidths: getInitialWidths(),
+  slotOverrides: getInitialOverrides(),
   setActiveWorkspace: (id) => {
     if (!WORKSPACES.some(w => w.id === id)) return
     if (typeof window !== "undefined") window.localStorage.setItem(STORAGE_KEY, id)
@@ -116,17 +139,38 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
     saveWidths(next)
     set({ panelWidths: next })
   },
+  setSlotPanelType: (workspaceId, slotId, type) => {
+    const next = {
+      ...get().slotOverrides,
+      [workspaceId]: {
+        ...(get().slotOverrides[workspaceId] || {}),
+        [slotId]: type,
+      },
+    }
+    saveOverrides(next)
+    set({ slotOverrides: next })
+  },
   resetWorkspace: () => {
-    if (typeof window !== "undefined") window.localStorage.removeItem(STORAGE_KEY)
-    const { activeWorkspaceId, panelWidths } = get()
+    const { activeWorkspaceId, panelWidths, slotOverrides } = get()
     const nextWidths = { ...panelWidths }
+    const nextOverrides = { ...slotOverrides }
     delete nextWidths[activeWorkspaceId]
+    delete nextOverrides[activeWorkspaceId]
     saveWidths(nextWidths)
-    set({ activeWorkspaceId: "compose", panelWidths: nextWidths })
+    saveOverrides(nextOverrides)
+    set({ panelWidths: nextWidths, slotOverrides: nextOverrides })
   },
   getActiveWorkspace: () => {
     const id = get().activeWorkspaceId
-    return WORKSPACES.find(w => w.id === id) || WORKSPACES[0]
+    const base = WORKSPACES.find(w => w.id === id) || WORKSPACES[0]
+    const overrides = get().slotOverrides[base.id] || {}
+    return {
+      ...base,
+      slots: base.slots.map(slot => ({
+        ...slot,
+        type: overrides[slot.id] || slot.type,
+      })),
+    }
   },
   getPanelWidths: (workspaceId) => get().panelWidths[workspaceId] || DEFAULT_WIDTHS,
 }))

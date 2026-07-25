@@ -42,6 +42,8 @@ export const PANEL_DEFINITIONS: Record<PanelType, PanelDefinition> = {
   errors: { type: "errors", title: "错误", description: "错误日志", enabled: false },
 }
 
+export const ENABLED_PANEL_OPTIONS = Object.values(PANEL_DEFINITIONS).filter(panel => panel.enabled)
+
 export function renderPanel(type: PanelType): React.ReactNode {
   switch (type) {
     case "tag-sidebar":
