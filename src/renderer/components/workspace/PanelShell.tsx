@@ -12,6 +12,9 @@ interface PanelShellProps {
   panelOptions?: PanelDefinition[]
   onTypeChange?: (type: PanelType) => void
   onSplit?: (direction: "horizontal" | "vertical") => void
+  onMaximize?: () => void
+  onClose?: () => void
+  maximized?: boolean
 }
 
 export function PanelShell({
@@ -25,6 +28,9 @@ export function PanelShell({
   panelOptions = [],
   onTypeChange,
   onSplit,
+  onMaximize,
+  onClose,
+  maximized = false,
 }: PanelShellProps) {
   return (
     <section
@@ -61,6 +67,20 @@ export function PanelShell({
             title="上下分割"
           >
             ↕
+          </button>
+          <button
+            onClick={onMaximize}
+            className="w-6 h-6 rounded text-[12px] text-[var(--color-text-secondary)] hover:text-[var(--color-accent)] hover:bg-[var(--color-accent)]/10"
+            title={maximized ? "还原面板" : "最大化面板"}
+          >
+            {maximized ? "▣" : "□"}
+          </button>
+          <button
+            onClick={onClose}
+            className="w-6 h-6 rounded text-[12px] text-[var(--color-text-secondary)] hover:text-red-400 hover:bg-red-500/10"
+            title="关闭面板"
+          >
+            ×
           </button>
         </div>
       )}

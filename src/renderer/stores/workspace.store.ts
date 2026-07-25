@@ -31,6 +31,7 @@ export type WorkspaceLayoutNode =
 
 type WorkspaceSlotOverrides = Record<string, Record<string, PanelType>>
 type WorkspaceLayouts = Record<string, WorkspaceLayoutNode>
+type MaximizedPanels = Record<string, string | null>
 
 export interface WorkspaceDefinition {
   id: string
@@ -91,22 +92,28 @@ interface WorkspaceState {
   panelWidths: Record<string, WorkspacePanelWidths>
   slotOverrides: WorkspaceSlotOverrides
   layouts: WorkspaceLayouts
+  maximizedPanels: MaximizedPanels
   setActiveWorkspace: (id: string) => void
   setPanelWidths: (workspaceId: string, widths: WorkspacePanelWidths) => void
   setSlotPanelType: (workspaceId: string, slotId: string, type: PanelType) => void
   setPanelType: (workspaceId: string, panelId: string, type: PanelType) => void
   splitPanel: (workspaceId: string, panelId: string, direction: SplitDirection) => void
+  closePanel: (workspaceId: string, panelId: string) => void
   setSplitRatio: (workspaceId: string, splitId: string, ratio: number) => void
+  setMaximizedPanel: (workspaceId: string, panelId: string | null) => void
   resetWorkspace: () => void
   getActiveWorkspace: () => WorkspaceDefinition
   getPanelWidths: (workspaceId: string) => WorkspacePanelWidths
   getLayout: (workspaceId: string) => WorkspaceLayoutNode
+  getMaximizedPanelId: (workspaceId: string) => string | null
+  findPanel: (workspaceId: string, panelId: string) => Extract<WorkspaceLayoutNode, { kind: "panel" }> | null
 }
 
 const STORAGE_KEY = "grimoire.activeWorkspace"
 const WIDTHS_STORAGE_KEY = "grimoire.workspaceWidths"
 const OVERRIDES_STORAGE_KEY = "grimoire.workspaceSlotOverrides"
 const LAYOUTS_STORAGE_KEY = "grimoire.workspaceLayouts"
+const MAXIMIZED_STORAGE_KEY = "grimoire.workspaceMaximizedPanels"
 const DEFAULT_WIDTHS: WorkspacePanelWidths = { left: 260, right: 320 }
 
 const createId = (prefix: string) => prefix + Math.random().toString(36).slice(2, 10)
@@ -192,6 +199,23 @@ function saveLayouts(layouts: WorkspaceLayouts) {
   window.localStorage.setItem(LAYOUTS_STORAGE_KEY, JSON.stringify(layouts))
 }
 
+function getInitialMaximizedPanels(): MaximizedPanels {
+  if (typeof window === "undefined") return {}
+  try {
+    const raw = window.localStorage.getItem(MAXIMIZED_STORAGE_KEY)
+    if (!raw) return {}
+    const parsed = JSON.parse(raw) as MaximizedPanels
+    return parsed && typeof parsed === "object" ? parsed : {}
+  } catch {
+    return {}
+  }
+}
+
+function saveMaximizedPanels(maximizedPanels: MaximizedPanels) {
+  if (typeof window === "undefined") return
+  window.localStorage.setItem(MAXIMIZED_STORAGE_KEY, JSON.stringify(maximizedPanels))
+}
+
 function updateLayoutNode(
   node: WorkspaceLayoutNode,
   targetId: string,
@@ -206,6 +230,26 @@ function updateLayoutNode(
   }
 }
 
+function removePanelNode(node: WorkspaceLayoutNode, panelId: string): WorkspaceLayoutNode | null {
+  if (node.kind === "panel") {
+    return node.id === panelId ? null : node
+  }
+  const first = removePanelNode(node.first, panelId)
+  const second = removePanelNode(node.second, panelId)
+  if (!first && !second) return null
+  if (!first) return second
+  if (!second) return first
+  return { ...node, first, second }
+}
+
+function findPanelNode(
+  node: WorkspaceLayoutNode,
+  panelId: string
+): Extract<WorkspaceLayoutNode, { kind: "panel" }> | null {
+  if (node.kind === "panel") return node.id === panelId ? node : null
+  return findPanelNode(node.first, panelId) || findPanelNode(node.second, panelId)
+}
+
 function clampRatio(ratio: number) {
   return Math.min(0.88, Math.max(0.12, ratio))
 }
@@ -215,6 +259,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   panelWidths: getInitialWidths(),
   slotOverrides: getInitialOverrides(),
   layouts: getInitialLayouts(),
+  maximizedPanels: getInitialMaximizedPanels(),
   setActiveWorkspace: (id) => {
     if (!WORKSPACES.some(w => w.id === id)) return
     if (typeof window !== "undefined") window.localStorage.setItem(STORAGE_KEY, id)
@@ -264,7 +309,20 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
     })
     const next = { ...get().layouts, [workspaceId]: nextLayout }
     saveLayouts(next)
-    set({ layouts: next })
+    set({ layouts: next, maximizedPanels: { ...get().maximizedPanels, [workspaceId]: null } })
+    saveMaximizedPanels({ ...get().maximizedPanels, [workspaceId]: null })
+  },
+  closePanel: (workspaceId, panelId) => {
+    const layout = get().getLayout(workspaceId)
+    if (layout.kind === "panel" && layout.id === panelId) return
+    const nextLayout = removePanelNode(layout, panelId)
+    if (!nextLayout) return
+    const nextLayouts = { ...get().layouts, [workspaceId]: nextLayout }
+    const nextMaximized = { ...get().maximizedPanels }
+    if (nextMaximized[workspaceId] === panelId) nextMaximized[workspaceId] = null
+    saveLayouts(nextLayouts)
+    saveMaximizedPanels(nextMaximized)
+    set({ layouts: nextLayouts, maximizedPanels: nextMaximized })
   },
   setSplitRatio: (workspaceId, splitId, ratio) => {
     const layout = get().getLayout(workspaceId)
@@ -275,18 +333,26 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
     saveLayouts(next)
     set({ layouts: next })
   },
+  setMaximizedPanel: (workspaceId, panelId) => {
+    const next = { ...get().maximizedPanels, [workspaceId]: panelId }
+    saveMaximizedPanels(next)
+    set({ maximizedPanels: next })
+  },
   resetWorkspace: () => {
-    const { activeWorkspaceId, panelWidths, slotOverrides, layouts } = get()
+    const { activeWorkspaceId, panelWidths, slotOverrides, layouts, maximizedPanels } = get()
     const nextWidths = { ...panelWidths }
     const nextOverrides = { ...slotOverrides }
     const nextLayouts = { ...layouts }
+    const nextMaximized = { ...maximizedPanels }
     delete nextWidths[activeWorkspaceId]
     delete nextOverrides[activeWorkspaceId]
     delete nextLayouts[activeWorkspaceId]
+    delete nextMaximized[activeWorkspaceId]
     saveWidths(nextWidths)
     saveOverrides(nextOverrides)
     saveLayouts(nextLayouts)
-    set({ panelWidths: nextWidths, slotOverrides: nextOverrides, layouts: nextLayouts })
+    saveMaximizedPanels(nextMaximized)
+    set({ panelWidths: nextWidths, slotOverrides: nextOverrides, layouts: nextLayouts, maximizedPanels: nextMaximized })
   },
   getActiveWorkspace: () => {
     const id = get().activeWorkspaceId
@@ -302,4 +368,6 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   },
   getPanelWidths: (workspaceId) => get().panelWidths[workspaceId] || DEFAULT_WIDTHS,
   getLayout: (workspaceId) => get().layouts[workspaceId] || getDefaultLayout(workspaceId),
+  getMaximizedPanelId: (workspaceId) => get().maximizedPanels[workspaceId] || null,
+  findPanel: (workspaceId, panelId) => findPanelNode(get().getLayout(workspaceId), panelId),
 }))

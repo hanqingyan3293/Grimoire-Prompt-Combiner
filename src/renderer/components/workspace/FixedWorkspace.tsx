@@ -9,9 +9,13 @@ const MIN_PANEL_SIZE = 120
 export function FixedWorkspace() {
   const workspace = useWorkspaceStore(s => s.getActiveWorkspace())
   const layout = useWorkspaceStore(s => s.getLayout(workspace.id))
+  const maximizedPanelId = useWorkspaceStore(s => s.getMaximizedPanelId(workspace.id))
+  const maximizedPanel = useWorkspaceStore(s => maximizedPanelId ? s.findPanel(workspace.id, maximizedPanelId) : null)
   const setPanelType = useWorkspaceStore(s => s.setPanelType)
   const splitPanel = useWorkspaceStore(s => s.splitPanel)
+  const closePanel = useWorkspaceStore(s => s.closePanel)
   const setSplitRatio = useWorkspaceStore(s => s.setSplitRatio)
+  const setMaximizedPanel = useWorkspaceStore(s => s.setMaximizedPanel)
   const containerRef = useRef<HTMLDivElement>(null)
 
   const startResize = (node: Extract<WorkspaceLayoutNode, { kind: "split" }>, event: React.MouseEvent) => {
@@ -56,6 +60,9 @@ export function FixedWorkspace() {
           panelOptions={ENABLED_PANEL_OPTIONS}
           onTypeChange={(type) => setPanelType(workspace.id, node.id, type)}
           onSplit={(direction) => splitPanel(workspace.id, node.id, direction)}
+          onMaximize={() => setMaximizedPanel(workspace.id, maximizedPanelId === node.id ? null : node.id)}
+          onClose={() => closePanel(workspace.id, node.id)}
+          maximized={maximizedPanelId === node.id}
         >
           {renderPanel(node.type)}
         </PanelShell>
@@ -89,7 +96,7 @@ export function FixedWorkspace() {
 
   return (
     <div ref={containerRef} className="flex flex-1 overflow-hidden">
-      {renderNode(layout)}
+      {renderNode(maximizedPanel || layout)}
     </div>
   )
 }
