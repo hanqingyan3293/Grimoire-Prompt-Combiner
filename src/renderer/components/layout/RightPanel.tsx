@@ -7,9 +7,7 @@ import { SimpleAIPanel } from '../ai/SimpleAIPanel'
 
 type TabKey = 'presets' | 'history' | 'images' | 'ai'
 
-export function RightPanel({ onOpenSettings, onOpenAI }: {
-  onOpenSettings: () => void; onOpenAI: () => void
-}) {
+export function RightPanel() {
   const [activeTab, setActiveTab] = useState<TabKey>('presets')
 
   // Auto-refresh when switching to AI tab

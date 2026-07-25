@@ -20,8 +20,6 @@ function AppInner() {
   const loadTags = useTagsStore(s => s.loadTags)
   const { loadSettings, language } = useSettingsStore()
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null)
-  const [settingsOpen, setSettingsOpen] = useState(false)
-  const [aiOpen, setAIOpen] = useState(false)
 
   useEffect(() => {
     const onHashChange = () => setWindowType(window.location.hash.replace("#", "") || "main")
@@ -37,18 +35,6 @@ function AppInner() {
       setToast(ce.detail); setTimeout(() => setToast(null), 3000)
     }
     window.addEventListener('grimoire:toast', handler); return () => window.removeEventListener('grimoire:toast', handler)
-  }, [])
-
-  // Listen for settings/AI open events
-  useEffect(() => {
-    const openSettings = () => setSettingsOpen(true)
-    const openAI = () => setAIOpen(true)
-    window.addEventListener('grimoire:openSettings', openSettings)
-    window.addEventListener('grimoire:openAI', openAI)
-    return () => {
-      window.removeEventListener('grimoire:openSettings', openSettings)
-      window.removeEventListener('grimoire:openAI', openAI)
-    }
   }, [])
 
   // Window focus -> refresh stores for cross-window sync
@@ -96,7 +82,7 @@ function AppInner() {
       <div className="flex flex-1 overflow-hidden">
         <Sidebar />
         <MainContent />
-        <RightPanel onOpenSettings={() => setSettingsOpen(true)} onOpenAI={() => setAIOpen(true)} />
+        <RightPanel />
       </div>
       <StatusBar />
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
