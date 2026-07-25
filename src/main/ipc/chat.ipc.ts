@@ -25,6 +25,7 @@ export function registerChatIPC(): void {
 
   ipcMain.handle('chat:deleteGroup', async (_e, id: string) => {
     const db = getDatabase()
+    db.run("UPDATE conversations SET group_id=? WHERE group_id=?", ['default', id])
     db.run('DELETE FROM chat_groups WHERE id=? AND id!=?', [id, 'default'])
     saveDatabase()
     return true

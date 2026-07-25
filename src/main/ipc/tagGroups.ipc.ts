@@ -4,6 +4,59 @@ import { getDatabase, saveDatabase } from "../database"
 import { IPC_CHANNELS } from "../../shared/types"
 import crypto from "crypto"
 
+const genScopedId = (prefix: string) => prefix + crypto.randomUUID().slice(0, 8)
+
+function copyTagData(db: ReturnType<typeof getDatabase>, fromGroupId: string, toGroupId: string): void {
+  const cats = db.exec("SELECT * FROM categories WHERE group_id=?", [fromGroupId])
+  const subs = db.exec("SELECT * FROM subcategories WHERE group_id=?", [fromGroupId])
+  const tags = db.exec("SELECT * FROM tags WHERE group_id=?", [fromGroupId])
+  const catIdMap = new Map<string, string>()
+  const subIdMap = new Map<string, string>()
+
+  for (const c of cats[0]?.values || []) {
+    const oldId = c[0] as string
+    const newId = genScopedId("cat_")
+    catIdMap.set(oldId, newId)
+    db.run("INSERT INTO categories (id,group_id,en,zh,sort_order) VALUES (?,?,?,?,?)", [newId, toGroupId, c[2], c[3], c[4]])
+  }
+  for (const s of subs[0]?.values || []) {
+    const oldId = s[0] as string
+    const newId = genScopedId("sub_")
+    const newCatId = catIdMap.get(s[2] as string)
+    if (!newCatId) continue
+    subIdMap.set(oldId, newId)
+    db.run("INSERT INTO subcategories (id,group_id,category_id,en,zh,sort_order) VALUES (?,?,?,?,?,?)", [newId, toGroupId, newCatId, s[3], s[4], s[5]])
+  }
+  for (const t of tags[0]?.values || []) {
+    const newSubId = subIdMap.get(t[2] as string)
+    if (!newSubId) continue
+    db.run("INSERT INTO tags (id,group_id,subcategory_id,en,zh,sort_order,source) VALUES (?,?,?,?,?,?,?)", [genScopedId("t_"), toGroupId, newSubId, t[3], t[4], t[5], t[6]])
+  }
+}
+
+function importTagData(db: ReturnType<typeof getDatabase>, data: any, toGroupId: string): void {
+  const catIdMap = new Map<string, string>()
+  const subIdMap = new Map<string, string>()
+
+  for (const c of data.categories || []) {
+    const newId = genScopedId("cat_")
+    catIdMap.set(c.id, newId)
+    db.run("INSERT INTO categories (id,group_id,en,zh,sort_order) VALUES (?,?,?,?,?)", [newId, toGroupId, c.en || c.zh, c.zh || c.en, c.sort_order || 0])
+  }
+  for (const s of data.subcategories || []) {
+    const newCatId = catIdMap.get(s.category_id)
+    if (!newCatId) continue
+    const newId = genScopedId("sub_")
+    subIdMap.set(s.id, newId)
+    db.run("INSERT INTO subcategories (id,group_id,category_id,en,zh,sort_order) VALUES (?,?,?,?,?,?)", [newId, toGroupId, newCatId, s.en || s.zh, s.zh || s.en, s.sort_order || 0])
+  }
+  for (const t of data.tags || []) {
+    const newSubId = subIdMap.get(t.subcategory_id)
+    if (!newSubId) continue
+    db.run("INSERT INTO tags (id,group_id,subcategory_id,en,zh,sort_order,source) VALUES (?,?,?,?,?,?,?)", [genScopedId("t_"), toGroupId, newSubId, t.en || t.zh, t.zh || t.en, t.sort_order || 0, t.source || "custom"])
+  }
+}
+
 export function getActiveGroupId(): string {
   const db = getDatabase()
   const r = db.exec("SELECT id FROM tag_groups WHERE is_active=1 LIMIT 1")
@@ -27,12 +80,7 @@ export function registerTagGroupsIPC(): void {
     db.run("INSERT INTO tag_groups (id, name) VALUES (?,?)", [id, name])
     // 如果指定了复制源，复制标签数据
     if (copyFromGroupId) {
-      const cats = db.exec("SELECT * FROM categories WHERE group_id=?", [copyFromGroupId])
-      const subs = db.exec("SELECT * FROM subcategories WHERE group_id=?", [copyFromGroupId])
-      const tags = db.exec("SELECT * FROM tags WHERE group_id=?", [copyFromGroupId])
-      for (const c of cats[0]?.values || []) db.run("INSERT INTO categories (id,group_id,en,zh,sort_order) VALUES (?,?,?,?,?)", [c[0], id, c[2], c[3], c[4]])
-      for (const s of subs[0]?.values || []) db.run("INSERT INTO subcategories (id,group_id,category_id,en,zh,sort_order) VALUES (?,?,?,?,?,?)", [s[0], id, s[2], s[3], s[4], s[5]])
-      for (const t of tags[0]?.values || []) db.run("INSERT INTO tags (id,group_id,subcategory_id,en,zh,sort_order,source) VALUES (?,?,?,?,?,?,?)", [t[0], id, t[2], t[3], t[4], t[5], t[6]])
+      copyTagData(db, copyFromGroupId, id)
     }
     saveDatabase()
     return { id }
@@ -41,6 +89,16 @@ export function registerTagGroupsIPC(): void {
   // 删除
   ipcMain.handle(IPC_CHANNELS.TAG_GROUPS_DELETE, async (_e, id: string) => {
     const db = getDatabase()
+    const groups = db.exec("SELECT id,is_active FROM tag_groups ORDER BY created_at ASC")
+    const rows = groups[0]?.values || []
+    if (id === "default") throw new Error("默认标签组不能删除")
+    if (rows.length <= 1) throw new Error("至少需要保留一个标签组")
+    const deleting = rows.find(r => r[0] === id)
+    const fallback = rows.find(r => r[0] !== id)
+    if (deleting?.[1] === 1 && fallback) {
+      db.run("UPDATE tag_groups SET is_active=0")
+      db.run("UPDATE tag_groups SET is_active=1 WHERE id=?", [fallback[0]])
+    }
     db.run("DELETE FROM tags WHERE group_id=?", [id])
     db.run("DELETE FROM subcategories WHERE group_id=?", [id])
     db.run("DELETE FROM categories WHERE group_id=?", [id])
@@ -62,12 +120,7 @@ export function registerTagGroupsIPC(): void {
     const db = getDatabase()
     const newId = "grp_" + crypto.randomUUID().slice(0, 8)
     db.run("INSERT INTO tag_groups (id, name) VALUES (?,?)", [newId, newName])
-    const cats = db.exec("SELECT * FROM categories WHERE group_id=?", [id])
-    const subs = db.exec("SELECT * FROM subcategories WHERE group_id=?", [id])
-    const tags = db.exec("SELECT * FROM tags WHERE group_id=?", [id])
-    for (const c of cats[0]?.values || []) db.run("INSERT INTO categories (id,group_id,en,zh,sort_order) VALUES (?,?,?,?,?)", [c[0], newId, c[2], c[3], c[4]])
-    for (const s of subs[0]?.values || []) db.run("INSERT INTO subcategories (id,group_id,category_id,en,zh,sort_order) VALUES (?,?,?,?,?,?)", [s[0], newId, s[2], s[3], s[4], s[5]])
-    for (const t of tags[0]?.values || []) db.run("INSERT INTO tags (id,group_id,subcategory_id,en,zh,sort_order,source) VALUES (?,?,?,?,?,?,?)", [t[0], newId, t[2], t[3], t[4], t[5], t[6]])
+    copyTagData(db, id, newId)
     saveDatabase()
     return { id: newId }
   })
@@ -101,9 +154,7 @@ export function registerTagGroupsIPC(): void {
     const db = getDatabase()
     const id = "grp_" + crypto.randomUUID().slice(0, 8)
     db.run("INSERT INTO tag_groups (id, name) VALUES (?,?)", [id, groupName])
-    for (const c of data.categories || []) db.run("INSERT OR REPLACE INTO categories (id,group_id,en,zh,sort_order) VALUES (?,?,?,?,?)", [c.id, id, c.en, c.zh, c.sort_order||0])
-    for (const s of data.subcategories || []) db.run("INSERT OR REPLACE INTO subcategories (id,group_id,category_id,en,zh,sort_order) VALUES (?,?,?,?,?,?)", [s.id, id, s.category_id, s.en, s.zh, s.sort_order||0])
-    for (const t of data.tags || []) db.run("INSERT OR REPLACE INTO tags (id,group_id,subcategory_id,en,zh,sort_order,source) VALUES (?,?,?,?,?,?,?)", [t.id, id, t.subcategory_id, t.en, t.zh, t.sort_order||0, t.source||'custom'])
+    importTagData(db, data, id)
     saveDatabase()
     return { id }
   })

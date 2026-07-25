@@ -251,17 +251,20 @@ export const useChatStore = create<ChatState>((set, get) => ({
       created_at: new Date().toISOString(),
     }
 
-    // 3. 更新本地 state
+    // 3. 构建消息历史。不要把本地流式占位 assistant 消息传给模型。
+    const previousMessages = get().messages
+    const apiMessages = [
+      ...previousMessages
+        .filter(m => m.role !== 'system')
+        .map(m => ({ role: m.role, content: m.content })),
+      { role: 'user', content },
+    ]
+
+    // 4. 更新本地 state
     set(s => ({
       messages: [...s.messages, userMsg, aiMsg],
       streamingMessageId: aiMsgId,
     }))
-
-    // 4. 构建消息历史
-    const allMsgs = [...get().messages]
-    const apiMessages = allMsgs
-      .filter(m => m.role !== 'system')
-      .map(m => ({ role: m.role, content: m.content }))
 
     // 5. 添加系统提示词
     const { conversations } = get()

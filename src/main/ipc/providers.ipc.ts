@@ -54,13 +54,15 @@ export function registerProvidersIPC(): void {
   ipcMain.handle(IPC_CHANNELS.PROVIDERS_SAVE, async (_e, data: Partial<Provider> & { id?: string }) => {
     const db = getDatabase()
     const id = data.id || ("pvd_" + crypto.randomUUID().slice(0, 8))
-    const existing = db.exec("SELECT id FROM providers WHERE id=?", [id])
+    const existing = db.exec("SELECT id, api_key FROM providers WHERE id=?", [id])
     
     if (existing[0]?.values?.length) {
       // 更新
+      const currentKey = (existing[0].values[0][1] as string) || ""
+      const nextKey = data.api_key ? encryptKey(data.api_key) : currentKey
       db.run(
         `UPDATE providers SET name=?,access_mode=?,protocol=?,base_url=?,api_key=?,default_model=?,test_model=?,context_size=?,models=?,config_toml=?,auth_json=?,updated_at=datetime('now','localtime') WHERE id=?`,
-        [data.name||"", data.access_mode||"api", data.protocol||"chat_completions", data.base_url||"", encryptKey(data.api_key||""), data.default_model||"", data.test_model||"", data.context_size||null, JSON.stringify(data.models||[]), data.config_toml||"", data.auth_json||"", id]
+        [data.name||"", data.access_mode||"api", data.protocol||"chat_completions", data.base_url||"", nextKey, data.default_model||"", data.test_model||"", data.context_size||null, JSON.stringify(data.models||[]), data.config_toml||"", data.auth_json||"", id]
       )
     } else {
       // 新建

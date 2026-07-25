@@ -18,10 +18,6 @@ export function FavoritesPanel({ onCtxMenu, onFavCtxMenu }: FavPanelProps) {
   const [tagCatExpanded, setTagCatExpanded] = useState<Set<string>>(new Set())
   const [tagSubExpanded, setTagSubExpanded] = useState<Set<string>>(new Set())
 
-  if (favStore.loading) {
-    return <div className="text-sm text-[var(--color-text-secondary)] text-center py-6">加载中...</div>
-  }
-
   const posIds = new Set(promptsStore.positive.map((p: any) => p.tag.id))
 
   const tagLookup = new Map<string, any>()
@@ -53,6 +49,10 @@ export function FavoritesPanel({ onCtxMenu, onFavCtxMenu }: FavPanelProps) {
       setTagCatExpanded(new Set(Array.from(groupedTags.keys())))
     }
   }, [groupedTags.size])
+
+  if (favStore.loading) {
+    return <div className="text-sm text-[var(--color-text-secondary)] text-center py-6">加载中...</div>
+  }
 
   const toggleTagCat = (id: string) => {
     setTagCatExpanded(prev => {

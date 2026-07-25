@@ -32,11 +32,11 @@ export function MainContent() {
     const negParts: string[] = []
     for (const pt of positive) {
       const text = lang === "zh" ? pt.tag.zh : pt.tag.en
-      posParts.push(pt.weight === 1 ? text : `{${text}:${pt.weight}}`)
+      posParts.push(pt.weight === 1 ? text : `(${text}:${pt.weight})`)
     }
     for (const pt of negative) {
       const text = lang === "zh" ? pt.tag.zh : pt.tag.en
-      negParts.push(pt.weight === 1 ? text : `{${text}:${pt.weight}}`)
+      negParts.push(pt.weight === 1 ? text : `(${text}:${pt.weight})`)
     }
     let result = posParts.join(", ")
     if (negParts.length > 0) {
