@@ -71,11 +71,19 @@ export function MainContent() {
     return allTags.filter(t => filtered.has(t.id))
   }, [allTags, categories, selectedSubIds])
 
-  React.useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if (e.ctrlKey && e.key === "z") { e.preventDefault(); if (canUndo()) undo() }
-      if (e.ctrlKey && e.key === "y") { e.preventDefault(); if (canRedo()) redo() }
-    }
+	  React.useEffect(() => {
+	    const handler = (e: KeyboardEvent) => {
+	      const target = e.target as HTMLElement | null
+	      const tagName = target?.tagName
+	      const isEditingText =
+	        target?.isContentEditable ||
+	        tagName === "INPUT" ||
+	        tagName === "TEXTAREA" ||
+	        tagName === "SELECT"
+	      if (isEditingText) return
+	      if (e.ctrlKey && e.key === "z") { e.preventDefault(); if (canUndo()) undo() }
+	      if (e.ctrlKey && e.key === "y") { e.preventDefault(); if (canRedo()) redo() }
+	    }
     window.addEventListener("keydown", handler)
     return () => window.removeEventListener("keydown", handler)
   }, [positive, negative])

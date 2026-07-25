@@ -7,11 +7,6 @@ export interface WorkspaceSlot {
   className: string
 }
 
-export interface WorkspacePanelWidths {
-  left: number
-  right: number
-}
-
 export type SplitDirection = "horizontal" | "vertical"
 
 export type WorkspaceLayoutNode =
@@ -29,7 +24,6 @@ export type WorkspaceLayoutNode =
       second: WorkspaceLayoutNode
     }
 
-type WorkspaceSlotOverrides = Record<string, Record<string, PanelType>>
 type WorkspaceLayouts = Record<string, WorkspaceLayoutNode>
 type MaximizedPanels = Record<string, string | null>
 
@@ -89,32 +83,23 @@ export const WORKSPACES: WorkspaceDefinition[] = [
 
 interface WorkspaceState {
   activeWorkspaceId: string
-  panelWidths: Record<string, WorkspacePanelWidths>
-  slotOverrides: WorkspaceSlotOverrides
   layouts: WorkspaceLayouts
   maximizedPanels: MaximizedPanels
   setActiveWorkspace: (id: string) => void
-  setPanelWidths: (workspaceId: string, widths: WorkspacePanelWidths) => void
-  setSlotPanelType: (workspaceId: string, slotId: string, type: PanelType) => void
   setPanelType: (workspaceId: string, panelId: string, type: PanelType) => void
   splitPanel: (workspaceId: string, panelId: string, direction: SplitDirection) => void
   closePanel: (workspaceId: string, panelId: string) => void
   setSplitRatio: (workspaceId: string, splitId: string, ratio: number) => void
   setMaximizedPanel: (workspaceId: string, panelId: string | null) => void
   resetWorkspace: () => void
-  getActiveWorkspace: () => WorkspaceDefinition
-  getPanelWidths: (workspaceId: string) => WorkspacePanelWidths
   getLayout: (workspaceId: string) => WorkspaceLayoutNode
   getMaximizedPanelId: (workspaceId: string) => string | null
   findPanel: (workspaceId: string, panelId: string) => Extract<WorkspaceLayoutNode, { kind: "panel" }> | null
 }
 
 const STORAGE_KEY = "grimoire.activeWorkspace"
-const WIDTHS_STORAGE_KEY = "grimoire.workspaceWidths"
-const OVERRIDES_STORAGE_KEY = "grimoire.workspaceSlotOverrides"
 const LAYOUTS_STORAGE_KEY = "grimoire.workspaceLayouts"
 const MAXIMIZED_STORAGE_KEY = "grimoire.workspaceMaximizedPanels"
-const DEFAULT_WIDTHS: WorkspacePanelWidths = { left: 260, right: 320 }
 
 const createId = (prefix: string) => prefix + Math.random().toString(36).slice(2, 10)
 
@@ -122,40 +107,6 @@ function getInitialWorkspaceId() {
   if (typeof window === "undefined") return "compose"
   const saved = window.localStorage.getItem(STORAGE_KEY)
   return WORKSPACES.some(w => w.id === saved) ? saved! : "compose"
-}
-
-function getInitialWidths(): Record<string, WorkspacePanelWidths> {
-  if (typeof window === "undefined") return {}
-  try {
-    const raw = window.localStorage.getItem(WIDTHS_STORAGE_KEY)
-    if (!raw) return {}
-    const parsed = JSON.parse(raw) as Record<string, WorkspacePanelWidths>
-    return parsed && typeof parsed === "object" ? parsed : {}
-  } catch {
-    return {}
-  }
-}
-
-function saveWidths(widths: Record<string, WorkspacePanelWidths>) {
-  if (typeof window === "undefined") return
-  window.localStorage.setItem(WIDTHS_STORAGE_KEY, JSON.stringify(widths))
-}
-
-function getInitialOverrides(): WorkspaceSlotOverrides {
-  if (typeof window === "undefined") return {}
-  try {
-    const raw = window.localStorage.getItem(OVERRIDES_STORAGE_KEY)
-    if (!raw) return {}
-    const parsed = JSON.parse(raw) as WorkspaceSlotOverrides
-    return parsed && typeof parsed === "object" ? parsed : {}
-  } catch {
-    return {}
-  }
-}
-
-function saveOverrides(overrides: WorkspaceSlotOverrides) {
-  if (typeof window === "undefined") return
-  window.localStorage.setItem(OVERRIDES_STORAGE_KEY, JSON.stringify(overrides))
 }
 
 function createDefaultLayout(workspace: WorkspaceDefinition): WorkspaceLayoutNode {
@@ -256,30 +207,12 @@ function clampRatio(ratio: number) {
 
 export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   activeWorkspaceId: getInitialWorkspaceId(),
-  panelWidths: getInitialWidths(),
-  slotOverrides: getInitialOverrides(),
   layouts: getInitialLayouts(),
   maximizedPanels: getInitialMaximizedPanels(),
   setActiveWorkspace: (id) => {
     if (!WORKSPACES.some(w => w.id === id)) return
     if (typeof window !== "undefined") window.localStorage.setItem(STORAGE_KEY, id)
     set({ activeWorkspaceId: id })
-  },
-  setPanelWidths: (workspaceId, widths) => {
-    const next = { ...get().panelWidths, [workspaceId]: widths }
-    saveWidths(next)
-    set({ panelWidths: next })
-  },
-  setSlotPanelType: (workspaceId, slotId, type) => {
-    const next = {
-      ...get().slotOverrides,
-      [workspaceId]: {
-        ...(get().slotOverrides[workspaceId] || {}),
-        [slotId]: type,
-      },
-    }
-    saveOverrides(next)
-    set({ slotOverrides: next })
   },
   setPanelType: (workspaceId, panelId, type) => {
     const layout = get().getLayout(workspaceId)
@@ -339,34 +272,15 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
     set({ maximizedPanels: next })
   },
   resetWorkspace: () => {
-    const { activeWorkspaceId, panelWidths, slotOverrides, layouts, maximizedPanels } = get()
-    const nextWidths = { ...panelWidths }
-    const nextOverrides = { ...slotOverrides }
+    const { activeWorkspaceId, layouts, maximizedPanels } = get()
     const nextLayouts = { ...layouts }
     const nextMaximized = { ...maximizedPanels }
-    delete nextWidths[activeWorkspaceId]
-    delete nextOverrides[activeWorkspaceId]
     delete nextLayouts[activeWorkspaceId]
     delete nextMaximized[activeWorkspaceId]
-    saveWidths(nextWidths)
-    saveOverrides(nextOverrides)
     saveLayouts(nextLayouts)
     saveMaximizedPanels(nextMaximized)
-    set({ panelWidths: nextWidths, slotOverrides: nextOverrides, layouts: nextLayouts, maximizedPanels: nextMaximized })
+    set({ layouts: nextLayouts, maximizedPanels: nextMaximized })
   },
-  getActiveWorkspace: () => {
-    const id = get().activeWorkspaceId
-    const base = WORKSPACES.find(w => w.id === id) || WORKSPACES[0]
-    const overrides = get().slotOverrides[base.id] || {}
-    return {
-      ...base,
-      slots: base.slots.map(slot => ({
-        ...slot,
-        type: overrides[slot.id] || slot.type,
-      })),
-    }
-  },
-  getPanelWidths: (workspaceId) => get().panelWidths[workspaceId] || DEFAULT_WIDTHS,
   getLayout: (workspaceId) => get().layouts[workspaceId] || getDefaultLayout(workspaceId),
   getMaximizedPanelId: (workspaceId) => get().maximizedPanels[workspaceId] || null,
   findPanel: (workspaceId, panelId) => findPanelNode(get().getLayout(workspaceId), panelId),
