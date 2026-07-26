@@ -3,6 +3,11 @@ import type { PanelDefinition, PanelType } from "./panelTypes"
 import type { SplitPlacement } from "../../stores/workspace.store"
 
 type AddPanelDirection = "left" | "right" | "up" | "down"
+type CornerPosition = "top-left" | "top-right" | "bottom-left" | "bottom-right"
+type CornerDragPreview = {
+  direction: "horizontal" | "vertical"
+  placement: SplitPlacement
+} | null
 
 interface PanelShellProps {
   id: string
@@ -43,6 +48,7 @@ export function PanelShell({
 }: PanelShellProps) {
   const [addMenuOpen, setAddMenuOpen] = useState(false)
   const [addMenuPosition, setAddMenuPosition] = useState({ left: 8, top: 8 })
+  const [cornerDragPreview, setCornerDragPreview] = useState<CornerDragPreview>(null)
   const addMenuRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -66,6 +72,63 @@ export function PanelShell({
     const placement = addDirection === "left" || addDirection === "up" ? "before" : "after"
     onAddPanel?.(panelType, isHorizontal ? "horizontal" : "vertical", placement)
     setAddMenuOpen(false)
+  }
+  const startCornerDrag = (corner: CornerPosition, event: React.PointerEvent) => {
+    event.preventDefault()
+    event.stopPropagation()
+    const startX = event.clientX
+    const startY = event.clientY
+    let latestPreview: CornerDragPreview = null
+
+    const updatePreview = (clientX: number, clientY: number) => {
+      const dx = clientX - startX
+      const dy = clientY - startY
+      const absX = Math.abs(dx)
+      const absY = Math.abs(dy)
+      if (Math.max(absX, absY) < 36) {
+        latestPreview = null
+        setCornerDragPreview(null)
+        return
+      }
+      if (absX >= absY) {
+        latestPreview = {
+          direction: "horizontal",
+          placement: dx < 0 ? "before" : "after",
+        }
+      } else {
+        latestPreview = {
+          direction: "vertical",
+          placement: dy < 0 ? "before" : "after",
+        }
+      }
+      setCornerDragPreview(latestPreview)
+    }
+
+    const handleMove = (moveEvent: PointerEvent) => {
+      updatePreview(moveEvent.clientX, moveEvent.clientY)
+    }
+    const cleanup = () => {
+      document.body.style.cursor = ""
+      document.body.style.userSelect = ""
+      window.removeEventListener("pointermove", handleMove)
+      window.removeEventListener("pointerup", handleUp)
+      window.removeEventListener("pointercancel", cleanup)
+      window.removeEventListener("blur", cleanup)
+      setCornerDragPreview(null)
+    }
+    const handleUp = () => {
+      if (latestPreview) {
+        onAddPanel?.(type, latestPreview.direction, latestPreview.placement)
+      }
+      cleanup()
+    }
+
+    document.body.style.cursor = corner.includes("left") ? "nwse-resize" : "nesw-resize"
+    document.body.style.userSelect = "none"
+    window.addEventListener("pointermove", handleMove)
+    window.addEventListener("pointerup", handleUp)
+    window.addEventListener("pointercancel", cleanup)
+    window.addEventListener("blur", cleanup)
   }
   const toggleAddMenu = () => {
     if (addMenuOpen) {
@@ -94,7 +157,7 @@ export function PanelShell({
     <section
       data-panel-id={id}
       data-panel-type={type}
-      className={"flex h-full w-full min-h-0 min-w-0 flex-col overflow-hidden bg-[var(--color-bg-primary)] " + className}
+      className={"relative flex h-full w-full min-h-0 min-w-0 flex-col overflow-hidden bg-[var(--color-bg-primary)] " + className}
       style={style}
     >
       {showHeader && (
@@ -195,6 +258,45 @@ export function PanelShell({
       <div className="flex-1 min-h-0 min-w-0 overflow-auto">
         {children}
       </div>
+      <CornerHandle position="top-left" onPointerDown={startCornerDrag} />
+      <CornerHandle position="top-right" onPointerDown={startCornerDrag} />
+      <CornerHandle position="bottom-left" onPointerDown={startCornerDrag} />
+      <CornerHandle position="bottom-right" onPointerDown={startCornerDrag} />
+      {cornerDragPreview && (
+        <div
+          className={
+            "pointer-events-none absolute z-40 bg-[var(--color-accent)]/20 outline outline-1 outline-[var(--color-accent)] " +
+            (cornerDragPreview.direction === "horizontal"
+              ? cornerDragPreview.placement === "before" ? "left-0 top-0 h-full w-1/2" : "right-0 top-0 h-full w-1/2"
+              : cornerDragPreview.placement === "before" ? "left-0 top-0 h-1/2 w-full" : "bottom-0 left-0 h-1/2 w-full")
+          }
+        />
+      )}
     </section>
+  )
+}
+
+function CornerHandle({
+  position,
+  onPointerDown,
+}: {
+  position: CornerPosition
+  onPointerDown: (position: CornerPosition, event: React.PointerEvent) => void
+}) {
+  const positionClass =
+    position === "top-left" ? "left-0 top-0 cursor-nwse-resize" :
+    position === "top-right" ? "right-0 top-0 cursor-nesw-resize" :
+    position === "bottom-left" ? "bottom-0 left-0 cursor-nesw-resize" :
+    "bottom-0 right-0 cursor-nwse-resize"
+
+  return (
+    <button
+      onPointerDown={event => onPointerDown(position, event)}
+      className={"absolute z-30 h-3 w-3 opacity-0 hover:opacity-100 focus:opacity-100 " + positionClass}
+      title="拖拽分割面板"
+      aria-label="拖拽分割面板"
+    >
+      <span className="block h-full w-full border border-[var(--color-accent)] bg-[var(--color-accent)]/30" />
+    </button>
   )
 }
