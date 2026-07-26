@@ -27,6 +27,7 @@ export type WorkspaceLayoutNode =
 
 type WorkspaceLayouts = Record<string, WorkspaceLayoutNode>
 type MaximizedPanels = Record<string, string | null>
+type VersionedLayoutsStorage = { version: number; layouts: WorkspaceLayouts }
 
 export interface WorkspaceDefinition {
   id: string
@@ -103,6 +104,20 @@ interface WorkspaceState {
 const STORAGE_KEY = "grimoire.activeWorkspace"
 const LAYOUTS_STORAGE_KEY = "grimoire.workspaceLayouts"
 const MAXIMIZED_STORAGE_KEY = "grimoire.workspaceMaximizedPanels"
+const LAYOUTS_STORAGE_VERSION = 2
+const FALLBACK_PANEL_TYPE: PanelType = "utility-sidebar"
+const VALID_PANEL_TYPES = new Set<PanelType>([
+  "tag-sidebar",
+  "prompt-workbench",
+  "utility-sidebar",
+  "presets",
+  "history",
+  "images",
+  "ai-assistant",
+  "ai-chat",
+  "ai-vision",
+  "settings",
+])
 
 const createId = (prefix: string) => prefix + Math.random().toString(36).slice(2, 10)
 
@@ -141,8 +156,17 @@ function getInitialLayouts(): WorkspaceLayouts {
   try {
     const raw = window.localStorage.getItem(LAYOUTS_STORAGE_KEY)
     if (!raw) return {}
-    const parsed = JSON.parse(raw) as WorkspaceLayouts
-    return parsed && typeof parsed === "object" ? parsed : {}
+    const parsed = JSON.parse(raw) as WorkspaceLayouts | VersionedLayoutsStorage
+    const rawLayouts = "layouts" in parsed ? parsed.layouts : parsed
+    if (!rawLayouts || typeof rawLayouts !== "object") return {}
+    const layouts: WorkspaceLayouts = {}
+    for (const workspace of WORKSPACES) {
+      const layout = rawLayouts[workspace.id]
+      const sanitized = sanitizeLayoutNode(layout)
+      if (sanitized) layouts[workspace.id] = sanitized
+    }
+    saveLayouts(layouts)
+    return layouts
   } catch {
     return {}
   }
@@ -150,7 +174,38 @@ function getInitialLayouts(): WorkspaceLayouts {
 
 function saveLayouts(layouts: WorkspaceLayouts) {
   if (typeof window === "undefined") return
-  window.localStorage.setItem(LAYOUTS_STORAGE_KEY, JSON.stringify(layouts))
+  window.localStorage.setItem(LAYOUTS_STORAGE_KEY, JSON.stringify({
+    version: LAYOUTS_STORAGE_VERSION,
+    layouts,
+  } satisfies VersionedLayoutsStorage))
+}
+
+function sanitizeLayoutNode(node: unknown): WorkspaceLayoutNode | null {
+  if (!node || typeof node !== "object") return null
+  const value = node as Partial<WorkspaceLayoutNode>
+  if (value.kind === "panel") {
+    return {
+      kind: "panel",
+      id: typeof value.id === "string" && value.id ? value.id : createId("panel_"),
+      type: VALID_PANEL_TYPES.has(value.type as PanelType) ? value.type as PanelType : FALLBACK_PANEL_TYPE,
+    }
+  }
+  if (value.kind === "split") {
+    const first = sanitizeLayoutNode(value.first)
+    const second = sanitizeLayoutNode(value.second)
+    if (!first && !second) return null
+    if (!first) return second
+    if (!second) return first
+    return {
+      kind: "split",
+      id: typeof value.id === "string" && value.id ? value.id : createId("split_"),
+      direction: value.direction === "vertical" ? "vertical" : "horizontal",
+      ratio: clampRatio(typeof value.ratio === "number" ? value.ratio : 0.5),
+      first,
+      second,
+    }
+  }
+  return null
 }
 
 function getInitialMaximizedPanels(): MaximizedPanels {
