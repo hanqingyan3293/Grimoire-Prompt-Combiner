@@ -11,6 +11,7 @@ interface PanelShellProps {
   style?: React.CSSProperties
   panelOptions?: PanelDefinition[]
   onTypeChange?: (type: PanelType) => void
+  onAddPanel?: () => void
   onSplit?: (direction: "horizontal" | "vertical") => void
   onMaximize?: () => void
   onClose?: () => void
@@ -28,6 +29,7 @@ export function PanelShell({
   style,
   panelOptions = [],
   onTypeChange,
+  onAddPanel,
   onSplit,
   onMaximize,
   onClose,
@@ -60,6 +62,14 @@ export function PanelShell({
               </option>
             ))}
           </select>
+          <button
+            onClick={onAddPanel}
+            className="shrink-0 rounded text-[12px] text-[var(--color-text-secondary)] hover:text-[var(--color-accent)] hover:bg-[var(--color-accent)]/10"
+            style={{ width: "var(--panel-control-size)", height: "var(--panel-control-size)" }}
+            title="添加工具面板"
+          >
+            +
+          </button>
           <button
             onClick={() => onSplit?.("horizontal")}
             className="shrink-0 rounded text-[12px] text-[var(--color-text-secondary)] hover:text-[var(--color-accent)] hover:bg-[var(--color-accent)]/10"

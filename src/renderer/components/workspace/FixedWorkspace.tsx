@@ -74,6 +74,7 @@ export function FixedWorkspace() {
           showHeader
           panelOptions={ENABLED_PANEL_OPTIONS}
           onTypeChange={(type) => setPanelType(workspace.id, node.id, type)}
+          onAddPanel={() => splitPanel(workspace.id, node.id, "horizontal", "utility-sidebar")}
           onSplit={(direction) => splitPanel(workspace.id, node.id, direction)}
           onMaximize={() => setMaximizedPanel(workspace.id, maximizedPanelId === node.id ? null : node.id)}
           onClose={() => closePanel(workspace.id, node.id)}
