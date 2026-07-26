@@ -93,6 +93,8 @@ interface WorkspaceState {
   setSplitRatio: (workspaceId: string, splitId: string, ratio: number) => void
   setMaximizedPanel: (workspaceId: string, panelId: string | null) => void
   resetWorkspace: () => void
+  resetAllWorkspaces: () => void
+  copyWorkspaceLayout: (sourceWorkspaceId: string, targetWorkspaceId: string) => void
   getLayout: (workspaceId: string) => WorkspaceLayoutNode
   getMaximizedPanelId: (workspaceId: string) => string | null
   findPanel: (workspaceId: string, panelId: string) => Extract<WorkspaceLayoutNode, { kind: "panel" }> | null
@@ -279,6 +281,21 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
     const nextMaximized = { ...maximizedPanels }
     delete nextLayouts[activeWorkspaceId]
     delete nextMaximized[activeWorkspaceId]
+    saveLayouts(nextLayouts)
+    saveMaximizedPanels(nextMaximized)
+    set({ layouts: nextLayouts, maximizedPanels: nextMaximized })
+  },
+  resetAllWorkspaces: () => {
+    saveLayouts({})
+    saveMaximizedPanels({})
+    set({ layouts: {}, maximizedPanels: {} })
+  },
+  copyWorkspaceLayout: (sourceWorkspaceId, targetWorkspaceId) => {
+    if (!WORKSPACES.some(w => w.id === sourceWorkspaceId) || !WORKSPACES.some(w => w.id === targetWorkspaceId)) return
+    const sourceLayout = get().getLayout(sourceWorkspaceId)
+    const copiedLayout = JSON.parse(JSON.stringify(sourceLayout)) as WorkspaceLayoutNode
+    const nextLayouts = { ...get().layouts, [targetWorkspaceId]: copiedLayout }
+    const nextMaximized = { ...get().maximizedPanels, [targetWorkspaceId]: null }
     saveLayouts(nextLayouts)
     saveMaximizedPanels(nextMaximized)
     set({ layouts: nextLayouts, maximizedPanels: nextMaximized })
