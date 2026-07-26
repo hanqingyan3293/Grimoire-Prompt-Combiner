@@ -1,11 +1,11 @@
 @echo off
 chcp 65001 >nul
 setlocal
-title Grimoire v7
+title Grimoire v7.1
 cd /d "%~dp0"
 
 echo ================================================
-echo  Grimoire v7 - source launcher
+echo  Grimoire v7.1 - source launcher
 echo ================================================
 echo.
 

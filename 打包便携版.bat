@@ -5,7 +5,7 @@ title Build Grimoire Portable
 cd /d "%~dp0"
 
 echo ================================================
-echo  Grimoire v7 - portable EXE builder
+echo  Grimoire v7.1 - portable EXE builder
 echo ================================================
 echo.
 
