@@ -24,6 +24,7 @@ interface PanelShellProps {
   onTypeChange?: (type: PanelType) => void
   onAddPanel?: (type: PanelType, direction: "horizontal" | "vertical", placement: SplitPlacement, ratio?: number) => void
   onCornerMergePreview?: (panelId: string, side: CornerMergeSide | null) => void
+  onCornerMergeDrop?: (panelId: string, side: CornerMergeSide) => boolean
   onSplit?: (direction: "horizontal" | "vertical") => void
   onMaximize?: () => void
   onClose?: () => void
@@ -45,6 +46,7 @@ export function PanelShell({
   onTypeChange,
   onAddPanel,
   onCornerMergePreview,
+  onCornerMergeDrop,
   onSplit,
   onMaximize,
   onClose,
@@ -86,6 +88,7 @@ export function PanelShell({
     const startY = event.clientY
     const panelRect = (event.currentTarget.closest("[data-panel-id]") as HTMLElement | null)?.getBoundingClientRect()
     let latestPreview: CornerDragPreview = null
+    let latestMergeSide: CornerMergeSide | null = null
 
     const updatePreview = (clientX: number, clientY: number) => {
       const dx = clientX - startX
@@ -94,6 +97,7 @@ export function PanelShell({
       const absY = Math.abs(dy)
       if (Math.max(absX, absY) < 36) {
         latestPreview = null
+        latestMergeSide = null
         setCornerDragPreview(null)
         onCornerMergePreview?.(id, null)
         return
@@ -124,6 +128,7 @@ export function PanelShell({
           (side === "right" && clientX > panelRect.right + 8) ||
           (side === "up" && clientY < panelRect.top - 8) ||
           (side === "down" && clientY > panelRect.bottom + 8)
+        latestMergeSide = outsidePanel ? side : null
         onCornerMergePreview?.(id, outsidePanel ? side : null)
       }
       setCornerDragPreview(latestPreview)
@@ -143,7 +148,8 @@ export function PanelShell({
       onCornerMergePreview?.(id, null)
     }
     const handleUp = () => {
-      if (latestPreview) {
+      const merged = latestMergeSide ? onCornerMergeDrop?.(id, latestMergeSide) : false
+      if (!merged && latestPreview) {
         onAddPanel?.(type, latestPreview.direction, latestPreview.placement, latestPreview.ratio)
       }
       cleanup()

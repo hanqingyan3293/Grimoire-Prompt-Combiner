@@ -9,6 +9,7 @@ export interface WorkspaceSlot {
 
 export type SplitDirection = "horizontal" | "vertical"
 export type SplitPlacement = "before" | "after"
+export type MergeSide = "left" | "right" | "up" | "down"
 
 export type WorkspaceLayoutNode =
   | {
@@ -90,6 +91,7 @@ interface WorkspaceState {
   setActiveWorkspace: (id: string) => void
   setPanelType: (workspaceId: string, panelId: string, type: PanelType) => void
   splitPanel: (workspaceId: string, panelId: string, direction: SplitDirection, type?: PanelType, placement?: SplitPlacement, ratio?: number) => void
+  mergePanel: (workspaceId: string, panelId: string, side: MergeSide) => boolean
   closePanel: (workspaceId: string, panelId: string) => void
   setSplitRatio: (workspaceId: string, splitId: string, ratio: number) => void
   setMaximizedPanel: (workspaceId: string, panelId: string | null) => void
@@ -99,6 +101,7 @@ interface WorkspaceState {
   getLayout: (workspaceId: string) => WorkspaceLayoutNode
   getMaximizedPanelId: (workspaceId: string) => string | null
   findPanel: (workspaceId: string, panelId: string) => Extract<WorkspaceLayoutNode, { kind: "panel" }> | null
+  getMergeTarget: (workspaceId: string, panelId: string, side: MergeSide) => string | null
 }
 
 const STORAGE_KEY = "grimoire.activeWorkspace"
@@ -251,6 +254,55 @@ function removePanelNode(node: WorkspaceLayoutNode, panelId: string): WorkspaceL
   return { ...node, first, second }
 }
 
+function findDirectMergeTarget(node: WorkspaceLayoutNode, panelId: string, side: MergeSide): string | null {
+  if (node.kind === "panel") return null
+
+  const sourceInFirst = node.first.kind === "panel" && node.first.id === panelId
+  const sourceInSecond = node.second.kind === "panel" && node.second.id === panelId
+  const firstPanelId = node.first.kind === "panel" ? node.first.id : null
+  const secondPanelId = node.second.kind === "panel" ? node.second.id : null
+
+  if (node.direction === "horizontal") {
+    if (side === "right" && sourceInFirst && secondPanelId) return secondPanelId
+    if (side === "left" && sourceInSecond && firstPanelId) return firstPanelId
+  } else {
+    if (side === "down" && sourceInFirst && secondPanelId) return secondPanelId
+    if (side === "up" && sourceInSecond && firstPanelId) return firstPanelId
+  }
+
+  return findDirectMergeTarget(node.first, panelId, side) || findDirectMergeTarget(node.second, panelId, side)
+}
+
+function mergePanelNode(
+  node: WorkspaceLayoutNode,
+  panelId: string,
+  side: MergeSide
+): { node: WorkspaceLayoutNode; merged: boolean } {
+  if (node.kind === "panel") return { node, merged: false }
+
+  const sourceInFirst = node.first.kind === "panel" && node.first.id === panelId
+  const sourceInSecond = node.second.kind === "panel" && node.second.id === panelId
+  const siblingIsPanel = node.first.kind === "panel" && node.second.kind === "panel"
+
+  if (siblingIsPanel && node.direction === "horizontal") {
+    if (side === "right" && sourceInFirst) return { node: node.first, merged: true }
+    if (side === "left" && sourceInSecond) return { node: node.second, merged: true }
+  }
+
+  if (siblingIsPanel && node.direction === "vertical") {
+    if (side === "down" && sourceInFirst) return { node: node.first, merged: true }
+    if (side === "up" && sourceInSecond) return { node: node.second, merged: true }
+  }
+
+  const firstResult = mergePanelNode(node.first, panelId, side)
+  if (firstResult.merged) return { node: { ...node, first: firstResult.node }, merged: true }
+
+  const secondResult = mergePanelNode(node.second, panelId, side)
+  if (secondResult.merged) return { node: { ...node, second: secondResult.node }, merged: true }
+
+  return { node, merged: false }
+}
+
 export function findPanelNode(
   node: WorkspaceLayoutNode,
   panelId: string
@@ -303,6 +355,17 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
     saveLayouts(next)
     set({ layouts: next, maximizedPanels: { ...get().maximizedPanels, [workspaceId]: null } })
     saveMaximizedPanels({ ...get().maximizedPanels, [workspaceId]: null })
+  },
+  mergePanel: (workspaceId, panelId, side) => {
+    const layout = get().getLayout(workspaceId)
+    const result = mergePanelNode(layout, panelId, side)
+    if (!result.merged) return false
+    const nextLayouts = { ...get().layouts, [workspaceId]: result.node }
+    const nextMaximized = { ...get().maximizedPanels, [workspaceId]: null }
+    saveLayouts(nextLayouts)
+    saveMaximizedPanels(nextMaximized)
+    set({ layouts: nextLayouts, maximizedPanels: nextMaximized })
+    return true
   },
   closePanel: (workspaceId, panelId) => {
     const layout = get().getLayout(workspaceId)
@@ -358,4 +421,5 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   getLayout: (workspaceId) => get().layouts[workspaceId] || getDefaultLayout(workspaceId),
   getMaximizedPanelId: (workspaceId) => get().maximizedPanels[workspaceId] || null,
   findPanel: (workspaceId, panelId) => findPanelNode(get().getLayout(workspaceId), panelId),
+  getMergeTarget: (workspaceId, panelId, side) => findDirectMergeTarget(get().getLayout(workspaceId), panelId, side),
 }))

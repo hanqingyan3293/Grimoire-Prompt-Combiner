@@ -2,7 +2,7 @@ import React, { useMemo, useRef, useState } from "react"
 import { PanelShell, type CornerMergeSide } from "./PanelShell"
 import { ENABLED_PANEL_OPTIONS, PANEL_DEFINITIONS, PANEL_OPTION_GROUPS, renderPanel } from "./PanelRegistry"
 import { WORKSPACES, findPanelNode, getDefaultLayout, useWorkspaceStore } from "../../stores/workspace.store"
-import type { WorkspaceLayoutNode } from "../../stores/workspace.store"
+import type { MergeSide, WorkspaceLayoutNode } from "../../stores/workspace.store"
 
 export function FixedWorkspace() {
   const activeWorkspaceId = useWorkspaceStore(s => s.activeWorkspaceId)
@@ -10,9 +10,11 @@ export function FixedWorkspace() {
   const maximizedPanels = useWorkspaceStore(s => s.maximizedPanels)
   const setPanelType = useWorkspaceStore(s => s.setPanelType)
   const splitPanel = useWorkspaceStore(s => s.splitPanel)
+  const mergePanel = useWorkspaceStore(s => s.mergePanel)
   const closePanel = useWorkspaceStore(s => s.closePanel)
   const setSplitRatio = useWorkspaceStore(s => s.setSplitRatio)
   const setMaximizedPanel = useWorkspaceStore(s => s.setMaximizedPanel)
+  const getMergeTarget = useWorkspaceStore(s => s.getMergeTarget)
   const containerRef = useRef<HTMLDivElement>(null)
   const [mergePreviewPanelId, setMergePreviewPanelId] = useState<string | null>(null)
   const workspace = useMemo(
@@ -68,7 +70,7 @@ export function FixedWorkspace() {
       setMergePreviewPanelId(null)
       return
     }
-    setMergePreviewPanelId(findAdjacentPanelId(containerRef.current, panelId, side))
+    setMergePreviewPanelId(getMergeTarget(workspace.id, panelId, side as MergeSide))
   }
 
   const renderNode = (node: WorkspaceLayoutNode): React.ReactNode => {
@@ -86,6 +88,7 @@ export function FixedWorkspace() {
           onTypeChange={(type) => setPanelType(workspace.id, node.id, type)}
           onAddPanel={(type, direction, placement, ratio) => splitPanel(workspace.id, node.id, direction, type, placement, ratio)}
           onCornerMergePreview={updateMergePreview}
+          onCornerMergeDrop={(_panelId, side) => mergePanel(workspace.id, node.id, side as MergeSide)}
           onSplit={(direction) => splitPanel(workspace.id, node.id, direction)}
           onMaximize={() => setMaximizedPanel(workspace.id, maximizedPanelId === node.id ? null : node.id)}
           onClose={() => closePanel(workspace.id, node.id)}
@@ -134,48 +137,4 @@ export function FixedWorkspace() {
 function countPanelNodes(node: WorkspaceLayoutNode): number {
   if (node.kind === "panel") return 1
   return countPanelNodes(node.first) + countPanelNodes(node.second)
-}
-
-function findAdjacentPanelId(container: HTMLElement | null, panelId: string, side: CornerMergeSide): string | null {
-  if (!container) return null
-
-  const panelElements = Array.from(container.querySelectorAll<HTMLElement>("[data-panel-id]"))
-  const current = panelElements.find(element => element.dataset.panelId === panelId)
-  if (!current) return null
-
-  const rect = current.getBoundingClientRect()
-  const tolerance = 8
-  const minOverlap = 8
-  let best: { id: string; distance: number } | null = null
-
-  for (const element of panelElements) {
-    const id = element.dataset.panelId
-    if (!id || id === panelId) continue
-
-    const other = element.getBoundingClientRect()
-    const horizontalOverlap = Math.min(rect.right, other.right) - Math.max(rect.left, other.left)
-    const verticalOverlap = Math.min(rect.bottom, other.bottom) - Math.max(rect.top, other.top)
-    let distance = Number.POSITIVE_INFINITY
-    let touchesSide = false
-
-    if (side === "left") {
-      distance = Math.abs(other.right - rect.left)
-      touchesSide = other.right <= rect.left + tolerance && verticalOverlap > minOverlap
-    } else if (side === "right") {
-      distance = Math.abs(other.left - rect.right)
-      touchesSide = other.left >= rect.right - tolerance && verticalOverlap > minOverlap
-    } else if (side === "up") {
-      distance = Math.abs(other.bottom - rect.top)
-      touchesSide = other.bottom <= rect.top + tolerance && horizontalOverlap > minOverlap
-    } else {
-      distance = Math.abs(other.top - rect.bottom)
-      touchesSide = other.top >= rect.bottom - tolerance && horizontalOverlap > minOverlap
-    }
-
-    if (touchesSide && (!best || distance < best.distance)) {
-      best = { id, distance }
-    }
-  }
-
-  return best?.id ?? null
 }
