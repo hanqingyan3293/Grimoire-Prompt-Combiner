@@ -137,6 +137,9 @@ const LAYOUT_PRESETS_STORAGE_KEY = "grimoire.workspaceLayoutPresets"
 const WORKSPACES_STORAGE_VERSION = 1
 const LAYOUTS_STORAGE_VERSION = 2
 const LAYOUT_PRESETS_STORAGE_VERSION = 2
+const MIN_SPLIT_RATIO = 0.12
+const MAX_SPLIT_RATIO = 0.88
+const MAX_LAYOUT_DEPTH = 32
 const FALLBACK_PANEL_TYPE: PanelType = "utility-sidebar"
 const VALID_PANEL_TYPES = new Set<PanelType>([
   "tag-sidebar",
@@ -260,27 +263,50 @@ function saveLayouts(layouts: WorkspaceLayouts) {
   } satisfies VersionedLayoutsStorage))
 }
 
-function sanitizeLayoutNode(node: unknown): WorkspaceLayoutNode | null {
+function createUniqueLayoutId(prefix: string, usedIds: Set<string>) {
+  let id = createId(prefix)
+  while (usedIds.has(id)) id = createId(prefix)
+  usedIds.add(id)
+  return id
+}
+
+function sanitizeLayoutId(id: unknown, prefix: string, usedIds: Set<string>) {
+  if (typeof id === "string") {
+    const trimmed = id.trim()
+    if (trimmed && !usedIds.has(trimmed)) {
+      usedIds.add(trimmed)
+      return trimmed
+    }
+  }
+  return createUniqueLayoutId(prefix, usedIds)
+}
+
+function sanitizeLayoutNode(
+  node: unknown,
+  usedIds = new Set<string>(),
+  depth = 0
+): WorkspaceLayoutNode | null {
+  if (depth > MAX_LAYOUT_DEPTH) return null
   if (!node || typeof node !== "object") return null
   const value = node as Partial<WorkspaceLayoutNode>
   if (value.kind === "panel") {
     return {
       kind: "panel",
-      id: typeof value.id === "string" && value.id ? value.id : createId("panel_"),
+      id: sanitizeLayoutId(value.id, "panel_", usedIds),
       type: VALID_PANEL_TYPES.has(value.type as PanelType) ? value.type as PanelType : FALLBACK_PANEL_TYPE,
     }
   }
   if (value.kind === "split") {
-    const first = sanitizeLayoutNode(value.first)
-    const second = sanitizeLayoutNode(value.second)
+    const first = sanitizeLayoutNode(value.first, usedIds, depth + 1)
+    const second = sanitizeLayoutNode(value.second, usedIds, depth + 1)
     if (!first && !second) return null
     if (!first) return second
     if (!second) return first
     return {
       kind: "split",
-      id: typeof value.id === "string" && value.id ? value.id : createId("split_"),
+      id: sanitizeLayoutId(value.id, "split_", usedIds),
       direction: value.direction === "vertical" ? "vertical" : "horizontal",
-      ratio: clampRatio(typeof value.ratio === "number" ? value.ratio : 0.5),
+      ratio: clampRatio(value.ratio),
       first,
       second,
     }
@@ -477,7 +503,7 @@ function normalizeLayoutNode(node: WorkspaceLayoutNode): WorkspaceLayoutNode {
   if (node.kind === "panel") return node
   return {
     ...node,
-    ratio: clampRatio(Number.isFinite(node.ratio) ? node.ratio : 0.5),
+    ratio: clampRatio(node.ratio),
     first: normalizeLayoutNode(node.first),
     second: normalizeLayoutNode(node.second),
   }
@@ -491,8 +517,10 @@ export function findPanelNode(
   return findPanelNode(node.first, panelId) || findPanelNode(node.second, panelId)
 }
 
-function clampRatio(ratio: number) {
-  return Math.min(0.88, Math.max(0.12, ratio))
+function clampRatio(ratio: unknown, fallback = 0.5) {
+  const value = typeof ratio === "number" ? ratio : Number(ratio)
+  if (!Number.isFinite(value)) return fallback
+  return Math.min(MAX_SPLIT_RATIO, Math.max(MIN_SPLIT_RATIO, value))
 }
 
 const INITIAL_WORKSPACES = getInitialWorkspaces()
