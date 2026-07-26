@@ -4,6 +4,7 @@ import type { SplitPlacement } from "../../stores/workspace.store"
 
 type AddPanelDirection = "left" | "right" | "up" | "down"
 type CornerPosition = "top-left" | "top-right" | "bottom-left" | "bottom-right"
+export type CornerMergeSide = "left" | "right" | "up" | "down"
 type CornerDragPreview = {
   direction: "horizontal" | "vertical"
   placement: SplitPlacement
@@ -22,11 +23,13 @@ interface PanelShellProps {
   panelOptionGroups?: { title: string; types: PanelType[] }[]
   onTypeChange?: (type: PanelType) => void
   onAddPanel?: (type: PanelType, direction: "horizontal" | "vertical", placement: SplitPlacement, ratio?: number) => void
+  onCornerMergePreview?: (panelId: string, side: CornerMergeSide | null) => void
   onSplit?: (direction: "horizontal" | "vertical") => void
   onMaximize?: () => void
   onClose?: () => void
   maximized?: boolean
   closeDisabled?: boolean
+  mergeHighlighted?: boolean
 }
 
 export function PanelShell({
@@ -41,11 +44,13 @@ export function PanelShell({
   panelOptionGroups = [],
   onTypeChange,
   onAddPanel,
+  onCornerMergePreview,
   onSplit,
   onMaximize,
   onClose,
   maximized = false,
   closeDisabled = false,
+  mergeHighlighted = false,
 }: PanelShellProps) {
   const [addMenuOpen, setAddMenuOpen] = useState(false)
   const [addMenuPosition, setAddMenuPosition] = useState({ left: 8, top: 8 })
@@ -90,6 +95,7 @@ export function PanelShell({
       if (Math.max(absX, absY) < 36) {
         latestPreview = null
         setCornerDragPreview(null)
+        onCornerMergePreview?.(id, null)
         return
       }
       if (absX >= absY) {
@@ -109,6 +115,17 @@ export function PanelShell({
           ratio,
         }
       }
+      if (panelRect) {
+        const side: CornerMergeSide = absX >= absY
+          ? dx < 0 ? "left" : "right"
+          : dy < 0 ? "up" : "down"
+        const outsidePanel =
+          (side === "left" && clientX < panelRect.left - 8) ||
+          (side === "right" && clientX > panelRect.right + 8) ||
+          (side === "up" && clientY < panelRect.top - 8) ||
+          (side === "down" && clientY > panelRect.bottom + 8)
+        onCornerMergePreview?.(id, outsidePanel ? side : null)
+      }
       setCornerDragPreview(latestPreview)
     }
 
@@ -123,6 +140,7 @@ export function PanelShell({
       window.removeEventListener("pointercancel", cleanup)
       window.removeEventListener("blur", cleanup)
       setCornerDragPreview(null)
+      onCornerMergePreview?.(id, null)
     }
     const handleUp = () => {
       if (latestPreview) {
@@ -288,6 +306,9 @@ export function PanelShell({
                 top: cornerDragPreview.placement === "before" ? 0 : `${cornerDragPreview.ratio * 100}%`,
               }}
         />
+      )}
+      {mergeHighlighted && (
+        <div className="pointer-events-none absolute inset-0 z-50 bg-[var(--color-accent)]/10 outline outline-2 outline-[var(--color-accent)]" />
       )}
     </section>
   )
