@@ -77,6 +77,26 @@ button:disabled {
   cursor: not-allowed;
 }
 
+.is-resizing-horizontal,
+.is-resizing-horizontal * {
+  cursor: col-resize !important;
+}
+
+.is-resizing-vertical,
+.is-resizing-vertical * {
+  cursor: row-resize !important;
+}
+
+.is-resizing-diagonal-a,
+.is-resizing-diagonal-a * {
+  cursor: nwse-resize !important;
+}
+
+.is-resizing-diagonal-b,
+.is-resizing-diagonal-b * {
+  cursor: nesw-resize !important;
+}
+
 select,
 input,
 textarea {

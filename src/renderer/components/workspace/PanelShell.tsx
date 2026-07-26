@@ -140,6 +140,7 @@ export function PanelShell({
     }
     const cleanup = () => {
       document.body.style.cursor = ""
+      document.documentElement.classList.remove("is-resizing-diagonal-a", "is-resizing-diagonal-b")
       document.body.style.userSelect = ""
       window.removeEventListener("pointermove", handleMove)
       window.removeEventListener("pointerup", handleUp)
@@ -158,6 +159,7 @@ export function PanelShell({
     }
 
     document.body.style.cursor = corner.includes("left") ? "nwse-resize" : "nesw-resize"
+    document.documentElement.classList.add(corner.includes("left") ? "is-resizing-diagonal-a" : "is-resizing-diagonal-b")
     document.body.style.userSelect = "none"
     window.addEventListener("pointermove", handleMove)
     window.addEventListener("pointerup", handleUp)

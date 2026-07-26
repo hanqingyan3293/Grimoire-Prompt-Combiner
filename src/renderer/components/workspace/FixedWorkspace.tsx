@@ -61,6 +61,7 @@ export function FixedWorkspace() {
 
     const cleanupResize = () => {
       document.body.style.cursor = ""
+      document.documentElement.classList.remove("is-resizing-horizontal", "is-resizing-vertical")
       document.body.style.userSelect = ""
       window.removeEventListener("mousemove", onMove)
       window.removeEventListener("mouseup", cleanupResize)
@@ -69,6 +70,7 @@ export function FixedWorkspace() {
     }
 
     document.body.style.cursor = node.direction === "horizontal" ? "col-resize" : "row-resize"
+    document.documentElement.classList.add(node.direction === "horizontal" ? "is-resizing-horizontal" : "is-resizing-vertical")
     document.body.style.userSelect = "none"
     window.addEventListener("mousemove", onMove)
     window.addEventListener("mouseup", cleanupResize)
@@ -130,13 +132,17 @@ export function FixedWorkspace() {
         >
           {renderNode(node.first)}
         </div>
-        <button
+        <div
           onMouseDown={(event) => startResize(node, event)}
+          role="separator"
+          aria-orientation={isHorizontal ? "vertical" : "horizontal"}
           className={
             (isHorizontal ? "cursor-col-resize" : "cursor-row-resize") +
             " shrink-0 bg-[var(--color-bg-tertiary)] outline outline-1 outline-[var(--color-border-strong)] hover:bg-[var(--color-accent)] hover:outline-[var(--color-accent)] transition-colors"
           }
-          style={isHorizontal ? { width: "var(--panel-splitter-size)" } : { height: "var(--panel-splitter-size)" }}
+          style={isHorizontal
+            ? { width: "var(--panel-splitter-size)", cursor: "col-resize" }
+            : { height: "var(--panel-splitter-size)", cursor: "row-resize" }}
           title="拖动调整面板大小"
           aria-label="拖动调整面板大小"
         />
