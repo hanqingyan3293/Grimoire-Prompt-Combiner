@@ -44,17 +44,21 @@ export function FixedWorkspace() {
       }
     }
 
-    const onUp = () => {
+    const cleanupResize = () => {
       document.body.style.cursor = ""
       document.body.style.userSelect = ""
       window.removeEventListener("mousemove", onMove)
-      window.removeEventListener("mouseup", onUp)
+      window.removeEventListener("mouseup", cleanupResize)
+      window.removeEventListener("blur", cleanupResize)
+      document.removeEventListener("mouseleave", cleanupResize)
     }
 
     document.body.style.cursor = node.direction === "horizontal" ? "col-resize" : "row-resize"
     document.body.style.userSelect = "none"
     window.addEventListener("mousemove", onMove)
-    window.addEventListener("mouseup", onUp)
+    window.addEventListener("mouseup", cleanupResize)
+    window.addEventListener("blur", cleanupResize)
+    document.addEventListener("mouseleave", cleanupResize)
   }
 
   const renderNode = (node: WorkspaceLayoutNode): React.ReactNode => {

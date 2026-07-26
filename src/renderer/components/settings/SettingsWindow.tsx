@@ -120,12 +120,16 @@ export function SettingsWindow({ onClose }: { onClose: () => void }) {
 	              <div className="flex items-center gap-4">
 	                <input
 	                  type="range"
+	                  draggable={false}
 	                  min="12"
 	                  max="20"
 	                  step="1"
 	                  value={ui_scale}
+	                  onPointerDown={e => e.stopPropagation()}
+	                  onMouseDown={e => e.stopPropagation()}
+	                  onDragStart={e => e.preventDefault()}
 	                  onChange={e => setSetting("ui_scale", e.target.value)}
-	                  className="flex-1 accent-[var(--color-accent)]"
+	                  className="flex-1 cursor-pointer accent-[var(--color-accent)]"
 	                />
 	                <input
 	                  type="number"

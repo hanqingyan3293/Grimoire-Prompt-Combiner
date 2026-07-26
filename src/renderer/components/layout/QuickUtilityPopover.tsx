@@ -79,12 +79,16 @@ export function QuickSettingsPanel({ variant = "popover" }: { variant?: "popover
           </div>
           <input
             type="range"
+            draggable={false}
             min="12"
             max="20"
             step="1"
             value={ui_scale}
+            onPointerDown={e => e.stopPropagation()}
+            onMouseDown={e => e.stopPropagation()}
+            onDragStart={e => e.preventDefault()}
             onChange={e => setSetting("ui_scale", e.target.value)}
-            className="w-full accent-[var(--color-accent)]"
+            className="w-full cursor-pointer accent-[var(--color-accent)]"
           />
         </div>
 
