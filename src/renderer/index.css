@@ -97,6 +97,41 @@ button:disabled {
   cursor: nesw-resize !important;
 }
 
+.ui-popover-surface {
+  overflow: hidden;
+  border: 1px solid var(--color-border-strong);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--color-bg-secondary) 92%, var(--color-bg-tertiary));
+  box-shadow: 0 12px 36px rgba(0,0,0,0.36), 0 0 0 1px rgba(255,255,255,0.035);
+}
+
+.ui-popover-menu {
+  padding: 4px;
+}
+
+.ui-menu-item {
+  display: block;
+  width: 100%;
+  border-radius: 6px;
+  color: var(--color-text-primary);
+  text-align: left;
+  transition: background-color 120ms ease, color 120ms ease;
+}
+
+.ui-menu-item:hover {
+  background: var(--color-hover);
+  color: var(--color-accent);
+}
+
+.ui-menu-muted {
+  color: var(--color-text-secondary);
+}
+
+.ui-menu-divider {
+  margin: 4px 2px;
+  border-top: 1px solid var(--color-border);
+}
+
 select,
 input,
 textarea {

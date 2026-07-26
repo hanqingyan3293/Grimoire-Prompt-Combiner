@@ -75,7 +75,7 @@ export function RightPanel() {
       {popover && (
         <div
           ref={popoverRef}
-          className="absolute bottom-12 right-2 z-50 w-[min(420px,calc(100vw-32px))] overflow-hidden rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-secondary)] shadow-2xl"
+          className="ui-popover-surface absolute bottom-12 right-2 z-50 w-[min(420px,calc(100vw-32px))]"
         >
           <QuickUtilityPopover type={popover} />
         </div>

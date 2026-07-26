@@ -226,7 +226,7 @@ export function PanelShell({
             </button>
             {addMenuOpen && (
               <div
-                className="fixed z-50 max-h-64 w-56 overflow-y-auto rounded border border-[var(--color-border)] bg-[var(--color-bg-tertiary)] py-1 shadow-2xl"
+                className="ui-popover-surface ui-popover-menu fixed z-50 max-h-64 w-56 overflow-y-auto"
                 style={{ left: addMenuPosition.left, top: addMenuPosition.top }}
               >
                 {groupedOptions.map(group => (
@@ -237,10 +237,10 @@ export function PanelShell({
                       </div>
                     )}
                     {group.options.map(option => (
-                      <div key={option.type} className="flex items-center gap-1 px-1.5 py-0.5 hover:bg-[var(--color-accent)]/10">
+                      <div key={option.type} className="flex items-center gap-1 px-1.5 py-0.5">
                         <button
                           onClick={() => handleAddPanel(option.type, "right")}
-                          className="min-w-0 flex-1 truncate rounded px-1.5 py-1 text-left text-xs text-[var(--color-text-primary)] hover:text-[var(--color-accent)]"
+                          className="ui-menu-item min-w-0 flex-1 truncate px-1.5 py-1 text-xs"
                           title={option.description}
                         >
                           {option.title}

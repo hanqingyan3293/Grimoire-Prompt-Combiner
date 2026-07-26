@@ -123,13 +123,13 @@ export function WorkspaceBar() {
           布局
         </button>
         {layoutMenuOpen && (
-          <div className="absolute right-0 top-full z-50 mt-1 max-h-[70vh] w-64 overflow-y-auto rounded border border-[var(--color-border)] bg-[var(--color-bg-tertiary)] py-1 shadow-2xl">
-            <div className="px-3 py-1.5 text-[10px] text-[var(--color-text-secondary)]">
+          <div className="ui-popover-surface ui-popover-menu absolute right-0 top-full z-50 mt-1 max-h-[70vh] w-64 overflow-y-auto">
+            <div className="ui-menu-muted px-3 py-1.5 text-[10px]">
               当前：{activeWorkspace.title}
             </div>
             <button
               onClick={startSaveLayoutPreset}
-              className="block w-full px-3 py-1.5 text-left text-xs text-[var(--color-text-primary)] hover:bg-[var(--color-accent)]/15 hover:text-[var(--color-accent)]"
+              className="ui-menu-item px-3 py-1.5 text-xs"
             >
               保存布局
             </button>
@@ -170,12 +170,12 @@ export function WorkspaceBar() {
             )}
             <button
               onClick={() => runMenuAction(saveCurrentWorkspaceLayout)}
-              className="block w-full px-3 py-1.5 text-left text-xs text-[var(--color-text-primary)] hover:bg-[var(--color-accent)]/15 hover:text-[var(--color-accent)]"
+              className="ui-menu-item px-3 py-1.5 text-xs"
             >
               覆盖当前工作区
             </button>
-            <div className="my-1 border-t border-[var(--color-border)]" />
-            <div className="px-3 py-1 text-[10px] text-[var(--color-text-secondary)]">布局预设</div>
+            <div className="ui-menu-divider" />
+            <div className="ui-menu-muted px-3 py-1 text-[10px]">布局预设</div>
             {layoutPresets.length === 0 ? (
               <div className="px-3 py-1.5 text-xs text-[var(--color-text-secondary)] opacity-70">
                 暂无布局预设
@@ -184,7 +184,7 @@ export function WorkspaceBar() {
               <div key={preset.id} className="flex items-center gap-1 px-1.5 py-0.5 hover:bg-[var(--color-accent)]/10">
                 <button
                   onClick={() => runMenuAction(() => applyLayoutPresetToCurrentWorkspace(preset.id))}
-                  className="min-w-0 flex-1 rounded px-1.5 py-1 text-left text-xs text-[var(--color-text-primary)] hover:text-[var(--color-accent)]"
+                  className="ui-menu-item min-w-0 flex-1 px-1.5 py-1 text-xs"
                   title={`应用到当前工作区：${activeWorkspace.title}`}
                 >
                   <span className="block truncate">{preset.name}</span>
@@ -201,26 +201,26 @@ export function WorkspaceBar() {
                 </button>
               </div>
             ))}
-            <div className="my-1 border-t border-[var(--color-border)]" />
+            <div className="ui-menu-divider" />
             <button
               onClick={() => runMenuAction(resetWorkspace)}
-              className="block w-full px-3 py-1.5 text-left text-xs text-[var(--color-text-primary)] hover:bg-[var(--color-accent)]/15 hover:text-[var(--color-accent)]"
+              className="ui-menu-item px-3 py-1.5 text-xs"
             >
               重置当前工作区
             </button>
             <button
               onClick={() => runMenuAction(resetAllWorkspaces)}
-              className="block w-full px-3 py-1.5 text-left text-xs text-[var(--color-text-primary)] hover:bg-[var(--color-accent)]/15 hover:text-[var(--color-accent)]"
+              className="ui-menu-item px-3 py-1.5 text-xs"
             >
               重置全部工作区
             </button>
-            <div className="my-1 border-t border-[var(--color-border)]" />
-            <div className="px-3 py-1 text-[10px] text-[var(--color-text-secondary)]">复制当前布局到</div>
+            <div className="ui-menu-divider" />
+            <div className="ui-menu-muted px-3 py-1 text-[10px]">复制当前布局到</div>
             {workspaces.filter(workspace => workspace.id !== activeWorkspaceId).map(workspace => (
               <button
                 key={workspace.id}
                 onClick={() => runMenuAction(() => copyWorkspaceLayout(activeWorkspaceId, workspace.id))}
-                className="block w-full px-3 py-1.5 text-left text-xs text-[var(--color-text-primary)] hover:bg-[var(--color-accent)]/15 hover:text-[var(--color-accent)]"
+                className="ui-menu-item px-3 py-1.5 text-xs"
               >
                 {workspace.title}
               </button>
