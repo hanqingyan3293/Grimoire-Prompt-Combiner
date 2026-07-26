@@ -94,8 +94,8 @@ export function FavoritesPanel({ onCtxMenu, onFavCtxMenu }: FavPanelProps) {
     <div className="flex-1 overflow-y-auto p-2 space-y-3">
       {/* ===== 收藏的子类 ===== */}
       {favStore.subFavs.length > 0 && (
-        <div className="ui-tree-card ui-fav-section">
-          <div className="ui-fav-section-title flex items-center gap-2 border-b border-[var(--color-border)] px-3 py-2">
+        <div className="ui-tree-card">
+          <div className="ui-tree-header flex items-center gap-2 border-b border-[var(--color-border)] px-3 py-2">
             <span className="text-sm font-medium text-[var(--color-text-primary)]">⭐ 收藏的子类</span>
             <span className="text-xs text-[var(--color-text-secondary)] ml-auto">{favStore.subFavs.length}</span>
           </div>
@@ -106,10 +106,10 @@ export function FavoritesPanel({ onCtxMenu, onFavCtxMenu }: FavPanelProps) {
                 <div key={sub.id}
                   onClick={() => store.toggleSubSelect(sub.id)}
                   onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); onCtxMenu(e, { x: e.clientX, y: e.clientY, type: "subcategory", id: sub.id, name: sub.zh, parentId: sub.category_id }) }}
-                  className={"flex cursor-pointer items-center gap-1 border-b border-[var(--color-border)]/20 pl-5 pr-2 py-1.5 text-xs group last:border-b-0 " + (sel ? "ui-tree-row-active" : "ui-fav-sub-row")}>
+                  className={"flex cursor-pointer items-center gap-1 border-b border-[var(--color-border)]/20 pl-5 pr-2 py-1.5 text-xs group last:border-b-0 " + (sel ? "ui-tree-row-active" : "ui-tree-row")}>
                   <span className="flex-1">{sub.zh}</span>
-                  <span className="text-[9px] opacity-50 mr-1">{sub.cat_zh}</span>
-                  <span className="text-[9px] opacity-50 w-5 text-right">{sub.tag_count}</span>
+                  <span className="ui-fav-path-label mr-1">{sub.cat_zh}</span>
+                  <span className="ui-count-badge">{sub.tag_count}</span>
                   {sel && <span className="text-[10px]">✓</span>}
                   <button onClick={(e) => { e.stopPropagation(); favStore.toggleSubFav(sub.id) }}
                     className="opacity-0 group-hover:opacity-100 text-[10px] text-[var(--color-text-secondary)] hover:text-red-400 px-0.5" title="取消收藏">✕</button>
@@ -122,8 +122,8 @@ export function FavoritesPanel({ onCtxMenu, onFavCtxMenu }: FavPanelProps) {
 
       {/* ===== 收藏的标签 (3级层级) ===== */}
       {favStore.tagFavs.length > 0 && (
-        <div className="ui-tree-card ui-fav-section">
-          <div className="ui-fav-section-title flex items-center gap-2 border-b border-[var(--color-border)] px-3 py-2">
+        <div className="ui-tree-card">
+          <div className="ui-tree-header flex items-center gap-2 border-b border-[var(--color-border)] px-3 py-2">
             <span className="text-sm font-medium text-[var(--color-text-primary)]">⭐ 收藏的标签</span>
             <span className="text-xs text-[var(--color-text-secondary)] ml-auto">{favStore.tagFavs.length}</span>
           </div>
@@ -136,10 +136,10 @@ export function FavoritesPanel({ onCtxMenu, onFavCtxMenu }: FavPanelProps) {
                 <div key={catId} className="border-b border-[var(--color-border)]/30 last:border-b-0">
                   {/* L1: 大类 */}
                   <div onClick={() => toggleTagCat(catId)}
-                    className="ui-fav-category-row flex cursor-pointer items-center gap-1.5 px-3 py-1.5">
+                    className="ui-tree-header flex cursor-pointer items-center gap-1.5 px-3 py-1.5">
                     <span className="text-xs w-3 text-center transition-transform" style={{ transform: isExp ? 'rotate(90deg)' : 'rotate(0deg)' }}>▸</span>
                     <span className="flex-1 text-xs font-semibold text-[var(--color-text-primary)]">{catName}</span>
-                    <span className="text-[10px] text-[var(--color-text-secondary)] bg-[var(--color-bg-primary)]/50 px-1.5 rounded">{totalInCat}</span>
+                    <span className="ui-count-badge">{totalInCat}</span>
                   </div>
                   {isExp && (
                     <div className="bg-[var(--color-bg-primary)]/30 border-t border-[var(--color-border)]/20">
@@ -150,7 +150,7 @@ export function FavoritesPanel({ onCtxMenu, onFavCtxMenu }: FavPanelProps) {
                           <div key={subId}>
                             {/* L2: 子类 */}
                             <div onClick={() => toggleTagSub(subId)}
-                              className="ui-fav-sub-row flex cursor-pointer items-center gap-1.5 border-b border-[var(--color-border)]/10 pl-7 pr-2 py-1.5 text-xs">
+                              className="ui-tree-row flex cursor-pointer items-center gap-1.5 border-b border-[var(--color-border)]/10 pl-7 pr-2 py-1.5 text-xs">
                               <span className="text-[10px] w-3 text-center transition-transform opacity-60" style={{ transform: isSubExp ? 'rotate(90deg)' : 'rotate(0deg)' }}>▸</span>
                               <span className="flex-1">{subName}</span>
                               <span className="text-[9px] opacity-40">{tags.length}</span>
@@ -199,7 +199,7 @@ export function FavoritesPanel({ onCtxMenu, onFavCtxMenu }: FavPanelProps) {
               return (
                 <div key={tag.id || tag.fav_id}
                   onClick={() => handleTagClick(tag, '', '')}
-                  className={"flex cursor-pointer items-center gap-1 border-b border-[var(--color-border)]/10 pl-4 pr-2 py-1.5 text-xs last:border-b-0 " + (isPos ? "ui-tree-row-active" : "ui-fav-tag-row")}>
+                  className={"flex cursor-pointer items-center gap-1 border-b border-[var(--color-border)]/10 pl-4 pr-2 py-1.5 text-xs last:border-b-0 " + (isPos ? "ui-tree-row-active" : "ui-tree-row")}>
                   <span className="flex-1">{tag.zh || tag.en || ''}</span>
                 </div>
               )
