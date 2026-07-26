@@ -296,10 +296,10 @@ export function PanelShell({
       <CornerHandle position="top-right" onPointerDown={startCornerDrag} />
       <CornerHandle position="bottom-left" onPointerDown={startCornerDrag} />
       <CornerHandle position="bottom-right" onPointerDown={startCornerDrag} />
-      {cornerDragPreview && (
+      {cornerDragPreview && !mergeHighlighted && (
         <div
           className={
-            "pointer-events-none absolute z-40 bg-[var(--color-accent)]/20 outline outline-1 outline-[var(--color-accent)] " +
+            "pointer-events-none absolute z-40 bg-sky-500/15 outline outline-2 outline-dashed outline-sky-400 " +
             (cornerDragPreview.direction === "horizontal"
               ? "left-0 top-0 h-full"
               : "left-0 top-0 w-full")
@@ -317,7 +317,7 @@ export function PanelShell({
       )}
       {mergeHighlighted && (
         <div
-          className="pointer-events-none absolute z-50 bg-[var(--color-accent)]/20 outline outline-2 outline-[var(--color-accent)]"
+          className="pointer-events-none absolute z-50 bg-emerald-500/20 outline outline-2 outline-emerald-400"
           style={mergePreviewRect
             ? {
                 left: `${mergePreviewRect.left * 100}%`,
