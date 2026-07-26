@@ -137,8 +137,8 @@ export function FavoritesPanel({ onCtxMenu, onFavCtxMenu }: FavPanelProps) {
                   {/* L1: 大类 */}
                   <div onClick={() => toggleTagCat(catId)}
                     className="ui-tree-header flex cursor-pointer items-center gap-1.5 px-3 py-1.5">
-                    <span className="text-xs w-3 text-center transition-transform" style={{ transform: isExp ? 'rotate(90deg)' : 'rotate(0deg)' }}>▸</span>
-                    <span className="flex-1 text-xs font-semibold text-[var(--color-text-primary)]">{catName}</span>
+                    <span className="w-3 shrink-0 text-center text-xs transition-transform" style={{ transform: isExp ? 'rotate(90deg)' : 'rotate(0deg)' }}>▸</span>
+                    <span className="min-w-0 flex-1 truncate text-xs font-semibold text-[var(--color-text-primary)]">{catName}</span>
                     <span className="ui-count-badge">{totalInCat}</span>
                   </div>
                   {isExp && (
@@ -151,9 +151,9 @@ export function FavoritesPanel({ onCtxMenu, onFavCtxMenu }: FavPanelProps) {
                             {/* L2: 子类 */}
                             <div onClick={() => toggleTagSub(subId)}
                               className="ui-tree-row flex cursor-pointer items-center gap-1.5 border-b border-[var(--color-border)]/10 pl-7 pr-2 py-1.5 text-xs">
-                              <span className="text-[10px] w-3 text-center transition-transform opacity-60" style={{ transform: isSubExp ? 'rotate(90deg)' : 'rotate(0deg)' }}>▸</span>
-                              <span className="flex-1">{subName}</span>
-                              <span className="text-[9px] opacity-40">{tags.length}</span>
+                              <span className="w-3 shrink-0 text-center text-[10px] opacity-60 transition-transform" style={{ transform: isSubExp ? 'rotate(90deg)' : 'rotate(0deg)' }}>▸</span>
+                              <span className="min-w-0 flex-1 truncate">{subName}</span>
+                              <span className="ui-count-badge">{tags.length}</span>
                             </div>
                             {isSubExp && (
                               <div className="ml-6 pl-3 border-l-2 border-[var(--color-accent)]/20 bg-[var(--color-bg-secondary)]/30">

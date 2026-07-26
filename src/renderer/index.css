@@ -278,6 +278,10 @@ button:disabled {
 }
 
 .ui-count-badge {
+  display: inline-flex;
+  min-width: 22px;
+  flex-shrink: 0;
+  justify-content: center;
   border-radius: 999px;
   background: color-mix(in srgb, var(--color-bg-primary) 78%, transparent);
   color: var(--color-text-secondary);
