@@ -15,7 +15,7 @@ const THEMES = [
 ]
 
 export function QuickUtilityPopover({ type }: { type: UtilityPopoverKey }) {
-  return type === "settings" ? <QuickSettingsPanel /> : <QuickAIPanel />
+  return type === "settings" ? <QuickSettingsPanel variant="popover" /> : <QuickAIPanel />
 }
 
 function QuickAIPanel() {
@@ -37,11 +37,14 @@ function QuickAIPanel() {
   )
 }
 
-function QuickSettingsPanel() {
+export function QuickSettingsPanel({ variant = "popover" }: { variant?: "popover" | "embedded" }) {
   const { theme, ui_scale, ui_density, setSetting } = useSettingsStore()
+  const panelClassName = variant === "embedded"
+    ? "h-full overflow-y-auto p-3"
+    : "max-h-[min(560px,calc(100vh-128px))] overflow-y-auto p-3"
 
   return (
-    <div className="max-h-[min(560px,calc(100vh-128px))] overflow-y-auto p-3">
+    <div className={panelClassName}>
       <div className="mb-3 flex items-center justify-between">
         <span className="text-sm font-semibold text-[var(--color-text-primary)]">快捷设置</span>
         <button
