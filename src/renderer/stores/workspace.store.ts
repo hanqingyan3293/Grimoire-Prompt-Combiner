@@ -11,6 +11,15 @@ export type SplitDirection = "horizontal" | "vertical"
 export type SplitPlacement = "before" | "after"
 export type MergeSide = "left" | "right" | "up" | "down"
 
+export interface WorkspacePanelRect {
+  id: string
+  type: PanelType
+  left: number
+  top: number
+  right: number
+  bottom: number
+}
+
 export type WorkspaceLayoutNode =
   | {
       kind: "panel"
@@ -92,6 +101,7 @@ interface WorkspaceState {
   setPanelType: (workspaceId: string, panelId: string, type: PanelType) => void
   splitPanel: (workspaceId: string, panelId: string, direction: SplitDirection, type?: PanelType, placement?: SplitPlacement, ratio?: number) => void
   mergePanel: (workspaceId: string, panelId: string, side: MergeSide) => boolean
+  mergePanelByRects: (workspaceId: string, panelId: string, targetPanelId: string, side: MergeSide, rects: WorkspacePanelRect[]) => boolean
   closePanel: (workspaceId: string, panelId: string) => void
   setSplitRatio: (workspaceId: string, splitId: string, ratio: number) => void
   setMaximizedPanel: (workspaceId: string, panelId: string | null) => void
@@ -303,6 +313,113 @@ function mergePanelNode(
   return { node, merged: false }
 }
 
+function mergePanelRects(
+  panelId: string,
+  targetPanelId: string,
+  side: MergeSide,
+  rects: WorkspacePanelRect[]
+): WorkspacePanelRect[] | null {
+  const source = rects.find(rect => rect.id === panelId)
+  const target = rects.find(rect => rect.id === targetPanelId)
+  if (!source || !target || source.id === target.id) return null
+
+  const epsilon = 0.003
+  const nextRects = rects.filter(rect => rect.id !== source.id && rect.id !== target.id)
+  const targetPieces: WorkspacePanelRect[] = []
+  const addPiece = (piece: WorkspacePanelRect) => {
+    if (piece.right - piece.left > epsilon && piece.bottom - piece.top > epsilon) targetPieces.push(piece)
+  }
+
+  if (side === "left" || side === "right") {
+    const touch = side === "right" ? Math.abs(source.right - target.left) : Math.abs(source.left - target.right)
+    if (touch > epsilon || source.top < target.top - epsilon || source.bottom > target.bottom + epsilon) return null
+    const mergedSource: WorkspacePanelRect = {
+      ...source,
+      left: side === "left" ? target.left : source.left,
+      right: side === "right" ? target.right : source.right,
+    }
+    addPiece({ ...target, id: target.id, top: target.top, bottom: source.top })
+    addPiece({ ...target, id: createId("panel_"), top: source.bottom, bottom: target.bottom })
+    return [...nextRects, mergedSource, ...targetPieces]
+  }
+
+  const touch = side === "down" ? Math.abs(source.bottom - target.top) : Math.abs(source.top - target.bottom)
+  if (touch > epsilon || source.left < target.left - epsilon || source.right > target.right + epsilon) return null
+  const mergedSource: WorkspacePanelRect = {
+    ...source,
+    top: side === "up" ? target.top : source.top,
+    bottom: side === "down" ? target.bottom : source.bottom,
+  }
+  addPiece({ ...target, id: target.id, left: target.left, right: source.left })
+  addPiece({ ...target, id: createId("panel_"), left: source.right, right: target.right })
+  return [...nextRects, mergedSource, ...targetPieces]
+}
+
+function buildLayoutFromRects(rects: WorkspacePanelRect[]): WorkspaceLayoutNode | null {
+  return buildLayoutInBounds(rects, { left: 0, top: 0, right: 1, bottom: 1 })
+}
+
+function buildLayoutInBounds(
+  rects: WorkspacePanelRect[],
+  bounds: Pick<WorkspacePanelRect, "left" | "top" | "right" | "bottom">
+): WorkspaceLayoutNode | null {
+  const epsilon = 0.006
+  if (rects.length === 0) return null
+  if (rects.length === 1) return { kind: "panel", id: rects[0].id, type: rects[0].type }
+
+  const xCuts = uniqueSorted(rects.flatMap(rect => [rect.left, rect.right]))
+    .filter(x => x > bounds.left + epsilon && x < bounds.right - epsilon)
+  for (const x of xCuts) {
+    if (rects.some(rect => rect.left < x - epsilon && rect.right > x + epsilon)) continue
+    const firstRects = rects.filter(rect => rect.right <= x + epsilon)
+    const secondRects = rects.filter(rect => rect.left >= x - epsilon)
+    if (firstRects.length === 0 || secondRects.length === 0 || firstRects.length + secondRects.length !== rects.length) continue
+    const first = buildLayoutInBounds(firstRects, { ...bounds, right: x })
+    const second = buildLayoutInBounds(secondRects, { ...bounds, left: x })
+    if (first && second) {
+      return {
+        kind: "split",
+        id: createId("split_"),
+        direction: "horizontal",
+        ratio: clampRatio((x - bounds.left) / (bounds.right - bounds.left)),
+        first,
+        second,
+      }
+    }
+  }
+
+  const yCuts = uniqueSorted(rects.flatMap(rect => [rect.top, rect.bottom]))
+    .filter(y => y > bounds.top + epsilon && y < bounds.bottom - epsilon)
+  for (const y of yCuts) {
+    if (rects.some(rect => rect.top < y - epsilon && rect.bottom > y + epsilon)) continue
+    const firstRects = rects.filter(rect => rect.bottom <= y + epsilon)
+    const secondRects = rects.filter(rect => rect.top >= y - epsilon)
+    if (firstRects.length === 0 || secondRects.length === 0 || firstRects.length + secondRects.length !== rects.length) continue
+    const first = buildLayoutInBounds(firstRects, { ...bounds, bottom: y })
+    const second = buildLayoutInBounds(secondRects, { ...bounds, top: y })
+    if (first && second) {
+      return {
+        kind: "split",
+        id: createId("split_"),
+        direction: "vertical",
+        ratio: clampRatio((y - bounds.top) / (bounds.bottom - bounds.top)),
+        first,
+        second,
+      }
+    }
+  }
+
+  return null
+}
+
+function uniqueSorted(values: number[]) {
+  const epsilon = 0.003
+  return values
+    .map(value => Math.min(1, Math.max(0, value)))
+    .sort((a, b) => a - b)
+    .filter((value, index, sorted) => index === 0 || Math.abs(value - sorted[index - 1]) > epsilon)
+}
+
 export function findPanelNode(
   node: WorkspaceLayoutNode,
   panelId: string
@@ -361,6 +478,18 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
     const result = mergePanelNode(layout, panelId, side)
     if (!result.merged) return false
     const nextLayouts = { ...get().layouts, [workspaceId]: result.node }
+    const nextMaximized = { ...get().maximizedPanels, [workspaceId]: null }
+    saveLayouts(nextLayouts)
+    saveMaximizedPanels(nextMaximized)
+    set({ layouts: nextLayouts, maximizedPanels: nextMaximized })
+    return true
+  },
+  mergePanelByRects: (workspaceId, panelId, targetPanelId, side, rects) => {
+    const nextRects = mergePanelRects(panelId, targetPanelId, side, rects)
+    if (!nextRects) return false
+    const nextLayout = buildLayoutFromRects(nextRects)
+    if (!nextLayout) return false
+    const nextLayouts = { ...get().layouts, [workspaceId]: nextLayout }
     const nextMaximized = { ...get().maximizedPanels, [workspaceId]: null }
     saveLayouts(nextLayouts)
     saveMaximizedPanels(nextMaximized)

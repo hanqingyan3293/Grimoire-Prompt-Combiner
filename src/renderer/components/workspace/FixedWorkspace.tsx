@@ -2,7 +2,7 @@ import React, { useMemo, useRef, useState } from "react"
 import { PanelShell, type CornerMergeSide } from "./PanelShell"
 import { ENABLED_PANEL_OPTIONS, PANEL_DEFINITIONS, PANEL_OPTION_GROUPS, renderPanel } from "./PanelRegistry"
 import { WORKSPACES, findPanelNode, getDefaultLayout, useWorkspaceStore } from "../../stores/workspace.store"
-import type { MergeSide, WorkspaceLayoutNode } from "../../stores/workspace.store"
+import type { MergeSide, WorkspaceLayoutNode, WorkspacePanelRect } from "../../stores/workspace.store"
 
 export function FixedWorkspace() {
   const activeWorkspaceId = useWorkspaceStore(s => s.activeWorkspaceId)
@@ -10,11 +10,10 @@ export function FixedWorkspace() {
   const maximizedPanels = useWorkspaceStore(s => s.maximizedPanels)
   const setPanelType = useWorkspaceStore(s => s.setPanelType)
   const splitPanel = useWorkspaceStore(s => s.splitPanel)
-  const mergePanel = useWorkspaceStore(s => s.mergePanel)
+  const mergePanelByRects = useWorkspaceStore(s => s.mergePanelByRects)
   const closePanel = useWorkspaceStore(s => s.closePanel)
   const setSplitRatio = useWorkspaceStore(s => s.setSplitRatio)
   const setMaximizedPanel = useWorkspaceStore(s => s.setMaximizedPanel)
-  const getMergeTarget = useWorkspaceStore(s => s.getMergeTarget)
   const containerRef = useRef<HTMLDivElement>(null)
   const [mergePreviewPanelId, setMergePreviewPanelId] = useState<string | null>(null)
   const workspace = useMemo(
@@ -70,7 +69,14 @@ export function FixedWorkspace() {
       setMergePreviewPanelId(null)
       return
     }
-    setMergePreviewPanelId(getMergeTarget(workspace.id, panelId, side as MergeSide))
+    setMergePreviewPanelId(findRectMergeTarget(collectPanelRects(containerRef.current), panelId, side))
+  }
+
+  const mergePanelFromDrag = (panelId: string, side: CornerMergeSide) => {
+    const rects = collectPanelRects(containerRef.current)
+    const targetPanelId = findRectMergeTarget(rects, panelId, side)
+    if (!targetPanelId) return false
+    return mergePanelByRects(workspace.id, panelId, targetPanelId, side as MergeSide, rects)
   }
 
   const renderNode = (node: WorkspaceLayoutNode): React.ReactNode => {
@@ -88,7 +94,7 @@ export function FixedWorkspace() {
           onTypeChange={(type) => setPanelType(workspace.id, node.id, type)}
           onAddPanel={(type, direction, placement, ratio) => splitPanel(workspace.id, node.id, direction, type, placement, ratio)}
           onCornerMergePreview={updateMergePreview}
-          onCornerMergeDrop={(_panelId, side) => mergePanel(workspace.id, node.id, side as MergeSide)}
+          onCornerMergeDrop={mergePanelFromDrag}
           onSplit={(direction) => splitPanel(workspace.id, node.id, direction)}
           onMaximize={() => setMaximizedPanel(workspace.id, maximizedPanelId === node.id ? null : node.id)}
           onClose={() => closePanel(workspace.id, node.id)}
@@ -137,4 +143,58 @@ export function FixedWorkspace() {
 function countPanelNodes(node: WorkspaceLayoutNode): number {
   if (node.kind === "panel") return 1
   return countPanelNodes(node.first) + countPanelNodes(node.second)
+}
+
+function collectPanelRects(container: HTMLElement | null): WorkspacePanelRect[] {
+  if (!container) return []
+  const containerRect = container.getBoundingClientRect()
+  if (containerRect.width <= 0 || containerRect.height <= 0) return []
+
+  return Array.from(container.querySelectorAll<HTMLElement>("[data-panel-id]")).map(element => {
+    const rect = element.getBoundingClientRect()
+    return {
+      id: element.dataset.panelId || "",
+      type: element.dataset.panelType as WorkspacePanelRect["type"],
+      left: (rect.left - containerRect.left) / containerRect.width,
+      top: (rect.top - containerRect.top) / containerRect.height,
+      right: (rect.right - containerRect.left) / containerRect.width,
+      bottom: (rect.bottom - containerRect.top) / containerRect.height,
+    }
+  }).filter(rect => rect.id && rect.type)
+}
+
+function findRectMergeTarget(rects: WorkspacePanelRect[], panelId: string, side: CornerMergeSide): string | null {
+  const source = rects.find(rect => rect.id === panelId)
+  if (!source) return null
+
+  const epsilon = 0.012
+  let best: { id: string; overlap: number } | null = null
+
+  for (const target of rects) {
+    if (target.id === source.id) continue
+
+    let touches = false
+    let canCropTarget = false
+    let overlap = 0
+
+    if (side === "left" || side === "right") {
+      touches = side === "right"
+        ? Math.abs(source.right - target.left) <= epsilon
+        : Math.abs(source.left - target.right) <= epsilon
+      canCropTarget = source.top >= target.top - epsilon && source.bottom <= target.bottom + epsilon
+      overlap = Math.min(source.bottom, target.bottom) - Math.max(source.top, target.top)
+    } else {
+      touches = side === "down"
+        ? Math.abs(source.bottom - target.top) <= epsilon
+        : Math.abs(source.top - target.bottom) <= epsilon
+      canCropTarget = source.left >= target.left - epsilon && source.right <= target.right + epsilon
+      overlap = Math.min(source.right, target.right) - Math.max(source.left, target.left)
+    }
+
+    if (touches && canCropTarget && overlap > epsilon && (!best || overlap > best.overlap)) {
+      best = { id: target.id, overlap }
+    }
+  }
+
+  return best?.id ?? null
 }

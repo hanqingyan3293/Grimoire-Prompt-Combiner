@@ -148,8 +148,9 @@ export function PanelShell({
       onCornerMergePreview?.(id, null)
     }
     const handleUp = () => {
-      const merged = latestMergeSide ? onCornerMergeDrop?.(id, latestMergeSide) : false
-      if (!merged && latestPreview) {
+      if (latestMergeSide) {
+        onCornerMergeDrop?.(id, latestMergeSide)
+      } else if (latestPreview) {
         onAddPanel?.(type, latestPreview.direction, latestPreview.placement, latestPreview.ratio)
       }
       cleanup()
