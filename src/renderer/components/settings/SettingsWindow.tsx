@@ -106,16 +106,16 @@ export function SettingsWindow({ onClose }: { onClose: () => void }) {
   return (
     <div className="flex h-screen overflow-hidden bg-[var(--color-bg-primary)]">
       {/* Left nav */}
-      <div className="w-[200px] min-w-[200px] border-r border-[var(--color-border)] bg-[var(--color-bg-secondary)] flex flex-col">
-        <div className="px-5 py-4 border-b border-[var(--color-border)]">
+      <div className="ui-app-chrome flex w-[200px] min-w-[200px] flex-col border-r border-[var(--color-border)]">
+        <div className="border-b border-[var(--color-border)] px-5 py-4">
           <span className="font-bold text-base text-[var(--color-text-primary)]">⚙ 设置</span>
         </div>
-        <div className="flex-1 py-2">
+        <div className="flex-1 space-y-1 p-2">
           {sections.map(s => (
             <button key={s.key} onClick={() => setSection(s.key)}
-              className={`w-full text-left px-5 py-3 text-sm transition-colors ${
+              className={`w-full rounded-md px-3 py-2.5 text-left text-sm transition-colors ${
                 section === s.key
-                  ? "bg-[var(--color-accent)]/15 text-[var(--color-accent)] border-r-[3px] border-[var(--color-accent)] font-medium"
+                  ? "bg-[var(--color-accent)]/15 text-[var(--color-accent)] font-medium"
                   : "text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-primary)] hover:text-[var(--color-text-primary)]"
               }`}>
               <span className="mr-3">{s.icon}</span>{s.label}
@@ -126,6 +126,7 @@ export function SettingsWindow({ onClose }: { onClose: () => void }) {
 
       {/* Right content */}
       <div className="flex-1 overflow-y-auto p-8">
+        <div className="mx-auto max-w-5xl">
         {section === "general" && (
           <div className="space-y-5">
             <h2 className="text-xl font-bold text-[var(--color-text-primary)] mb-6">通用设置</h2>
@@ -402,6 +403,7 @@ export function SettingsWindow({ onClose }: { onClose: () => void }) {
             <div className="text-sm text-[var(--color-text-secondary)]">Electron + React + TypeScript + Tailwind CSS</div>
           </div>
         )}
+        </div>
       </div>
     </div>
   )
@@ -409,9 +411,9 @@ export function SettingsWindow({ onClose }: { onClose: () => void }) {
 
 function Field({ label, desc, children }: { label: string; desc?: string; children: React.ReactNode }) {
   return (
-    <div>
-      <div className="text-sm font-semibold text-[var(--color-text-primary)] mb-2">{label}</div>
-      {desc && <div className="text-xs text-[var(--color-text-secondary)] mb-2">{desc}</div>}
+    <div className="border-b border-[var(--color-border)] py-4 first:pt-0 last:border-b-0">
+      <div className="mb-2 text-sm font-semibold text-[var(--color-text-primary)]">{label}</div>
+      {desc && <div className="mb-3 text-xs text-[var(--color-text-secondary)]">{desc}</div>}
       {children}
     </div>
   )
