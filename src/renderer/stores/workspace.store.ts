@@ -38,15 +38,7 @@ export type WorkspaceLayoutNode =
 type WorkspaceLayouts = Record<string, WorkspaceLayoutNode>
 type MaximizedPanels = Record<string, string | null>
 type VersionedLayoutsStorage = { version: number; layouts: WorkspaceLayouts }
-type VersionedLayoutPresetsStorage = { version: number; presets: WorkspaceLayoutPreset[] }
-
-export interface WorkspaceLayoutPreset {
-  id: string
-  name: string
-  workspaceId: string
-  layout: WorkspaceLayoutNode
-  createdAt: string
-}
+type VersionedWorkspacesStorage = { version: number; workspaces: WorkspaceDefinition[] }
 
 export interface WorkspaceDefinition {
   id: string
@@ -104,10 +96,12 @@ export const WORKSPACES: WorkspaceDefinition[] = [
 
 interface WorkspaceState {
   activeWorkspaceId: string
+  workspaces: WorkspaceDefinition[]
   layouts: WorkspaceLayouts
   maximizedPanels: MaximizedPanels
-  layoutPresets: WorkspaceLayoutPreset[]
   setActiveWorkspace: (id: string) => void
+  createWorkspace: () => void
+  renameWorkspace: (id: string, title: string) => void
   setPanelType: (workspaceId: string, panelId: string, type: PanelType) => void
   splitPanel: (workspaceId: string, panelId: string, direction: SplitDirection, type?: PanelType, placement?: SplitPlacement, ratio?: number) => void
   mergePanelByRects: (workspaceId: string, panelId: string, targetPanelId: string, side: MergeSide, rects: WorkspacePanelRect[]) => boolean
@@ -117,20 +111,18 @@ interface WorkspaceState {
   resetWorkspace: () => void
   resetAllWorkspaces: () => void
   copyWorkspaceLayout: (sourceWorkspaceId: string, targetWorkspaceId: string) => void
-  saveCurrentLayoutPreset: (name: string) => void
-  applyLayoutPreset: (presetId: string) => void
-  deleteLayoutPreset: (presetId: string) => void
+  saveCurrentWorkspaceLayout: () => void
   getLayout: (workspaceId: string) => WorkspaceLayoutNode
   getMaximizedPanelId: (workspaceId: string) => string | null
   findPanel: (workspaceId: string, panelId: string) => Extract<WorkspaceLayoutNode, { kind: "panel" }> | null
 }
 
 const STORAGE_KEY = "grimoire.activeWorkspace"
+const WORKSPACES_STORAGE_KEY = "grimoire.workspaces"
 const LAYOUTS_STORAGE_KEY = "grimoire.workspaceLayouts"
 const MAXIMIZED_STORAGE_KEY = "grimoire.workspaceMaximizedPanels"
-const LAYOUT_PRESETS_STORAGE_KEY = "grimoire.workspaceLayoutPresets"
+const WORKSPACES_STORAGE_VERSION = 1
 const LAYOUTS_STORAGE_VERSION = 2
-const LAYOUT_PRESETS_STORAGE_VERSION = 1
 const FALLBACK_PANEL_TYPE: PanelType = "utility-sidebar"
 const VALID_PANEL_TYPES = new Set<PanelType>([
   "tag-sidebar",
@@ -147,10 +139,58 @@ const VALID_PANEL_TYPES = new Set<PanelType>([
 
 const createId = (prefix: string) => prefix + Math.random().toString(36).slice(2, 10)
 
-function getInitialWorkspaceId() {
+function getInitialWorkspaces(): WorkspaceDefinition[] {
+  if (typeof window === "undefined") return WORKSPACES
+  try {
+    const raw = window.localStorage.getItem(WORKSPACES_STORAGE_KEY)
+    if (!raw) return WORKSPACES
+    const parsed = JSON.parse(raw) as VersionedWorkspacesStorage | WorkspaceDefinition[]
+    const rawWorkspaces = Array.isArray(parsed) ? parsed : parsed.workspaces
+    if (!Array.isArray(rawWorkspaces)) return WORKSPACES
+    const workspaces = rawWorkspaces
+      .map(sanitizeWorkspaceDefinition)
+      .filter(Boolean) as WorkspaceDefinition[]
+    const merged = mergeDefaultWorkspaces(workspaces)
+    saveWorkspaces(merged)
+    return merged
+  } catch {
+    return WORKSPACES
+  }
+}
+
+function sanitizeWorkspaceDefinition(workspace: unknown): WorkspaceDefinition | null {
+  if (!workspace || typeof workspace !== "object") return null
+  const value = workspace as Partial<WorkspaceDefinition>
+  if (typeof value.id !== "string" || !value.id) return null
+  return {
+    id: value.id,
+    title: typeof value.title === "string" && value.title.trim() ? value.title.trim() : "未命名布局",
+    slots: WORKSPACES[0].slots,
+  }
+}
+
+function mergeDefaultWorkspaces(savedWorkspaces: WorkspaceDefinition[]) {
+  const savedById = new Map(savedWorkspaces.map(workspace => [workspace.id, workspace]))
+  const defaults = WORKSPACES.map(workspace => ({
+    ...workspace,
+    title: savedById.get(workspace.id)?.title || workspace.title,
+  }))
+  const custom = savedWorkspaces.filter(workspace => !WORKSPACES.some(item => item.id === workspace.id))
+  return [...defaults, ...custom]
+}
+
+function saveWorkspaces(workspaces: WorkspaceDefinition[]) {
+  if (typeof window === "undefined") return
+  window.localStorage.setItem(WORKSPACES_STORAGE_KEY, JSON.stringify({
+    version: WORKSPACES_STORAGE_VERSION,
+    workspaces,
+  } satisfies VersionedWorkspacesStorage))
+}
+
+function getInitialWorkspaceId(workspaces: WorkspaceDefinition[]) {
   if (typeof window === "undefined") return "compose"
   const saved = window.localStorage.getItem(STORAGE_KEY)
-  return WORKSPACES.some(w => w.id === saved) ? saved! : "compose"
+  return workspaces.some(w => w.id === saved) ? saved! : "compose"
 }
 
 function createDefaultLayout(workspace: WorkspaceDefinition): WorkspaceLayoutNode {
@@ -177,7 +217,7 @@ export function getDefaultLayout(workspaceId: string): WorkspaceLayoutNode {
   return createDefaultLayout(workspace)
 }
 
-function getInitialLayouts(): WorkspaceLayouts {
+function getInitialLayouts(workspaces: WorkspaceDefinition[]): WorkspaceLayouts {
   if (typeof window === "undefined") return {}
   try {
     const raw = window.localStorage.getItem(LAYOUTS_STORAGE_KEY)
@@ -186,7 +226,7 @@ function getInitialLayouts(): WorkspaceLayouts {
     const rawLayouts = "layouts" in parsed ? parsed.layouts : parsed
     if (!rawLayouts || typeof rawLayouts !== "object") return {}
     const layouts: WorkspaceLayouts = {}
-    for (const workspace of WORKSPACES) {
+    for (const workspace of workspaces) {
       const layout = rawLayouts[workspace.id]
       const sanitized = sanitizeLayoutNode(layout)
       if (sanitized) layouts[workspace.id] = sanitized
@@ -249,42 +289,6 @@ function getInitialMaximizedPanels(): MaximizedPanels {
 function saveMaximizedPanels(maximizedPanels: MaximizedPanels) {
   if (typeof window === "undefined") return
   window.localStorage.setItem(MAXIMIZED_STORAGE_KEY, JSON.stringify(maximizedPanels))
-}
-
-function getInitialLayoutPresets(): WorkspaceLayoutPreset[] {
-  if (typeof window === "undefined") return []
-  try {
-    const raw = window.localStorage.getItem(LAYOUT_PRESETS_STORAGE_KEY)
-    if (!raw) return []
-    const parsed = JSON.parse(raw) as VersionedLayoutPresetsStorage | WorkspaceLayoutPreset[]
-    const rawPresets = Array.isArray(parsed) ? parsed : parsed.presets
-    if (!Array.isArray(rawPresets)) return []
-    const presets = rawPresets
-      .map(preset => {
-        const sanitized = sanitizeLayoutNode(preset?.layout)
-        if (!sanitized || !WORKSPACES.some(workspace => workspace.id === preset?.workspaceId)) return null
-        return {
-          id: typeof preset.id === "string" && preset.id ? preset.id : createId("layout_"),
-          name: typeof preset.name === "string" && preset.name.trim() ? preset.name.trim() : "未命名布局",
-          workspaceId: preset.workspaceId,
-          layout: normalizeLayoutNode(sanitized),
-          createdAt: typeof preset.createdAt === "string" && preset.createdAt ? preset.createdAt : new Date().toISOString(),
-        } satisfies WorkspaceLayoutPreset
-      })
-      .filter(Boolean) as WorkspaceLayoutPreset[]
-    saveLayoutPresets(presets)
-    return presets
-  } catch {
-    return []
-  }
-}
-
-function saveLayoutPresets(presets: WorkspaceLayoutPreset[]) {
-  if (typeof window === "undefined") return
-  window.localStorage.setItem(LAYOUT_PRESETS_STORAGE_KEY, JSON.stringify({
-    version: LAYOUT_PRESETS_STORAGE_VERSION,
-    presets,
-  } satisfies VersionedLayoutPresetsStorage))
 }
 
 function updateLayoutNode(
@@ -442,15 +446,44 @@ function clampRatio(ratio: number) {
   return Math.min(0.88, Math.max(0.12, ratio))
 }
 
+const INITIAL_WORKSPACES = getInitialWorkspaces()
+
 export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
-  activeWorkspaceId: getInitialWorkspaceId(),
-  layouts: getInitialLayouts(),
+  activeWorkspaceId: getInitialWorkspaceId(INITIAL_WORKSPACES),
+  workspaces: INITIAL_WORKSPACES,
+  layouts: getInitialLayouts(INITIAL_WORKSPACES),
   maximizedPanels: getInitialMaximizedPanels(),
-  layoutPresets: getInitialLayoutPresets(),
   setActiveWorkspace: (id) => {
-    if (!WORKSPACES.some(w => w.id === id)) return
+    if (!get().workspaces.some(w => w.id === id)) return
     if (typeof window !== "undefined") window.localStorage.setItem(STORAGE_KEY, id)
     set({ activeWorkspaceId: id })
+  },
+  createWorkspace: () => {
+    const workspaceId = createId("workspace_")
+    const customCount = get().workspaces.filter(workspace => workspace.id.startsWith("workspace_")).length
+    const workspace: WorkspaceDefinition = {
+      id: workspaceId,
+      title: `布局 ${customCount + 1}`,
+      slots: WORKSPACES[0].slots,
+    }
+    const nextWorkspaces = [...get().workspaces, workspace]
+    const nextLayouts = {
+      ...get().layouts,
+      [workspaceId]: createDefaultLayout(workspace),
+    }
+    saveWorkspaces(nextWorkspaces)
+    saveLayouts(nextLayouts)
+    if (typeof window !== "undefined") window.localStorage.setItem(STORAGE_KEY, workspaceId)
+    set({ workspaces: nextWorkspaces, layouts: nextLayouts, activeWorkspaceId: workspaceId })
+  },
+  renameWorkspace: (id, title) => {
+    const trimmedTitle = title.trim()
+    if (!trimmedTitle) return
+    const nextWorkspaces = get().workspaces.map(workspace =>
+      workspace.id === id ? { ...workspace, title: trimmedTitle } : workspace
+    )
+    saveWorkspaces(nextWorkspaces)
+    set({ workspaces: nextWorkspaces })
   },
   setPanelType: (workspaceId, panelId, type) => {
     const layout = get().getLayout(workspaceId)
@@ -538,7 +571,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
     set({ layouts: {}, maximizedPanels: {} })
   },
   copyWorkspaceLayout: (sourceWorkspaceId, targetWorkspaceId) => {
-    if (!WORKSPACES.some(w => w.id === sourceWorkspaceId) || !WORKSPACES.some(w => w.id === targetWorkspaceId)) return
+    if (!get().workspaces.some(w => w.id === sourceWorkspaceId) || !get().workspaces.some(w => w.id === targetWorkspaceId)) return
     const sourceLayout = get().getLayout(sourceWorkspaceId)
     const copiedLayout = normalizeLayoutNode(JSON.parse(JSON.stringify(sourceLayout)) as WorkspaceLayoutNode)
     const nextLayouts = { ...get().layouts, [targetWorkspaceId]: copiedLayout }
@@ -547,40 +580,19 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
     saveMaximizedPanels(nextMaximized)
     set({ layouts: nextLayouts, maximizedPanels: nextMaximized })
   },
-  saveCurrentLayoutPreset: (name) => {
-    const trimmedName = name.trim()
-    if (!trimmedName) return
-    const { activeWorkspaceId, layoutPresets } = get()
-    const layout = normalizeLayoutNode(JSON.parse(JSON.stringify(get().getLayout(activeWorkspaceId))) as WorkspaceLayoutNode)
-    const preset: WorkspaceLayoutPreset = {
-      id: createId("layout_"),
-      name: trimmedName,
-      workspaceId: activeWorkspaceId,
-      layout,
-      createdAt: new Date().toISOString(),
-    }
-    const nextPresets = [preset, ...layoutPresets].slice(0, 30)
-    saveLayoutPresets(nextPresets)
-    set({ layoutPresets: nextPresets })
-  },
-  applyLayoutPreset: (presetId) => {
-    const preset = get().layoutPresets.find(item => item.id === presetId)
-    if (!preset) return
+  saveCurrentWorkspaceLayout: () => {
+    const { activeWorkspaceId } = get()
     const nextLayouts = {
       ...get().layouts,
-      [get().activeWorkspaceId]: normalizeLayoutNode(JSON.parse(JSON.stringify(preset.layout)) as WorkspaceLayoutNode),
+      [activeWorkspaceId]: normalizeLayoutNode(JSON.parse(JSON.stringify(get().getLayout(activeWorkspaceId))) as WorkspaceLayoutNode),
     }
-    const nextMaximized = { ...get().maximizedPanels, [get().activeWorkspaceId]: null }
     saveLayouts(nextLayouts)
-    saveMaximizedPanels(nextMaximized)
-    set({ layouts: nextLayouts, maximizedPanels: nextMaximized })
+    set({ layouts: nextLayouts })
   },
-  deleteLayoutPreset: (presetId) => {
-    const nextPresets = get().layoutPresets.filter(item => item.id !== presetId)
-    saveLayoutPresets(nextPresets)
-    set({ layoutPresets: nextPresets })
+  getLayout: (workspaceId) => {
+    const workspace = get().workspaces.find(item => item.id === workspaceId)
+    return get().layouts[workspaceId] || createDefaultLayout(workspace || WORKSPACES[0])
   },
-  getLayout: (workspaceId) => get().layouts[workspaceId] || getDefaultLayout(workspaceId),
   getMaximizedPanelId: (workspaceId) => get().maximizedPanels[workspaceId] || null,
   findPanel: (workspaceId, panelId) => findPanelNode(get().getLayout(workspaceId), panelId),
 }))

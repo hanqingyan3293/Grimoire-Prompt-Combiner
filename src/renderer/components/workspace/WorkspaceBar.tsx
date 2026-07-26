@@ -1,21 +1,21 @@
 import React, { useEffect, useRef, useState } from "react"
-import { WORKSPACES, useWorkspaceStore } from "../../stores/workspace.store"
+import { useWorkspaceStore } from "../../stores/workspace.store"
 
 export function WorkspaceBar() {
   const activeWorkspaceId = useWorkspaceStore(s => s.activeWorkspaceId)
+  const workspaces = useWorkspaceStore(s => s.workspaces)
   const setActiveWorkspace = useWorkspaceStore(s => s.setActiveWorkspace)
+  const createWorkspace = useWorkspaceStore(s => s.createWorkspace)
+  const renameWorkspace = useWorkspaceStore(s => s.renameWorkspace)
   const resetWorkspace = useWorkspaceStore(s => s.resetWorkspace)
   const resetAllWorkspaces = useWorkspaceStore(s => s.resetAllWorkspaces)
   const copyWorkspaceLayout = useWorkspaceStore(s => s.copyWorkspaceLayout)
-  const layoutPresets = useWorkspaceStore(s => s.layoutPresets)
-  const saveCurrentLayoutPreset = useWorkspaceStore(s => s.saveCurrentLayoutPreset)
-  const applyLayoutPreset = useWorkspaceStore(s => s.applyLayoutPreset)
-  const deleteLayoutPreset = useWorkspaceStore(s => s.deleteLayoutPreset)
+  const saveCurrentWorkspaceLayout = useWorkspaceStore(s => s.saveCurrentWorkspaceLayout)
   const [layoutMenuOpen, setLayoutMenuOpen] = useState(false)
-  const [savingPreset, setSavingPreset] = useState(false)
-  const [presetName, setPresetName] = useState("")
+  const [editingWorkspaceId, setEditingWorkspaceId] = useState<string | null>(null)
+  const [workspaceTitleInput, setWorkspaceTitleInput] = useState("")
   const layoutMenuRef = useRef<HTMLDivElement>(null)
-  const activeWorkspace = WORKSPACES.find(workspace => workspace.id === activeWorkspaceId) || WORKSPACES[0]
+  const activeWorkspace = workspaces.find(workspace => workspace.id === activeWorkspaceId) || workspaces[0]
 
   useEffect(() => {
     if (!layoutMenuOpen) return
@@ -33,47 +33,67 @@ export function WorkspaceBar() {
     }
   }, [layoutMenuOpen])
 
-  useEffect(() => {
-    if (!layoutMenuOpen) {
-      setSavingPreset(false)
-      setPresetName("")
-    }
-  }, [layoutMenuOpen])
-
   const runMenuAction = (action: () => void) => {
     action()
     setLayoutMenuOpen(false)
   }
 
-  const startSaveLayoutPreset = () => {
-    setPresetName(`${activeWorkspace.title}布局`)
-    setSavingPreset(true)
+  const startRenameWorkspace = (workspaceId: string, title: string) => {
+    setEditingWorkspaceId(workspaceId)
+    setWorkspaceTitleInput(title)
   }
 
-  const commitLayoutPreset = () => {
-    const name = presetName.trim()
-    if (!name) return
-    saveCurrentLayoutPreset(name)
-    setSavingPreset(false)
-    setPresetName("")
+  const commitRenameWorkspace = () => {
+    if (!editingWorkspaceId) return
+    const title = workspaceTitleInput.trim()
+    if (title) renameWorkspace(editingWorkspaceId, title)
+    setEditingWorkspaceId(null)
+    setWorkspaceTitleInput("")
   }
 
   return (
     <div className="h-9 shrink-0 flex items-center gap-1 px-2 border-b border-[var(--color-border)] bg-[var(--color-bg-secondary)]">
-      {WORKSPACES.map(workspace => (
-        <button
-          key={workspace.id}
-          onClick={() => setActiveWorkspace(workspace.id)}
-          className={
-            "px-3 h-7 rounded text-xs font-medium transition-colors " +
-            (workspace.id === activeWorkspaceId
-              ? "bg-[var(--color-accent)]/15 text-[var(--color-accent)] border border-[var(--color-accent)]/30"
-              : "text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-bg-primary)]")
-          }
-        >
-          {workspace.title}
-        </button>
+      {workspaces.map(workspace => (
+        editingWorkspaceId === workspace.id ? (
+          <input
+            key={workspace.id}
+            autoFocus
+            value={workspaceTitleInput}
+            onChange={event => setWorkspaceTitleInput(event.target.value)}
+            onBlur={commitRenameWorkspace}
+            onKeyDown={event => {
+              if (event.key === "Enter") commitRenameWorkspace()
+              if (event.key === "Escape") {
+                setEditingWorkspaceId(null)
+                setWorkspaceTitleInput("")
+              }
+            }}
+            className="h-7 w-24 rounded border border-[var(--color-accent)] bg-[var(--color-bg-primary)] px-2 text-xs text-[var(--color-text-primary)] outline-none"
+          />
+        ) : (
+          <button
+            key={workspace.id}
+            onClick={() => setActiveWorkspace(workspace.id)}
+            onDoubleClick={() => startRenameWorkspace(workspace.id, workspace.title)}
+            className={
+              "px-3 h-7 rounded text-xs font-medium transition-colors " +
+              (workspace.id === activeWorkspaceId
+                ? "bg-[var(--color-accent)]/15 text-[var(--color-accent)] border border-[var(--color-accent)]/30"
+                : "text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-bg-primary)]")
+            }
+            title="双击重命名"
+          >
+            {workspace.title}
+          </button>
+        )
       ))}
+      <button
+        onClick={createWorkspace}
+        className="h-7 w-7 rounded text-sm text-[var(--color-text-secondary)] hover:bg-[var(--color-accent)]/10 hover:text-[var(--color-accent)]"
+        title="新建布局"
+      >
+        +
+      </button>
       <div className="flex-1" />
       <div ref={layoutMenuRef} className="relative">
         <button
@@ -89,76 +109,11 @@ export function WorkspaceBar() {
               当前：{activeWorkspace.title}
             </div>
             <button
-              onClick={startSaveLayoutPreset}
+              onClick={() => runMenuAction(saveCurrentWorkspaceLayout)}
               className="block w-full px-3 py-1.5 text-left text-xs text-[var(--color-text-primary)] hover:bg-[var(--color-accent)]/15 hover:text-[var(--color-accent)]"
             >
-              保存当前布局
+              保存当前布局（覆盖）
             </button>
-            {savingPreset && (
-              <div className="px-3 py-2">
-                <input
-                  autoFocus
-                  value={presetName}
-                  onChange={event => setPresetName(event.target.value)}
-                  onKeyDown={event => {
-                    if (event.key === "Enter") commitLayoutPreset()
-                    if (event.key === "Escape") {
-                      setSavingPreset(false)
-                      setPresetName("")
-                    }
-                  }}
-                  className="mb-2 w-full rounded border border-[var(--color-border)] bg-[var(--color-bg-primary)] px-2 py-1.5 text-xs text-[var(--color-text-primary)] outline-none focus:border-[var(--color-accent)]"
-                  placeholder="布局名称"
-                />
-                <div className="flex gap-1.5">
-                  <button
-                    onClick={commitLayoutPreset}
-                    className="flex-1 rounded bg-[var(--color-accent)] px-2 py-1 text-xs font-medium text-white hover:opacity-90"
-                  >
-                    保存
-                  </button>
-                  <button
-                    onClick={() => {
-                      setSavingPreset(false)
-                      setPresetName("")
-                    }}
-                    className="flex-1 rounded border border-[var(--color-border)] px-2 py-1 text-xs text-[var(--color-text-secondary)] hover:border-[var(--color-accent)]/50 hover:text-[var(--color-accent)]"
-                  >
-                    取消
-                  </button>
-                </div>
-              </div>
-            )}
-            <div className="my-1 border-t border-[var(--color-border)]" />
-            <div className="px-3 py-1 text-[10px] text-[var(--color-text-secondary)]">已保存布局</div>
-            {layoutPresets.length === 0 ? (
-              <div className="px-3 py-1.5 text-xs text-[var(--color-text-secondary)] opacity-70">
-                暂无保存布局
-              </div>
-            ) : layoutPresets.map(preset => {
-              const presetWorkspace = WORKSPACES.find(workspace => workspace.id === preset.workspaceId)
-              return (
-                <div key={preset.id} className="flex items-center gap-1 px-1.5 py-0.5 hover:bg-[var(--color-accent)]/10">
-                  <button
-                    onClick={() => runMenuAction(() => applyLayoutPreset(preset.id))}
-                    className="min-w-0 flex-1 rounded px-1.5 py-1 text-left text-xs text-[var(--color-text-primary)] hover:text-[var(--color-accent)]"
-                    title={new Date(preset.createdAt).toLocaleString("zh-CN")}
-                  >
-                    <span className="block truncate">{preset.name}</span>
-                    <span className="block truncate text-[10px] text-[var(--color-text-secondary)]">
-                      来源：{presetWorkspace?.title || "未知工作区"}
-                    </span>
-                  </button>
-                  <button
-                    onClick={() => deleteLayoutPreset(preset.id)}
-                    className="h-6 w-6 shrink-0 rounded text-xs text-[var(--color-text-secondary)] hover:bg-red-500/10 hover:text-red-400"
-                    title="删除布局预设"
-                  >
-                    ×
-                  </button>
-                </div>
-              )
-            })}
             <div className="my-1 border-t border-[var(--color-border)]" />
             <button
               onClick={() => runMenuAction(resetWorkspace)}
@@ -174,7 +129,7 @@ export function WorkspaceBar() {
             </button>
             <div className="my-1 border-t border-[var(--color-border)]" />
             <div className="px-3 py-1 text-[10px] text-[var(--color-text-secondary)]">复制当前布局到</div>
-            {WORKSPACES.filter(workspace => workspace.id !== activeWorkspaceId).map(workspace => (
+            {workspaces.filter(workspace => workspace.id !== activeWorkspaceId).map(workspace => (
               <button
                 key={workspace.id}
                 onClick={() => runMenuAction(() => copyWorkspaceLayout(activeWorkspaceId, workspace.id))}

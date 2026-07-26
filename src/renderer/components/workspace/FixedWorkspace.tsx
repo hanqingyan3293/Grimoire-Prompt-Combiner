@@ -1,7 +1,7 @@
 import React, { useMemo, useRef, useState } from "react"
 import { PanelShell, type CornerMergeSide } from "./PanelShell"
 import { ENABLED_PANEL_OPTIONS, PANEL_DEFINITIONS, PANEL_OPTION_GROUPS, renderPanel } from "./PanelRegistry"
-import { WORKSPACES, findPanelNode, getDefaultLayout, useWorkspaceStore } from "../../stores/workspace.store"
+import { findPanelNode, useWorkspaceStore } from "../../stores/workspace.store"
 import type { MergeSide, WorkspaceLayoutNode, WorkspacePanelRect } from "../../stores/workspace.store"
 
 type MergePreview = {
@@ -16,6 +16,7 @@ type MergePreview = {
 
 export function FixedWorkspace() {
   const activeWorkspaceId = useWorkspaceStore(s => s.activeWorkspaceId)
+  const workspaces = useWorkspaceStore(s => s.workspaces)
   const layouts = useWorkspaceStore(s => s.layouts)
   const maximizedPanels = useWorkspaceStore(s => s.maximizedPanels)
   const setPanelType = useWorkspaceStore(s => s.setPanelType)
@@ -27,19 +28,19 @@ export function FixedWorkspace() {
   const containerRef = useRef<HTMLDivElement>(null)
   const [mergePreview, setMergePreview] = useState<MergePreview>(null)
   const workspace = useMemo(
-    () => WORKSPACES.find(w => w.id === activeWorkspaceId) || WORKSPACES[0],
-    [activeWorkspaceId]
+    () => workspaces.find(w => w.id === activeWorkspaceId) || workspaces[0],
+    [activeWorkspaceId, workspaces]
   )
   const layout = useMemo(
-    () => layouts[workspace.id] || getDefaultLayout(workspace.id),
-    [layouts, workspace.id]
+    () => workspace ? layouts[workspace.id] || useWorkspaceStore.getState().getLayout(workspace.id) : null,
+    [layouts, workspace]
   )
-  const maximizedPanelId = maximizedPanels[workspace.id] || null
+  const maximizedPanelId = workspace ? maximizedPanels[workspace.id] || null : null
   const maximizedPanel = useMemo(
     () => maximizedPanelId ? findPanelNode(layout, maximizedPanelId) : null,
     [layout, maximizedPanelId]
   )
-  const panelCount = useMemo(() => countPanelNodes(layout), [layout])
+  const panelCount = useMemo(() => layout ? countPanelNodes(layout) : 0, [layout])
 
   const startResize = (node: Extract<WorkspaceLayoutNode, { kind: "split" }>, event: React.MouseEvent) => {
     event.preventDefault()
@@ -48,6 +49,7 @@ export function FixedWorkspace() {
 
     const rect = container.getBoundingClientRect()
     const onMove = (moveEvent: MouseEvent) => {
+      if (!workspace) return
       if (node.direction === "horizontal") {
         const ratio = (moveEvent.clientX - rect.left) / rect.width
         setSplitRatio(workspace.id, node.id, ratio)
@@ -83,6 +85,7 @@ export function FixedWorkspace() {
   }
 
   const mergePanelFromDrag = (panelId: string, side: CornerMergeSide) => {
+    if (!workspace) return false
     const rects = collectPanelRects(containerRef.current)
     const targetPanelId = findRectMergeTarget(rects, panelId, side)
     if (!targetPanelId) return false
@@ -146,7 +149,7 @@ export function FixedWorkspace() {
 
   return (
     <div ref={containerRef} className="flex flex-1 overflow-hidden">
-      {renderNode(maximizedPanel || layout)}
+      {layout && renderNode(maximizedPanel || layout)}
     </div>
   )
 }
