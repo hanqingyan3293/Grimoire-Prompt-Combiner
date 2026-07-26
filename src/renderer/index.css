@@ -75,6 +75,7 @@ button {
 
 button:disabled {
   cursor: not-allowed;
+  opacity: 0.55;
 }
 
 .is-resizing-horizontal,
@@ -376,6 +377,12 @@ input:not([type="range"]):not([type="checkbox"]):not([type="radio"]):not([type="
   transition: border-color 120ms ease, background-color 120ms ease, box-shadow 120ms ease, color 120ms ease;
 }
 
+select::placeholder,
+textarea::placeholder,
+input::placeholder {
+  color: color-mix(in srgb, var(--color-text-secondary) 72%, transparent);
+}
+
 select:hover,
 textarea:hover,
 input:not([type="range"]):not([type="checkbox"]):not([type="radio"]):not([type="color"]):not([type="file"]):hover {
@@ -394,6 +401,7 @@ textarea:disabled,
 input:not([type="range"]):not([type="checkbox"]):not([type="radio"]):not([type="color"]):not([type="file"]):disabled {
   opacity: 0.55;
   cursor: not-allowed;
+  background-color: color-mix(in srgb, var(--color-bg-primary) 72%, var(--color-bg-secondary));
 }
 
 /* 工具类 */

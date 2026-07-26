@@ -1,6 +1,6 @@
 {
     "name": "grimoire",
-    "version": "7.0.0",
+    "version": "7.1.0",
     "description": "魔导书 Grimoire v7 — AI提示词组合器 / AI Prompt Combiner",
     "main": "dist/main/main/index.js",
     "scripts": {

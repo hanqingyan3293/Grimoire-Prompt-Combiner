@@ -399,7 +399,7 @@ export function SettingsWindow({ onClose }: { onClose: () => void }) {
           <div className="space-y-3">
             <h2 className="text-xl font-bold text-[var(--color-text-primary)] mb-6">关于</h2>
             <div className="text-2xl font-bold text-[var(--color-text-primary)]">魔导书 Grimoire</div>
-            <div className="text-sm text-[var(--color-text-secondary)]">版本 v7.0.0 · GPL-3.0</div>
+            <div className="text-sm text-[var(--color-text-secondary)]">版本 v7.1.0 · GPL-3.0</div>
             <div className="text-sm text-[var(--color-text-secondary)]">Electron + React + TypeScript + Tailwind CSS</div>
           </div>
         )}

@@ -42,7 +42,7 @@ export function StatusBar() {
               ⚠ {errorCount} 错误
             </button>
           )}
-          <span className="ui-status-pill">Grimoire v7.0.0 | GPL-3.0</span>
+          <span className="ui-status-pill">Grimoire v7.1.0 | GPL-3.0</span>
         </div>
       </div>
       
