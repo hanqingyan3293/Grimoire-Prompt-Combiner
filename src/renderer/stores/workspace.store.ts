@@ -38,6 +38,15 @@ export type WorkspaceLayoutNode =
 type WorkspaceLayouts = Record<string, WorkspaceLayoutNode>
 type MaximizedPanels = Record<string, string | null>
 type VersionedLayoutsStorage = { version: number; layouts: WorkspaceLayouts }
+type VersionedLayoutPresetsStorage = { version: number; presets: WorkspaceLayoutPreset[] }
+
+export interface WorkspaceLayoutPreset {
+  id: string
+  name: string
+  workspaceId: string
+  layout: WorkspaceLayoutNode
+  createdAt: string
+}
 
 export interface WorkspaceDefinition {
   id: string
@@ -97,6 +106,7 @@ interface WorkspaceState {
   activeWorkspaceId: string
   layouts: WorkspaceLayouts
   maximizedPanels: MaximizedPanels
+  layoutPresets: WorkspaceLayoutPreset[]
   setActiveWorkspace: (id: string) => void
   setPanelType: (workspaceId: string, panelId: string, type: PanelType) => void
   splitPanel: (workspaceId: string, panelId: string, direction: SplitDirection, type?: PanelType, placement?: SplitPlacement, ratio?: number) => void
@@ -107,6 +117,9 @@ interface WorkspaceState {
   resetWorkspace: () => void
   resetAllWorkspaces: () => void
   copyWorkspaceLayout: (sourceWorkspaceId: string, targetWorkspaceId: string) => void
+  saveCurrentLayoutPreset: (name: string) => void
+  applyLayoutPreset: (presetId: string) => void
+  deleteLayoutPreset: (presetId: string) => void
   getLayout: (workspaceId: string) => WorkspaceLayoutNode
   getMaximizedPanelId: (workspaceId: string) => string | null
   findPanel: (workspaceId: string, panelId: string) => Extract<WorkspaceLayoutNode, { kind: "panel" }> | null
@@ -115,7 +128,9 @@ interface WorkspaceState {
 const STORAGE_KEY = "grimoire.activeWorkspace"
 const LAYOUTS_STORAGE_KEY = "grimoire.workspaceLayouts"
 const MAXIMIZED_STORAGE_KEY = "grimoire.workspaceMaximizedPanels"
+const LAYOUT_PRESETS_STORAGE_KEY = "grimoire.workspaceLayoutPresets"
 const LAYOUTS_STORAGE_VERSION = 2
+const LAYOUT_PRESETS_STORAGE_VERSION = 1
 const FALLBACK_PANEL_TYPE: PanelType = "utility-sidebar"
 const VALID_PANEL_TYPES = new Set<PanelType>([
   "tag-sidebar",
@@ -234,6 +249,42 @@ function getInitialMaximizedPanels(): MaximizedPanels {
 function saveMaximizedPanels(maximizedPanels: MaximizedPanels) {
   if (typeof window === "undefined") return
   window.localStorage.setItem(MAXIMIZED_STORAGE_KEY, JSON.stringify(maximizedPanels))
+}
+
+function getInitialLayoutPresets(): WorkspaceLayoutPreset[] {
+  if (typeof window === "undefined") return []
+  try {
+    const raw = window.localStorage.getItem(LAYOUT_PRESETS_STORAGE_KEY)
+    if (!raw) return []
+    const parsed = JSON.parse(raw) as VersionedLayoutPresetsStorage | WorkspaceLayoutPreset[]
+    const rawPresets = Array.isArray(parsed) ? parsed : parsed.presets
+    if (!Array.isArray(rawPresets)) return []
+    const presets = rawPresets
+      .map(preset => {
+        const sanitized = sanitizeLayoutNode(preset?.layout)
+        if (!sanitized || !WORKSPACES.some(workspace => workspace.id === preset?.workspaceId)) return null
+        return {
+          id: typeof preset.id === "string" && preset.id ? preset.id : createId("layout_"),
+          name: typeof preset.name === "string" && preset.name.trim() ? preset.name.trim() : "未命名布局",
+          workspaceId: preset.workspaceId,
+          layout: normalizeLayoutNode(sanitized),
+          createdAt: typeof preset.createdAt === "string" && preset.createdAt ? preset.createdAt : new Date().toISOString(),
+        } satisfies WorkspaceLayoutPreset
+      })
+      .filter(Boolean) as WorkspaceLayoutPreset[]
+    saveLayoutPresets(presets)
+    return presets
+  } catch {
+    return []
+  }
+}
+
+function saveLayoutPresets(presets: WorkspaceLayoutPreset[]) {
+  if (typeof window === "undefined") return
+  window.localStorage.setItem(LAYOUT_PRESETS_STORAGE_KEY, JSON.stringify({
+    version: LAYOUT_PRESETS_STORAGE_VERSION,
+    presets,
+  } satisfies VersionedLayoutPresetsStorage))
 }
 
 function updateLayoutNode(
@@ -395,6 +446,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   activeWorkspaceId: getInitialWorkspaceId(),
   layouts: getInitialLayouts(),
   maximizedPanels: getInitialMaximizedPanels(),
+  layoutPresets: getInitialLayoutPresets(),
   setActiveWorkspace: (id) => {
     if (!WORKSPACES.some(w => w.id === id)) return
     if (typeof window !== "undefined") window.localStorage.setItem(STORAGE_KEY, id)
@@ -494,6 +546,39 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
     saveLayouts(nextLayouts)
     saveMaximizedPanels(nextMaximized)
     set({ layouts: nextLayouts, maximizedPanels: nextMaximized })
+  },
+  saveCurrentLayoutPreset: (name) => {
+    const trimmedName = name.trim()
+    if (!trimmedName) return
+    const { activeWorkspaceId, layoutPresets } = get()
+    const layout = normalizeLayoutNode(JSON.parse(JSON.stringify(get().getLayout(activeWorkspaceId))) as WorkspaceLayoutNode)
+    const preset: WorkspaceLayoutPreset = {
+      id: createId("layout_"),
+      name: trimmedName,
+      workspaceId: activeWorkspaceId,
+      layout,
+      createdAt: new Date().toISOString(),
+    }
+    const nextPresets = [preset, ...layoutPresets].slice(0, 30)
+    saveLayoutPresets(nextPresets)
+    set({ layoutPresets: nextPresets })
+  },
+  applyLayoutPreset: (presetId) => {
+    const preset = get().layoutPresets.find(item => item.id === presetId)
+    if (!preset) return
+    const nextLayouts = {
+      ...get().layouts,
+      [get().activeWorkspaceId]: normalizeLayoutNode(JSON.parse(JSON.stringify(preset.layout)) as WorkspaceLayoutNode),
+    }
+    const nextMaximized = { ...get().maximizedPanels, [get().activeWorkspaceId]: null }
+    saveLayouts(nextLayouts)
+    saveMaximizedPanels(nextMaximized)
+    set({ layouts: nextLayouts, maximizedPanels: nextMaximized })
+  },
+  deleteLayoutPreset: (presetId) => {
+    const nextPresets = get().layoutPresets.filter(item => item.id !== presetId)
+    saveLayoutPresets(nextPresets)
+    set({ layoutPresets: nextPresets })
   },
   getLayout: (workspaceId) => get().layouts[workspaceId] || getDefaultLayout(workspaceId),
   getMaximizedPanelId: (workspaceId) => get().maximizedPanels[workspaceId] || null,

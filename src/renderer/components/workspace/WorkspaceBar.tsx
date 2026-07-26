@@ -7,9 +7,14 @@ export function WorkspaceBar() {
   const resetWorkspace = useWorkspaceStore(s => s.resetWorkspace)
   const resetAllWorkspaces = useWorkspaceStore(s => s.resetAllWorkspaces)
   const copyWorkspaceLayout = useWorkspaceStore(s => s.copyWorkspaceLayout)
+  const layoutPresets = useWorkspaceStore(s => s.layoutPresets)
+  const saveCurrentLayoutPreset = useWorkspaceStore(s => s.saveCurrentLayoutPreset)
+  const applyLayoutPreset = useWorkspaceStore(s => s.applyLayoutPreset)
+  const deleteLayoutPreset = useWorkspaceStore(s => s.deleteLayoutPreset)
   const [layoutMenuOpen, setLayoutMenuOpen] = useState(false)
   const layoutMenuRef = useRef<HTMLDivElement>(null)
   const activeWorkspace = WORKSPACES.find(workspace => workspace.id === activeWorkspaceId) || WORKSPACES[0]
+  const activeLayoutPresets = layoutPresets.filter(preset => preset.workspaceId === activeWorkspaceId)
 
   useEffect(() => {
     if (!layoutMenuOpen) return
@@ -30,6 +35,12 @@ export function WorkspaceBar() {
   const runMenuAction = (action: () => void) => {
     action()
     setLayoutMenuOpen(false)
+  }
+
+  const saveLayoutPreset = () => {
+    const name = window.prompt("保存当前布局为", `${activeWorkspace.title}布局`)
+    if (!name?.trim()) return
+    runMenuAction(() => saveCurrentLayoutPreset(name))
   }
 
   return (
@@ -58,10 +69,41 @@ export function WorkspaceBar() {
           布局
         </button>
         {layoutMenuOpen && (
-          <div className="absolute right-0 top-full z-50 mt-1 w-52 rounded border border-[var(--color-border)] bg-[var(--color-bg-tertiary)] py-1 shadow-2xl">
+          <div className="absolute right-0 top-full z-50 mt-1 max-h-[70vh] w-64 overflow-y-auto rounded border border-[var(--color-border)] bg-[var(--color-bg-tertiary)] py-1 shadow-2xl">
             <div className="px-3 py-1.5 text-[10px] text-[var(--color-text-secondary)]">
               当前：{activeWorkspace.title}
             </div>
+            <button
+              onClick={saveLayoutPreset}
+              className="block w-full px-3 py-1.5 text-left text-xs text-[var(--color-text-primary)] hover:bg-[var(--color-accent)]/15 hover:text-[var(--color-accent)]"
+            >
+              保存当前布局
+            </button>
+            {activeLayoutPresets.length > 0 && (
+              <>
+                <div className="my-1 border-t border-[var(--color-border)]" />
+                <div className="px-3 py-1 text-[10px] text-[var(--color-text-secondary)]">已保存布局</div>
+                {activeLayoutPresets.map(preset => (
+                  <div key={preset.id} className="flex items-center gap-1 px-1.5 py-0.5 hover:bg-[var(--color-accent)]/10">
+                    <button
+                      onClick={() => runMenuAction(() => applyLayoutPreset(preset.id))}
+                      className="min-w-0 flex-1 truncate rounded px-1.5 py-1 text-left text-xs text-[var(--color-text-primary)] hover:text-[var(--color-accent)]"
+                      title={new Date(preset.createdAt).toLocaleString("zh-CN")}
+                    >
+                      {preset.name}
+                    </button>
+                    <button
+                      onClick={() => runMenuAction(() => deleteLayoutPreset(preset.id))}
+                      className="h-6 w-6 shrink-0 rounded text-xs text-[var(--color-text-secondary)] hover:bg-red-500/10 hover:text-red-400"
+                      title="删除布局预设"
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+              </>
+            )}
+            <div className="my-1 border-t border-[var(--color-border)]" />
             <button
               onClick={() => runMenuAction(resetWorkspace)}
               className="block w-full px-3 py-1.5 text-left text-xs text-[var(--color-text-primary)] hover:bg-[var(--color-accent)]/15 hover:text-[var(--color-accent)]"
