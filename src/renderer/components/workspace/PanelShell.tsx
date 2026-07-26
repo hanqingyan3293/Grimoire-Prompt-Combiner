@@ -44,11 +44,16 @@ export function PanelShell({
           <select
             value={type}
             onChange={e => onTypeChange?.(e.target.value as PanelType)}
-            className="min-w-[72px] max-w-[180px] flex-1 bg-transparent text-xs font-medium text-[var(--color-text-primary)] outline-none hover:text-[var(--color-accent)]"
+            className="min-w-[72px] max-w-[180px] flex-1 bg-transparent text-xs font-medium outline-none hover:text-[var(--color-accent)]"
+            style={{ color: "var(--color-text-primary)", backgroundColor: "transparent" }}
             title={title}
           >
             {panelOptions.map(option => (
-              <option key={option.type} value={option.type}>
+              <option
+                key={option.type}
+                value={option.type}
+                style={{ color: "var(--color-text-primary)", backgroundColor: "var(--color-bg-tertiary)" }}
+              >
                 {option.title}
               </option>
             ))}
