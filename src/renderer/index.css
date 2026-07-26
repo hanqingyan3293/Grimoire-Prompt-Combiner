@@ -156,6 +156,69 @@ button:disabled {
   color: var(--color-accent);
 }
 
+.ui-toolbar {
+  border-bottom: 1px solid var(--color-border);
+  background: color-mix(in srgb, var(--color-bg-secondary) 88%, var(--color-bg-tertiary));
+  box-shadow: inset 0 -1px 0 rgba(255,255,255,0.025);
+}
+
+.ui-toolbar-button {
+  border: 1px solid transparent;
+  border-radius: 6px;
+  color: var(--color-text-secondary);
+  transition: border-color 120ms ease, background-color 120ms ease, color 120ms ease, opacity 120ms ease;
+}
+
+.ui-toolbar-button:not(:disabled):hover {
+  border-color: color-mix(in srgb, var(--color-accent) 38%, transparent);
+  background: color-mix(in srgb, var(--color-accent) 12%, transparent);
+  color: var(--color-accent);
+}
+
+.ui-subtle-button {
+  border: 1px solid var(--color-border);
+  border-radius: 7px;
+  background: var(--color-bg-primary);
+  color: var(--color-text-primary);
+  transition: border-color 120ms ease, background-color 120ms ease, color 120ms ease;
+}
+
+.ui-subtle-button:hover {
+  border-color: color-mix(in srgb, var(--color-accent) 42%, transparent);
+  background: color-mix(in srgb, var(--color-accent) 10%, var(--color-bg-primary));
+  color: var(--color-accent);
+}
+
+.ui-list-card {
+  border: 1px solid var(--color-border);
+  border-radius: 7px;
+  background: color-mix(in srgb, var(--color-bg-primary) 92%, var(--color-bg-secondary));
+  transition: border-color 120ms ease, background-color 120ms ease, box-shadow 120ms ease;
+}
+
+.ui-list-card:hover {
+  border-color: color-mix(in srgb, var(--color-accent) 46%, var(--color-border));
+  background: color-mix(in srgb, var(--color-bg-primary) 82%, var(--color-accent));
+  box-shadow: 0 1px 0 rgba(255,255,255,0.025);
+}
+
+.ui-empty-state {
+  display: flex;
+  min-height: 96px;
+  align-items: center;
+  justify-content: center;
+  border: 1px dashed var(--color-border);
+  border-radius: 8px;
+  color: var(--color-text-secondary);
+  background: color-mix(in srgb, var(--color-bg-primary) 70%, transparent);
+}
+
+.ui-section-label {
+  color: var(--color-text-secondary);
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
 select,
 input,
 textarea {

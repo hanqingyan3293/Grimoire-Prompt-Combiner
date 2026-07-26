@@ -51,7 +51,7 @@ export function RightPanel() {
   return (
     <div className="relative flex h-full w-full min-w-0 flex-col border-l border-[var(--color-border)] bg-[var(--color-bg-secondary)]">
       {/* Tab Bar */}
-      <div className="flex border-b border-[var(--color-border)]">
+      <div className="ui-toolbar flex">
         {tabs.map(tab => (
           <button key={tab.key} onClick={() => setActiveTab(tab.key)}
             className={`flex-1 py-2 text-xs font-medium transition-colors border-b-2 ${
@@ -81,13 +81,13 @@ export function RightPanel() {
         </div>
       )}
 
-      <div className="border-t border-[var(--color-border)] p-2 flex gap-2">
+      <div className="flex gap-2 border-t border-[var(--color-border)] p-2">
         <button onClick={() => setPopover(popover === 'ai' ? null : 'ai')}
-          className={"flex-1 py-1.5 text-xs rounded-lg border transition-colors " + (popover === 'ai' ? "border-[var(--color-accent)] bg-[var(--color-accent)]/15 text-[var(--color-accent)]" : "border-[var(--color-accent)]/30 text-[var(--color-accent)] hover:bg-[var(--color-accent)]/10")}>
+          className={"flex-1 py-1.5 text-xs " + (popover === 'ai' ? "rounded-lg border border-[var(--color-accent)] bg-[var(--color-accent)]/15 text-[var(--color-accent)]" : "ui-subtle-button")}>
           🤖 AI 助手
         </button>
         <button onClick={() => setPopover(popover === 'settings' ? null : 'settings')}
-          className={"flex-1 py-1.5 text-xs rounded-lg border transition-colors " + (popover === 'settings' ? "border-[var(--color-accent)] bg-[var(--color-accent)]/15 text-[var(--color-accent)]" : "border-[var(--color-border)] text-[var(--color-text-secondary)] hover:bg-[var(--color-accent)]/10")}>
+          className={"flex-1 py-1.5 text-xs " + (popover === 'settings' ? "rounded-lg border border-[var(--color-accent)] bg-[var(--color-accent)]/15 text-[var(--color-accent)]" : "ui-subtle-button")}>
           ⚙ 设置
         </button>
       </div>

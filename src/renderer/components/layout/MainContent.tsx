@@ -90,7 +90,7 @@ export function MainContent() {
 
   return (
     <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-      <div className="flex items-center gap-1 px-3 py-1.5 border-b border-[var(--color-border)] bg-[var(--color-bg-secondary)]">
+      <div className="ui-toolbar flex items-center gap-1 px-3 py-1.5">
         <ToolBtn onClick={undo} disabled={!canUndo()} title="Ctrl+Z">↩</ToolBtn>
         <ToolBtn onClick={redo} disabled={!canRedo()} title="Ctrl+Y">↪</ToolBtn>
         <div className="w-px h-4 bg-[var(--color-border)] mx-1" />
@@ -99,7 +99,7 @@ export function MainContent() {
         <div className="w-px h-4 bg-[var(--color-border)] mx-1" />
         <button onClick={clearPositive} className="px-2 py-1 text-xs text-green-400 hover:bg-green-500/10 rounded">清正面</button>
         <button onClick={clearNegative} className="px-2 py-1 text-xs text-red-400 hover:bg-red-500/10 rounded">清负面</button>
-        <button onClick={clearAll} className="px-2 py-1 text-xs text-[var(--color-text-secondary)] hover:bg-[var(--color-accent)]/10 rounded">全部清空</button>
+        <button onClick={clearAll} className="ui-toolbar-button px-2 py-1 text-xs">全部清空</button>
       </div>
 
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
@@ -120,11 +120,11 @@ export function MainContent() {
 
         <div className="shrink-0 p-3 bg-[var(--color-bg-secondary)]">
           <div className="flex items-center justify-between mb-2 flex-wrap gap-1">
-            <span className="text-xs font-medium text-[var(--color-text-secondary)]">输出</span>
+            <span className="ui-section-label">输出</span>
             <div className="flex items-center gap-1">
-              <button onClick={() => handleCopy("zh")} className="px-3 py-1.5 text-xs bg-[var(--color-bg-primary)] border border-[var(--color-border)] text-[var(--color-text-primary)] rounded hover:bg-[var(--color-accent)]/10">📋 复制中文</button>
-              <button onClick={() => handleCopy("en")} className="px-3 py-1.5 text-xs bg-[var(--color-bg-primary)] border border-[var(--color-border)] text-[var(--color-text-primary)] rounded hover:bg-[var(--color-accent)]/10">📋 复制英文</button>
-              <button onClick={() => setMagnifierOpen(true)} className="px-3 py-1.5 text-xs bg-[var(--color-bg-primary)] border border-[var(--color-border)] text-[var(--color-text-primary)] rounded hover:bg-[var(--color-accent)]/10" title="放大查看">🔍</button>
+              <button onClick={() => handleCopy("zh")} className="ui-subtle-button px-3 py-1.5 text-xs">📋 复制中文</button>
+              <button onClick={() => handleCopy("en")} className="ui-subtle-button px-3 py-1.5 text-xs">📋 复制英文</button>
+              <button onClick={() => setMagnifierOpen(true)} className="ui-subtle-button px-3 py-1.5 text-xs" title="放大查看">🔍</button>
             </div>
           </div>
           <textarea readOnly value={getFullPrompt()}
@@ -167,7 +167,7 @@ export function MainContent() {
 }
 
 function ToolBtn({ onClick, disabled, title, children }: { onClick: () => void; disabled?: boolean; title: string; children: React.ReactNode }) {
-  return <button onClick={onClick} disabled={disabled} title={title} className="w-7 h-7 flex items-center justify-center rounded text-xs hover:bg-[var(--color-accent)]/20 disabled:opacity-30 disabled:cursor-not-allowed">{children}</button>
+  return <button onClick={onClick} disabled={disabled} title={title} className="ui-toolbar-button flex h-7 w-7 items-center justify-center text-xs disabled:cursor-not-allowed disabled:opacity-30">{children}</button>
 }
 
 function WeightInput({ tagId, value, onChange }: { tagId: string; value: number; onChange: (v: number) => void }) {

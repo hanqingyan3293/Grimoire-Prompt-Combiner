@@ -47,7 +47,7 @@ export function ImagesPanel() {
       </button>
       
       {images.length === 0 ? (
-        <div className="text-center text-[var(--color-text-secondary)] py-8 text-sm">
+        <div className="ui-empty-state text-sm">
           {t.images.noImages}
         </div>
       ) : (
@@ -55,7 +55,7 @@ export function ImagesPanel() {
           {images.map(img => (
             <div
               key={img.id}
-              className="p-2 rounded bg-[var(--color-bg-primary)] border border-[var(--color-border)] group"
+              className="ui-list-card group p-2"
             >
               <div className="flex items-center justify-between">
                 <div className="flex-1 min-w-0">
@@ -85,7 +85,7 @@ export function ImagesPanel() {
         <div className="space-y-3">
           <p className="text-sm">{t.images.deleteConfirm}</p>
           <div className="flex gap-2">
-            <button onClick={() => setDeleteConfirm(null)} className="flex-1 py-2 text-sm bg-[var(--color-bg-tertiary)] rounded">
+            <button onClick={() => setDeleteConfirm(null)} className="ui-subtle-button flex-1 py-2 text-sm">
               {t.app.cancel}
             </button>
             <button onClick={() => deleteConfirm && handleDelete(deleteConfirm)} className="flex-1 py-2 text-sm bg-[var(--color-danger)] text-white rounded">

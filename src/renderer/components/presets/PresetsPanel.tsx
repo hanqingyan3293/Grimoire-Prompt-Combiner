@@ -63,7 +63,7 @@ export function PresetsPanel() {
       
       {/* Preset List */}
       {presets.length === 0 ? (
-        <div className="text-center text-[var(--color-text-secondary)] py-8 text-sm">
+        <div className="ui-empty-state text-sm">
           {t.presets.noPresets}
         </div>
       ) : (
@@ -71,7 +71,7 @@ export function PresetsPanel() {
           {presets.map(preset => (
             <div
               key={preset.id}
-              className="p-3 rounded bg-[var(--color-bg-primary)] border border-[var(--color-border)] hover:border-[var(--color-accent)]/50 transition-colors"
+              className="ui-list-card p-3"
             >
               <div className="flex items-center justify-between mb-1">
                 <span className="text-sm font-medium text-[var(--color-text-primary)]">{preset.name}</span>
@@ -118,7 +118,7 @@ export function PresetsPanel() {
             ✅ {positive.length} 正面标签 | ❌ {negative.length} 负面标签
           </div>
           <div className="flex gap-2">
-            <button onClick={() => setSaveOpen(false)} className="flex-1 py-2 text-sm bg-[var(--color-bg-tertiary)] rounded">
+            <button onClick={() => setSaveOpen(false)} className="ui-subtle-button flex-1 py-2 text-sm">
               {t.app.cancel}
             </button>
             <button onClick={handleSave} disabled={!presetName.trim()} className="flex-1 py-2 text-sm bg-[var(--color-accent)] text-white rounded disabled:opacity-50">
@@ -133,7 +133,7 @@ export function PresetsPanel() {
         <div className="space-y-3">
           <p className="text-sm">{t.presets.deleteConfirm}</p>
           <div className="flex gap-2">
-            <button onClick={() => setDeleteConfirm(null)} className="flex-1 py-2 text-sm bg-[var(--color-bg-tertiary)] rounded">
+            <button onClick={() => setDeleteConfirm(null)} className="ui-subtle-button flex-1 py-2 text-sm">
               {t.app.cancel}
             </button>
             <button onClick={() => deleteConfirm && handleDelete(deleteConfirm)} className="flex-1 py-2 text-sm bg-[var(--color-danger)] text-white rounded">

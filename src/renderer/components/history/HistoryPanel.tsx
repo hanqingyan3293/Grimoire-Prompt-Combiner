@@ -43,14 +43,14 @@ export function HistoryPanel() {
       {history.length > 0 && (
         <button
           onClick={() => setClearConfirm(true)}
-          className="w-full py-1.5 text-xs text-[var(--color-text-secondary)] hover:text-[var(--color-danger)] border border-[var(--color-border)] rounded transition-colors"
+          className="ui-subtle-button w-full py-1.5 text-xs hover:text-[var(--color-danger)]"
         >
           {t.history.clearAll}
         </button>
       )}
       
       {history.length === 0 ? (
-        <div className="text-center text-[var(--color-text-secondary)] py-8 text-sm">
+        <div className="ui-empty-state text-sm">
           {t.history.noHistory}
         </div>
       ) : (
@@ -58,7 +58,7 @@ export function HistoryPanel() {
           {history.map(item => (
             <div
               key={item.id}
-              className="p-3 rounded bg-[var(--color-bg-primary)] border border-[var(--color-border)] group"
+              className="ui-list-card group p-3"
             >
               <div className="flex items-center justify-between mb-1">
                 <span className="text-xs text-[var(--color-text-secondary)]">
@@ -92,7 +92,7 @@ export function HistoryPanel() {
         <div className="space-y-3">
           <p className="text-sm">{t.history.clearConfirm}</p>
           <div className="flex gap-2">
-            <button onClick={() => setClearConfirm(false)} className="flex-1 py-2 text-sm bg-[var(--color-bg-tertiary)] rounded">
+            <button onClick={() => setClearConfirm(false)} className="ui-subtle-button flex-1 py-2 text-sm">
               {t.app.cancel}
             </button>
             <button onClick={handleClear} className="flex-1 py-2 text-sm bg-[var(--color-danger)] text-white rounded">
