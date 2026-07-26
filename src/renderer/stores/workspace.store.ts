@@ -100,7 +100,6 @@ interface WorkspaceState {
   setActiveWorkspace: (id: string) => void
   setPanelType: (workspaceId: string, panelId: string, type: PanelType) => void
   splitPanel: (workspaceId: string, panelId: string, direction: SplitDirection, type?: PanelType, placement?: SplitPlacement, ratio?: number) => void
-  mergePanel: (workspaceId: string, panelId: string, side: MergeSide) => boolean
   mergePanelByRects: (workspaceId: string, panelId: string, targetPanelId: string, side: MergeSide, rects: WorkspacePanelRect[]) => boolean
   closePanel: (workspaceId: string, panelId: string) => void
   setSplitRatio: (workspaceId: string, splitId: string, ratio: number) => void
@@ -111,7 +110,6 @@ interface WorkspaceState {
   getLayout: (workspaceId: string) => WorkspaceLayoutNode
   getMaximizedPanelId: (workspaceId: string) => string | null
   findPanel: (workspaceId: string, panelId: string) => Extract<WorkspaceLayoutNode, { kind: "panel" }> | null
-  getMergeTarget: (workspaceId: string, panelId: string, side: MergeSide) => string | null
 }
 
 const STORAGE_KEY = "grimoire.activeWorkspace"
@@ -264,55 +262,6 @@ function removePanelNode(node: WorkspaceLayoutNode, panelId: string): WorkspaceL
   return { ...node, first, second }
 }
 
-function findDirectMergeTarget(node: WorkspaceLayoutNode, panelId: string, side: MergeSide): string | null {
-  if (node.kind === "panel") return null
-
-  const sourceInFirst = node.first.kind === "panel" && node.first.id === panelId
-  const sourceInSecond = node.second.kind === "panel" && node.second.id === panelId
-  const firstPanelId = node.first.kind === "panel" ? node.first.id : null
-  const secondPanelId = node.second.kind === "panel" ? node.second.id : null
-
-  if (node.direction === "horizontal") {
-    if (side === "right" && sourceInFirst && secondPanelId) return secondPanelId
-    if (side === "left" && sourceInSecond && firstPanelId) return firstPanelId
-  } else {
-    if (side === "down" && sourceInFirst && secondPanelId) return secondPanelId
-    if (side === "up" && sourceInSecond && firstPanelId) return firstPanelId
-  }
-
-  return findDirectMergeTarget(node.first, panelId, side) || findDirectMergeTarget(node.second, panelId, side)
-}
-
-function mergePanelNode(
-  node: WorkspaceLayoutNode,
-  panelId: string,
-  side: MergeSide
-): { node: WorkspaceLayoutNode; merged: boolean } {
-  if (node.kind === "panel") return { node, merged: false }
-
-  const sourceInFirst = node.first.kind === "panel" && node.first.id === panelId
-  const sourceInSecond = node.second.kind === "panel" && node.second.id === panelId
-  const siblingIsPanel = node.first.kind === "panel" && node.second.kind === "panel"
-
-  if (siblingIsPanel && node.direction === "horizontal") {
-    if (side === "right" && sourceInFirst) return { node: node.first, merged: true }
-    if (side === "left" && sourceInSecond) return { node: node.second, merged: true }
-  }
-
-  if (siblingIsPanel && node.direction === "vertical") {
-    if (side === "down" && sourceInFirst) return { node: node.first, merged: true }
-    if (side === "up" && sourceInSecond) return { node: node.second, merged: true }
-  }
-
-  const firstResult = mergePanelNode(node.first, panelId, side)
-  if (firstResult.merged) return { node: { ...node, first: firstResult.node }, merged: true }
-
-  const secondResult = mergePanelNode(node.second, panelId, side)
-  if (secondResult.merged) return { node: { ...node, second: secondResult.node }, merged: true }
-
-  return { node, merged: false }
-}
-
 function mergePanelRects(
   panelId: string,
   targetPanelId: string,
@@ -420,6 +369,16 @@ function uniqueSorted(values: number[]) {
     .filter((value, index, sorted) => index === 0 || Math.abs(value - sorted[index - 1]) > epsilon)
 }
 
+function normalizeLayoutNode(node: WorkspaceLayoutNode): WorkspaceLayoutNode {
+  if (node.kind === "panel") return node
+  return {
+    ...node,
+    ratio: clampRatio(Number.isFinite(node.ratio) ? node.ratio : 0.5),
+    first: normalizeLayoutNode(node.first),
+    second: normalizeLayoutNode(node.second),
+  }
+}
+
 export function findPanelNode(
   node: WorkspaceLayoutNode,
   panelId: string
@@ -443,16 +402,16 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   },
   setPanelType: (workspaceId, panelId, type) => {
     const layout = get().getLayout(workspaceId)
-    const nextLayout = updateLayoutNode(layout, panelId, node =>
+    const nextLayout = normalizeLayoutNode(updateLayoutNode(layout, panelId, node =>
       node.kind === "panel" ? { ...node, type } : node
-    )
+    ))
     const next = { ...get().layouts, [workspaceId]: nextLayout }
     saveLayouts(next)
     set({ layouts: next })
   },
   splitPanel: (workspaceId, panelId, direction, type, placement = "after", ratio = 0.5) => {
     const layout = get().getLayout(workspaceId)
-    const nextLayout = updateLayoutNode(layout, panelId, node => {
+    const nextLayout = normalizeLayoutNode(updateLayoutNode(layout, panelId, node => {
       if (node.kind !== "panel") return node
       const newPanel: WorkspaceLayoutNode = {
         kind: "panel",
@@ -467,29 +426,18 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
         first: placement === "before" ? newPanel : node,
         second: placement === "before" ? node : newPanel,
       }
-    })
+    }))
     const next = { ...get().layouts, [workspaceId]: nextLayout }
     saveLayouts(next)
     set({ layouts: next, maximizedPanels: { ...get().maximizedPanels, [workspaceId]: null } })
     saveMaximizedPanels({ ...get().maximizedPanels, [workspaceId]: null })
-  },
-  mergePanel: (workspaceId, panelId, side) => {
-    const layout = get().getLayout(workspaceId)
-    const result = mergePanelNode(layout, panelId, side)
-    if (!result.merged) return false
-    const nextLayouts = { ...get().layouts, [workspaceId]: result.node }
-    const nextMaximized = { ...get().maximizedPanels, [workspaceId]: null }
-    saveLayouts(nextLayouts)
-    saveMaximizedPanels(nextMaximized)
-    set({ layouts: nextLayouts, maximizedPanels: nextMaximized })
-    return true
   },
   mergePanelByRects: (workspaceId, panelId, targetPanelId, side, rects) => {
     const nextRects = mergePanelRects(panelId, targetPanelId, side, rects)
     if (!nextRects) return false
     const nextLayout = buildLayoutFromRects(nextRects)
     if (!nextLayout) return false
-    const nextLayouts = { ...get().layouts, [workspaceId]: nextLayout }
+    const nextLayouts = { ...get().layouts, [workspaceId]: normalizeLayoutNode(nextLayout) }
     const nextMaximized = { ...get().maximizedPanels, [workspaceId]: null }
     saveLayouts(nextLayouts)
     saveMaximizedPanels(nextMaximized)
@@ -501,7 +449,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
     if (layout.kind === "panel" && layout.id === panelId) return
     const nextLayout = removePanelNode(layout, panelId)
     if (!nextLayout) return
-    const nextLayouts = { ...get().layouts, [workspaceId]: nextLayout }
+    const nextLayouts = { ...get().layouts, [workspaceId]: normalizeLayoutNode(nextLayout) }
     const nextMaximized = { ...get().maximizedPanels }
     if (nextMaximized[workspaceId] === panelId) nextMaximized[workspaceId] = null
     saveLayouts(nextLayouts)
@@ -510,9 +458,9 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   },
   setSplitRatio: (workspaceId, splitId, ratio) => {
     const layout = get().getLayout(workspaceId)
-    const nextLayout = updateLayoutNode(layout, splitId, node =>
+    const nextLayout = normalizeLayoutNode(updateLayoutNode(layout, splitId, node =>
       node.kind === "split" ? { ...node, ratio: clampRatio(ratio) } : node
-    )
+    ))
     const next = { ...get().layouts, [workspaceId]: nextLayout }
     saveLayouts(next)
     set({ layouts: next })
@@ -540,7 +488,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   copyWorkspaceLayout: (sourceWorkspaceId, targetWorkspaceId) => {
     if (!WORKSPACES.some(w => w.id === sourceWorkspaceId) || !WORKSPACES.some(w => w.id === targetWorkspaceId)) return
     const sourceLayout = get().getLayout(sourceWorkspaceId)
-    const copiedLayout = JSON.parse(JSON.stringify(sourceLayout)) as WorkspaceLayoutNode
+    const copiedLayout = normalizeLayoutNode(JSON.parse(JSON.stringify(sourceLayout)) as WorkspaceLayoutNode)
     const nextLayouts = { ...get().layouts, [targetWorkspaceId]: copiedLayout }
     const nextMaximized = { ...get().maximizedPanels, [targetWorkspaceId]: null }
     saveLayouts(nextLayouts)
@@ -550,5 +498,4 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   getLayout: (workspaceId) => get().layouts[workspaceId] || getDefaultLayout(workspaceId),
   getMaximizedPanelId: (workspaceId) => get().maximizedPanels[workspaceId] || null,
   findPanel: (workspaceId, panelId) => findPanelNode(get().getLayout(workspaceId), panelId),
-  getMergeTarget: (workspaceId, panelId, side) => findDirectMergeTarget(get().getLayout(workspaceId), panelId, side),
 }))
