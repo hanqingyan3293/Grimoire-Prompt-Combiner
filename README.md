@@ -57,19 +57,25 @@ English: [README.en.md](./README.en.md)
 
 ### 安装运行
 
-**方式一：免安装便携版（推荐）**
+**方式一：免安装单文件版（推荐）**
 
 1. 下载 [最新 Release](https://github.com/hanqingyan3293/grimoire/releases/latest) 中的 `Grimoire.7.1.0.exe`
 2. 放到任意目录后双击运行
 3. 无需安装，适合移动硬盘、U 盘或多目录备份
 
-**方式二：安装包**
+**方式二：ZIP 便携版**
+
+1. 下载 `Grimoire-portable-7.1.0.zip`
+2. 解压到任意目录
+3. 双击解压目录中的 `Grimoire.exe`
+
+**方式三：安装包**
 
 1. 下载 `Grimoire.Setup.7.1.0.exe`
 2. 双击安装，选择安装目录
 3. 桌面快捷方式启动
 
-**方式三：源码运行**
+**方式四：源码运行**
 
 双击项目目录中的 `启动.bat`。脚本会自动检查依赖、必要时构建，然后启动应用。
 
@@ -83,7 +89,7 @@ npm run build
 npm start
 ```
 
-如需生成可双击的免安装便携版，双击 `打包便携版.bat`，输出文件在 `release/` 目录。
+如需生成可双击的免安装单文件版，双击 `打包便携版.bat`，输出文件在 `release/` 目录。
 
 ## 项目结构
 
