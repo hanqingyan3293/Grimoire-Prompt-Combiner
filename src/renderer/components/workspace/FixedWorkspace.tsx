@@ -4,6 +4,16 @@ import { ENABLED_PANEL_OPTIONS, PANEL_DEFINITIONS, PANEL_OPTION_GROUPS, renderPa
 import { WORKSPACES, findPanelNode, getDefaultLayout, useWorkspaceStore } from "../../stores/workspace.store"
 import type { MergeSide, WorkspaceLayoutNode, WorkspacePanelRect } from "../../stores/workspace.store"
 
+type MergePreview = {
+  panelId: string
+  rect: {
+    left: number
+    top: number
+    width: number
+    height: number
+  }
+} | null
+
 export function FixedWorkspace() {
   const activeWorkspaceId = useWorkspaceStore(s => s.activeWorkspaceId)
   const layouts = useWorkspaceStore(s => s.layouts)
@@ -15,7 +25,7 @@ export function FixedWorkspace() {
   const setSplitRatio = useWorkspaceStore(s => s.setSplitRatio)
   const setMaximizedPanel = useWorkspaceStore(s => s.setMaximizedPanel)
   const containerRef = useRef<HTMLDivElement>(null)
-  const [mergePreviewPanelId, setMergePreviewPanelId] = useState<string | null>(null)
+  const [mergePreview, setMergePreview] = useState<MergePreview>(null)
   const workspace = useMemo(
     () => WORKSPACES.find(w => w.id === activeWorkspaceId) || WORKSPACES[0],
     [activeWorkspaceId]
@@ -66,10 +76,10 @@ export function FixedWorkspace() {
 
   const updateMergePreview = (panelId: string, side: CornerMergeSide | null) => {
     if (!side) {
-      setMergePreviewPanelId(null)
+      setMergePreview(null)
       return
     }
-    setMergePreviewPanelId(findRectMergeTarget(collectPanelRects(containerRef.current), panelId, side))
+    setMergePreview(getRectMergePreview(collectPanelRects(containerRef.current), panelId, side))
   }
 
   const mergePanelFromDrag = (panelId: string, side: CornerMergeSide) => {
@@ -100,7 +110,8 @@ export function FixedWorkspace() {
           onClose={() => closePanel(workspace.id, node.id)}
           maximized={maximizedPanelId === node.id}
           closeDisabled={panelCount <= 1}
-          mergeHighlighted={mergePreviewPanelId === node.id}
+          mergeHighlighted={mergePreview?.panelId === node.id}
+          mergePreviewRect={mergePreview?.panelId === node.id ? mergePreview.rect : null}
         >
           {renderPanel(node.type)}
         </PanelShell>
@@ -164,6 +175,10 @@ function collectPanelRects(container: HTMLElement | null): WorkspacePanelRect[] 
 }
 
 function findRectMergeTarget(rects: WorkspacePanelRect[], panelId: string, side: CornerMergeSide): string | null {
+  return getRectMergePreview(rects, panelId, side)?.panelId ?? null
+}
+
+function getRectMergePreview(rects: WorkspacePanelRect[], panelId: string, side: CornerMergeSide): MergePreview {
   const source = rects.find(rect => rect.id === panelId)
   if (!source) return null
 
@@ -196,5 +211,37 @@ function findRectMergeTarget(rects: WorkspacePanelRect[], panelId: string, side:
     }
   }
 
-  return best?.id ?? null
+  if (!best) return null
+  const target = rects.find(rect => rect.id === best.id)
+  if (!target) return null
+
+  if (side === "left" || side === "right") {
+    const top = clampUnit((source.top - target.top) / (target.bottom - target.top))
+    const bottom = clampUnit((source.bottom - target.top) / (target.bottom - target.top))
+    return {
+      panelId: target.id,
+      rect: {
+        left: 0,
+        top,
+        width: 1,
+        height: Math.max(0, bottom - top),
+      },
+    }
+  }
+
+  const left = clampUnit((source.left - target.left) / (target.right - target.left))
+  const right = clampUnit((source.right - target.left) / (target.right - target.left))
+  return {
+    panelId: target.id,
+    rect: {
+      left,
+      top: 0,
+      width: Math.max(0, right - left),
+      height: 1,
+    },
+  }
+}
+
+function clampUnit(value: number) {
+  return Math.min(1, Math.max(0, value))
 }

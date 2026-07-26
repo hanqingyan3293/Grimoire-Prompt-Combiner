@@ -10,6 +10,12 @@ type CornerDragPreview = {
   placement: SplitPlacement
   ratio: number
 } | null
+type MergePreviewRect = {
+  left: number
+  top: number
+  width: number
+  height: number
+} | null
 
 interface PanelShellProps {
   id: string
@@ -31,6 +37,7 @@ interface PanelShellProps {
   maximized?: boolean
   closeDisabled?: boolean
   mergeHighlighted?: boolean
+  mergePreviewRect?: MergePreviewRect
 }
 
 export function PanelShell({
@@ -53,6 +60,7 @@ export function PanelShell({
   maximized = false,
   closeDisabled = false,
   mergeHighlighted = false,
+  mergePreviewRect = null,
 }: PanelShellProps) {
   const [addMenuOpen, setAddMenuOpen] = useState(false)
   const [addMenuPosition, setAddMenuPosition] = useState({ left: 8, top: 8 })
@@ -120,16 +128,9 @@ export function PanelShell({
         }
       }
       if (panelRect) {
-        const side: CornerMergeSide = absX >= absY
-          ? dx < 0 ? "left" : "right"
-          : dy < 0 ? "up" : "down"
-        const outsidePanel =
-          (side === "left" && clientX < panelRect.left - 8) ||
-          (side === "right" && clientX > panelRect.right + 8) ||
-          (side === "up" && clientY < panelRect.top - 8) ||
-          (side === "down" && clientY > panelRect.bottom + 8)
-        latestMergeSide = outsidePanel ? side : null
-        onCornerMergePreview?.(id, outsidePanel ? side : null)
+        const outsideSide = getOutsidePanelSide(panelRect, clientX, clientY)
+        latestMergeSide = outsideSide
+        onCornerMergePreview?.(id, outsideSide)
       }
       setCornerDragPreview(latestPreview)
     }
@@ -315,10 +316,31 @@ export function PanelShell({
         />
       )}
       {mergeHighlighted && (
-        <div className="pointer-events-none absolute inset-0 z-50 bg-[var(--color-accent)]/10 outline outline-2 outline-[var(--color-accent)]" />
+        <div
+          className="pointer-events-none absolute z-50 bg-[var(--color-accent)]/20 outline outline-2 outline-[var(--color-accent)]"
+          style={mergePreviewRect
+            ? {
+                left: `${mergePreviewRect.left * 100}%`,
+                top: `${mergePreviewRect.top * 100}%`,
+                width: `${mergePreviewRect.width * 100}%`,
+                height: `${mergePreviewRect.height * 100}%`,
+              }
+            : { inset: 0 }}
+        />
       )}
     </section>
   )
+}
+
+function getOutsidePanelSide(rect: DOMRect, clientX: number, clientY: number): CornerMergeSide | null {
+  const threshold = 8
+  const candidates: { side: CornerMergeSide; distance: number }[] = []
+  if (clientX < rect.left - threshold) candidates.push({ side: "left", distance: (rect.left - threshold - clientX) / rect.width })
+  if (clientX > rect.right + threshold) candidates.push({ side: "right", distance: (clientX - rect.right - threshold) / rect.width })
+  if (clientY < rect.top - threshold) candidates.push({ side: "up", distance: (rect.top - threshold - clientY) / rect.height })
+  if (clientY > rect.bottom + threshold) candidates.push({ side: "down", distance: (clientY - rect.bottom - threshold) / rect.height })
+  candidates.sort((a, b) => b.distance - a.distance)
+  return candidates[0]?.side ?? null
 }
 
 function CornerHandle({

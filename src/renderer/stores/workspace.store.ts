@@ -323,7 +323,7 @@ function mergePanelRects(
   const target = rects.find(rect => rect.id === targetPanelId)
   if (!source || !target || source.id === target.id) return null
 
-  const epsilon = 0.003
+  const epsilon = 0.015
   const nextRects = rects.filter(rect => rect.id !== source.id && rect.id !== target.id)
   const targetPieces: WorkspacePanelRect[] = []
   const addPiece = (piece: WorkspacePanelRect) => {
