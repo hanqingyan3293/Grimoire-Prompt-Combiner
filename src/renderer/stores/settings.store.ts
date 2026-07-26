@@ -34,9 +34,17 @@ function applyUiDensity(density: string) {
   document.documentElement.setAttribute("data-ui-density", density)
 }
 
-function createHoverColor(hex: string) {
+const COLOR_OVERRIDE_VARS = {
+  custom_bg_primary: "--color-bg-primary",
+  custom_bg_secondary: "--color-bg-secondary",
+  custom_bg_tertiary: "--color-bg-tertiary",
+  custom_border: "--color-border",
+} as const
+
+type ColorOverrideKey = keyof typeof COLOR_OVERRIDE_VARS
+
+function adjustHexColor(hex: string, amount: number) {
   if (!/^#[0-9a-fA-F]{6}$/.test(hex)) return hex
-  const amount = -22
   const next = [1, 3, 5].map(start => {
     const value = Number.parseInt(hex.slice(start, start + 2), 16)
     return Math.min(255, Math.max(0, value + amount)).toString(16).padStart(2, "0")
@@ -46,16 +54,45 @@ function createHoverColor(hex: string) {
 
 function applyAccent(value: string) {
   document.documentElement.style.setProperty("--color-accent", value)
-  document.documentElement.style.setProperty("--color-accent-hover", createHoverColor(value))
+  document.documentElement.style.setProperty("--color-accent-hover", adjustHexColor(value, -22))
+}
+
+function isColorOverrideKey(key: string): key is ColorOverrideKey {
+  return key in COLOR_OVERRIDE_VARS
+}
+
+function applyColorOverride(key: ColorOverrideKey, value: string) {
+  const root = document.documentElement.style
+  const cssVar = COLOR_OVERRIDE_VARS[key]
+  if (/^#[0-9a-fA-F]{6}$/.test(value)) {
+    root.setProperty(cssVar, value)
+    if (key === "custom_border") {
+      root.setProperty("--color-border-strong", adjustHexColor(value, 30))
+    }
+    return
+  }
+
+  root.removeProperty(cssVar)
+  if (key === "custom_border") root.removeProperty("--color-border-strong")
+}
+
+function applyColorOverrides(values: Partial<Record<ColorOverrideKey, string>>) {
+  Object.keys(COLOR_OVERRIDE_VARS).forEach(key => {
+    applyColorOverride(key as ColorOverrideKey, values[key as ColorOverrideKey] || "")
+  })
 }
 
 export const useSettingsStore = create<SettingsState>((set, get) => ({
   theme: "neon",
   language: "zh",
-	  custom_accent: "#a855f7",
-	  ui_scale: "14",
-	  ui_density: "normal",
-	  max_undo_steps: 50,
+  custom_accent: "#a855f7",
+  custom_bg_primary: "",
+  custom_bg_secondary: "",
+  custom_bg_tertiary: "",
+  custom_border: "",
+  ui_scale: "14",
+  ui_density: "normal",
+  max_undo_steps: 50,
   random_min: "3",
   random_max: "16",
   shortcuts: {},
@@ -65,16 +102,23 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     set({ loading: true })
     try {
       const raw = await window.api.settings.getAll() as Record<string, string>
-	      const acc = raw.custom_accent || "#a855f7"
-	      const scale = normalizeUiFontSize(raw.ui_scale || "14")
-	      const density = raw.ui_density || "normal"
-	      set({
-	        theme: raw.theme || "neon",
-	        language: (raw.language as "zh" | "en") || "zh",
-	        custom_accent: acc,
-	        ui_scale: scale,
-	        ui_density: density,
-	        max_undo_steps: parseInt(raw.max_undo_steps) || 50,
+      const acc = raw.custom_accent || "#a855f7"
+      const scale = normalizeUiFontSize(raw.ui_scale || "14")
+      const density = raw.ui_density || "normal"
+      const colorOverrides = {
+        custom_bg_primary: raw.custom_bg_primary || "",
+        custom_bg_secondary: raw.custom_bg_secondary || "",
+        custom_bg_tertiary: raw.custom_bg_tertiary || "",
+        custom_border: raw.custom_border || "",
+      }
+      set({
+        theme: raw.theme || "neon",
+        language: (raw.language as "zh" | "en") || "zh",
+        custom_accent: acc,
+        ...colorOverrides,
+        ui_scale: scale,
+        ui_density: density,
+        max_undo_steps: parseInt(raw.max_undo_steps) || 50,
         random_min: raw.random_min || "3",
         random_max: raw.random_max || "16",
         loading: false,
@@ -88,11 +132,12 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
       }
       set({ shortcuts })
 
-	      document.documentElement.setAttribute("data-theme", raw.theme || "neon")
-	      document.documentElement.setAttribute("data-lang", raw.language || "zh")
-	      applyUiScale(scale)
-	      applyUiDensity(density)
-	      applyAccent(acc)
+      document.documentElement.setAttribute("data-theme", raw.theme || "neon")
+      document.documentElement.setAttribute("data-lang", raw.language || "zh")
+      applyUiScale(scale)
+      applyUiDensity(density)
+      applyAccent(acc)
+      applyColorOverrides(colorOverrides)
     } catch {
       set({ loading: false })
     }
@@ -105,8 +150,9 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     if (key === "theme") document.documentElement.setAttribute("data-theme", value)
     if (key === "language") document.documentElement.setAttribute("data-lang", value)
     if (key === "ui_scale") applyUiScale(value)
-	    if (key === "ui_density") applyUiDensity(value)
+    if (key === "ui_density") applyUiDensity(value)
     if (key === "custom_accent") applyAccent(value)
+    if (isColorOverrideKey(key)) applyColorOverride(key, value)
     if (key.startsWith("shortcut_")) {
       const sk = key.replace("shortcut_", "")
       set(s => ({ shortcuts: { ...s.shortcuts, [sk]: value } }))

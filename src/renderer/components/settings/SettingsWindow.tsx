@@ -28,7 +28,20 @@ const DEFAULT_SHORTCUTS: Record<string, string> = {
 }
 
 export function SettingsWindow({ onClose }: { onClose: () => void }) {
-  const { theme, language, custom_accent, ui_scale, ui_density, random_min, random_max, setSetting } = useSettingsStore()
+  const {
+    theme,
+    language,
+    custom_accent,
+    custom_bg_primary,
+    custom_bg_secondary,
+    custom_bg_tertiary,
+    custom_border,
+    ui_scale,
+    ui_density,
+    random_min,
+    random_max,
+    setSetting,
+  } = useSettingsStore()
   const { providers, activeProvider, loadProviders, saveProvider, deleteProvider, setActive } = useProviderStore()
   const [section, setSection] = useState<Section>("general")
   const [accentInput, setAccentInput] = useState(custom_accent)
@@ -81,6 +94,14 @@ export function SettingsWindow({ onClose }: { onClose: () => void }) {
     "global.search": "搜索", "global.undo": "撤销",
     "global.redo": "重做", "global.copy": "复制", "global.close": "关闭窗口",
   }
+
+  const currentTheme = THEMES.find(tm => tm.key === theme) || THEMES[0]
+  const colorControls = [
+    { key: "custom_bg_primary", label: "页面背景", value: custom_bg_primary, fallback: currentTheme.bg },
+    { key: "custom_bg_secondary", label: "面板背景", value: custom_bg_secondary, fallback: currentTheme.panel },
+    { key: "custom_bg_tertiary", label: "工具栏背景", value: custom_bg_tertiary, fallback: currentTheme.panel },
+    { key: "custom_border", label: "边框颜色", value: custom_border, fallback: currentTheme.border },
+  ]
 
   return (
     <div className="flex h-screen overflow-hidden bg-[var(--color-bg-primary)]">
@@ -179,6 +200,10 @@ export function SettingsWindow({ onClose }: { onClose: () => void }) {
                       setAccentInput(tm.color)
                       await setSetting("theme", tm.key)
                       await setSetting("custom_accent", tm.color)
+                      await setSetting("custom_bg_primary", "")
+                      await setSetting("custom_bg_secondary", "")
+                      await setSetting("custom_bg_tertiary", "")
+                      await setSetting("custom_border", "")
                     }}
                     className={`overflow-hidden rounded-lg border-2 text-left text-sm transition-all ${
                       theme === tm.key ? "border-[var(--color-accent)] bg-[var(--color-accent)]/10 text-[var(--color-accent)] scale-[1.02]" : "border-[var(--color-border)] text-[var(--color-text-secondary)] hover:border-[var(--color-accent)]/50"
@@ -203,6 +228,30 @@ export function SettingsWindow({ onClose }: { onClose: () => void }) {
                   className="flex-1 px-4 py-2.5 bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded-lg text-sm" />
                 <button onClick={() => { setSetting("custom_accent", accentInput); showToast("已保存", "success") }}
                   className="px-5 py-2.5 text-sm bg-[var(--color-accent)] text-white rounded-lg hover:opacity-90">保存</button>
+              </div>
+            </Field>
+            <Field label="界面颜色" desc="可单独覆盖页面、面板、工具栏和边框；点默认回到当前主题颜色">
+              <div className="grid grid-cols-2 gap-3">
+                {colorControls.map(item => (
+                  <div key={item.key} className="flex items-center gap-3 rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-3 py-2.5">
+                    <input
+                      type="color"
+                      value={item.value || item.fallback}
+                      onChange={e => setSetting(item.key, e.target.value)}
+                      className="h-9 w-11 shrink-0 cursor-pointer rounded-md border border-[var(--color-border)] bg-transparent"
+                    />
+                    <div className="min-w-0 flex-1">
+                      <div className="text-sm font-medium text-[var(--color-text-primary)]">{item.label}</div>
+                      <div className="font-mono text-xs text-[var(--color-text-secondary)]">{item.value || "主题默认"}</div>
+                    </div>
+                    <button
+                      onClick={() => setSetting(item.key, "")}
+                      className="shrink-0 rounded-md border border-[var(--color-border)] px-3 py-1.5 text-xs text-[var(--color-text-secondary)] hover:border-[var(--color-accent)]/50 hover:text-[var(--color-accent)]"
+                    >
+                      默认
+                    </button>
+                  </div>
+                ))}
               </div>
             </Field>
           </div>
