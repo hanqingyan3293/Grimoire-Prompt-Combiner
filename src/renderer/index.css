@@ -202,6 +202,12 @@ button:disabled {
   box-shadow: 0 1px 0 rgba(255,255,255,0.025);
 }
 
+.ui-list-card-no-hover:hover {
+  border-color: var(--color-border);
+  background: color-mix(in srgb, var(--color-bg-primary) 92%, var(--color-bg-secondary));
+  box-shadow: none;
+}
+
 .ui-empty-state {
   display: flex;
   min-height: 96px;
@@ -278,6 +284,41 @@ button:disabled {
   font-size: 0.65rem;
   line-height: 1;
   padding: 2px 6px;
+}
+
+.ui-fav-section {
+  border-color: color-mix(in srgb, var(--color-accent) 30%, var(--color-border));
+  background: color-mix(in srgb, var(--color-bg-secondary) 82%, var(--color-accent));
+}
+
+.ui-fav-section-title {
+  background: color-mix(in srgb, var(--color-accent) 12%, var(--color-bg-tertiary));
+  color: var(--color-text-primary);
+}
+
+.ui-fav-category-row {
+  background: color-mix(in srgb, var(--color-bg-tertiary) 72%, var(--color-accent));
+  color: var(--color-text-primary);
+  font-weight: 600;
+}
+
+.ui-fav-sub-row {
+  background: color-mix(in srgb, var(--color-bg-primary) 78%, transparent);
+  color: var(--color-text-secondary);
+}
+
+.ui-fav-sub-row:hover {
+  background: color-mix(in srgb, var(--color-accent) 8%, var(--color-bg-primary));
+  color: var(--color-text-primary);
+}
+
+.ui-fav-tag-row {
+  color: var(--color-text-secondary);
+}
+
+.ui-fav-tag-row:hover {
+  background: color-mix(in srgb, var(--color-accent) 7%, transparent);
+  color: var(--color-text-primary);
 }
 
 select,

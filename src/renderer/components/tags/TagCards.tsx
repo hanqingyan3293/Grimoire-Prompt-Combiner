@@ -118,7 +118,7 @@ export function TagCards() {
               ? sub.tags.filter(t => t.en.toLowerCase().includes(searchQuery.toLowerCase()) || t.zh.includes(searchQuery))
               : sub.tags
             return (
-              <div key={sub.id} className="ui-list-card p-3">
+              <div key={sub.id} className="ui-list-card ui-list-card-no-hover p-3">
                 <div className="flex items-center justify-between mb-2">
                   <div className="text-xs text-[var(--color-text-secondary)]">
                     <span className="text-[var(--color-accent)]">{cat.zh}</span>
