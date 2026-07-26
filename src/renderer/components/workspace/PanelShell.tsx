@@ -7,6 +7,7 @@ type CornerPosition = "top-left" | "top-right" | "bottom-left" | "bottom-right"
 type CornerDragPreview = {
   direction: "horizontal" | "vertical"
   placement: SplitPlacement
+  ratio: number
 } | null
 
 interface PanelShellProps {
@@ -20,7 +21,7 @@ interface PanelShellProps {
   panelOptions?: PanelDefinition[]
   panelOptionGroups?: { title: string; types: PanelType[] }[]
   onTypeChange?: (type: PanelType) => void
-  onAddPanel?: (type: PanelType, direction: "horizontal" | "vertical", placement: SplitPlacement) => void
+  onAddPanel?: (type: PanelType, direction: "horizontal" | "vertical", placement: SplitPlacement, ratio?: number) => void
   onSplit?: (direction: "horizontal" | "vertical") => void
   onMaximize?: () => void
   onClose?: () => void
@@ -70,7 +71,7 @@ export function PanelShell({
   const handleAddPanel = (panelType: PanelType, addDirection: AddPanelDirection) => {
     const isHorizontal = addDirection === "left" || addDirection === "right"
     const placement = addDirection === "left" || addDirection === "up" ? "before" : "after"
-    onAddPanel?.(panelType, isHorizontal ? "horizontal" : "vertical", placement)
+    onAddPanel?.(panelType, isHorizontal ? "horizontal" : "vertical", placement, 0.5)
     setAddMenuOpen(false)
   }
   const startCornerDrag = (corner: CornerPosition, event: React.PointerEvent) => {
@@ -78,6 +79,7 @@ export function PanelShell({
     event.stopPropagation()
     const startX = event.clientX
     const startY = event.clientY
+    const panelRect = (event.currentTarget.closest("[data-panel-id]") as HTMLElement | null)?.getBoundingClientRect()
     let latestPreview: CornerDragPreview = null
 
     const updatePreview = (clientX: number, clientY: number) => {
@@ -91,14 +93,20 @@ export function PanelShell({
         return
       }
       if (absX >= absY) {
+        const rawRatio = panelRect ? (clientX - panelRect.left) / panelRect.width : 0.5
+        const ratio = Math.min(0.88, Math.max(0.12, rawRatio))
         latestPreview = {
           direction: "horizontal",
           placement: dx < 0 ? "before" : "after",
+          ratio,
         }
       } else {
+        const rawRatio = panelRect ? (clientY - panelRect.top) / panelRect.height : 0.5
+        const ratio = Math.min(0.88, Math.max(0.12, rawRatio))
         latestPreview = {
           direction: "vertical",
           placement: dy < 0 ? "before" : "after",
+          ratio,
         }
       }
       setCornerDragPreview(latestPreview)
@@ -118,7 +126,7 @@ export function PanelShell({
     }
     const handleUp = () => {
       if (latestPreview) {
-        onAddPanel?.(type, latestPreview.direction, latestPreview.placement)
+        onAddPanel?.(type, latestPreview.direction, latestPreview.placement, latestPreview.ratio)
       }
       cleanup()
     }
@@ -267,9 +275,18 @@ export function PanelShell({
           className={
             "pointer-events-none absolute z-40 bg-[var(--color-accent)]/20 outline outline-1 outline-[var(--color-accent)] " +
             (cornerDragPreview.direction === "horizontal"
-              ? cornerDragPreview.placement === "before" ? "left-0 top-0 h-full w-1/2" : "right-0 top-0 h-full w-1/2"
-              : cornerDragPreview.placement === "before" ? "left-0 top-0 h-1/2 w-full" : "bottom-0 left-0 h-1/2 w-full")
+              ? "left-0 top-0 h-full"
+              : "left-0 top-0 w-full")
           }
+          style={cornerDragPreview.direction === "horizontal"
+            ? {
+                width: `${cornerDragPreview.placement === "before" ? cornerDragPreview.ratio * 100 : (1 - cornerDragPreview.ratio) * 100}%`,
+                left: cornerDragPreview.placement === "before" ? 0 : `${cornerDragPreview.ratio * 100}%`,
+              }
+            : {
+                height: `${cornerDragPreview.placement === "before" ? cornerDragPreview.ratio * 100 : (1 - cornerDragPreview.ratio) * 100}%`,
+                top: cornerDragPreview.placement === "before" ? 0 : `${cornerDragPreview.ratio * 100}%`,
+              }}
         />
       )}
     </section>

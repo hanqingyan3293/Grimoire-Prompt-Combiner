@@ -75,7 +75,7 @@ export function FixedWorkspace() {
           panelOptions={ENABLED_PANEL_OPTIONS}
           panelOptionGroups={PANEL_OPTION_GROUPS}
           onTypeChange={(type) => setPanelType(workspace.id, node.id, type)}
-          onAddPanel={(type, direction, placement) => splitPanel(workspace.id, node.id, direction, type, placement)}
+          onAddPanel={(type, direction, placement, ratio) => splitPanel(workspace.id, node.id, direction, type, placement, ratio)}
           onSplit={(direction) => splitPanel(workspace.id, node.id, direction)}
           onMaximize={() => setMaximizedPanel(workspace.id, maximizedPanelId === node.id ? null : node.id)}
           onClose={() => closePanel(workspace.id, node.id)}
