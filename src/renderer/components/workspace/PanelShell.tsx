@@ -42,6 +42,7 @@ export function PanelShell({
   closeDisabled = false,
 }: PanelShellProps) {
   const [addMenuOpen, setAddMenuOpen] = useState(false)
+  const [addMenuPosition, setAddMenuPosition] = useState({ left: 8, top: 8 })
   const addMenuRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -65,6 +66,19 @@ export function PanelShell({
     const placement = addDirection === "left" || addDirection === "up" ? "before" : "after"
     onAddPanel?.(panelType, isHorizontal ? "horizontal" : "vertical", placement)
     setAddMenuOpen(false)
+  }
+  const toggleAddMenu = () => {
+    if (addMenuOpen) {
+      setAddMenuOpen(false)
+      return
+    }
+    const rect = addMenuRef.current?.getBoundingClientRect()
+    if (rect) {
+      const menuWidth = 224
+      const left = Math.min(Math.max(8, rect.right - menuWidth), window.innerWidth - menuWidth - 8)
+      setAddMenuPosition({ left, top: Math.min(rect.bottom + 4, window.innerHeight - 80) })
+    }
+    setAddMenuOpen(true)
   }
   const optionByType = new Map(panelOptions.map(option => [option.type, option]))
   const groupedOptions = panelOptionGroups.length
@@ -104,7 +118,7 @@ export function PanelShell({
           </select>
           <div ref={addMenuRef} className="relative shrink-0">
             <button
-              onClick={() => setAddMenuOpen(open => !open)}
+              onClick={toggleAddMenu}
               className="rounded text-[12px] text-[var(--color-text-secondary)] hover:text-[var(--color-accent)] hover:bg-[var(--color-accent)]/10"
               style={{ width: "var(--panel-control-size)", height: "var(--panel-control-size)" }}
               title="添加面板"
@@ -112,7 +126,10 @@ export function PanelShell({
               +
             </button>
             {addMenuOpen && (
-              <div className="absolute right-0 top-full z-50 mt-1 max-h-64 w-56 overflow-y-auto rounded border border-[var(--color-border)] bg-[var(--color-bg-tertiary)] py-1 shadow-2xl">
+              <div
+                className="fixed z-50 max-h-64 w-56 overflow-y-auto rounded border border-[var(--color-border)] bg-[var(--color-bg-tertiary)] py-1 shadow-2xl"
+                style={{ left: addMenuPosition.left, top: addMenuPosition.top }}
+              >
                 {groupedOptions.map(group => (
                   <div key={group.title || "default"} className="py-0.5">
                     {group.title && (
