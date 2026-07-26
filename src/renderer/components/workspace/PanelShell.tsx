@@ -251,10 +251,12 @@ export function PanelShell({
                         >
                           {option.title}
                         </button>
-                        <button onClick={() => handleAddPanel(option.type, "left")} className="h-6 w-6 shrink-0 rounded text-[10px] text-[var(--color-text-secondary)] hover:bg-[var(--color-accent)]/15 hover:text-[var(--color-accent)]" title={`左侧添加${option.title}`}>左</button>
-                        <button onClick={() => handleAddPanel(option.type, "right")} className="h-6 w-6 shrink-0 rounded text-[10px] text-[var(--color-text-secondary)] hover:bg-[var(--color-accent)]/15 hover:text-[var(--color-accent)]" title={`右侧添加${option.title}`}>右</button>
-                        <button onClick={() => handleAddPanel(option.type, "up")} className="h-6 w-6 shrink-0 rounded text-[10px] text-[var(--color-text-secondary)] hover:bg-[var(--color-accent)]/15 hover:text-[var(--color-accent)]" title={`上方添加${option.title}`}>上</button>
-                        <button onClick={() => handleAddPanel(option.type, "down")} className="h-6 w-6 shrink-0 rounded text-[10px] text-[var(--color-text-secondary)] hover:bg-[var(--color-accent)]/15 hover:text-[var(--color-accent)]" title={`下方添加${option.title}`}>下</button>
+                        <div className="ui-menu-direction-group flex items-center gap-1">
+                          <button onClick={() => handleAddPanel(option.type, "left")} className="ui-menu-direction-button" title={`左侧添加${option.title}`}>左</button>
+                          <button onClick={() => handleAddPanel(option.type, "right")} className="ui-menu-direction-button" title={`右侧添加${option.title}`}>右</button>
+                          <button onClick={() => handleAddPanel(option.type, "up")} className="ui-menu-direction-button" title={`上方添加${option.title}`}>上</button>
+                          <button onClick={() => handleAddPanel(option.type, "down")} className="ui-menu-direction-button" title={`下方添加${option.title}`}>下</button>
+                        </div>
                       </div>
                     ))}
                   </div>
