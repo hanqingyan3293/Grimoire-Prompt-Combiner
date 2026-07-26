@@ -68,7 +68,7 @@ export function PanelShell({
       style={style}
     >
       {showHeader && (
-        <div className="shrink-0 flex items-center gap-1 px-2 border-b border-[var(--color-border)] bg-[var(--color-bg-tertiary)] overflow-hidden" style={{ height: "var(--panel-header-height)" }}>
+        <div className="relative z-40 shrink-0 flex items-center gap-1 px-2 border-b border-[var(--color-border)] bg-[var(--color-bg-tertiary)] overflow-visible" style={{ height: "var(--panel-header-height)" }}>
           <select
             value={type}
             onChange={e => onTypeChange?.(e.target.value as PanelType)}
