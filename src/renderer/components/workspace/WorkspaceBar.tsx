@@ -12,6 +12,8 @@ export function WorkspaceBar() {
   const applyLayoutPreset = useWorkspaceStore(s => s.applyLayoutPreset)
   const deleteLayoutPreset = useWorkspaceStore(s => s.deleteLayoutPreset)
   const [layoutMenuOpen, setLayoutMenuOpen] = useState(false)
+  const [savingPreset, setSavingPreset] = useState(false)
+  const [presetName, setPresetName] = useState("")
   const layoutMenuRef = useRef<HTMLDivElement>(null)
   const activeWorkspace = WORKSPACES.find(workspace => workspace.id === activeWorkspaceId) || WORKSPACES[0]
   const activeLayoutPresets = layoutPresets.filter(preset => preset.workspaceId === activeWorkspaceId)
@@ -32,14 +34,26 @@ export function WorkspaceBar() {
     }
   }, [layoutMenuOpen])
 
+  useEffect(() => {
+    if (!layoutMenuOpen) {
+      setSavingPreset(false)
+      setPresetName("")
+    }
+  }, [layoutMenuOpen])
+
   const runMenuAction = (action: () => void) => {
     action()
     setLayoutMenuOpen(false)
   }
 
-  const saveLayoutPreset = () => {
-    const name = window.prompt("保存当前布局为", `${activeWorkspace.title}布局`)
-    if (!name?.trim()) return
+  const startSaveLayoutPreset = () => {
+    setPresetName(`${activeWorkspace.title}布局`)
+    setSavingPreset(true)
+  }
+
+  const commitLayoutPreset = () => {
+    const name = presetName.trim()
+    if (!name) return
     runMenuAction(() => saveCurrentLayoutPreset(name))
   }
 
@@ -74,11 +88,46 @@ export function WorkspaceBar() {
               当前：{activeWorkspace.title}
             </div>
             <button
-              onClick={saveLayoutPreset}
+              onClick={startSaveLayoutPreset}
               className="block w-full px-3 py-1.5 text-left text-xs text-[var(--color-text-primary)] hover:bg-[var(--color-accent)]/15 hover:text-[var(--color-accent)]"
             >
               保存当前布局
             </button>
+            {savingPreset && (
+              <div className="px-3 py-2">
+                <input
+                  autoFocus
+                  value={presetName}
+                  onChange={event => setPresetName(event.target.value)}
+                  onKeyDown={event => {
+                    if (event.key === "Enter") commitLayoutPreset()
+                    if (event.key === "Escape") {
+                      setSavingPreset(false)
+                      setPresetName("")
+                    }
+                  }}
+                  className="mb-2 w-full rounded border border-[var(--color-border)] bg-[var(--color-bg-primary)] px-2 py-1.5 text-xs text-[var(--color-text-primary)] outline-none focus:border-[var(--color-accent)]"
+                  placeholder="布局名称"
+                />
+                <div className="flex gap-1.5">
+                  <button
+                    onClick={commitLayoutPreset}
+                    className="flex-1 rounded bg-[var(--color-accent)] px-2 py-1 text-xs font-medium text-white hover:opacity-90"
+                  >
+                    保存
+                  </button>
+                  <button
+                    onClick={() => {
+                      setSavingPreset(false)
+                      setPresetName("")
+                    }}
+                    className="flex-1 rounded border border-[var(--color-border)] px-2 py-1 text-xs text-[var(--color-text-secondary)] hover:border-[var(--color-accent)]/50 hover:text-[var(--color-accent)]"
+                  >
+                    取消
+                  </button>
+                </div>
+              </div>
+            )}
             {activeLayoutPresets.length > 0 && (
               <>
                 <div className="my-1 border-t border-[var(--color-border)]" />
