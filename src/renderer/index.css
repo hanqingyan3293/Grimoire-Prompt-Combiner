@@ -219,6 +219,67 @@ button:disabled {
   font-weight: 600;
 }
 
+.ui-nav-tab {
+  border-bottom: 2px solid transparent;
+  color: var(--color-text-secondary);
+  font-size: 0.78rem;
+  font-weight: 600;
+  transition: border-color 120ms ease, background-color 120ms ease, color 120ms ease;
+}
+
+.ui-nav-tab:hover {
+  color: var(--color-text-primary);
+}
+
+.ui-nav-tab-active {
+  border-bottom-color: var(--color-accent);
+  background: color-mix(in srgb, var(--color-accent) 8%, transparent);
+  color: var(--color-accent);
+}
+
+.ui-tree-card {
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  border-radius: 7px;
+  background: color-mix(in srgb, var(--color-bg-primary) 64%, transparent);
+}
+
+.ui-tree-header {
+  background: color-mix(in srgb, var(--color-bg-tertiary) 82%, var(--color-bg-secondary));
+  color: var(--color-text-primary);
+  transition: background-color 120ms ease, color 120ms ease;
+}
+
+.ui-tree-header:hover {
+  background: color-mix(in srgb, var(--color-accent) 11%, var(--color-bg-tertiary));
+  color: var(--color-accent);
+}
+
+.ui-tree-row {
+  color: var(--color-text-secondary);
+  transition: background-color 120ms ease, color 120ms ease;
+}
+
+.ui-tree-row:hover {
+  background: color-mix(in srgb, var(--color-accent) 8%, transparent);
+  color: var(--color-text-primary);
+}
+
+.ui-tree-row-active {
+  background: color-mix(in srgb, var(--color-accent) 16%, transparent);
+  color: var(--color-accent);
+  font-weight: 600;
+}
+
+.ui-count-badge {
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--color-bg-primary) 78%, transparent);
+  color: var(--color-text-secondary);
+  font-size: 0.65rem;
+  line-height: 1;
+  padding: 2px 6px;
+}
+
 select,
 input,
 textarea {

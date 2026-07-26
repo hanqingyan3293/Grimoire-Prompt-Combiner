@@ -118,7 +118,7 @@ export function TagCards() {
               ? sub.tags.filter(t => t.en.toLowerCase().includes(searchQuery.toLowerCase()) || t.zh.includes(searchQuery))
               : sub.tags
             return (
-              <div key={sub.id} className="border border-[var(--color-border)] rounded p-3">
+              <div key={sub.id} className="ui-list-card p-3">
                 <div className="flex items-center justify-between mb-2">
                   <div className="text-xs text-[var(--color-text-secondary)]">
                     <span className="text-[var(--color-accent)]">{cat.zh}</span>
@@ -127,7 +127,7 @@ export function TagCards() {
                     <span className="ml-2 opacity-50">({filtered.length})</span>
                   </div>
                   <button onClick={() => setAddModal({ subId: sub.id, subName: sub.zh })}
-                    className="text-[10px] px-2 py-1 text-[var(--color-accent)] border border-[var(--color-accent)]/30 rounded hover:bg-[var(--color-accent)]/10">
+                    className="ui-subtle-button px-2 py-1 text-[10px]">
                     + 添加标签
                   </button>
                 </div>

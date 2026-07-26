@@ -220,13 +220,13 @@ const handleCtxEdit = () => {
   return (
     <div className="flex h-full w-full min-w-0 flex-col border-r border-[var(--color-border)] bg-[var(--color-bg-secondary)]">
       {/* Tab bar */}
-      <div className="flex border-b border-[var(--color-border)]">
+      <div className="ui-toolbar flex">
         <button onClick={() => setActiveTab("tags")}
-          className={`flex-1 py-2 text-xs font-medium transition-colors ${activeTab === "tags" ? "text-[var(--color-accent)] border-b-2 border-[var(--color-accent)] bg-[var(--color-accent)]/5" : "text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]"}`}>
+          className={"ui-nav-tab flex-1 py-2 " + (activeTab === "tags" ? "ui-nav-tab-active" : "")}>
           🏷 标签库
         </button>
         <button onClick={() => setActiveTab("favorites")}
-          className={`flex-1 py-2 text-xs font-medium transition-colors ${activeTab === "favorites" ? "text-[var(--color-accent)] border-b-2 border-[var(--color-accent)] bg-[var(--color-accent)]/5" : "text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]"}`}>
+          className={"ui-nav-tab flex-1 py-2 " + (activeTab === "favorites" ? "ui-nav-tab-active" : "")}>
           ⭐ 收藏
         </button>
       </div>
@@ -238,26 +238,26 @@ const handleCtxEdit = () => {
               placeholder="搜索..."
               className="flex-1 px-3 py-2 bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded text-xs text-[var(--color-text-primary)] placeholder-[var(--color-text-secondary)] focus:outline-none focus:border-[var(--color-accent)]" />
             <button onClick={handleClearAll} title="清除全部选中"
-              className="px-2 py-2 bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded text-xs text-[var(--color-text-secondary)] hover:text-red-400 hover:border-red-400/30">✕</button>
+              className="ui-subtle-button px-2 py-2 text-xs hover:text-red-400">✕</button>
           </div>
 
                                         <div className="p-2 border-b border-[var(--color-border)]">
             <button onClick={() => setGroupMenuOpen(!groupMenuOpen)}
-              className="w-full flex items-center gap-2 px-3 py-2 bg-[var(--color-accent)]/10 border-2 border-[var(--color-accent)]/30 rounded text-sm text-[var(--color-text-primary)] hover:border-[var(--color-accent)] transition-colors font-medium">
+              className="ui-subtle-button flex w-full items-center gap-2 px-3 py-2 text-sm font-medium">
               <span className="text-base">{'📁'}</span>
               <span className="truncate">标签组</span>
               <span className="text-xs text-[var(--color-text-secondary)]">{groups.length}</span>
               <span className="ml-auto text-xs transition-transform" style={{ transform: groupMenuOpen ? 'rotate(180deg)' : 'rotate(0deg)' }}>▼</span>
             </button>
             {groupMenuOpen && (
-              <div className="mt-1 bg-[var(--color-bg-tertiary)] border border-[var(--color-border)] rounded-lg overflow-hidden shadow-lg">
+              <div className="ui-popover-surface mt-1">
                 <div className="max-h-48 overflow-y-auto">
                   {groups.length === 0 && (
                     <div className="px-3 py-4 text-xs text-[var(--color-text-secondary)] text-center">暂无标签组</div>
                   )}
                   {groups.map((g: any) => (
                     <div key={g.id}
-                      className={"flex items-center gap-2 px-3 py-2 text-sm transition-colors " + (g.id === activeGroupId ? "bg-[var(--color-accent)]/15 text-[var(--color-accent)] font-medium" : "text-[var(--color-text-primary)] hover:bg-[var(--color-bg-primary)]")}>
+                      className={"flex items-center gap-2 px-3 py-2 text-sm transition-colors " + (g.id === activeGroupId ? "ui-tree-row-active" : "ui-tree-row")}>
                       {g.id === activeGroupId && <span className="text-xs">◉</span>}
                       {renamingGroup?.id === g.id ? (
                         <input value={renamingGroup.name}
@@ -297,12 +297,12 @@ const handleCtxEdit = () => {
                     </div>
                   ) : (
                     <button onClick={() => setShowNewGroupInput(true)}
-                      className="w-full text-left px-3 py-1.5 text-xs text-[var(--color-text-primary)] hover:bg-[var(--color-bg-primary)] rounded flex items-center gap-2">
+                      className="ui-menu-item flex items-center gap-2 px-3 py-1.5 text-xs">
                       <span>➕</span> 新建标签组
                     </button>
                   )}
                   <button onClick={importGroup}
-                    className="w-full text-left px-3 py-1.5 text-xs text-[var(--color-text-primary)] hover:bg-[var(--color-bg-primary)] rounded flex items-center gap-2">
+                    className="ui-menu-item flex items-center gap-2 px-3 py-1.5 text-xs">
                     <span>📥</span> 导入标签组
                   </button>
                 </div>
@@ -315,13 +315,13 @@ const handleCtxEdit = () => {
             {displayCategories.map(cat => {
               const isExpanded = expandedCats.has(cat.id)
               return (
-                <div key={cat.id} className="border border-[var(--color-border)] rounded overflow-hidden">
+                <div key={cat.id} className="ui-tree-card">
                   <div onClick={() => toggleCat(cat.id)}
                     onContextMenu={(e) => { e.preventDefault(); setCtxMenu({ x: e.clientX, y: e.clientY, type: "category", id: cat.id, name: cat.zh }) }}
-                    className="flex items-center gap-1 px-3 py-2 cursor-pointer bg-[var(--color-bg-tertiary)] hover:bg-[var(--color-accent)]/10 transition-all">
+                    className="ui-tree-header flex cursor-pointer items-center gap-1 px-3 py-2">
                     <span className="text-xs transition-transform" style={{ transform: isExpanded ? 'rotate(90deg)' : 'rotate(0deg)' }}>▸</span>
                     <span className="flex-1 text-sm font-medium text-[var(--color-text-primary)]">{cat.zh}</span>
-                    <span className="text-[10px] text-[var(--color-text-secondary)]">{cat.subcategories.length}</span>
+                    <span className="ui-count-badge">{cat.subcategories.length}</span>
                     <button onClick={(e) => { e.stopPropagation(); setEditModal({ type: "category", id: cat.id, zh: cat.zh }); setEditZh(cat.zh) }}
                       className="text-[10px] text-[var(--color-text-secondary)] hover:text-[var(--color-accent)] px-1" title="编辑">✏</button>
                     <button onClick={(e) => { e.stopPropagation(); setDeleteConfirm({ type: "category", id: cat.id, name: cat.zh }) }}
@@ -336,7 +336,7 @@ const handleCtxEdit = () => {
                           <div key={sub.id}
                             onClick={() => store.toggleSubSelect(sub.id)}
                             onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); setCtxMenu({ x: e.clientX, y: e.clientY, type: "subcategory", id: sub.id, name: sub.zh, parentId: cat.id }) }}
-                            className={`flex items-center gap-1 pl-5 pr-2 py-1.5 cursor-pointer group transition-all text-xs ${sel ? "bg-[var(--color-accent)]/15 text-[var(--color-accent)] font-medium" : "hover:bg-[var(--color-accent)]/5 text-[var(--color-text-secondary)]"}`}>
+                    className={"flex cursor-pointer items-center gap-1 pl-5 pr-2 py-1.5 text-xs group " + (sel ? "ui-tree-row-active" : "ui-tree-row")}>
                             <span className="flex-1">{sub.zh}{isFav ? " ⭐" : ""}</span>
                             <span className="text-[9px] opacity-50 w-5 text-right">{sub.tags.length}</span>
                             {sel && <span className="text-[10px]">✓</span>}
@@ -360,7 +360,7 @@ const handleCtxEdit = () => {
 
           <div className="p-2 border-t border-[var(--color-border)]">
             <button onClick={() => { setEditModal({ type: "category" }); setEditZh("") }}
-              className="w-full py-1.5 text-xs text-[var(--color-accent)] border border-dashed border-[var(--color-accent)]/30 rounded hover:bg-[var(--color-accent)]/10">+ 添加大类</button>
+              className="w-full rounded border border-dashed border-[var(--color-accent)]/35 py-1.5 text-xs text-[var(--color-accent)] hover:bg-[var(--color-accent)]/10">+ 添加大类</button>
           </div>
         </>
       ) : (
