@@ -191,11 +191,11 @@ export function PanelShell({
     <section
       data-panel-id={id}
       data-panel-type={type}
-      className={"relative flex h-full w-full min-h-0 min-w-0 flex-col overflow-hidden bg-[var(--color-bg-primary)] " + className}
+      className={"relative flex h-full w-full min-h-0 min-w-0 flex-col overflow-hidden border border-[var(--color-border)] bg-[var(--color-bg-primary)] shadow-[inset_0_1px_0_rgba(255,255,255,0.035)] " + className}
       style={style}
     >
       {showHeader && (
-        <div className="relative z-40 shrink-0 flex items-center gap-1 px-2 border-b border-[var(--color-border)] bg-[var(--color-bg-tertiary)] overflow-visible" style={{ height: "var(--panel-header-height)" }}>
+        <div className="relative z-40 shrink-0 flex items-center gap-1 px-2 border-b border-[var(--color-border)] bg-[var(--color-bg-secondary)] overflow-visible" style={{ height: "var(--panel-header-height)" }}>
           <select
             value={type}
             onChange={e => onTypeChange?.(e.target.value as PanelType)}
@@ -216,7 +216,7 @@ export function PanelShell({
           <div ref={addMenuRef} className="relative shrink-0">
             <button
               onClick={toggleAddMenu}
-              className="rounded text-[12px] text-[var(--color-text-secondary)] hover:text-[var(--color-accent)] hover:bg-[var(--color-accent)]/10"
+              className="rounded border border-transparent bg-[var(--color-bg-primary)]/60 text-[12px] text-[var(--color-text-secondary)] hover:border-[var(--color-accent)]/40 hover:text-[var(--color-accent)] hover:bg-[var(--color-accent)]/10"
               style={{ width: "var(--panel-control-size)", height: "var(--panel-control-size)" }}
               title="添加面板"
             >
@@ -256,7 +256,7 @@ export function PanelShell({
           </div>
           <button
             onClick={() => onSplit?.("horizontal")}
-            className="shrink-0 rounded text-[12px] text-[var(--color-text-secondary)] hover:text-[var(--color-accent)] hover:bg-[var(--color-accent)]/10"
+            className="shrink-0 rounded border border-transparent bg-[var(--color-bg-primary)]/60 text-[12px] text-[var(--color-text-secondary)] hover:border-[var(--color-accent)]/40 hover:text-[var(--color-accent)] hover:bg-[var(--color-accent)]/10"
             style={{ width: "var(--panel-control-size)", height: "var(--panel-control-size)" }}
             title="左右分割"
           >
@@ -264,7 +264,7 @@ export function PanelShell({
           </button>
           <button
             onClick={() => onSplit?.("vertical")}
-            className="shrink-0 rounded text-[12px] text-[var(--color-text-secondary)] hover:text-[var(--color-accent)] hover:bg-[var(--color-accent)]/10"
+            className="shrink-0 rounded border border-transparent bg-[var(--color-bg-primary)]/60 text-[12px] text-[var(--color-text-secondary)] hover:border-[var(--color-accent)]/40 hover:text-[var(--color-accent)] hover:bg-[var(--color-accent)]/10"
             style={{ width: "var(--panel-control-size)", height: "var(--panel-control-size)" }}
             title="上下分割"
           >
@@ -272,7 +272,7 @@ export function PanelShell({
           </button>
           <button
             onClick={onMaximize}
-            className="shrink-0 rounded text-[12px] text-[var(--color-text-secondary)] hover:text-[var(--color-accent)] hover:bg-[var(--color-accent)]/10"
+            className="shrink-0 rounded border border-transparent bg-[var(--color-bg-primary)]/60 text-[12px] text-[var(--color-text-secondary)] hover:border-[var(--color-accent)]/40 hover:text-[var(--color-accent)] hover:bg-[var(--color-accent)]/10"
             style={{ width: "var(--panel-control-size)", height: "var(--panel-control-size)" }}
             title={maximized ? "还原面板" : "最大化面板"}
           >
@@ -281,7 +281,7 @@ export function PanelShell({
           <button
             onClick={onClose}
             disabled={closeDisabled}
-            className="shrink-0 rounded text-[12px] text-[var(--color-text-secondary)] hover:text-red-400 hover:bg-red-500/10 disabled:cursor-not-allowed disabled:opacity-35 disabled:hover:bg-transparent disabled:hover:text-[var(--color-text-secondary)]"
+            className="shrink-0 rounded border border-transparent bg-[var(--color-bg-primary)]/60 text-[12px] text-[var(--color-text-secondary)] hover:border-red-400/40 hover:text-red-400 hover:bg-red-500/10 disabled:cursor-not-allowed disabled:opacity-35 disabled:hover:border-transparent disabled:hover:bg-[var(--color-bg-primary)]/60 disabled:hover:text-[var(--color-text-secondary)]"
             style={{ width: "var(--panel-control-size)", height: "var(--panel-control-size)" }}
             title={closeDisabled ? "至少保留一个面板" : "关闭面板"}
           >

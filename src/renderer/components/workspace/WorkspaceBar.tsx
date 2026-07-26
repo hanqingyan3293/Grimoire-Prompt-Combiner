@@ -71,7 +71,7 @@ export function WorkspaceBar() {
   }
 
   return (
-    <div className="h-9 shrink-0 flex items-center gap-1 px-2 border-b border-[var(--color-border)] bg-[var(--color-bg-secondary)]">
+    <div className="h-8 shrink-0 flex items-center gap-1 px-2 border-b border-[var(--color-border)] bg-[var(--color-bg-tertiary)] shadow-[inset_0_-1px_0_rgba(255,255,255,0.04)]">
       {workspaces.map(workspace => (
         editingWorkspaceId === workspace.id ? (
           <input
@@ -87,7 +87,7 @@ export function WorkspaceBar() {
                 setWorkspaceTitleInput("")
               }
             }}
-            className="h-7 w-24 rounded border border-[var(--color-accent)] bg-[var(--color-bg-primary)] px-2 text-xs text-[var(--color-text-primary)] outline-none"
+            className="h-6 w-24 rounded border border-[var(--color-accent)] bg-[var(--color-bg-primary)] px-2 text-xs text-[var(--color-text-primary)] outline-none"
           />
         ) : (
           <button
@@ -95,10 +95,10 @@ export function WorkspaceBar() {
             onClick={() => setActiveWorkspace(workspace.id)}
             onDoubleClick={() => startRenameWorkspace(workspace.id, workspace.title)}
             className={
-              "px-3 h-7 rounded text-xs font-medium transition-colors " +
+              "px-3 h-6 rounded border text-xs font-medium transition-colors " +
               (workspace.id === activeWorkspaceId
-                ? "bg-[var(--color-accent)]/15 text-[var(--color-accent)] border border-[var(--color-accent)]/30"
-                : "text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-bg-primary)]")
+                ? "border-[var(--color-accent)]/45 bg-[var(--color-accent)]/15 text-[var(--color-accent)]"
+                : "border-transparent text-[var(--color-text-secondary)] hover:border-[var(--color-border)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-bg-primary)]")
             }
             title="双击重命名"
           >
@@ -108,7 +108,7 @@ export function WorkspaceBar() {
       ))}
       <button
         onClick={createWorkspace}
-        className="h-7 w-7 rounded text-sm text-[var(--color-text-secondary)] hover:bg-[var(--color-accent)]/10 hover:text-[var(--color-accent)]"
+        className="h-6 w-6 rounded border border-transparent text-sm text-[var(--color-text-secondary)] hover:border-[var(--color-accent)]/35 hover:bg-[var(--color-accent)]/10 hover:text-[var(--color-accent)]"
         title="新建布局"
       >
         +
@@ -117,7 +117,7 @@ export function WorkspaceBar() {
       <div ref={layoutMenuRef} className="relative">
         <button
           onClick={() => setLayoutMenuOpen(open => !open)}
-          className="px-2 h-7 rounded text-xs text-[var(--color-text-secondary)] hover:text-[var(--color-accent)] hover:bg-[var(--color-accent)]/10"
+          className="px-2 h-6 rounded border border-[var(--color-border)] bg-[var(--color-bg-primary)] text-xs text-[var(--color-text-secondary)] hover:text-[var(--color-accent)] hover:border-[var(--color-accent)]/45 hover:bg-[var(--color-accent)]/10"
           title="布局管理"
         >
           布局

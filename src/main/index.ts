@@ -41,6 +41,7 @@ function createSettingsWindow(): void {
     width: 900, height: 680, minWidth: 680, minHeight: 520,
     title: "设置 - 魔导书",
     parent: mainWindow || undefined,
+    autoHideMenuBar: true,
     webPreferences: {
       preload: getPreloadPath(),
       contextIsolation: true,
@@ -64,6 +65,7 @@ function createAIWindow(): void {
     width: 1000, height: 700, minWidth: 700, minHeight: 500,
     title: "AI 助手 - 魔导书",
     parent: mainWindow || undefined,
+    autoHideMenuBar: true,
     webPreferences: {
       preload: getPreloadPath(),
       contextIsolation: true,
@@ -84,6 +86,7 @@ function createWindow(): void {
     width: 1400, height: 900, minWidth: 1024, minHeight: 700,
     title: "魔导书 Grimoire",
     icon: path.join(__dirname, "../../../resources/icons/icon.png"),
+    autoHideMenuBar: true,
     webPreferences: {
       preload: path.join(__dirname, "../preload/index.js"),
       contextIsolation: true,
@@ -129,6 +132,7 @@ function createWindow(): void {
     ]},
   ]
   Menu.setApplicationMenu(Menu.buildFromTemplate(menuTemplate))
+  mainWindow.setMenuBarVisibility(false)
   // 捕获渲染进程控制台
   mainWindow.webContents.on('console-message', (_e, level, message) => {
     const logPath = path.join(app.getPath('userData'), 'renderer.log')
