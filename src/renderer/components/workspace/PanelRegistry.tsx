@@ -7,7 +7,7 @@ import { HistoryPanel } from "../history/HistoryPanel"
 import { ImagesPanel } from "../images/ImagesPanel"
 import { ChatLayout } from "../ai/ChatLayout"
 import { AIVisionPanel } from "../ai/AIVisionPanel"
-import { QuickSettingsPanel } from "../layout/QuickUtilityPopover"
+import { QuickAIPanel, QuickSettingsPanel } from "../layout/QuickUtilityPopover"
 import type { PanelDefinition, PanelType } from "./panelTypes"
 
 export const PANEL_DEFINITIONS: Record<PanelType, PanelDefinition> = {
@@ -37,6 +37,7 @@ export const PANEL_DEFINITIONS: Record<PanelType, PanelDefinition> = {
   presets: { type: "presets", title: "预设", description: "提示词预设", enabled: true },
   history: { type: "history", title: "历史", description: "提示词历史记录", enabled: true },
   images: { type: "images", title: "图片", description: "参考图片", enabled: true },
+  "ai-assistant": { type: "ai-assistant", title: "AI 助手", description: "聊天和识图聚合面板", enabled: true },
   "ai-chat": { type: "ai-chat", title: "AI 聊天", description: "AI 对话面板", enabled: true },
   "ai-vision": { type: "ai-vision", title: "AI 识图", description: "图片识别和标签建议", enabled: true },
   settings: { type: "settings", title: "设置", description: "快捷主题、字体和界面密度设置", enabled: true },
@@ -59,6 +60,8 @@ export function renderPanel(type: PanelType): React.ReactNode {
       return <ScrollablePanel><HistoryPanel /></ScrollablePanel>
     case "images":
       return <ScrollablePanel><ImagesPanel /></ScrollablePanel>
+    case "ai-assistant":
+      return <QuickAIPanel variant="embedded" />
     case "ai-chat":
       return <ChatLayout />
     case "ai-vision":

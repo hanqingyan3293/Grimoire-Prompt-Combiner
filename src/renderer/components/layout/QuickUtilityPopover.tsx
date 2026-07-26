@@ -15,12 +15,16 @@ const THEMES = [
 ]
 
 export function QuickUtilityPopover({ type }: { type: UtilityPopoverKey }) {
-  return type === "settings" ? <QuickSettingsPanel variant="popover" /> : <QuickAIPanel />
+  return type === "settings" ? <QuickSettingsPanel variant="popover" /> : <QuickAIPanel variant="popover" />
 }
 
-function QuickAIPanel() {
+export function QuickAIPanel({ variant = "popover" }: { variant?: "popover" | "embedded" }) {
+  const containerClassName = variant === "embedded"
+    ? "flex h-full min-h-0 flex-col"
+    : "flex h-[min(560px,calc(100vh-128px))] min-h-[360px] flex-col"
+
   return (
-    <div className="flex h-[min(560px,calc(100vh-128px))] min-h-[360px] flex-col">
+    <div className={containerClassName}>
       <div className="flex items-center justify-between border-b border-[var(--color-border)] px-3 py-2">
         <span className="text-sm font-semibold text-[var(--color-text-primary)]">AI 助手</span>
         <button

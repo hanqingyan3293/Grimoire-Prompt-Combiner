@@ -10,6 +10,7 @@ export type PanelType =
   | "presets"
   | "history"
   | "images"
+  | "ai-assistant"
   | "ai-chat"
   | "ai-vision"
   | "settings"
@@ -21,4 +22,3 @@ export interface PanelDefinition {
   description: string
   enabled: boolean
 }
-
