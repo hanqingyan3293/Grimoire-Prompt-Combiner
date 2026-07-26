@@ -197,7 +197,13 @@ export function PanelShell({
       style={style}
     >
       {showHeader && (
-        <div className="relative z-40 shrink-0 flex items-center gap-1 px-2 border-b border-[var(--color-border)] bg-[var(--color-bg-secondary)] overflow-visible" style={{ height: "var(--panel-header-height)" }}>
+        <div
+          className={
+            "relative shrink-0 flex items-center gap-1 px-2 border-b border-[var(--color-border)] bg-[var(--color-bg-secondary)] overflow-visible " +
+            (addMenuOpen ? "z-[120]" : "z-40")
+          }
+          style={{ height: "var(--panel-header-height)" }}
+        >
           <select
             value={type}
             onChange={e => onTypeChange?.(e.target.value as PanelType)}
@@ -226,7 +232,7 @@ export function PanelShell({
             </button>
             {addMenuOpen && (
               <div
-                className="ui-popover-surface ui-popover-menu fixed z-50 max-h-64 w-56 overflow-y-auto"
+                className="ui-popover-surface ui-popover-menu fixed z-[130] max-h-64 w-56 overflow-y-auto"
                 style={{ left: addMenuPosition.left, top: addMenuPosition.top }}
               >
                 {groupedOptions.map(group => (
