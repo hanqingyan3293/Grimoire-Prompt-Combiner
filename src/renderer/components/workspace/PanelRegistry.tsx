@@ -45,6 +45,12 @@ export const PANEL_DEFINITIONS: Record<PanelType, PanelDefinition> = {
 }
 
 export const ENABLED_PANEL_OPTIONS = Object.values(PANEL_DEFINITIONS).filter(panel => panel.enabled)
+export const PANEL_OPTION_GROUPS: { title: string; types: PanelType[] }[] = [
+  { title: "核心", types: ["tag-sidebar", "prompt-workbench", "utility-sidebar"] },
+  { title: "素材", types: ["presets", "history", "images"] },
+  { title: "AI", types: ["ai-assistant", "ai-chat", "ai-vision"] },
+  { title: "设置", types: ["settings"] },
+]
 
 export function renderPanel(type: PanelType): React.ReactNode {
   switch (type) {

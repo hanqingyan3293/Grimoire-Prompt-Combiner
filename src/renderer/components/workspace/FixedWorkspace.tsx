@@ -1,6 +1,6 @@
 import React, { useMemo, useRef } from "react"
 import { PanelShell } from "./PanelShell"
-import { ENABLED_PANEL_OPTIONS, PANEL_DEFINITIONS, renderPanel } from "./PanelRegistry"
+import { ENABLED_PANEL_OPTIONS, PANEL_DEFINITIONS, PANEL_OPTION_GROUPS, renderPanel } from "./PanelRegistry"
 import { WORKSPACES, findPanelNode, getDefaultLayout, useWorkspaceStore } from "../../stores/workspace.store"
 import type { WorkspaceLayoutNode } from "../../stores/workspace.store"
 
@@ -73,6 +73,7 @@ export function FixedWorkspace() {
           style={{ width: "100%", height: "100%" }}
           showHeader
           panelOptions={ENABLED_PANEL_OPTIONS}
+          panelOptionGroups={PANEL_OPTION_GROUPS}
           onTypeChange={(type) => setPanelType(workspace.id, node.id, type)}
           onAddPanel={(type, direction, placement) => splitPanel(workspace.id, node.id, direction, type, placement)}
           onSplit={(direction) => splitPanel(workspace.id, node.id, direction)}
