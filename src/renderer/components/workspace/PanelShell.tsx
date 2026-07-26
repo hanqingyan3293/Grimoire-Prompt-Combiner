@@ -1,4 +1,4 @@
-import React from "react"
+import React, { useEffect, useRef, useState } from "react"
 import type { PanelDefinition, PanelType } from "./panelTypes"
 
 interface PanelShellProps {
@@ -11,7 +11,7 @@ interface PanelShellProps {
   style?: React.CSSProperties
   panelOptions?: PanelDefinition[]
   onTypeChange?: (type: PanelType) => void
-  onAddPanel?: () => void
+  onAddPanel?: (type: PanelType) => void
   onSplit?: (direction: "horizontal" | "vertical") => void
   onMaximize?: () => void
   onClose?: () => void
@@ -36,6 +36,30 @@ export function PanelShell({
   maximized = false,
   closeDisabled = false,
 }: PanelShellProps) {
+  const [addMenuOpen, setAddMenuOpen] = useState(false)
+  const addMenuRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!addMenuOpen) return
+    const handlePointerDown = (event: PointerEvent) => {
+      if (!addMenuRef.current?.contains(event.target as Node)) setAddMenuOpen(false)
+    }
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setAddMenuOpen(false)
+    }
+    document.addEventListener("pointerdown", handlePointerDown)
+    document.addEventListener("keydown", handleKeyDown)
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown)
+      document.removeEventListener("keydown", handleKeyDown)
+    }
+  }, [addMenuOpen])
+
+  const handleAddPanel = (panelType: PanelType) => {
+    onAddPanel?.(panelType)
+    setAddMenuOpen(false)
+  }
+
   return (
     <section
       data-panel-id={id}
@@ -62,14 +86,30 @@ export function PanelShell({
               </option>
             ))}
           </select>
-          <button
-            onClick={onAddPanel}
-            className="shrink-0 rounded text-[12px] text-[var(--color-text-secondary)] hover:text-[var(--color-accent)] hover:bg-[var(--color-accent)]/10"
-            style={{ width: "var(--panel-control-size)", height: "var(--panel-control-size)" }}
-            title="添加工具面板"
-          >
-            +
-          </button>
+          <div ref={addMenuRef} className="relative shrink-0">
+            <button
+              onClick={() => setAddMenuOpen(open => !open)}
+              className="rounded text-[12px] text-[var(--color-text-secondary)] hover:text-[var(--color-accent)] hover:bg-[var(--color-accent)]/10"
+              style={{ width: "var(--panel-control-size)", height: "var(--panel-control-size)" }}
+              title="添加面板"
+            >
+              +
+            </button>
+            {addMenuOpen && (
+              <div className="absolute right-0 top-full z-50 mt-1 max-h-64 w-44 overflow-y-auto rounded border border-[var(--color-border)] bg-[var(--color-bg-tertiary)] py-1 shadow-2xl">
+                {panelOptions.map(option => (
+                  <button
+                    key={option.type}
+                    onClick={() => handleAddPanel(option.type)}
+                    className="block w-full px-3 py-1.5 text-left text-xs text-[var(--color-text-primary)] hover:bg-[var(--color-accent)]/15 hover:text-[var(--color-accent)]"
+                    title={option.description}
+                  >
+                    {option.title}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
           <button
             onClick={() => onSplit?.("horizontal")}
             className="shrink-0 rounded text-[12px] text-[var(--color-text-secondary)] hover:text-[var(--color-accent)] hover:bg-[var(--color-accent)]/10"
