@@ -8,6 +8,7 @@ export interface WorkspaceSlot {
 }
 
 export type SplitDirection = "horizontal" | "vertical"
+export type SplitPlacement = "before" | "after"
 
 export type WorkspaceLayoutNode =
   | {
@@ -87,7 +88,7 @@ interface WorkspaceState {
   maximizedPanels: MaximizedPanels
   setActiveWorkspace: (id: string) => void
   setPanelType: (workspaceId: string, panelId: string, type: PanelType) => void
-  splitPanel: (workspaceId: string, panelId: string, direction: SplitDirection, type?: PanelType) => void
+  splitPanel: (workspaceId: string, panelId: string, direction: SplitDirection, type?: PanelType, placement?: SplitPlacement) => void
   closePanel: (workspaceId: string, panelId: string) => void
   setSplitRatio: (workspaceId: string, splitId: string, ratio: number) => void
   setMaximizedPanel: (workspaceId: string, panelId: string | null) => void
@@ -223,21 +224,22 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
     saveLayouts(next)
     set({ layouts: next })
   },
-  splitPanel: (workspaceId, panelId, direction, type) => {
+  splitPanel: (workspaceId, panelId, direction, type, placement = "after") => {
     const layout = get().getLayout(workspaceId)
     const nextLayout = updateLayoutNode(layout, panelId, node => {
       if (node.kind !== "panel") return node
+      const newPanel: WorkspaceLayoutNode = {
+        kind: "panel",
+        id: createId("panel_"),
+        type: type || node.type,
+      }
       return {
         kind: "split",
         id: createId("split_"),
         direction,
         ratio: 0.5,
-        first: node,
-        second: {
-          kind: "panel",
-          id: createId("panel_"),
-          type: type || node.type,
-        },
+        first: placement === "before" ? newPanel : node,
+        second: placement === "before" ? node : newPanel,
       }
     })
     const next = { ...get().layouts, [workspaceId]: nextLayout }

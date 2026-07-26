@@ -1,5 +1,8 @@
 import React, { useEffect, useRef, useState } from "react"
 import type { PanelDefinition, PanelType } from "./panelTypes"
+import type { SplitPlacement } from "../../stores/workspace.store"
+
+type AddPanelDirection = "left" | "right" | "up" | "down"
 
 interface PanelShellProps {
   id: string
@@ -11,7 +14,7 @@ interface PanelShellProps {
   style?: React.CSSProperties
   panelOptions?: PanelDefinition[]
   onTypeChange?: (type: PanelType) => void
-  onAddPanel?: (type: PanelType, direction: "horizontal" | "vertical") => void
+  onAddPanel?: (type: PanelType, direction: "horizontal" | "vertical", placement: SplitPlacement) => void
   onSplit?: (direction: "horizontal" | "vertical") => void
   onMaximize?: () => void
   onClose?: () => void
@@ -55,8 +58,10 @@ export function PanelShell({
     }
   }, [addMenuOpen])
 
-  const handleAddPanel = (panelType: PanelType, direction: "horizontal" | "vertical") => {
-    onAddPanel?.(panelType, direction)
+  const handleAddPanel = (panelType: PanelType, addDirection: AddPanelDirection) => {
+    const isHorizontal = addDirection === "left" || addDirection === "right"
+    const placement = addDirection === "left" || addDirection === "up" ? "before" : "after"
+    onAddPanel?.(panelType, isHorizontal ? "horizontal" : "vertical", placement)
     setAddMenuOpen(false)
   }
 
@@ -96,26 +101,40 @@ export function PanelShell({
               +
             </button>
             {addMenuOpen && (
-              <div className="absolute right-0 top-full z-50 mt-1 max-h-64 w-44 overflow-y-auto rounded border border-[var(--color-border)] bg-[var(--color-bg-tertiary)] py-1 shadow-2xl">
+              <div className="absolute right-0 top-full z-50 mt-1 max-h-64 w-56 overflow-y-auto rounded border border-[var(--color-border)] bg-[var(--color-bg-tertiary)] py-1 shadow-2xl">
                 {panelOptions.map(option => (
                   <div key={option.type} className="flex items-center gap-1 px-1.5 py-0.5 hover:bg-[var(--color-accent)]/10">
                     <button
-                      onClick={() => handleAddPanel(option.type, "horizontal")}
+                      onClick={() => handleAddPanel(option.type, "right")}
                       className="min-w-0 flex-1 truncate rounded px-1.5 py-1 text-left text-xs text-[var(--color-text-primary)] hover:text-[var(--color-accent)]"
                       title={option.description}
                     >
                       {option.title}
                     </button>
                     <button
-                      onClick={() => handleAddPanel(option.type, "horizontal")}
-                      className="h-6 w-7 shrink-0 rounded text-[10px] text-[var(--color-text-secondary)] hover:bg-[var(--color-accent)]/15 hover:text-[var(--color-accent)]"
+                      onClick={() => handleAddPanel(option.type, "left")}
+                      className="h-6 w-6 shrink-0 rounded text-[10px] text-[var(--color-text-secondary)] hover:bg-[var(--color-accent)]/15 hover:text-[var(--color-accent)]"
+                      title={`左侧添加${option.title}`}
+                    >
+                      左
+                    </button>
+                    <button
+                      onClick={() => handleAddPanel(option.type, "right")}
+                      className="h-6 w-6 shrink-0 rounded text-[10px] text-[var(--color-text-secondary)] hover:bg-[var(--color-accent)]/15 hover:text-[var(--color-accent)]"
                       title={`右侧添加${option.title}`}
                     >
                       右
                     </button>
                     <button
-                      onClick={() => handleAddPanel(option.type, "vertical")}
-                      className="h-6 w-7 shrink-0 rounded text-[10px] text-[var(--color-text-secondary)] hover:bg-[var(--color-accent)]/15 hover:text-[var(--color-accent)]"
+                      onClick={() => handleAddPanel(option.type, "up")}
+                      className="h-6 w-6 shrink-0 rounded text-[10px] text-[var(--color-text-secondary)] hover:bg-[var(--color-accent)]/15 hover:text-[var(--color-accent)]"
+                      title={`上方添加${option.title}`}
+                    >
+                      上
+                    </button>
+                    <button
+                      onClick={() => handleAddPanel(option.type, "down")}
+                      className="h-6 w-6 shrink-0 rounded text-[10px] text-[var(--color-text-secondary)] hover:bg-[var(--color-accent)]/15 hover:text-[var(--color-accent)]"
                       title={`下方添加${option.title}`}
                     >
                       下
