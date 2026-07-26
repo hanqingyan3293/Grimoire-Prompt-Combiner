@@ -34,6 +34,21 @@ function applyUiDensity(density: string) {
   document.documentElement.setAttribute("data-ui-density", density)
 }
 
+function createHoverColor(hex: string) {
+  if (!/^#[0-9a-fA-F]{6}$/.test(hex)) return hex
+  const amount = -22
+  const next = [1, 3, 5].map(start => {
+    const value = Number.parseInt(hex.slice(start, start + 2), 16)
+    return Math.min(255, Math.max(0, value + amount)).toString(16).padStart(2, "0")
+  })
+  return `#${next.join("")}`
+}
+
+function applyAccent(value: string) {
+  document.documentElement.style.setProperty("--color-accent", value)
+  document.documentElement.style.setProperty("--color-accent-hover", createHoverColor(value))
+}
+
 export const useSettingsStore = create<SettingsState>((set, get) => ({
   theme: "neon",
   language: "zh",
@@ -77,7 +92,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
 	      document.documentElement.setAttribute("data-lang", raw.language || "zh")
 	      applyUiScale(scale)
 	      applyUiDensity(density)
-	      document.documentElement.style.setProperty("--color-accent", acc)
+	      applyAccent(acc)
     } catch {
       set({ loading: false })
     }
@@ -91,7 +106,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     if (key === "language") document.documentElement.setAttribute("data-lang", value)
     if (key === "ui_scale") applyUiScale(value)
 	    if (key === "ui_density") applyUiDensity(value)
-    if (key === "custom_accent") document.documentElement.style.setProperty("--color-accent", value)
+    if (key === "custom_accent") applyAccent(value)
     if (key.startsWith("shortcut_")) {
       const sk = key.replace("shortcut_", "")
       set(s => ({ shortcuts: { ...s.shortcuts, [sk]: value } }))

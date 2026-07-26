@@ -34,6 +34,9 @@ html {
   --color-accent: #a855f7;
   --color-accent-hover: #9333ea;
   --color-border: #2a2a45;
+  --color-border-strong: #414166;
+  --color-hover: rgba(255,255,255,0.055);
+  --color-panel-shadow: rgba(0,0,0,0.28);
 }
 
 /* ===== Clean 简洁 ===== */
@@ -46,6 +49,9 @@ html {
   --color-accent: #3b82f6;
   --color-accent-hover: #2563eb;
   --color-border: #e2e8f0;
+  --color-border-strong: #cbd5e1;
+  --color-hover: rgba(15,23,42,0.055);
+  --color-panel-shadow: rgba(15,23,42,0.10);
 }
 
 /* ===== Gold 金色 ===== */
@@ -58,6 +64,9 @@ html {
   --color-accent: #f59e0b;
   --color-accent-hover: #d97706;
   --color-border: #4a4a35;
+  --color-border-strong: #666241;
+  --color-hover: rgba(255,255,255,0.06);
+  --color-panel-shadow: rgba(0,0,0,0.30);
 }
 
 /* ===== Midnight 暗夜 ===== */
@@ -70,6 +79,9 @@ html {
   --color-accent: #6366f1;
   --color-accent-hover: #4f46e5;
   --color-border: #475569;
+  --color-border-strong: #64748b;
+  --color-hover: rgba(226,232,240,0.055);
+  --color-panel-shadow: rgba(0,0,0,0.30);
 }
 
 /* ===== Sakura 樱花 ===== */
@@ -82,6 +94,9 @@ html {
   --color-accent: #ec4899;
   --color-accent-hover: #db2777;
   --color-border: #4a3545;
+  --color-border-strong: #65495e;
+  --color-hover: rgba(255,255,255,0.055);
+  --color-panel-shadow: rgba(0,0,0,0.30);
 }
 
 /* ===== Forest 森林 ===== */
@@ -94,6 +109,9 @@ html {
   --color-accent: #22c55e;
   --color-accent-hover: #16a34a;
   --color-border: #354a3a;
+  --color-border-strong: #4b6651;
+  --color-hover: rgba(224,240,228,0.055);
+  --color-panel-shadow: rgba(0,0,0,0.30);
 }
 
 /* ===== Sunset 日落 ===== */
@@ -106,6 +124,9 @@ html {
   --color-accent: #f97316;
   --color-accent-hover: #ea580c;
   --color-border: #4a3528;
+  --color-border-strong: #664936;
+  --color-hover: rgba(255,255,255,0.055);
+  --color-panel-shadow: rgba(0,0,0,0.30);
 }
 
 /* ===== 动画 ===== */

@@ -191,7 +191,7 @@ export function PanelShell({
     <section
       data-panel-id={id}
       data-panel-type={type}
-      className={"relative flex h-full w-full min-h-0 min-w-0 flex-col overflow-hidden border border-[var(--color-border)] bg-[var(--color-bg-primary)] shadow-[inset_0_1px_0_rgba(255,255,255,0.035)] " + className}
+      className={"relative flex h-full w-full min-h-0 min-w-0 flex-col overflow-hidden border border-[var(--color-border-strong)] bg-[var(--color-bg-primary)] shadow-[0_1px_2px_var(--color-panel-shadow),inset_0_1px_0_rgba(255,255,255,0.035)] " + className}
       style={style}
     >
       {showHeader && (

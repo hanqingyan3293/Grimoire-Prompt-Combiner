@@ -46,7 +46,7 @@ body {
   border-radius: 3px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--color-text-secondary);
+  background: var(--color-border-strong);
 }
 
 /* 选中 */
@@ -59,6 +59,25 @@ body {
 *:focus-visible {
   outline: 2px solid var(--color-accent);
   outline-offset: 2px;
+}
+
+button,
+select,
+input,
+textarea {
+  font: inherit;
+}
+
+select,
+input,
+textarea {
+  color-scheme: dark;
+}
+
+[data-theme="clean"] select,
+[data-theme="clean"] input,
+[data-theme="clean"] textarea {
+  color-scheme: light;
 }
 
 /* 工具类 */

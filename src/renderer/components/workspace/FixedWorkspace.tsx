@@ -134,7 +134,7 @@ export function FixedWorkspace() {
           onMouseDown={(event) => startResize(node, event)}
           className={
             (isHorizontal ? "cursor-col-resize" : "cursor-row-resize") +
-            " shrink-0 bg-[var(--color-bg-tertiary)] outline outline-1 outline-[var(--color-border)] hover:bg-[var(--color-accent)] hover:outline-[var(--color-accent)] transition-colors"
+            " shrink-0 bg-[var(--color-bg-tertiary)] outline outline-1 outline-[var(--color-border-strong)] hover:bg-[var(--color-accent)] hover:outline-[var(--color-accent)] transition-colors"
           }
           style={isHorizontal ? { width: "var(--panel-splitter-size)" } : { height: "var(--panel-splitter-size)" }}
           title="拖动调整面板大小"

@@ -6,13 +6,13 @@ import { ProviderEditor } from "./ProviderEditor"
 import type { Provider } from "@shared/types"
 
 const THEMES = [
-  { key: "neon", zh: "霓虹", color: "#a855f7" },
-  { key: "clean", zh: "简洁", color: "#3b82f6" },
-  { key: "gold", zh: "金色", color: "#f59e0b" },
-  { key: "midnight", zh: "暗夜", color: "#6366f1" },
-  { key: "sakura", zh: "樱花", color: "#ec4899" },
-  { key: "forest", zh: "森林", color: "#22c55e" },
-  { key: "sunset", zh: "日落", color: "#f97316" },
+  { key: "neon", zh: "霓虹", color: "#a855f7", bg: "#0f0f1a", panel: "#1a1a2e", border: "#414166" },
+  { key: "clean", zh: "简洁", color: "#3b82f6", bg: "#f8fafc", panel: "#ffffff", border: "#cbd5e1" },
+  { key: "gold", zh: "金色", color: "#f59e0b", bg: "#1a1a0f", panel: "#2a2a1a", border: "#666241" },
+  { key: "midnight", zh: "暗夜", color: "#6366f1", bg: "#0f172a", panel: "#1e293b", border: "#64748b" },
+  { key: "sakura", zh: "樱花", color: "#ec4899", bg: "#1a0f15", panel: "#2a1a25", border: "#65495e" },
+  { key: "forest", zh: "森林", color: "#22c55e", bg: "#0f1a12", panel: "#1a2a1e", border: "#4b6651" },
+  { key: "sunset", zh: "日落", color: "#f97316", bg: "#1a100f", panel: "#2a1a18", border: "#664936" },
 ]
 
 type Section = "general" | "appearance" | "api" | "shortcuts" | "data" | "about"
@@ -170,15 +170,27 @@ export function SettingsWindow({ onClose }: { onClose: () => void }) {
         {section === "appearance" && (
           <div className="space-y-5">
             <h2 className="text-xl font-bold text-[var(--color-text-primary)] mb-6">外观</h2>
-            <Field label="主题">
+            <Field label="主题" desc="切换页面背景、面板层级、边框和默认强调色">
               <div className="grid grid-cols-4 gap-3">
                 {THEMES.map(tm => (
-                  <button key={tm.key} onClick={() => setSetting("theme", tm.key)}
-                    className={`py-3 text-sm rounded-lg border-2 transition-all ${
-                      theme === tm.key ? "border-[var(--color-accent)] bg-[var(--color-accent)]/15 text-[var(--color-accent)] scale-105" : "border-[var(--color-border)] text-[var(--color-text-secondary)] hover:border-[var(--color-accent)]/50"
-                    }`}>
-                    <div className="w-5 h-5 rounded-full mx-auto mb-1.5" style={{ backgroundColor: tm.color }} />
-                    {tm.zh}
+                  <button
+                    key={tm.key}
+                    onClick={async () => {
+                      setAccentInput(tm.color)
+                      await setSetting("theme", tm.key)
+                      await setSetting("custom_accent", tm.color)
+                    }}
+                    className={`overflow-hidden rounded-lg border-2 text-left text-sm transition-all ${
+                      theme === tm.key ? "border-[var(--color-accent)] bg-[var(--color-accent)]/10 text-[var(--color-accent)] scale-[1.02]" : "border-[var(--color-border)] text-[var(--color-text-secondary)] hover:border-[var(--color-accent)]/50"
+                    }`}
+                  >
+                    <div className="h-14 border-b border-black/10 p-2" style={{ backgroundColor: tm.bg }}>
+                      <div className="h-full rounded border p-1.5" style={{ backgroundColor: tm.panel, borderColor: tm.border }}>
+                        <div className="mb-1 h-1.5 w-10 rounded" style={{ backgroundColor: tm.color }} />
+                        <div className="h-1.5 w-16 rounded bg-white/25" />
+                      </div>
+                    </div>
+                    <div className="px-3 py-2 font-medium">{tm.zh}</div>
                   </button>
                 ))}
               </div>
