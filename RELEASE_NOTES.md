@@ -8,8 +8,8 @@
 
 | 文件 | 说明 |
 |------|------|
-| `Grimoire 7.1.0.exe` | 免安装便携版，推荐下载 |
-| `Grimoire Setup 7.1.0.exe` | NSIS 安装包 |
+| `Grimoire.7.1.0.exe` | 免安装便携版，推荐下载 |
+| `Grimoire.Setup.7.1.0.exe` | NSIS 安装包 |
 
 ---
 

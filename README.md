@@ -59,13 +59,13 @@ English: [README.en.md](./README.en.md)
 
 **方式一：免安装便携版（推荐）**
 
-1. 下载 [最新 Release](https://github.com/hanqingyan3293/grimoire/releases/latest) 中的 `Grimoire 7.1.0.exe`
+1. 下载 [最新 Release](https://github.com/hanqingyan3293/grimoire/releases/latest) 中的 `Grimoire.7.1.0.exe`
 2. 放到任意目录后双击运行
 3. 无需安装，适合移动硬盘、U 盘或多目录备份
 
 **方式二：安装包**
 
-1. 下载 `Grimoire Setup 7.1.0.exe`
+1. 下载 `Grimoire.Setup.7.1.0.exe`
 2. 双击安装，选择安装目录
 3. 桌面快捷方式启动
 
