@@ -27,6 +27,7 @@ export function FixedWorkspace() {
     () => maximizedPanelId ? findPanelNode(layout, maximizedPanelId) : null,
     [layout, maximizedPanelId]
   )
+  const panelCount = useMemo(() => countPanelNodes(layout), [layout])
 
   const startResize = (node: Extract<WorkspaceLayoutNode, { kind: "split" }>, event: React.MouseEvent) => {
     event.preventDefault()
@@ -77,6 +78,7 @@ export function FixedWorkspace() {
           onMaximize={() => setMaximizedPanel(workspace.id, maximizedPanelId === node.id ? null : node.id)}
           onClose={() => closePanel(workspace.id, node.id)}
           maximized={maximizedPanelId === node.id}
+          closeDisabled={panelCount <= 1}
         >
           {renderPanel(node.type)}
         </PanelShell>
@@ -114,4 +116,9 @@ export function FixedWorkspace() {
       {renderNode(maximizedPanel || layout)}
     </div>
   )
+}
+
+function countPanelNodes(node: WorkspaceLayoutNode): number {
+  if (node.kind === "panel") return 1
+  return countPanelNodes(node.first) + countPanelNodes(node.second)
 }

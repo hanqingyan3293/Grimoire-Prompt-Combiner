@@ -15,6 +15,7 @@ interface PanelShellProps {
   onMaximize?: () => void
   onClose?: () => void
   maximized?: boolean
+  closeDisabled?: boolean
 }
 
 export function PanelShell({
@@ -31,6 +32,7 @@ export function PanelShell({
   onMaximize,
   onClose,
   maximized = false,
+  closeDisabled = false,
 }: PanelShellProps) {
   return (
     <section
@@ -84,9 +86,10 @@ export function PanelShell({
           </button>
           <button
             onClick={onClose}
-            className="shrink-0 rounded text-[12px] text-[var(--color-text-secondary)] hover:text-red-400 hover:bg-red-500/10"
+            disabled={closeDisabled}
+            className="shrink-0 rounded text-[12px] text-[var(--color-text-secondary)] hover:text-red-400 hover:bg-red-500/10 disabled:cursor-not-allowed disabled:opacity-35 disabled:hover:bg-transparent disabled:hover:text-[var(--color-text-secondary)]"
             style={{ width: "var(--panel-control-size)", height: "var(--panel-control-size)" }}
-            title="关闭面板"
+            title={closeDisabled ? "至少保留一个面板" : "关闭面板"}
           >
             ×
           </button>
