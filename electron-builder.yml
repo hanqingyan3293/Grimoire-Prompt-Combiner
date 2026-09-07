@@ -7,6 +7,13 @@ directories:
 files:
   - dist/**/*
   - data/**/*
+extraResources:
+  - from: python
+    to: python
+    filter:
+      - wd14_worker.py
+      - wd14_tagger.py
+      - requirements.txt
 win:
   target:
     - target: nsis

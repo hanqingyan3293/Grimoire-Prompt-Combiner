@@ -13,7 +13,18 @@ import { registerProvidersIPC } from "./ipc/providers.ipc"
 import { registerTagGroupsIPC } from "./ipc/tagGroups.ipc"
 import { registerAIIPC } from "./ipc/ai.ipc"
 import { registerChatIPC } from "./ipc/chat.ipc"
-import { logError, getErrorLogs } from "./services/logger.service"
+import { registerMigrationIPC } from "./ipc/migration.ipc"
+import { registerTasksIPC } from "./ipc/tasks.ipc"
+import { registerWD14IPC } from "./ipc/wd14.ipc"
+import { registerComfyIPC } from "./ipc/comfy.ipc"
+import { registerCanvasIPC } from "./ipc/canvas.ipc"
+import { registerPromptAssetsIPC } from "./ipc/prompt-assets.ipc"
+import { configureComfyUI } from './services/comfy-client'
+import { requireHttpUrl } from './services/input-validation'
+import { taskRunner } from "./services/task-runner"
+import { clearWD14ModelDirectory, clearWD14PythonPath, configureWD14ModelDirectory, configureWD14PythonPath, wd14Worker } from "./services/wd14-worker"
+import { markInterruptedTasks } from "./services/task-repository"
+import { logError, logEvent, getErrorLogs } from "./services/logger.service"
 import { IPC_CHANNELS } from "../shared/types"
 
 let mainWindow: BrowserWindow | null = null
@@ -32,6 +43,68 @@ function getRendererURL(hash: string): string {
   return "file://" + path.join(__dirname, "../../renderer/index.html") + "#" + hash
 }
 
+function configureWindowSecurity(window: BrowserWindow): void {
+  const developmentOrigin = process.env.VITE_DEV_SERVER_URL
+    ? new URL(process.env.VITE_DEV_SERVER_URL).origin
+    : null
+  const isAllowedRendererUrl = (url: string): boolean => {
+    if (url.startsWith('file://')) return true
+    return developmentOrigin !== null && url.startsWith(developmentOrigin + '/')
+  }
+
+  window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
+  window.webContents.on('will-navigate', (event, url) => {
+    if (!isAllowedRendererUrl(url)) {
+      event.preventDefault()
+      void shell.openExternal(url).catch(() => {})
+    }
+  })
+}
+
+function broadcastDatabaseReload(): void {
+  for (const window of BrowserWindow.getAllWindows()) {
+    if (!window.isDestroyed()) {
+      window.webContents.send('db:reloaded')
+      window.webContents.send('data:refresh')
+    }
+  }
+}
+
+function applyPersistedIntegrationSettings(): void {
+  const database = getDatabase()
+  configureComfyUI('http://127.0.0.1:8188')
+  clearWD14ModelDirectory()
+  clearWD14PythonPath()
+  const comfySetting = database.exec("SELECT value FROM settings WHERE key='comfyui_base_url'")
+  const savedComfyUrl = comfySetting[0]?.values?.[0]?.[0]
+  if (typeof savedComfyUrl === 'string') {
+    try { configureComfyUI(requireHttpUrl(savedComfyUrl, 'ComfyUI 地址')) } catch (error) { logEvent('warn', 'comfyui', 'Saved ComfyUI address ignored', { context: error instanceof Error ? error.message : String(error), errorCode: 'COMFY_CONFIG_INVALID', retryable: false }) }
+  }
+  const wd14Setting = database.exec("SELECT value FROM settings WHERE key='wd14_model_directory'")
+  const savedWD14Directory = wd14Setting[0]?.values?.[0]?.[0]
+  if (typeof savedWD14Directory === 'string' && savedWD14Directory.trim()) {
+    try { configureWD14ModelDirectory(savedWD14Directory) } catch (error) { logEvent('warn', 'wd14', 'Saved WD14 model directory ignored', { context: error instanceof Error ? error.message : String(error), errorCode: 'WD14_CONFIG_INVALID', retryable: false }) }
+  }
+  const wd14PythonSetting = database.exec("SELECT value FROM settings WHERE key='wd14_python_path'")
+  const savedWD14PythonPath = wd14PythonSetting[0]?.values?.[0]?.[0]
+  if (typeof savedWD14PythonPath === 'string' && savedWD14PythonPath.trim()) {
+    try { configureWD14PythonPath(savedWD14PythonPath) } catch (error) { logEvent('warn', 'wd14', 'Saved WD14 Python path ignored', { context: error instanceof Error ? error.message : String(error), errorCode: 'WD14_PYTHON_CONFIG_INVALID', retryable: false }) }
+  }
+}
+
+async function replaceDatabase(importPath: string): Promise<void> {
+  await taskRunner.stopAndWait()
+  try {
+    await wd14Worker.stop()
+    importDatabase(importPath)
+    applyPersistedIntegrationSettings()
+    markInterruptedTasks()
+    broadcastDatabaseReload()
+  } finally {
+    taskRunner.start()
+  }
+}
+
 function createSettingsWindow(): void {
   if (settingsWindow && !settingsWindow.isDestroyed()) {
     settingsWindow.focus()
@@ -46,9 +119,10 @@ function createSettingsWindow(): void {
       preload: getPreloadPath(),
       contextIsolation: true,
       nodeIntegration: false,
-      sandbox: false,
+      sandbox: true,
     },
   })
+  configureWindowSecurity(settingsWindow)
   settingsWindow.loadURL(getRendererURL("settings"))
   settingsWindow.on("closed", () => { settingsWindow = null })
   settingsWindow.on('focus', () => {
@@ -70,9 +144,10 @@ function createAIWindow(): void {
       preload: getPreloadPath(),
       contextIsolation: true,
       nodeIntegration: false,
-      sandbox: false,
+      sandbox: true,
     },
   })
+  configureWindowSecurity(aiWindow)
   aiWindow.loadURL(getRendererURL("ai"))
   aiWindow.on("closed", () => { aiWindow = null })
   aiWindow.on('focus', () => {
@@ -91,9 +166,10 @@ function createWindow(): void {
       preload: path.join(__dirname, "../preload/index.js"),
       contextIsolation: true,
       nodeIntegration: false,
-      sandbox: false,
+      sandbox: true,
     },
   })
+  configureWindowSecurity(mainWindow)
 
   if (process.env.VITE_DEV_SERVER_URL) {
     mainWindow.loadURL(process.env.VITE_DEV_SERVER_URL)
@@ -113,11 +189,25 @@ function createWindow(): void {
       submenu: [
         { label: "导出数据库", click: async () => {
             const r = await dialog.showSaveDialog({ filters: [{ name: "数据库", extensions: ["db"] }], defaultPath: "grimoire-backup.db" })
-            if (!r.canceled && r.filePath) exportDatabase(r.filePath)
+            if (!r.canceled && r.filePath) {
+              try { exportDatabase(r.filePath) }
+              catch (error) {
+                const message = error instanceof Error ? error.message : String(error)
+                logEvent('error', 'database', 'Database export failed', { context: message, errorCode: 'DB_EXPORT_FAILED', retryable: true })
+                dialog.showErrorBox('数据库导出失败', message)
+              }
+            }
         }},
         { label: "导入数据库", click: async () => {
             const r = await dialog.showOpenDialog({ filters: [{ name: "数据库", extensions: ["db"] }] })
-            if (!r.canceled && r.filePaths.length) { await importDatabase(r.filePaths[0]); mainWindow?.webContents.send("db:reloaded") }
+            if (!r.canceled && r.filePaths.length) {
+              try { await replaceDatabase(r.filePaths[0]) }
+              catch (error) {
+                const message = error instanceof Error ? error.message : String(error)
+                logEvent('error', 'database', 'Database import failed', { context: message, errorCode: 'DB_IMPORT_FAILED', retryable: true })
+                dialog.showErrorBox('数据库导入失败', message)
+              }
+            }
         }},
         { type: "separator" },
         { label: "退出", role: "quit" },
@@ -135,18 +225,15 @@ function createWindow(): void {
   mainWindow.setMenuBarVisibility(false)
   // 捕获渲染进程控制台
   mainWindow.webContents.on('console-message', (_e, level, message) => {
-    const logPath = path.join(app.getPath('userData'), 'renderer.log')
-    fs.appendFileSync(logPath, '[L' + level + '] ' + message + '\n', 'utf-8')
+    logEvent('debug', 'renderer', message, { context: 'console-level=' + level })
   })
   // 捕获渲染进程崩溃
   mainWindow.webContents.on('render-process-gone', (_e, details) => {
-    const logPath = path.join(app.getPath('userData'), 'renderer.log')
-    fs.appendFileSync(logPath, 'RENDERER_CRASH: reason=' + details.reason + ' exitCode=' + details.exitCode + '\n', 'utf-8')
+    logEvent('error', 'renderer', 'Renderer process exited', { context: 'reason=' + details.reason, errorCode: String(details.exitCode) })
   })
   // 捕获页面加载失败
   mainWindow.webContents.on('did-fail-load', (_e, errorCode, errorDescription) => {
-    const logPath = path.join(app.getPath('userData'), 'renderer.log')
-    fs.appendFileSync(logPath, 'LOAD_FAIL: ' + errorCode + ' ' + errorDescription + '\n', 'utf-8')
+    logEvent('error', 'renderer', 'Renderer page failed to load', { errorCode: String(errorCode), context: errorDescription })
   })
   mainWindow.on("closed", () => { mainWindow = null })
 }
@@ -203,6 +290,15 @@ async function registerAllIPC(): Promise<void> {
   registerTagGroupsIPC()
   registerAIIPC()
   registerChatIPC()
+  registerMigrationIPC()
+  registerTasksIPC()
+  registerWD14IPC()
+  registerComfyIPC()
+  registerCanvasIPC()
+  registerPromptAssetsIPC()
+  applyPersistedIntegrationSettings()
+  markInterruptedTasks()
+  taskRunner.start()
   // 迁移旧 settings 到 providers 表
   await migrateOldSettings()
   // 确保默认标签组存在
@@ -223,7 +319,7 @@ async function registerAllIPC(): Promise<void> {
   })
   ipcMain.handle(IPC_CHANNELS.DB_IMPORT, async () => {
     const r = await dialog.showOpenDialog({ filters: [{ name: "数据库", extensions: ["db"] }] })
-    if (!r.canceled && r.filePaths.length) { await importDatabase(r.filePaths[0]); mainWindow?.webContents.send("db:reloaded"); return true }
+    if (!r.canceled && r.filePaths.length) { await replaceDatabase(r.filePaths[0]); return true }
     return false
   })
 
@@ -274,12 +370,18 @@ process.on("unhandledRejection", (reason) => { logError("未处理的 Promise: "
 
 app.whenReady().then(async () => {
   try {
+    logEvent('info', 'application', 'Application startup')
     await initDatabase()
     await registerAllIPC()
     await initDefaultTags()
     createWindow()
-  } catch (err) { console.error("启动失败:", err); dialog.showErrorBox("启动失败", err instanceof Error ? err.message : "未知错误") }
+    logEvent('info', 'application', 'Application ready')
+  } catch (err) {
+    logError("启动失败: " + (err instanceof Error ? err.message : "未知错误"), err instanceof Error ? err.stack || "" : "")
+    console.error("启动失败:", err)
+    dialog.showErrorBox("启动失败", err instanceof Error ? err.message : "未知错误")
+  }
 })
 
-app.on("window-all-closed", () => { if (BrowserWindow.getAllWindows().length === 0) { closeDatabase(); app.quit() } })
+app.on("window-all-closed", () => { if (BrowserWindow.getAllWindows().length === 0) { taskRunner.stop(); void wd14Worker.stop(); closeDatabase(); app.quit() } })
 app.on("activate", () => { if (BrowserWindow.getAllWindows().length === 0) createWindow() })

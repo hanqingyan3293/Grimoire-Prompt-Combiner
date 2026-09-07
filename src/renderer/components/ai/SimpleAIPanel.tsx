@@ -16,11 +16,11 @@ export function SimpleAIPanel() {
     <div className="flex flex-col h-full">
       <div className="flex border-b border-[var(--color-border)]">
         <button onClick={() => setSubTab("chat")}
-          className={"flex-1 py-1.5 text-xs font-medium transition-colors " + (subTab === "chat" ? "text-[var(--color-accent)] border-b-2 border-[var(--color-accent)]" : "text-[var(--color-text-secondary)]")}>
+          className={"flex-1 py-1.5 text-xs font-medium transition-colors " + (subTab === "chat" ? "text-[var(--color-accent-text)] border-b-2 border-[var(--color-accent)]" : "text-[var(--color-text-secondary)]")}>
           聊天
         </button>
         <button onClick={() => setSubTab("vision")}
-          className={"flex-1 py-1.5 text-xs font-medium transition-colors " + (subTab === "vision" ? "text-[var(--color-accent)] border-b-2 border-[var(--color-accent)]" : "text-[var(--color-text-secondary)]")}>
+          className={"flex-1 py-1.5 text-xs font-medium transition-colors " + (subTab === "vision" ? "text-[var(--color-accent-text)] border-b-2 border-[var(--color-accent)]" : "text-[var(--color-text-secondary)]")}>
           识图
         </button>
       </div>
@@ -119,7 +119,7 @@ function SimpleChat() {
                 <button
                   key={c.id}
                   onClick={() => switchConv(c.id)}
-                  className={"w-full text-left px-3 py-1.5 text-[11px] hover:bg-[var(--color-accent)]/10 " + (c.id === activeConversationId ? "text-[var(--color-accent)] font-medium" : "text-[var(--color-text-primary)]")}
+                  className={"w-full text-left px-3 py-1.5 text-[11px] hover:bg-[var(--color-accent)]/10 " + (c.id === activeConversationId ? "text-[var(--color-accent-text)] font-medium" : "text-[var(--color-text-primary)]")}
                 >
                   {c.title || "未命名"}
                 </button>
@@ -131,7 +131,7 @@ function SimpleChat() {
           )}
         </div>
         <button onClick={handleNewConv}
-          className="px-2 py-1 text-[11px] bg-[var(--color-accent)]/10 text-[var(--color-accent)] rounded hover:bg-[var(--color-accent)]/20 flex-shrink-0">
+          className="px-2 py-1 text-[11px] bg-[var(--color-accent)]/10 text-[var(--color-accent-text)] rounded hover:bg-[var(--color-accent)]/20 flex-shrink-0">
           + 新建
         </button>
       </div>
@@ -170,7 +170,7 @@ function SimpleChat() {
                 <button
                   key={m}
                   onClick={() => { setSelectedModel(m); setModelOpen(false) }}
-                  className={"w-full text-left px-3 py-1.5 text-[11px] hover:bg-[var(--color-accent)]/10 " + (m === selectedModel ? "text-[var(--color-accent)] font-medium" : "text-[var(--color-text-primary)]")}
+                  className={"w-full text-left px-3 py-1.5 text-[11px] hover:bg-[var(--color-accent)]/10 " + (m === selectedModel ? "text-[var(--color-accent-text)] font-medium" : "text-[var(--color-text-primary)]")}
                 >
                   {m}
                 </button>
@@ -200,7 +200,7 @@ function SimpleChat() {
             className="flex-1 px-2 py-1.5 bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded text-[11px] resize-none text-[var(--color-text-primary)]"
           />
           <button onClick={handleSend} disabled={isStreaming || !input.trim()}
-            className="px-3 py-1 bg-[var(--color-accent)] text-white rounded text-[11px] disabled:opacity-50 hover:opacity-90 self-end">
+            className="self-end rounded bg-[var(--color-accent-fill)] px-3 py-1 text-[11px] text-[var(--color-accent-foreground)] hover:bg-[var(--color-accent-fill-hover)] disabled:opacity-50">
             发送
           </button>
         </div>
@@ -461,7 +461,7 @@ function SimpleVision() {
                   <button
                     key={m}
                     onClick={() => { setSelectedModel(m); setModelOpen(false) }}
-                    className={"w-full text-left px-3 py-1.5 text-[11px] hover:bg-[var(--color-accent)]/10 " + (m === selectedModel ? "text-[var(--color-accent)]" : "text-[var(--color-text-primary)]")}
+                    className={"w-full text-left px-3 py-1.5 text-[11px] hover:bg-[var(--color-accent)]/10 " + (m === selectedModel ? "text-[var(--color-accent-text)]" : "text-[var(--color-text-primary)]")}
                   >
                     {m}
                   </button>
@@ -472,7 +472,7 @@ function SimpleVision() {
           <button
             onClick={handleAnalyze}
             disabled={analyzing || !images.length}
-            className="px-3 py-1 text-[11px] bg-[var(--color-accent)] text-white rounded disabled:opacity-50"
+            className="rounded bg-[var(--color-accent-fill)] px-3 py-1 text-[11px] text-[var(--color-accent-foreground)] disabled:opacity-50"
           >
             {analyzing ? "分析中..." : "分析"}
           </button>
@@ -491,12 +491,12 @@ function SimpleVision() {
             <div className="flex items-center justify-between mb-1.5">
               <span className="text-[10px] text-[var(--color-text-secondary)]">结果 ({suggestions.length})</span>
               <div className="flex gap-1">
-                <button onClick={selectAll} className="text-[10px] text-[var(--color-accent)] hover:underline">全选</button>
+                <button onClick={selectAll} className="text-[10px] text-[var(--color-accent-text)] hover:underline">全选</button>
                 <button onClick={clearSel} className="text-[10px] text-[var(--color-text-secondary)] hover:underline">取消</button>
                 <button onClick={copySel} className="text-[10px] text-[var(--color-text-secondary)] hover:underline">复制</button>
                 <button onClick={addToPositive} className="text-[10px] text-green-400 hover:underline">+正面</button>
                 <button onClick={addToNegative} className="text-[10px] text-red-400 hover:underline">+负面</button>
-                <button onClick={addToLibrary} className="text-[10px] text-[var(--color-accent)] hover:underline">+标签库</button>
+                <button onClick={addToLibrary} className="text-[10px] text-[var(--color-accent-text)] hover:underline">+标签库</button>
                 <button onClick={exportJSON} className="text-[10px] text-[var(--color-text-secondary)] hover:underline">导出</button>
               </div>
             </div>
@@ -508,7 +508,7 @@ function SimpleVision() {
                   <div
                     key={i}
                     onClick={() => toggleSelect(i)}
-                    className={"flex items-center gap-1.5 px-2 py-1 rounded text-[11px] cursor-pointer " + (sel ? "bg-[var(--color-accent)]/15 text-[var(--color-accent)]" : "hover:bg-[var(--color-bg-primary)] text-[var(--color-text-primary)]")}
+                    className={"flex items-center gap-1.5 px-2 py-1 rounded text-[11px] cursor-pointer " + (sel ? "bg-[var(--color-accent)]/15 text-[var(--color-accent-text)]" : "hover:bg-[var(--color-bg-primary)] text-[var(--color-text-primary)]")}
                   >
                     <input type="checkbox" checked={sel} readOnly className="accent-[var(--color-accent)] w-3 h-3" />
                     <span className="font-medium flex-1 truncate">{s.en}</span>

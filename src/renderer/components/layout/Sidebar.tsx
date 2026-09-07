@@ -260,7 +260,7 @@ const handleCtxEdit = () => {
                       className={"flex items-center gap-2 px-3 py-2 text-sm transition-colors " + (g.id === activeGroupId ? "ui-tree-row-active" : "ui-tree-row")}>
                       {g.id === activeGroupId && <span className="text-xs">◉</span>}
                       {renamingGroup?.id === g.id ? (
-                        <input value={renamingGroup.name}
+                        <input value={renamingGroup?.name || ''}
                           onChange={e => setRenamingGroup({ id: g.id, name: e.target.value })}
                           onKeyDown={e => { if (e.key === 'Enter') renameGroup(); if (e.key === 'Escape') setRenamingGroup(null) }}
                           onBlur={renameGroup}
@@ -272,9 +272,9 @@ const handleCtxEdit = () => {
                       {g.id === activeGroupId && !renamingGroup && (
                         <div className="flex gap-0.5">
                           <button onClick={(e) => { e.stopPropagation(); setRenamingGroup({ id: g.id, name: g.name }) }}
-                            className="px-1.5 py-0.5 text-xs text-[var(--color-text-secondary)] hover:text-[var(--color-accent)] rounded" title="重命名">✏</button>
+                            className="px-1.5 py-0.5 text-xs text-[var(--color-text-secondary)] hover:text-[var(--color-accent-text)] rounded" title="重命名">✏</button>
                           <button onClick={(e) => { e.stopPropagation(); exportGroup(g.id) }}
-                            className="px-1.5 py-0.5 text-xs text-[var(--color-text-secondary)] hover:text-[var(--color-accent)] rounded" title="导出">📤</button>
+                            className="px-1.5 py-0.5 text-xs text-[var(--color-text-secondary)] hover:text-[var(--color-accent-text)] rounded" title="导出">📤</button>
                         </div>
                       )}
                       {g.id !== activeGroupId && !renamingGroup && (
@@ -293,7 +293,7 @@ const handleCtxEdit = () => {
                         placeholder="输入组名..."
                         autoFocus
                         className="flex-1 px-3 py-1.5 bg-[var(--color-bg-primary)] border border-[var(--color-accent)] rounded text-xs text-[var(--color-text-primary)] outline-none" />
-                      <button onClick={createGroup} className="px-3 py-1.5 text-xs bg-[var(--color-accent)] text-white rounded">确定</button>
+                      <button onClick={createGroup} className="rounded bg-[var(--color-accent-fill)] px-3 py-1.5 text-xs text-[var(--color-accent-foreground)]">确定</button>
                     </div>
                   ) : (
                     <button onClick={() => setShowNewGroupInput(true)}
@@ -323,7 +323,7 @@ const handleCtxEdit = () => {
                     <span className="flex-1 text-sm font-medium text-[var(--color-text-primary)]">{cat.zh}</span>
                     <span className="ui-count-badge">{cat.subcategories.length}</span>
                     <button onClick={(e) => { e.stopPropagation(); setEditModal({ type: "category", id: cat.id, zh: cat.zh }); setEditZh(cat.zh) }}
-                      className="text-[10px] text-[var(--color-text-secondary)] hover:text-[var(--color-accent)] px-1" title="编辑">✏</button>
+                      className="text-[10px] text-[var(--color-text-secondary)] hover:text-[var(--color-accent-text)] px-1" title="编辑">✏</button>
                     <button onClick={(e) => { e.stopPropagation(); setDeleteConfirm({ type: "category", id: cat.id, name: cat.zh }) }}
                       className="text-[10px] text-[var(--color-text-secondary)] hover:text-red-400 px-1" title="删除">✕</button>
                   </div>
@@ -341,14 +341,14 @@ const handleCtxEdit = () => {
                             <span className="text-[9px] opacity-50 w-5 text-right">{sub.tags.length}</span>
                             {sel && <span className="text-[10px]">✓</span>}
                             <button onClick={(e) => { e.stopPropagation(); setEditModal({ type: "subcategory", id: sub.id, parentId: cat.id, zh: sub.zh }); setEditZh(sub.zh) }}
-                              className="opacity-0 group-hover:opacity-100 text-[10px] text-[var(--color-text-secondary)] hover:text-[var(--color-accent)] px-0.5" title="编辑">✏</button>
+                              className="opacity-0 group-hover:opacity-100 text-[10px] text-[var(--color-text-secondary)] hover:text-[var(--color-accent-text)] px-0.5" title="编辑">✏</button>
                             <button onClick={(e) => { e.stopPropagation(); setDeleteConfirm({ type: "subcategory", id: sub.id, name: sub.zh }) }}
                               className="opacity-0 group-hover:opacity-100 text-[10px] text-[var(--color-text-secondary)] hover:text-red-400 px-0.5" title="删除">✕</button>
                           </div>
                         )
                       })}
                       <button onClick={() => { setEditModal({ type: "subcategory", parentId: cat.id }); setEditZh("") }}
-                        className="w-full text-left pl-5 pr-2 py-1.5 text-[10px] text-[var(--color-text-secondary)] hover:text-[var(--color-accent)] hover:bg-[var(--color-accent)]/5 border-t border-[var(--color-border)]/30">
+                        className="w-full text-left pl-5 pr-2 py-1.5 text-[10px] text-[var(--color-text-secondary)] hover:text-[var(--color-accent-text)] hover:bg-[var(--color-accent)]/5 border-t border-[var(--color-border)]/30">
                         + 添加子类
                       </button>
                     </div>
@@ -360,7 +360,7 @@ const handleCtxEdit = () => {
 
           <div className="p-2 border-t border-[var(--color-border)]">
             <button onClick={() => { setEditModal({ type: "category" }); setEditZh("") }}
-              className="w-full rounded border border-dashed border-[var(--color-accent)]/35 py-1.5 text-xs text-[var(--color-accent)] hover:bg-[var(--color-accent)]/10">+ 添加大类</button>
+              className="w-full rounded border border-dashed border-[var(--color-accent)]/35 py-1.5 text-xs text-[var(--color-accent-text)] hover:bg-[var(--color-accent)]/10">+ 添加大类</button>
           </div>
         </>
       ) : (
@@ -432,7 +432,7 @@ const handleCtxEdit = () => {
           </div>
           <div className="flex gap-3 pt-2">
             <button onClick={() => setEditModal(null)} disabled={saving} className="flex-1 py-3 text-sm bg-[var(--color-bg-tertiary)] rounded disabled:opacity-50">取消</button>
-            <button onClick={handleSaveEdit} disabled={saving || !editZh.trim()} className="flex-1 py-3 text-sm bg-[var(--color-accent)] text-white rounded disabled:opacity-50">
+            <button onClick={handleSaveEdit} disabled={saving || !editZh.trim()} className="flex-1 rounded bg-[var(--color-accent-fill)] py-3 text-sm text-[var(--color-accent-foreground)] disabled:opacity-50">
               {saving ? "保存中..." : "保存"}
             </button>
           </div>

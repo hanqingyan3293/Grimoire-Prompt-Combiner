@@ -1,10 +1,13 @@
 // Grimoire v7 - AI Vision Panel (for AIWindow)
 import React, { useState, useRef, useCallback, useEffect } from 'react'
+import { ImagePlus, LoaderCircle, Search, Trash2 } from 'lucide-react'
 import { useProviderStore } from '../../stores/providers.store'
 import { useChatStore } from '../../stores/chat.store'
 import { usePromptsStore } from '../../stores/prompts.store'
 import { useTagsStore } from '../../stores/tags.store'
 import type { Tag } from '../../../shared/types'
+import { Button } from '../ui/Button'
+import { parseVisionSuggestions } from './vision-output'
 
 export function AIVisionPanel() {
   const { activeProvider, loadProviders } = useProviderStore()
@@ -56,17 +59,10 @@ export function AIVisionPanel() {
       const result = await window.api.ai.vision({ providerId: activeProvider.id, model, imageBase64: base64, prompt })
       if (result.error) { showToast('识别失败: ' + result.error, 'error'); return }
       const text = result.text || ''
-      try {
-        const parsed = JSON.parse(text)
-        if (Array.isArray(parsed)) {
-          setSuggestions(parsed.map((t: any) => ({ en: t.en || t.tag || String(t), zh: t.zh || '' })))
-        }
-      } catch {
-        const lines = text.split('\n').filter(Boolean)
-        setSuggestions(lines.map(l => { const p = l.split(/[,，]/); return { en: p[0]?.trim() || l, zh: p[1]?.trim() || '' } }))
-      }
+      const nextSuggestions = parseVisionSuggestions(text)
+      setSuggestions(nextSuggestions)
       // Save to history
-      const tagNames = suggestions.map(s => s.en)
+      const tagNames = nextSuggestions.map(s => s.en)
       setHistory(prev => [{ time: new Date().toLocaleTimeString('zh-CN'), image: images[0], tags: tagNames }, ...prev].slice(0, 50))
     } catch (e: any) { showToast('错误: ' + (e?.message || String(e)), 'error') }
     finally { setAnalyzing(false) }
@@ -154,7 +150,7 @@ export function AIVisionPanel() {
             </div>
           ) : (
             <div className="text-sm text-[var(--color-text-secondary)]">
-              <div className="text-3xl mb-2">🖼</div>
+              <ImagePlus size={24} className='mx-auto mb-2 text-[var(--color-accent-text)]' aria-hidden='true' />
               <div>点击或拖拽图片到此处</div>
             </div>
           )}
@@ -174,17 +170,14 @@ export function AIVisionPanel() {
               <div className="absolute left-0 right-0 bottom-full mb-1 z-50 bg-[var(--color-bg-tertiary)] border border-[var(--color-border)] rounded-lg shadow-xl max-h-40 overflow-y-auto">
                 {models.map(m => (
                   <button key={m} onClick={() => { setSelectedModel(m); setModelOpen(false) }}
-                    className={'w-full text-left px-3 py-2 text-xs hover:bg-[var(--color-accent)]/10 ' + (m === selectedModel ? 'text-[var(--color-accent)]' : 'text-[var(--color-text-primary)]')}>{m}</button>
+                    className={'w-full text-left px-3 py-2 text-xs hover:bg-[var(--color-accent)]/10 ' + (m === selectedModel ? 'text-[var(--color-accent-text)]' : 'text-[var(--color-text-primary)]')}>{m}</button>
                 ))}
               </div>
             )}
           </div>
-          <button onClick={handleAnalyze} disabled={analyzing || !images.length}
-            className="px-6 py-2 text-sm bg-[var(--color-accent)] text-white rounded-lg disabled:opacity-50 font-medium">
-            {analyzing ? '分析中...' : '🔍 分析'}
-          </button>
+          <Button variant='primary' icon={analyzing ? LoaderCircle : Search} onClick={() => void handleAnalyze()} disabled={analyzing || !images.length} className={analyzing ? 'ui-spin-icon' : ''}>{analyzing ? '分析中' : '分析'}</Button>
           {images.length > 0 && (
-            <button onClick={() => setImages([])} className="px-3 py-2 text-xs border border-[var(--color-border)] rounded-lg text-[var(--color-text-secondary)]">清除</button>
+            <Button size='sm' variant='ghost' icon={Trash2} onClick={() => setImages([])}>清除</Button>
           )}
         </div>
       </div>
@@ -196,12 +189,12 @@ export function AIVisionPanel() {
             <div className="flex items-center justify-between mb-3">
               <span className="text-sm font-medium text-[var(--color-text-primary)]">结果 ({suggestions.length})</span>
               <div className="flex gap-2">
-                <button onClick={selectAll} className="text-xs text-[var(--color-accent)] hover:underline">全选</button>
+                <button onClick={selectAll} className="text-xs text-[var(--color-accent-text)] hover:underline">全选</button>
                 <button onClick={clearSel} className="text-xs text-[var(--color-text-secondary)] hover:underline">取消</button>
                 <button onClick={copySel} className="text-xs text-[var(--color-text-secondary)] hover:underline">复制</button>
                 <button onClick={addToPositive} className="text-xs text-green-400 hover:underline">+正面</button>
                 <button onClick={addToNegative} className="text-xs text-red-400 hover:underline">+负面</button>
-                <button onClick={addToLibrary} className="text-xs text-[var(--color-accent)] hover:underline">+标签库</button>
+                <button onClick={addToLibrary} className="text-xs text-[var(--color-accent-text)] hover:underline">+标签库</button>
               </div>
             </div>
             <div className="space-y-1">
@@ -210,7 +203,7 @@ export function AIVisionPanel() {
                 const inLib = tags.find(t => t.en.toLowerCase() === s.en.toLowerCase())
                 return (
                   <div key={i} onClick={() => toggleSelect(i)}
-                    className={'flex items-center gap-2 px-3 py-2 rounded-lg text-sm cursor-pointer transition-colors ' + (sel ? 'bg-[var(--color-accent)]/15 text-[var(--color-accent)]' : 'hover:bg-[var(--color-bg-primary)] text-[var(--color-text-primary)]')}>
+                    className={'flex items-center gap-2 px-3 py-2 rounded-lg text-sm cursor-pointer transition-colors ' + (sel ? 'bg-[var(--color-accent)]/15 text-[var(--color-accent-text)]' : 'hover:bg-[var(--color-bg-primary)] text-[var(--color-text-primary)]')}>
                     <input type="checkbox" checked={sel} readOnly className="accent-[var(--color-accent)]" />
                     <span className="font-medium flex-1">{s.en}</span>
                     <span className="text-xs text-[var(--color-text-secondary)] max-w-[120px] truncate">{s.zh}</span>
@@ -228,7 +221,7 @@ export function AIVisionPanel() {
             <div className="space-y-1">
               {history.map((h, i) => (
                 <div key={i} className="flex gap-2 text-xs text-[var(--color-text-secondary)] py-1">
-                  <span className="text-[var(--color-accent)]">{h.time}</span>
+                  <span className="text-[var(--color-accent-text)]">{h.time}</span>
                   <span className="truncate">{h.tags.slice(0, 5).join(', ')}{h.tags.length > 5 ? ' +' + (h.tags.length - 5) : ''}</span>
                 </div>
               ))}

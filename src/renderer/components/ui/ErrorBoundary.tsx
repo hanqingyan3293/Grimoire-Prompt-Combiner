@@ -1,5 +1,7 @@
 ﻿// 魔导书 Grimoire v7 — 错误边界
 import React, { Component, ReactNode } from 'react'
+import { AlertTriangle, RefreshCw, RotateCcw } from 'lucide-react'
+import { Button } from './Button'
 
 interface Props {
   children: ReactNode
@@ -30,25 +32,15 @@ export class ErrorBoundary extends Component<Props, State> {
   render() {
     if (this.state.hasError) {
       return (
-        <div className="flex items-center justify-center h-screen bg-gray-900 text-white p-8">
-          <div className="max-w-lg text-center">
-            <h1 className="text-2xl font-bold text-red-400 mb-4">应用出错</h1>
-            <p className="text-gray-400 mb-2">{this.state.error?.message}</p>
-            <pre className="text-xs text-gray-500 bg-gray-800 p-3 rounded overflow-auto max-h-40 mb-4 text-left">
+        <div className="flex h-screen items-center justify-center bg-[var(--color-bg-primary)] p-8 text-[var(--color-text-primary)]">
+          <div className="ui-dialog-surface max-w-lg p-6 text-center">
+            <AlertTriangle className="mx-auto mb-3 text-[var(--color-danger)]" size={28} aria-hidden='true' />
+            <h1 className="mb-3 text-xl font-semibold">应用出错</h1>
+            <p className="mb-3 text-sm text-[var(--color-text-secondary)]">{this.state.error?.message}</p>
+            <pre className="mb-4 max-h-40 overflow-auto rounded bg-[var(--color-bg-primary)] p-3 text-left text-xs text-[var(--color-text-secondary)]">
               {this.state.error?.stack?.slice(0, 500)}
             </pre>
-            <button
-              className="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700"
-              onClick={() => this.setState({ hasError: false, error: null })}
-            >
-              重试
-            </button>
-            <button
-              className="px-4 py-2 ml-2 bg-gray-700 text-white rounded hover:bg-gray-600"
-              onClick={() => window.location.reload()}
-            >
-              重新加载
-            </button>
+            <div className="flex justify-center gap-2"><Button variant="primary" icon={RotateCcw} onClick={() => this.setState({ hasError: false, error: null })}>重试</Button><Button icon={RefreshCw} onClick={() => window.location.reload()}>重新加载</Button></div>
           </div>
         </div>
       )

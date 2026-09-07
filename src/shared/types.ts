@@ -88,6 +88,12 @@ export interface HistoryItem {
 export interface ImageRef {
   id: number
   file_path: string
+  storage_mode: 'managed' | 'external'
+  asset_hash: string | null
+  mime_type: string | null
+  file_size: number | null
+  original_name: string | null
+  available: boolean
   created_at: string
 }
 
@@ -110,10 +116,10 @@ export interface TagSuggestion {
 
 /** App settings */
 export interface AppSettings {
-  api_key: string
   api_endpoint: string
   api_model: string
   theme: string
+  appearance_mode: "system" | "light" | "dark"
   language: "zh" | "en"
   custom_accent: string
   custom_bg_primary: string
@@ -154,23 +160,38 @@ export interface ErrorLog {
 
 /** IPC channel names */
 
-/** Provider / API 供应商配置 */
+/** Provider metadata safe to expose to the renderer. Secrets stay in the main process. */
 export interface Provider {
   id: string
   name: string
   access_mode: "login" | "api"
   protocol: "chat_completions" | "responses"
   base_url: string
-  api_key: string
+  has_api_key: boolean
+  has_auth_config: boolean
   default_model: string
   test_model: string
   context_size: number | null
   models: string[]
   is_active: boolean
-  config_toml: string
-  auth_json: string
   created_at: string
   updated_at: string
+}
+
+/** Provider values accepted from the renderer. Secret values are write-only. */
+export interface ProviderSaveInput {
+  id?: string
+  name?: string
+  access_mode?: "login" | "api"
+  protocol?: "chat_completions" | "responses"
+  base_url?: string
+  api_key?: string
+  default_model?: string
+  test_model?: string
+  context_size?: number | null
+  models?: string[]
+  config_toml?: string
+  auth_json?: string
 }
 
 /** 上游模型信息 */
@@ -205,6 +226,9 @@ export const IPC_CHANNELS = {
   HISTORY_LIST: "history:list",
   HISTORY_ADD: "history:add",
   HISTORY_CLEAR: "history:clear",
+
+  // Prompt assets
+  PROMPT_ASSETS_LIST: "promptAssets:list",
 
   // Settings
   SETTINGS_GET_ALL: "settings:getAll",
@@ -259,6 +283,45 @@ export const IPC_CHANNELS = {
   FAV_SUB_ADD: "fav:subAdd",
   FAV_SUB_REMOVE: "fav:subRemove",
   FAV_SUB_CHECK: "fav:subCheck",
+
+  // Migrations
+  MIGRATION_SELECT_FRIEND_PROMPTS: "migration:selectFriendPrompts",
+  MIGRATION_IMPORT_FRIEND_PROMPTS: "migration:importFriendPrompts",
+
+  // Tasks
+  TASKS_CREATE: "tasks:create",
+  TASKS_LIST: "tasks:list",
+  TASKS_GET: "tasks:get",
+  TASKS_CANCEL: "tasks:cancel",
+  TASKS_RETRY: "tasks:retry",
+  TASKS_SUBSCRIBE: "tasks:subscribe",
+
+  // WD14
+  WD14_STATUS: "wd14:status",
+  WD14_MODELS: "wd14:models",
+  WD14_SWITCH_MODEL: "wd14:switchModel",
+  WD14_CREATE_TASK: "wd14:createTask",
+  WD14_DIAGNOSTICS: "wd14:diagnostics",
+  WD14_SELECT_MODEL_DIRECTORY: "wd14:selectModelDirectory",
+  WD14_SELECT_PYTHON_PATH: "wd14:selectPythonPath",
+
+  // ComfyUI
+  COMFY_STATUS: "comfy:status",
+  COMFY_MODELS: "comfy:models",
+  COMFY_WORKFLOWS_LIST: "comfy:workflows:list",
+  COMFY_WORKFLOW_IMPORT: "comfy:workflows:import",
+  COMFY_WORKFLOW_DELETE: "comfy:workflows:delete",
+  COMFY_CREATE_TASK: "comfy:createTask",
+  COMFY_QUICK_GENERATE: "comfy:quickGenerate",
+
+  // Canvas
+  CANVAS_LIST: "canvas:list",
+  CANVAS_GET: "canvas:get",
+  CANVAS_CREATE: "canvas:create",
+  CANVAS_SAVE: "canvas:save",
+  CANVAS_DELETE: "canvas:delete",
+  CANVAS_EXPORT_PACKAGE: "canvas:exportPackage",
+  CANVAS_IMPORT_PACKAGE: "canvas:importPackage",
 } as const
 
 /** Default tag weight */

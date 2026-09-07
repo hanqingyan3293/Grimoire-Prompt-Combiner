@@ -21,112 +21,125 @@ html {
   --panel-control-size: 28px;
   --panel-padding: 10px;
 }
-/* 魔导书 Grimoire v7 — 主题系统 */
-/* 通过在 <html> 上设置 data-theme 属性切换主题 */
+/* Grimoire v8: appearance and accent are independent axes. */
+
+:root {
+  color-scheme: light;
+  --color-bg-primary: #f5f6f8;
+  --color-bg-secondary: #ffffff;
+  --color-bg-tertiary: #ebeef2;
+  --color-text-primary: #17191d;
+  --color-text-secondary: #626975;
+  --color-accent: #a855f7;
+  --color-accent-hover: #9333ea;
+  --color-accent-fill: #7e22ce;
+  --color-accent-fill-hover: #6b21a8;
+  --color-accent-foreground: #ffffff;
+  --color-accent-text-light: #7e22ce;
+  --color-accent-text-dark: #d8b4fe;
+  --color-accent-text: var(--color-accent-text-light);
+  --color-border: #d8dce3;
+  --color-border-strong: #bcc2cc;
+  --color-hover: rgba(17,24,39,0.055);
+  --color-panel-shadow: rgba(17,24,39,0.10);
+}
+
+[data-appearance="dark"] {
+  color-scheme: dark;
+  --color-bg-primary: #111214;
+  --color-bg-secondary: #191b1f;
+  --color-bg-tertiary: #22252b;
+  --color-text-primary: #f4f5f7;
+  --color-text-secondary: #a8adb7;
+  --color-border: #30343b;
+  --color-border-strong: #454a54;
+  --color-hover: rgba(255,255,255,0.06);
+  --color-panel-shadow: rgba(0,0,0,0.32);
+  --color-accent-text: var(--color-accent-text-dark);
+}
+
+[data-appearance="light"] {
+  color-scheme: light;
+  --color-bg-primary: #f5f6f8;
+  --color-bg-secondary: #ffffff;
+  --color-bg-tertiary: #ebeef2;
+  --color-text-primary: #17191d;
+  --color-text-secondary: #626975;
+  --color-border: #d8dce3;
+  --color-border-strong: #bcc2cc;
+  --color-hover: rgba(17,24,39,0.055);
+  --color-panel-shadow: rgba(17,24,39,0.10);
+  --color-accent-text: var(--color-accent-text-light);
+}
 
 /* ===== Neon 霓虹（默认）===== */
 [data-theme="neon"] {
-  --color-bg-primary: #0f0f1a;
-  --color-bg-secondary: #1a1a2e;
-  --color-bg-tertiary: #252540;
-  --color-text-primary: #e8e8f0;
-  --color-text-secondary: #a0a0b8;
   --color-accent: #a855f7;
   --color-accent-hover: #9333ea;
-  --color-border: #2a2a45;
-  --color-border-strong: #414166;
-  --color-hover: rgba(255,255,255,0.055);
-  --color-panel-shadow: rgba(0,0,0,0.28);
+  --color-accent-fill: #7e22ce;
+  --color-accent-fill-hover: #6b21a8;
+  --color-accent-text-light: #7e22ce;
+  --color-accent-text-dark: #d8b4fe;
 }
 
 /* ===== Clean 简洁 ===== */
 [data-theme="clean"] {
-  --color-bg-primary: #f8fafc;
-  --color-bg-secondary: #ffffff;
-  --color-bg-tertiary: #f1f5f9;
-  --color-text-primary: #1e293b;
-  --color-text-secondary: #64748b;
   --color-accent: #3b82f6;
   --color-accent-hover: #2563eb;
-  --color-border: #e2e8f0;
-  --color-border-strong: #cbd5e1;
-  --color-hover: rgba(15,23,42,0.055);
-  --color-panel-shadow: rgba(15,23,42,0.10);
+  --color-accent-fill: #1d4ed8;
+  --color-accent-fill-hover: #1e40af;
+  --color-accent-text-light: #1d4ed8;
+  --color-accent-text-dark: #93c5fd;
 }
 
 /* ===== Gold 金色 ===== */
 [data-theme="gold"] {
-  --color-bg-primary: #1a1a0f;
-  --color-bg-secondary: #2a2a1a;
-  --color-bg-tertiary: #3a3a25;
-  --color-text-primary: #f0e8d0;
-  --color-text-secondary: #a09870;
   --color-accent: #f59e0b;
   --color-accent-hover: #d97706;
-  --color-border: #4a4a35;
-  --color-border-strong: #666241;
-  --color-hover: rgba(255,255,255,0.06);
-  --color-panel-shadow: rgba(0,0,0,0.30);
+  --color-accent-fill: #92400e;
+  --color-accent-fill-hover: #78350f;
+  --color-accent-text-light: #92400e;
+  --color-accent-text-dark: #fcd34d;
 }
 
 /* ===== Midnight 暗夜 ===== */
 [data-theme="midnight"] {
-  --color-bg-primary: #0f172a;
-  --color-bg-secondary: #1e293b;
-  --color-bg-tertiary: #334155;
-  --color-text-primary: #e2e8f0;
-  --color-text-secondary: #94a3b8;
   --color-accent: #6366f1;
   --color-accent-hover: #4f46e5;
-  --color-border: #475569;
-  --color-border-strong: #64748b;
-  --color-hover: rgba(226,232,240,0.055);
-  --color-panel-shadow: rgba(0,0,0,0.30);
+  --color-accent-fill: #4338ca;
+  --color-accent-fill-hover: #3730a3;
+  --color-accent-text-light: #4338ca;
+  --color-accent-text-dark: #a5b4fc;
 }
 
 /* ===== Sakura 樱花 ===== */
 [data-theme="sakura"] {
-  --color-bg-primary: #1a0f15;
-  --color-bg-secondary: #2a1a25;
-  --color-bg-tertiary: #3a2535;
-  --color-text-primary: #f0e0e8;
-  --color-text-secondary: #a09098;
   --color-accent: #ec4899;
   --color-accent-hover: #db2777;
-  --color-border: #4a3545;
-  --color-border-strong: #65495e;
-  --color-hover: rgba(255,255,255,0.055);
-  --color-panel-shadow: rgba(0,0,0,0.30);
+  --color-accent-fill: #be185d;
+  --color-accent-fill-hover: #9d174d;
+  --color-accent-text-light: #be185d;
+  --color-accent-text-dark: #f9a8d4;
 }
 
 /* ===== Forest 森林 ===== */
 [data-theme="forest"] {
-  --color-bg-primary: #0f1a12;
-  --color-bg-secondary: #1a2a1e;
-  --color-bg-tertiary: #253a2a;
-  --color-text-primary: #e0f0e4;
-  --color-text-secondary: #90a898;
   --color-accent: #22c55e;
   --color-accent-hover: #16a34a;
-  --color-border: #354a3a;
-  --color-border-strong: #4b6651;
-  --color-hover: rgba(224,240,228,0.055);
-  --color-panel-shadow: rgba(0,0,0,0.30);
+  --color-accent-fill: #166534;
+  --color-accent-fill-hover: #14532d;
+  --color-accent-text-light: #166534;
+  --color-accent-text-dark: #86efac;
 }
 
 /* ===== Sunset 日落 ===== */
 [data-theme="sunset"] {
-  --color-bg-primary: #1a100f;
-  --color-bg-secondary: #2a1a18;
-  --color-bg-tertiary: #3a2520;
-  --color-text-primary: #f0e0d8;
-  --color-text-secondary: #a09888;
   --color-accent: #f97316;
   --color-accent-hover: #ea580c;
-  --color-border: #4a3528;
-  --color-border-strong: #664936;
-  --color-hover: rgba(255,255,255,0.055);
-  --color-panel-shadow: rgba(0,0,0,0.30);
+  --color-accent-fill: #c2410c;
+  --color-accent-fill-hover: #9a3412;
+  --color-accent-text-light: #c2410c;
+  --color-accent-text-dark: #fdba74;
 }
 
 /* ===== 动画 ===== */

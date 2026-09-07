@@ -65,7 +65,7 @@ export function ModelPicker({ models, selected, onSelect, disabled }: Props) {
               onClick={() => { onSelect(m); setOpen(false) }}
               className={"w-full text-left px-3 py-2 text-xs transition-colors " +
                 (m === selected
-                  ? 'bg-[var(--color-accent)]/15 text-[var(--color-accent)] font-medium'
+                  ? 'bg-[var(--color-accent)]/15 text-[var(--color-accent-text)] font-medium'
                   : 'text-[var(--color-text-primary)] hover:bg-[var(--color-accent)]/5')}
             >
               {m}

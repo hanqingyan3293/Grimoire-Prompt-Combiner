@@ -1,9 +1,12 @@
 ﻿// 魔导书 Grimoire v7 — 底部状态栏
 import React, { useState, useEffect } from 'react'
+import { AlertTriangle, CheckCircle2, Copy, Tag, XCircle } from 'lucide-react'
 import { useI18n } from '../../i18n/context'
 import { usePromptsStore } from '../../stores/prompts.store'
 import { useTagsStore } from '../../stores/tags.store'
 import { Modal } from '../ui/Modal'
+import { Button } from '../ui/Button'
+import { EmptyState } from '../ui/Feedback'
 import type { ErrorLog } from '@shared/types'
 
 export function StatusBar() {
@@ -29,9 +32,9 @@ export function StatusBar() {
     <>
       <div className="ui-app-chrome flex h-7 items-center justify-between border-t border-[var(--color-border)] px-3 text-[11px] select-none">
         <div className="flex items-center gap-2">
-          <span className="ui-status-pill">🏷 {tags.length} 标签</span>
-          <span className="ui-status-pill">✅ 正面 {positive.length}</span>
-          <span className="ui-status-pill">❌ 负面 {negative.length}</span>
+          <span className="ui-status-pill"><Tag size={11} aria-hidden='true' />{tags.length} 标签</span>
+          <span className="ui-status-pill"><CheckCircle2 size={11} className='text-[var(--color-success)]' aria-hidden='true' />正面 {positive.length}</span>
+          <span className="ui-status-pill"><XCircle size={11} className='text-[var(--color-danger)]' aria-hidden='true' />负面 {negative.length}</span>
         </div>
         <div className="flex items-center gap-2">
           {errorCount > 0 && (
@@ -39,7 +42,7 @@ export function StatusBar() {
               onClick={() => { setErrorOpen(true); loadErrors() }}
               className="ui-status-pill ui-status-error hover:brightness-110"
             >
-              ⚠ {errorCount} 错误
+              <AlertTriangle size={11} aria-hidden='true' />{errorCount} 错误
             </button>
           )}
           <span className="ui-status-pill">Grimoire v7.1.0 | GPL-3.0</span>
@@ -49,7 +52,7 @@ export function StatusBar() {
       {/* Error Log Modal */}
       <Modal title={t.errors.title} open={errorOpen} onClose={() => setErrorOpen(false)} maxWidth="max-w-2xl">
         {errorLogs.length === 0 ? (
-          <div className="text-center text-[var(--color-text-secondary)] py-4">{t.settings.noErrors}</div>
+          <EmptyState icon={CheckCircle2} title={t.settings.noErrors} description='应用运行期间记录到的错误会显示在这里' />
         ) : (
           <div className="space-y-3 max-h-96 overflow-auto">
             {errorLogs.map(log => (
@@ -60,12 +63,7 @@ export function StatusBar() {
                 <div className="text-[10px] text-[var(--color-text-secondary)] mt-1">{log.created_at}</div>
               </div>
             ))}
-            <button
-              onClick={() => navigator.clipboard.writeText(JSON.stringify(errorLogs, null, 2))}
-              className="text-xs text-[var(--color-accent)] hover:underline"
-            >
-              {t.errors.copyError}
-            </button>
+            <Button size='sm' icon={Copy} onClick={() => void navigator.clipboard.writeText(JSON.stringify(errorLogs, null, 2))}>{t.errors.copyError}</Button>
           </div>
         )}
       </Modal>

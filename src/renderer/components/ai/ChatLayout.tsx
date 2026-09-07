@@ -1,9 +1,11 @@
 // 魔导书 Grimoire v7 — Chatbox 布局
 import React, { useCallback, useEffect } from 'react'
+import { Bot } from 'lucide-react'
 import { useChatStore } from '../../stores/chat.store'
 import { ConversationList } from './ConversationList'
 import { MessageList } from './MessageList'
 import { InputArea } from './InputArea'
+import { EmptyState } from '../ui/Feedback'
 
 interface Props {
   onClose?: () => void
@@ -46,13 +48,7 @@ export function ChatLayout({ onClose }: Props) {
             <InputArea />
           </>
         ) : (
-          <div className="flex-1 flex items-center justify-center">
-            <div className="text-center text-[var(--color-text-secondary)]">
-              <div className="text-5xl mb-4">🤖</div>
-              <div className="text-lg font-medium">魔导书 AI 助手</div>
-              <div className="text-sm mt-2 opacity-70">选择或创建一个对话开始聊天</div>
-            </div>
-          </div>
+          <div className="flex flex-1 items-center justify-center p-6"><div className='w-full max-w-md'><EmptyState icon={Bot} title='魔导书 AI 助手' description='选择或创建一个对话开始聊天' /></div></div>
         )}
       </div>
     </div>

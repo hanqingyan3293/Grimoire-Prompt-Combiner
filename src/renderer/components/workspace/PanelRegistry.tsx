@@ -1,14 +1,21 @@
-import React from "react"
+import React, { Suspense, lazy } from "react"
+import { LoaderCircle } from 'lucide-react'
 import { Sidebar } from "../layout/Sidebar"
 import { MainContent } from "../layout/MainContent"
 import { RightPanel } from "../layout/RightPanel"
 import { PresetsPanel } from "../presets/PresetsPanel"
 import { HistoryPanel } from "../history/HistoryPanel"
 import { ImagesPanel } from "../images/ImagesPanel"
-import { ChatLayout } from "../ai/ChatLayout"
-import { AIVisionPanel } from "../ai/AIVisionPanel"
 import { QuickAIPanel, QuickSettingsPanel } from "../layout/QuickUtilityPopover"
 import type { PanelDefinition, PanelType } from "./panelTypes"
+
+const ChatLayout = lazy(() => import('../ai/ChatLayout').then(module => ({ default: module.ChatLayout })))
+const AIVisionPanel = lazy(() => import('../ai/AIVisionPanel').then(module => ({ default: module.AIVisionPanel })))
+const TasksPanel = lazy(() => import('../tasks/TasksPanel').then(module => ({ default: module.TasksPanel })))
+const WD14Panel = lazy(() => import('../wd14/WD14Panel').then(module => ({ default: module.WD14Panel })))
+const ComfyUIPanel = lazy(() => import('../comfy/ComfyUIPanel').then(module => ({ default: module.ComfyUIPanel })))
+const CanvasPanel = lazy(() => import('../canvas/CanvasPanel').then(module => ({ default: module.CanvasPanel })))
+const PromptAssetsPanel = lazy(() => import('../prompt-assets/PromptAssetsPanel').then(module => ({ default: module.PromptAssetsPanel })))
 
 export const PANEL_DEFINITIONS: Record<PanelType, PanelDefinition> = {
   "tag-sidebar": {
@@ -42,13 +49,19 @@ export const PANEL_DEFINITIONS: Record<PanelType, PanelDefinition> = {
   "ai-vision": { type: "ai-vision", title: "AI 识图", description: "图片识别和标签建议", enabled: true },
   settings: { type: "settings", title: "设置", description: "快捷主题、字体和界面密度设置", enabled: true },
   errors: { type: "errors", title: "错误", description: "错误日志", enabled: false },
+  tasks: { type: "tasks", title: "任务队列", description: "后台反推和生成任务", enabled: true },
+  wd14: { type: "wd14", title: "WD14 反推", description: "本地图片标签反推", enabled: true },
+  comfyui: { type: "comfyui", title: "ComfyUI", description: "工作流、模型和生成任务", enabled: true },
+  canvas: { type: "canvas", title: "无限画布", description: "图片、提示词和任务画布", enabled: true },
+  "prompt-assets": { type: "prompt-assets", title: "提示词资产", description: "统一搜索迁移资产、历史、预设和收藏", enabled: true },
 }
 
 export const ENABLED_PANEL_OPTIONS = Object.values(PANEL_DEFINITIONS).filter(panel => panel.enabled)
 export const PANEL_OPTION_GROUPS: { title: string; types: PanelType[] }[] = [
   { title: "核心", types: ["tag-sidebar", "prompt-workbench", "utility-sidebar"] },
-  { title: "素材", types: ["presets", "history", "images"] },
+  { title: "素材", types: ["prompt-assets", "presets", "history", "images"] },
   { title: "AI", types: ["ai-assistant", "ai-chat", "ai-vision"] },
+  { title: "创作工具", types: ["canvas", "wd14", "comfyui", "tasks"] },
   { title: "设置", types: ["settings"] },
 ]
 
@@ -69,9 +82,19 @@ export function renderPanel(type: PanelType): React.ReactNode {
     case "ai-assistant":
       return <QuickAIPanel variant="embedded" />
     case "ai-chat":
-      return <ChatLayout />
+      return <LazyPanel><ChatLayout /></LazyPanel>
     case "ai-vision":
-      return <AIVisionPanel />
+      return <LazyPanel><AIVisionPanel /></LazyPanel>
+    case "wd14":
+      return <LazyPanel><WD14Panel /></LazyPanel>
+    case "tasks":
+      return <LazyPanel><TasksPanel /></LazyPanel>
+    case "comfyui":
+      return <LazyPanel><ComfyUIPanel /></LazyPanel>
+    case "canvas":
+      return <LazyPanel><CanvasPanel /></LazyPanel>
+    case "prompt-assets":
+      return <LazyPanel><PromptAssetsPanel /></LazyPanel>
     case "settings":
       return <ScrollablePanel><QuickSettingsPanel variant="embedded" /></ScrollablePanel>
     default:
@@ -81,6 +104,10 @@ export function renderPanel(type: PanelType): React.ReactNode {
         </div>
       )
   }
+}
+
+function LazyPanel({ children }: { children: React.ReactNode }) {
+  return <Suspense fallback={<div className="flex h-full items-center justify-center gap-2 text-sm text-[var(--color-text-secondary)]"><LoaderCircle size={17} className="animate-spin" aria-hidden="true" /><span>正在载入面板</span></div>}>{children}</Suspense>
 }
 
 function ScrollablePanel({ children }: { children: React.ReactNode }) {

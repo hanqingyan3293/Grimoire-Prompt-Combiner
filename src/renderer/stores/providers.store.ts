@@ -1,6 +1,6 @@
 // 魔导书 Grimoire v7 — Provider Store
 import { create } from "zustand"
-import type { Provider } from "@shared/types"
+import type { Provider, ProviderSaveInput } from "@shared/types"
 
 interface ProviderState {
   providers: Provider[]
@@ -8,7 +8,7 @@ interface ProviderState {
   loading: boolean
 
   loadProviders: () => Promise<void>
-  saveProvider: (data: Partial<Provider> & { id?: string }) => Promise<void>
+  saveProvider: (data: ProviderSaveInput) => Promise<void>
   deleteProvider: (id: string) => Promise<void>
   setActive: (id: string) => Promise<void>
   refreshActive: () => Promise<void>

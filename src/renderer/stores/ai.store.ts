@@ -1,6 +1,5 @@
 ﻿// 魔导书 Grimoire v7 — AI Store
 import { create } from 'zustand'
-import type { ChatMessage } from '@shared/types'
 
 interface AIMessage {
   id: string
@@ -36,20 +35,8 @@ export const useAIStore = create<AIState>((set, get) => ({
   error: null,
   
   loadHistory: async () => {
-    try {
-      const history = await window.api.ai.chatHistory()
-      set({
-        messages: history.map((m) => ({
-          id: m.id,
-          role: m.role as string as 'user' | 'assistant' | 'system',
-          content: m.content,
-          model: m.model,
-          timestamp: m.created_at,
-        })),
-      })
-    } catch {
-      // noop
-    }
+    // This legacy store is retained for compatibility; chat history is owned by chat.store.
+    set({ messages: [] })
   },
   
   sendMessage: async (content, model) => {
@@ -71,8 +58,8 @@ export const useAIStore = create<AIState>((set, get) => ({
     
     // 注册流式回调
     cleanupChunk?.()
-    cleanupChunk = window.api.ai.onChunk((chunk: string) => {
-      set(s => ({ streamingText: s.streamingText + chunk }))
+    cleanupChunk = window.api.ai.onChunk((data: { text?: string }) => {
+      set(s => ({ streamingText: s.streamingText + (data.text || '') }))
     })
     
     try {
@@ -81,7 +68,14 @@ export const useAIStore = create<AIState>((set, get) => ({
         content: m.content,
       }))
       
-      const result = await window.api.ai.chat(allMessages, model)
+      const providers = await window.api.providers.list()
+      const provider = providers.find(item => item.is_active) || providers[0]
+      if (!provider) throw new Error('请先配置 API 供应商')
+      const result = await window.api.ai.sendMessage({
+        providerId: provider.id,
+        model,
+        messages: allMessages,
+      })
       
       if (result.success) {
         const assistantMsg: AIMessage = {
@@ -115,7 +109,15 @@ export const useAIStore = create<AIState>((set, get) => ({
   analyzeImage: async (imageBase64, prompt) => {
     set({ visionLoading: true, error: null })
     try {
-      const result = await window.api.ai.vision(imageBase64, prompt)
+      const providers = await window.api.providers.list()
+      const provider = providers.find(item => item.is_active) || providers[0]
+      if (!provider) throw new Error('请先配置 API 供应商')
+      const result = await window.api.ai.vision({
+        providerId: provider.id,
+        model: provider.default_model || 'gpt-4o',
+        imageBase64,
+        prompt,
+      })
       set({ visionLoading: false })
       if (result.success) {
         set({ visionResult: result.text || '' })

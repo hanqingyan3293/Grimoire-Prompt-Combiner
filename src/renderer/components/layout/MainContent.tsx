@@ -6,11 +6,16 @@ import { useTagsStore } from "../../stores/tags.store"
 import { useSettingsStore } from "../../stores/settings.store"
 import { TagCards } from "../tags/TagCards"
 import type { PanelTag } from "../../../shared/types"
+import { Clipboard, Eraser, Dices, ListChecks, Redo2, RotateCcw, Search, Trash2, X } from 'lucide-react'
+import { Badge } from '../ui/Badge'
+import { Button, IconButton } from '../ui/Button'
+import { Modal } from '../ui/Modal'
 
-const SCALE_CHIP: Record<string, string> = {
-  small: "text-[10px] px-2 py-0.5 gap-1",
-  medium: "text-xs px-2.5 py-1 gap-1.5",
-  large: "text-sm px-3 py-1.5 gap-2",
+function promptChipScale(value: string): string {
+  const fontSize = Number.parseInt(value, 10)
+  if (fontSize <= 13) return "text-[10px] gap-1"
+  if (fontSize >= 16) return "text-sm gap-2"
+  return "text-xs gap-1.5"
 }
 
 export function MainContent() {
@@ -24,7 +29,7 @@ export function MainContent() {
   const { categories, selectedSubIds, tags: allTags } = useTagsStore()
   const { random_min, random_max, ui_scale } = useSettingsStore()
 
-  const scaleClass = SCALE_CHIP[ui_scale] || SCALE_CHIP.medium
+  const scaleClass = promptChipScale(ui_scale)
   const [magnifierOpen, setMagnifierOpen] = useState(false)
 
   const getPromptByLang = useCallback((lang: "zh" | "en"): string => {
@@ -90,16 +95,16 @@ export function MainContent() {
 
   return (
     <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-      <div className="ui-toolbar flex items-center gap-1 px-3 py-1.5">
-        <ToolBtn onClick={undo} disabled={!canUndo()} title="Ctrl+Z">↩</ToolBtn>
-        <ToolBtn onClick={redo} disabled={!canRedo()} title="Ctrl+Y">↪</ToolBtn>
+      <div className="ui-toolbar flex flex-wrap items-center gap-1.5 px-3 py-2">
+        <IconButton icon={RotateCcw} onClick={undo} disabled={!canUndo()} label="撤销" title="撤销（Ctrl+Z）" />
+        <IconButton icon={Redo2} onClick={redo} disabled={!canRedo()} label="重做" title="重做（Ctrl+Y）" />
         <div className="w-px h-4 bg-[var(--color-border)] mx-1" />
-        <ToolBtn onClick={deduplicate} title="去重">🞇</ToolBtn>
-        <ToolBtn onClick={() => randomPick(availableTags, parseInt(random_min) || 3, parseInt(random_max) || 16)} title="随机">🎉</ToolBtn>
+        <Button size="sm" icon={ListChecks} onClick={deduplicate}>去重</Button>
+        <Button size="sm" icon={Dices} onClick={() => randomPick(availableTags, parseInt(random_min) || 3, parseInt(random_max) || 16)}>随机抽取</Button>
         <div className="w-px h-4 bg-[var(--color-border)] mx-1" />
-        <button onClick={clearPositive} className="px-2 py-1 text-xs text-green-400 hover:bg-green-500/10 rounded">清正面</button>
-        <button onClick={clearNegative} className="px-2 py-1 text-xs text-red-400 hover:bg-red-500/10 rounded">清负面</button>
-        <button onClick={clearAll} className="ui-toolbar-button px-2 py-1 text-xs">全部清空</button>
+        <Button size="sm" variant="ghost" icon={Eraser} onClick={clearPositive} className="text-[var(--color-success)]">清正面</Button>
+        <Button size="sm" variant="ghost" icon={Eraser} onClick={clearNegative} className="text-[var(--color-danger)]">清负面</Button>
+        <Button size="sm" variant="danger" icon={Trash2} onClick={clearAll}>全部清空</Button>
       </div>
 
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
@@ -107,24 +112,24 @@ export function MainContent() {
           <TagCards />
         </div>
 
-        <div className="border-b border-[var(--color-border)] overflow-auto" style={{ maxHeight: "30%", minHeight: "100px" }}>
+        <div className="ui-prompt-section overflow-auto" style={{ maxHeight: "30%", minHeight: "100px" }}>
           <div className="px-3 py-2">
-            <div className="text-xs font-medium text-green-400 mb-1.5">✓ 正面 ({positive.length})</div>
-            <TagChipList tags={positive} onRemove={removePositive} onWeightChange={updateWeight} scaleClass={scaleClass} accent="#a855f7" />
+            <div className="mb-2 flex items-center gap-2"><Badge tone="success">正面</Badge><span className="text-xs text-[var(--color-muted-foreground)]">{positive.length} 个标签</span></div>
+            <TagChipList tags={positive} onRemove={removePositive} onWeightChange={updateWeight} scaleClass={scaleClass} tone="positive" />
           </div>
           <div className="px-3 py-2 border-t border-[var(--color-border)]">
-            <div className="text-xs font-medium text-red-400 mb-1.5">☒ 负面 ({negative.length})</div>
-            <TagChipList tags={negative} onRemove={removeNegative} onWeightChange={updateWeight} scaleClass={scaleClass} accent="#ef4444" />
+            <div className="mb-2 flex items-center gap-2"><Badge tone="danger">负面</Badge><span className="text-xs text-[var(--color-muted-foreground)]">{negative.length} 个标签</span></div>
+            <TagChipList tags={negative} onRemove={removeNegative} onWeightChange={updateWeight} scaleClass={scaleClass} tone="negative" />
           </div>
         </div>
 
-        <div className="shrink-0 p-3 bg-[var(--color-bg-secondary)]">
+        <div className="ui-prompt-section shrink-0 p-3">
           <div className="flex items-center justify-between mb-2 flex-wrap gap-1">
             <span className="ui-section-label">输出</span>
             <div className="flex items-center gap-1">
-              <button onClick={() => handleCopy("zh")} className="ui-subtle-button px-3 py-1.5 text-xs">📋 复制中文</button>
-              <button onClick={() => handleCopy("en")} className="ui-subtle-button px-3 py-1.5 text-xs">📋 复制英文</button>
-              <button onClick={() => setMagnifierOpen(true)} className="ui-subtle-button px-3 py-1.5 text-xs" title="放大查看">🔍</button>
+              <Button size="sm" icon={Clipboard} onClick={() => handleCopy("zh")}>复制中文</Button>
+              <Button size="sm" icon={Clipboard} onClick={() => handleCopy("en")}>复制英文</Button>
+              <IconButton icon={Search} onClick={() => setMagnifierOpen(true)} label="放大查看" />
             </div>
           </div>
           <textarea readOnly value={getFullPrompt()}
@@ -132,42 +137,29 @@ export function MainContent() {
             className="w-full h-20 px-3 py-2 bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded text-sm text-[var(--color-text-primary)] font-mono resize-none focus:outline-none focus:border-[var(--color-accent)]" />
         </div>
 
-        {/* Magnifier Modal */}
-        {magnifierOpen && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50" onClick={() => setMagnifierOpen(false)}>
-            <div className="bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded-lg shadow-2xl w-[90vw] max-w-[800px] max-h-[85vh] flex flex-col" onClick={e => e.stopPropagation()}>
-              <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--color-border)]">
-                <span className="text-sm font-medium text-[var(--color-text-primary)]">🔍 输出预览</span>
-                <button onClick={() => setMagnifierOpen(false)} className="text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] text-lg leading-none">✕</button>
-              </div>
-              <div className="flex-1 overflow-auto p-4 space-y-4">
+        <Modal title="输出预览" open={magnifierOpen} onClose={() => setMagnifierOpen(false)} maxWidth="max-w-[800px]">
+              <div className="space-y-4">
                 <div>
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs font-medium text-green-400">中文</span>
-                    <button onClick={() => copyText(getPromptByLang("zh"))} className="px-3 py-1 text-xs bg-[var(--color-accent)]/10 border border-[var(--color-accent)]/30 text-[var(--color-accent)] rounded hover:bg-[var(--color-accent)]/20">📋 复制中文</button>
+                    <Badge tone="accent">中文</Badge>
+                    <Button size="sm" icon={Clipboard} onClick={() => copyText(getPromptByLang("zh"))}>复制中文</Button>
                   </div>
                   <textarea readOnly value={getPromptByLang("zh")}
                     className="w-full h-28 px-3 py-2 bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded text-sm text-[var(--color-text-primary)] font-mono resize-none" />
                 </div>
                 <div>
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs font-medium text-[var(--color-accent)]">English</span>
-                    <button onClick={() => copyText(getPromptByLang("en"))} className="px-3 py-1 text-xs bg-[var(--color-accent)]/10 border border-[var(--color-accent)]/30 text-[var(--color-accent)] rounded hover:bg-[var(--color-accent)]/20">📋 复制英文</button>
+                    <Badge tone="accent">English</Badge>
+                    <Button size="sm" icon={Clipboard} onClick={() => copyText(getPromptByLang("en"))}>复制英文</Button>
                   </div>
                   <textarea readOnly value={getPromptByLang("en")}
                     className="w-full h-28 px-3 py-2 bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded text-sm text-[var(--color-text-primary)] font-mono resize-none" />
                 </div>
               </div>
-            </div>
-          </div>
-        )}
+        </Modal>
       </div>
     </div>
   )
-}
-
-function ToolBtn({ onClick, disabled, title, children }: { onClick: () => void; disabled?: boolean; title: string; children: React.ReactNode }) {
-  return <button onClick={onClick} disabled={disabled} title={title} className="ui-toolbar-button flex h-7 w-7 items-center justify-center text-xs disabled:cursor-not-allowed disabled:opacity-30">{children}</button>
 }
 
 function WeightInput({ tagId, value, onChange }: { tagId: string; value: number; onChange: (v: number) => void }) {
@@ -203,18 +195,18 @@ function WeightInput({ tagId, value, onChange }: { tagId: string; value: number;
   )
 }
 
-function TagChipList({ tags, onRemove, onWeightChange, scaleClass, accent }: {
-  tags: PanelTag[]; onRemove: (id: string) => void; onWeightChange: (id: string, w: number) => void; scaleClass: string; accent: string
+function TagChipList({ tags, onRemove, onWeightChange, scaleClass, tone }: {
+  tags: PanelTag[]; onRemove: (id: string) => void; onWeightChange: (id: string, w: number) => void; scaleClass: string; tone: 'positive' | 'negative'
 }) {
   if (tags.length === 0) return <div className="text-xs text-[var(--color-text-secondary)] py-1">暂无</div>
   return (
     <div className="flex flex-wrap gap-1.5">
       {tags.map(pt => (
-        <div key={pt.tag.id} className={`flex items-center ${scaleClass} rounded border group`} style={{ backgroundColor: `${accent}15`, borderColor: `${accent}30` }}>
+        <div key={pt.tag.id} className={`ui-prompt-chip ui-prompt-chip-${tone} flex items-center ${scaleClass} group px-2`}>
           <span className="text-[var(--color-text-primary)] whitespace-nowrap">{pt.tag.zh}</span>
-          <input type="range" min="0.1" max="2.0" step="0.1" value={pt.weight} onChange={e => onWeightChange(pt.tag.id, parseFloat(e.target.value))} className="w-10 h-1" style={{ accentColor: accent }} />
+          <input type="range" min="0.1" max="2.0" step="0.1" value={pt.weight} onChange={e => onWeightChange(pt.tag.id, parseFloat(e.target.value))} className={`h-1 w-10 ${tone === 'negative' ? 'accent-[var(--color-danger)]' : 'accent-[var(--color-accent)]'}`} aria-label={`${pt.tag.zh}权重`} />
           <WeightInput tagId={pt.tag.id} value={pt.weight} onChange={(v) => onWeightChange(pt.tag.id, v)} />
-          <button onClick={() => onRemove(pt.tag.id)} className="text-[var(--color-text-secondary)] hover:text-red-400 opacity-0 group-hover:opacity-100">✕</button>
+          <IconButton icon={X} onClick={() => onRemove(pt.tag.id)} label={`移除${pt.tag.zh}`} className="h-6 w-6 min-w-6 opacity-0 group-hover:opacity-100" />
         </div>
       ))}
     </div>

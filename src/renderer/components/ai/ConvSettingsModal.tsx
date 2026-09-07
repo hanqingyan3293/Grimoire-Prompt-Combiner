@@ -77,7 +77,7 @@ ${m.content}
             关闭
           </button>
           <button onClick={handleSave}
-            className="flex-1 py-2 text-sm bg-[var(--color-accent)] text-white rounded-lg disabled:opacity-50">
+            className="flex-1 rounded-lg bg-[var(--color-accent-fill)] py-2 text-sm text-[var(--color-accent-foreground)] disabled:opacity-50">
             {saved ? '已保存' : '保存设置'}
           </button>
         </div>

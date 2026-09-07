@@ -13,9 +13,9 @@ interface TagsState {
   loadTags: () => Promise<void>
   setSearchQuery: (query: string) => void
   toggleSubSelect: (subId: string) => void
-  addTag: (data: { subcategory_id: string; en: string; zh: string }) => Promise<void>
-  updateTag: (id: string, en: string, zh: string) => Promise<void>
-  deleteTag: (id: string) => Promise<void>
+  addTag: (data: { subcategory_id: string; en: string; zh: string }) => Promise<boolean>
+  updateTag: (id: string, en: string, zh: string) => Promise<boolean>
+  deleteTag: (id: string) => Promise<boolean>
   
   createCategory: (zh: string) => Promise<boolean>
   updateCategory: (id: string, zh: string) => Promise<boolean>

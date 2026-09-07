@@ -1,5 +1,6 @@
 ﻿// 魔导书 Grimoire v7 — Toast 通知组件
 import React, { useEffect } from 'react'
+import { AlertCircle, CheckCircle2, Info } from 'lucide-react'
 
 interface ToastProps {
   message: string
@@ -8,23 +9,18 @@ interface ToastProps {
   duration?: number
 }
 
-const colors = {
-  success: 'bg-green-600',
-  error: 'bg-red-600',
-  info: 'bg-blue-600',
-}
+const icons = { success: CheckCircle2, error: AlertCircle, info: Info }
 
 export function Toast({ message, type, onClose, duration = 3000 }: ToastProps) {
+  const Icon = icons[type]
   useEffect(() => {
     const timer = setTimeout(onClose, duration)
     return () => clearTimeout(timer)
   }, [onClose, duration])
 
   return (
-    <div className="fixed bottom-16 left-1/2 -translate-x-1/2 z-50 animate-slide-up">
-      <div className={`${colors[type]} text-white px-4 py-2 rounded-lg shadow-lg text-sm`}>
-        {message}
-      </div>
+    <div className="fixed bottom-16 left-1/2 z-50 -translate-x-1/2 animate-slide-up" role="status" aria-live="polite">
+      <div className={`ui-toast ui-toast-${type}`}><Icon size={17} aria-hidden='true' />{message}</div>
     </div>
   )
 }

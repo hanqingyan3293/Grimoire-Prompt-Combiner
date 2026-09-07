@@ -1,5 +1,6 @@
 // 魔导书 Grimoire v7 — 输入区域
 import React, { useState, useRef, useCallback } from 'react'
+import { AlertTriangle } from 'lucide-react'
 import { useChatStore } from '../../stores/chat.store'
 import { useSettingsStore } from '../../stores/settings.store'
 import { useProviderStore } from '../../stores/providers.store'
@@ -10,7 +11,7 @@ import { ConvSettingsModal } from './ConvSettingsModal'
 export function InputArea() {
   const {
     activeConversationId, conversations, messages,
-    sendMessage, updateConversation,
+    streamingMessageId, sendMessage, updateConversation,
   } = useChatStore()
   const providerStore = useProviderStore()
   const providers = providerStore.providers
@@ -32,14 +33,14 @@ export function InputArea() {
 
   const handleSend = useCallback(() => {
     const text = input.trim()
-    if (!text || !activeProvider) return
-    sendMessage(text, activeProvider.id, model)
+    if (!text || !activeProvider || streamingMessageId) return
+    void sendMessage(text, activeProvider.id, model)
     setInput('')
     // 重置 textarea 高度
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto'
     }
-  }, [input, activeProvider, model, sendMessage])
+  }, [input, activeProvider, model, sendMessage, streamingMessageId])
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     const { getShortcut } = useSettingsStore.getState()
@@ -136,10 +137,7 @@ export function InputArea() {
   if (providers.length === 0) {
     return (
       <div className="border-t border-[var(--color-border)] p-4">
-        <div className="text-center text-sm text-[var(--color-text-secondary)]">
-          <div className="mb-2">⚠ 未配置 API 供应商</div>
-          <div className="text-xs opacity-70">请在设置中添加 API 供应商以开始聊天</div>
-        </div>
+        <div className="ui-inline-note ui-inline-note-warning justify-center text-sm" role='status'><AlertTriangle size={16} aria-hidden='true' /><span><strong className='font-medium'>未配置 API 供应商</strong><span className='ml-2 text-xs opacity-80'>请在设置中添加供应商以开始聊天</span></span></div>
       </div>
     )
   }
@@ -177,7 +175,7 @@ export function InputArea() {
           compressEnabled={compressEnabled}
           onCompressToggle={() => setCompressEnabled(!compressEnabled)}
           onSend={handleSend}
-          canSend={input.trim().length > 0}
+          canSend={input.trim().length > 0 && streamingMessageId === null}
         />
       </div>
 

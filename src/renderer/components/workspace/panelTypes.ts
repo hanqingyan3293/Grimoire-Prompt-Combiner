@@ -15,6 +15,11 @@ export type PanelType =
   | "ai-vision"
   | "settings"
   | "errors"
+  | "tasks"
+  | "wd14"
+  | "comfyui"
+  | "canvas"
+  | "prompt-assets"
 
 export interface PanelDefinition {
   type: PanelType

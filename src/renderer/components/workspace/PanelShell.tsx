@@ -193,13 +193,13 @@ export function PanelShell({
     <section
       data-panel-id={id}
       data-panel-type={type}
-      className={"relative flex h-full w-full min-h-0 min-w-0 flex-col overflow-hidden border border-[var(--color-border-strong)] bg-[var(--color-bg-primary)] shadow-[0_1px_2px_var(--color-panel-shadow),inset_0_1px_0_rgba(255,255,255,0.035)] " + className}
+      className={"ui-panel-shell relative flex h-full w-full min-h-0 min-w-0 flex-col overflow-hidden border border-[var(--color-border-strong)] bg-[var(--color-bg-primary)] shadow-[0_1px_2px_var(--color-panel-shadow),inset_0_1px_0_rgba(255,255,255,0.035)] " + className}
       style={style}
     >
       {showHeader && (
         <div
           className={
-            "relative shrink-0 flex items-center gap-1 px-2 border-b border-[var(--color-border)] bg-[var(--color-bg-secondary)] overflow-visible " +
+            "ui-panel-header relative shrink-0 flex items-center gap-1 px-2 border-b border-[var(--color-border)] bg-[var(--color-bg-secondary)] overflow-visible " +
             (addMenuOpen ? "z-[120]" : "z-40")
           }
           style={{ height: "var(--panel-header-height)" }}
@@ -207,7 +207,7 @@ export function PanelShell({
           <select
             value={type}
             onChange={e => onTypeChange?.(e.target.value as PanelType)}
-            className="min-w-[72px] max-w-[180px] flex-1 bg-transparent text-xs font-medium outline-none hover:text-[var(--color-accent)]"
+            className="ui-panel-select min-w-[72px] max-w-[180px] flex-1 bg-transparent text-xs font-medium outline-none hover:text-[var(--color-accent-text)]"
             style={{ color: "var(--color-text-primary)", backgroundColor: "transparent" }}
             title={title}
           >
@@ -224,7 +224,7 @@ export function PanelShell({
           <div ref={addMenuRef} className="relative shrink-0">
             <button
               onClick={toggleAddMenu}
-              className="rounded border border-transparent bg-[var(--color-bg-primary)]/60 text-[12px] text-[var(--color-text-secondary)] hover:border-[var(--color-accent)]/40 hover:text-[var(--color-accent)] hover:bg-[var(--color-accent)]/10"
+              className="rounded border border-transparent bg-[var(--color-bg-primary)]/60 text-[12px] text-[var(--color-text-secondary)] hover:border-[var(--color-accent)]/40 hover:text-[var(--color-accent-text)] hover:bg-[var(--color-accent)]/10"
               style={{ width: "var(--panel-control-size)", height: "var(--panel-control-size)" }}
               title="添加面板"
             >
@@ -266,7 +266,7 @@ export function PanelShell({
           </div>
           <button
             onClick={() => onSplit?.("horizontal")}
-            className="shrink-0 rounded border border-transparent bg-[var(--color-bg-primary)]/60 text-[12px] text-[var(--color-text-secondary)] hover:border-[var(--color-accent)]/40 hover:text-[var(--color-accent)] hover:bg-[var(--color-accent)]/10"
+            className="shrink-0 rounded border border-transparent bg-[var(--color-bg-primary)]/60 text-[12px] text-[var(--color-text-secondary)] hover:border-[var(--color-accent)]/40 hover:text-[var(--color-accent-text)] hover:bg-[var(--color-accent)]/10"
             style={{ width: "var(--panel-control-size)", height: "var(--panel-control-size)" }}
             title="左右分割"
           >
@@ -274,7 +274,7 @@ export function PanelShell({
           </button>
           <button
             onClick={() => onSplit?.("vertical")}
-            className="shrink-0 rounded border border-transparent bg-[var(--color-bg-primary)]/60 text-[12px] text-[var(--color-text-secondary)] hover:border-[var(--color-accent)]/40 hover:text-[var(--color-accent)] hover:bg-[var(--color-accent)]/10"
+            className="shrink-0 rounded border border-transparent bg-[var(--color-bg-primary)]/60 text-[12px] text-[var(--color-text-secondary)] hover:border-[var(--color-accent)]/40 hover:text-[var(--color-accent-text)] hover:bg-[var(--color-accent)]/10"
             style={{ width: "var(--panel-control-size)", height: "var(--panel-control-size)" }}
             title="上下分割"
           >
@@ -282,7 +282,7 @@ export function PanelShell({
           </button>
           <button
             onClick={onMaximize}
-            className="shrink-0 rounded border border-transparent bg-[var(--color-bg-primary)]/60 text-[12px] text-[var(--color-text-secondary)] hover:border-[var(--color-accent)]/40 hover:text-[var(--color-accent)] hover:bg-[var(--color-accent)]/10"
+            className="shrink-0 rounded border border-transparent bg-[var(--color-bg-primary)]/60 text-[12px] text-[var(--color-text-secondary)] hover:border-[var(--color-accent)]/40 hover:text-[var(--color-accent-text)] hover:bg-[var(--color-accent)]/10"
             style={{ width: "var(--panel-control-size)", height: "var(--panel-control-size)" }}
             title={maximized ? "还原面板" : "最大化面板"}
           >
@@ -369,7 +369,7 @@ function CornerHandle({
   return (
     <button
       onPointerDown={event => onPointerDown(position, event)}
-      className={"absolute z-30 h-3 w-3 opacity-0 hover:opacity-100 focus:opacity-100 " + positionClass}
+      className={"ui-panel-corner absolute z-30 h-3 w-3 opacity-0 hover:opacity-100 focus:opacity-100 " + positionClass}
       title="拖拽分割面板"
       aria-label="拖拽分割面板"
     >

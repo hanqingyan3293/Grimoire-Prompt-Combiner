@@ -31,6 +31,7 @@ interface PromptsState {
   
   getFormattedPrompt: (lang?: "zh" | "en") => string
   getFullPrompt: (lang?: "zh" | "en") => string
+  replaceFromPromptText: (text: string, tags: Tag[]) => { matched: number; unknown: string[] }
   
   getPresetData: () => { positive: { tag_id: string; weight: number }[]; negative: { tag_id: string; weight: number }[] }
   loadPresetData: (data: { positive: { tag_id: string; weight: number }[]; negative: { tag_id: string; weight: number }[] }, tagMap: Map<string, Tag>) => void
@@ -246,6 +247,36 @@ export const usePromptsStore = create<PromptsState>((set, get) => ({
     }
     
     return result
+  },
+
+  replaceFromPromptText: (text, tags) => {
+    const positive: PanelTag[] = []
+    const negative: PanelTag[] = []
+    const unknown: string[] = []
+    const tagMap = new Map<string, Tag>()
+    for (const tag of tags) {
+      tagMap.set(tag.en.trim().toLowerCase(), tag)
+      tagMap.set(tag.zh.trim(), tag)
+    }
+    let negativeMode = false
+    for (const rawPart of text.replace(/\r/g, "").split(/[,\n]/)) {
+      let part = rawPart.trim()
+      if (!part) continue
+      if (part === "--neg") { negativeMode = true; continue }
+      if (part.startsWith("--neg ")) { negativeMode = true; part = part.slice(6).trim() }
+      if (!part) continue
+      const weighted = part.match(/^\((.*):([0-9]+(?:\.[0-9]+)?)\)$/)
+      const label = (weighted?.[1] || part).trim()
+      const tag = tagMap.get(label.toLowerCase()) || tagMap.get(label)
+      if (!tag) { unknown.push(label); continue }
+      const target = negativeMode ? negative : positive
+      if (target.some(item => item.tag.id === tag.id)) continue
+      target.push({ tag, weight: weighted ? Math.min(2, Math.max(0.1, Number(weighted[2]))) : DEFAULT_WEIGHT, category: "", subcategory: "" })
+    }
+    const state = get()
+    if (!positive.length && !negative.length) return { matched: 0, unknown }
+    set({ positive, negative, undoStack: pushUndo(state), redoStack: [] })
+    return { matched: positive.length + negative.length, unknown }
   },
   
   getPresetData: () => {

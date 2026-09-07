@@ -34,6 +34,28 @@ function applyUiDensity(density: string) {
   document.documentElement.setAttribute("data-ui-density", density)
 }
 
+let appearanceMediaCleanup: (() => void) | null = null
+
+function normalizeAppearanceMode(value: string): "system" | "light" | "dark" {
+  return value === "light" || value === "dark" ? value : "system"
+}
+
+function applyAppearanceMode(value: string) {
+  appearanceMediaCleanup?.()
+  appearanceMediaCleanup = null
+  const mode = normalizeAppearanceMode(value)
+  const media = window.matchMedia("(prefers-color-scheme: dark)")
+  const apply = () => {
+    document.documentElement.setAttribute("data-appearance-mode", mode)
+    document.documentElement.setAttribute("data-appearance", mode === "system" ? (media.matches ? "dark" : "light") : mode)
+  }
+  apply()
+  if (mode === "system") {
+    media.addEventListener("change", apply)
+    appearanceMediaCleanup = () => media.removeEventListener("change", apply)
+  }
+}
+
 const COLOR_OVERRIDE_VARS = {
   custom_bg_primary: "--color-bg-primary",
   custom_bg_secondary: "--color-bg-secondary",
@@ -52,9 +74,36 @@ function adjustHexColor(hex: string, amount: number) {
   return `#${next.join("")}`
 }
 
+function colorLuminance(hex: string) {
+  const channels = [1, 3, 5].map(start => Number.parseInt(hex.slice(start, start + 2), 16) / 255)
+  const linear = channels.map(value => value <= 0.03928 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4)
+  return 0.2126 * linear[0] + 0.7152 * linear[1] + 0.0722 * linear[2]
+}
+
+function contrastRatio(first: string, second: string) {
+  const a = colorLuminance(first)
+  const b = colorLuminance(second)
+  return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05)
+}
+
+function findAccessibleShade(hex: string, background: string, direction: -1 | 1) {
+  let shade = hex
+  for (let step = 0; step < 32 && contrastRatio(shade, background) < 4.5; step += 1) {
+    shade = adjustHexColor(shade, direction * 8)
+  }
+  return shade
+}
+
 function applyAccent(value: string) {
+  if (!/^#[0-9a-fA-F]{6}$/.test(value)) return
+  const fill = findAccessibleShade(value, '#ffffff', -1)
   document.documentElement.style.setProperty("--color-accent", value)
   document.documentElement.style.setProperty("--color-accent-hover", adjustHexColor(value, -22))
+  document.documentElement.style.setProperty("--color-accent-fill", fill)
+  document.documentElement.style.setProperty("--color-accent-fill-hover", adjustHexColor(fill, -18))
+  document.documentElement.style.setProperty("--color-accent-foreground", '#ffffff')
+  document.documentElement.style.setProperty("--color-accent-text-light", findAccessibleShade(value, '#ffffff', -1))
+  document.documentElement.style.setProperty("--color-accent-text-dark", findAccessibleShade(value, '#191b1f', 1))
 }
 
 function isColorOverrideKey(key: string): key is ColorOverrideKey {
@@ -83,7 +132,10 @@ function applyColorOverrides(values: Partial<Record<ColorOverrideKey, string>>) 
 }
 
 export const useSettingsStore = create<SettingsState>((set, get) => ({
+  api_endpoint: "https://api.openai.com/v1",
+  api_model: "gpt-4o",
   theme: "neon",
+  appearance_mode: "system",
   language: "zh",
   custom_accent: "#a855f7",
   custom_bg_primary: "",
@@ -101,10 +153,11 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   loadSettings: async () => {
     set({ loading: true })
     try {
-      const raw = await window.api.settings.getAll() as Record<string, string>
+      const raw = await window.api.settings.getAll()
       const acc = raw.custom_accent || "#a855f7"
       const scale = normalizeUiFontSize(raw.ui_scale || "14")
       const density = raw.ui_density || "normal"
+      const appearanceMode = normalizeAppearanceMode(raw.appearance_mode || "system")
       const colorOverrides = {
         custom_bg_primary: raw.custom_bg_primary || "",
         custom_bg_secondary: raw.custom_bg_secondary || "",
@@ -113,12 +166,15 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
       }
       set({
         theme: raw.theme || "neon",
+        appearance_mode: appearanceMode,
+        api_endpoint: raw.api_endpoint || "https://api.openai.com/v1",
+        api_model: raw.api_model || "gpt-4o",
         language: (raw.language as "zh" | "en") || "zh",
         custom_accent: acc,
         ...colorOverrides,
         ui_scale: scale,
         ui_density: density,
-        max_undo_steps: parseInt(raw.max_undo_steps) || 50,
+        max_undo_steps: Number.parseInt(String(raw.max_undo_steps), 10) || 50,
         random_min: raw.random_min || "3",
         random_max: raw.random_max || "16",
         loading: false,
@@ -126,13 +182,14 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
       // Load shortcuts
       const shortcuts: Record<string, string> = {}
       for (const [k, v] of Object.entries(raw)) {
-        if (k.startsWith("shortcut_")) {
+        if (k.startsWith("shortcut_") && typeof v === "string") {
           shortcuts[k.replace("shortcut_", "")] = v
         }
       }
       set({ shortcuts })
 
       document.documentElement.setAttribute("data-theme", raw.theme || "neon")
+      applyAppearanceMode(appearanceMode)
       document.documentElement.setAttribute("data-lang", raw.language || "zh")
       applyUiScale(scale)
       applyUiDensity(density)
@@ -148,6 +205,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     try { await window.api.settings.set(key, value) } catch { /* ignore */ }
 
     if (key === "theme") document.documentElement.setAttribute("data-theme", value)
+    if (key === "appearance_mode") applyAppearanceMode(value)
     if (key === "language") document.documentElement.setAttribute("data-lang", value)
     if (key === "ui_scale") applyUiScale(value)
     if (key === "ui_density") applyUiDensity(value)

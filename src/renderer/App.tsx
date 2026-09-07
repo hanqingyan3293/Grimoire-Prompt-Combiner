@@ -1,5 +1,6 @@
 ﻿// 魔导书 Grimoire v7 — App 根组件
-import React, { useEffect, useState } from 'react'
+import React, { Suspense, lazy, useEffect, useState } from 'react'
+import { LoaderCircle } from 'lucide-react'
 import { I18nProvider } from './i18n/context'
 import { useTagsStore } from './stores/tags.store'
 import { useSettingsStore } from './stores/settings.store'
@@ -7,11 +8,13 @@ import { useI18n } from './i18n/context'
 import { StatusBar } from './components/layout/StatusBar'
 import { Toast } from './components/ui/Toast'
 import { ErrorBoundary } from './components/ui/ErrorBoundary'
-import { SettingsWindow } from './components/settings/SettingsWindow'
-import { AIWindow } from './components/ai/AIWindow'
 import { FixedWorkspace } from './components/workspace/FixedWorkspace'
 import { WorkspaceBar } from './components/workspace/WorkspaceBar'
 import './styles/themes.css'
+
+const SettingsWindow = lazy(() => import('./components/settings/SettingsWindow').then(module => ({ default: module.SettingsWindow })))
+const AIWindow = lazy(() => import('./components/ai/AIWindow').then(module => ({ default: module.AIWindow })))
+const windowFallback = <div className="flex h-screen items-center justify-center gap-2 text-sm text-[var(--color-text-secondary)]"><LoaderCircle size={17} className="animate-spin" aria-hidden="true" />正在载入窗口</div>
 
 function AppInner() {
   const [windowType, setWindowType] = useState<string>(window.location.hash.replace("#", "") || "main")
@@ -64,7 +67,7 @@ function AppInner() {
   if (windowType === "settings") {
     return (
       <div className="flex flex-col h-screen overflow-hidden bg-[var(--color-bg-primary)]">
-        <SettingsWindow onClose={() => window.close()} />
+        <Suspense fallback={windowFallback}><SettingsWindow onClose={() => window.close()} /></Suspense>
       </div>
     )
   }
@@ -73,7 +76,7 @@ function AppInner() {
   if (windowType === "ai") {
     return (
       <div className="flex flex-col h-screen overflow-hidden bg-[var(--color-bg-primary)]">
-        <AIWindow onClose={() => window.close()} />
+        <Suspense fallback={windowFallback}><AIWindow onClose={() => window.close()} /></Suspense>
       </div>
     )
   }

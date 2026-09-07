@@ -1,6 +1,10 @@
 // 魔导书 Grimoire v7 — 历史记录面板
 import React, { useState, useEffect, useCallback } from 'react'
+import { AlertTriangle, Clock3, Copy, History, LoaderCircle, RefreshCw, Trash2 } from 'lucide-react'
 import { useI18n } from '../../i18n/context'
+import { Badge } from '../ui/Badge'
+import { Button, IconButton } from '../ui/Button'
+import { EmptyState, PanelHeader } from '../ui/Feedback'
 import { Modal } from '../ui/Modal'
 import type { HistoryItem } from '@shared/types'
 
@@ -8,12 +12,22 @@ export function HistoryPanel() {
   const { t } = useI18n()
   const [history, setHistory] = useState<HistoryItem[]>([])
   const [clearConfirm, setClearConfirm] = useState(false)
+  const [loading, setLoading] = useState(true)
+  const [clearing, setClearing] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   
   const loadHistory = useCallback(async () => {
+    setLoading(true)
     try {
       const list = await window.api.history.list()
       setHistory(list)
-    } catch { /* ignore */ }
+      setError(null)
+    } catch (cause) {
+      console.error('Failed to load history:', cause)
+      setError('历史记录加载失败，请重试')
+    } finally {
+      setLoading(false)
+    }
   }, [])
   
   useEffect(() => { loadHistory() }, [loadHistory])
@@ -32,27 +46,29 @@ export function HistoryPanel() {
   }
   
   const handleClear = async () => {
-    await window.api.history.clear()
-    await loadHistory()
-    setClearConfirm(false)
-    showToast(t.actions.historyCleared, 'success')
+    setClearing(true)
+    try {
+      await window.api.history.clear()
+      await loadHistory()
+      setClearConfirm(false)
+      showToast(t.actions.historyCleared, 'success')
+    } catch (cause) {
+      console.error('Failed to clear history:', cause)
+      showToast('清空历史记录失败', 'error')
+    } finally {
+      setClearing(false)
+    }
   }
   
   return (
-    <div className="p-3 space-y-3">
-      {history.length > 0 && (
-        <button
-          onClick={() => setClearConfirm(true)}
-          className="ui-subtle-button w-full py-1.5 text-xs hover:text-[var(--color-danger)]"
-        >
-          {t.history.clearAll}
-        </button>
-      )}
+    <div className="h-full space-y-3 overflow-auto p-3">
+      <PanelHeader icon={History} title='历史记录' description={`${history.length} 条已保存提示词`} actions={<div className='flex gap-1'><IconButton icon={RefreshCw} label='刷新历史记录' onClick={() => void loadHistory()} disabled={loading} className={loading ? 'ui-spin-icon' : ''} />{history.length > 0 && <IconButton icon={Trash2} label={t.history.clearAll} onClick={() => setClearConfirm(true)} className='ui-icon-button-danger' />}</div>} />
+      {error && <div className='ui-inline-alert text-xs' role='alert'><AlertTriangle size={15} aria-hidden='true' /><span className='flex-1'>{error}</span><Button size='sm' variant='ghost' onClick={() => void loadHistory()}>重试</Button></div>}
       
-      {history.length === 0 ? (
-        <div className="ui-empty-state text-sm">
-          {t.history.noHistory}
-        </div>
+      {loading && history.length === 0 ? (
+        <div className='ui-empty-state flex-col gap-2 text-sm' role='status'><LoaderCircle size={20} className='ui-spin text-[var(--color-accent)]' aria-hidden='true' />正在加载历史记录</div>
+      ) : history.length === 0 ? (
+        <EmptyState icon={History} title={t.history.noHistory} description='复制或生成提示词后，历史记录会显示在这里' />
       ) : (
         <div className="space-y-2">
           {history.map(item => (
@@ -60,28 +76,19 @@ export function HistoryPanel() {
               key={item.id}
               className="ui-list-card group p-3"
             >
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-xs text-[var(--color-text-secondary)]">
+              <div className="mb-2 flex items-center justify-between gap-2">
+                <span className="flex items-center gap-1 text-xs text-[var(--color-text-secondary)]"><Clock3 size={12} aria-hidden='true' />
                   {new Date(item.created_at).toLocaleString('zh-CN')}
                 </span>
-                <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <span className="text-[10px] text-[var(--color-text-secondary)]">
-                    ✅{item.positive_count}
-                  </span>
-                  <span className="text-[10px] text-[var(--color-text-secondary)]">
-                    ❌{item.negative_count}
-                  </span>
+                <div className="flex gap-1">
+                  <Badge tone='success'>正面 {item.positive_count}</Badge>
+                  <Badge tone='danger'>负面 {item.negative_count}</Badge>
                 </div>
               </div>
               <div className="text-xs text-[var(--color-text-primary)] font-mono break-all line-clamp-3 mb-2">
                 {item.prompt}
               </div>
-              <button
-                onClick={() => handleCopy(item.prompt)}
-                className="text-xs text-[var(--color-accent)] hover:underline"
-              >
-                📋 {t.app.copy}
-              </button>
+              <Button size='sm' variant='ghost' icon={Copy} onClick={() => void handleCopy(item.prompt)}>{t.app.copy}</Button>
             </div>
           ))}
         </div>
@@ -92,12 +99,8 @@ export function HistoryPanel() {
         <div className="space-y-3">
           <p className="text-sm">{t.history.clearConfirm}</p>
           <div className="flex gap-2">
-            <button onClick={() => setClearConfirm(false)} className="ui-subtle-button flex-1 py-2 text-sm">
-              {t.app.cancel}
-            </button>
-            <button onClick={handleClear} className="flex-1 py-2 text-sm bg-[var(--color-danger)] text-white rounded">
-              {t.app.delete}
-            </button>
+            <Button onClick={() => setClearConfirm(false)} className='flex-1' disabled={clearing}>{t.app.cancel}</Button>
+            <Button variant='danger' icon={Trash2} onClick={() => void handleClear()} className='flex-1' disabled={clearing}>{clearing ? '清空中' : t.app.delete}</Button>
           </div>
         </div>
       </Modal>

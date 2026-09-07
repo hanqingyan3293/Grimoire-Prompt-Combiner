@@ -8,6 +8,7 @@ interface FavoritesState {
   tagFavIds: Set<string>
   subFavIds: Set<string>
   loading: boolean
+  _loadingPromise: Promise<void> | null
 
   loadFavorites: () => Promise<void>
   toggleTagFav: (tagId: string) => Promise<void>

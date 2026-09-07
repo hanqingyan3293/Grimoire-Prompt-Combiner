@@ -60,7 +60,7 @@ export function SendBar({
       <button
         onClick={onSend}
         disabled={!canSend}
-        className="px-3 py-1 text-xs font-medium bg-[var(--color-accent)] text-white rounded-lg hover:opacity-90 disabled:opacity-30 disabled:cursor-not-allowed transition-opacity">
+        className="rounded-lg bg-[var(--color-accent-fill)] px-3 py-1 text-xs font-medium text-[var(--color-accent-foreground)] transition-colors hover:bg-[var(--color-accent-fill-hover)] disabled:cursor-not-allowed disabled:opacity-30">
         发送
       </button>
     </div>

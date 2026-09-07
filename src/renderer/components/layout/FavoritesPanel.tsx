@@ -1,8 +1,12 @@
 // 魔导书 Grimoire v7 - 收藏面板
 import React, { useState, useEffect } from "react"
+import { Check, ChevronRight, LoaderCircle, Star, StarOff } from "lucide-react"
 import { useTagsStore } from "../../stores/tags.store"
 import { useFavoritesStore } from "../../stores/favorites.store"
 import { usePromptsStore } from "../../stores/prompts.store"
+import { Badge } from "../ui/Badge"
+import { IconButton } from "../ui/Button"
+import { EmptyState } from "../ui/Feedback"
 
 interface FavPanelProps {
   onCtxMenu: (e: any, data: any) => void
@@ -51,7 +55,7 @@ export function FavoritesPanel({ onCtxMenu, onFavCtxMenu }: FavPanelProps) {
   }, [groupedTags.size])
 
   if (favStore.loading) {
-    return <div className="text-sm text-[var(--color-text-secondary)] text-center py-6">加载中...</div>
+    return <div className="ui-empty-state mx-2 flex-col gap-2 text-sm" role='status'><LoaderCircle size={20} className='ui-spin text-[var(--color-accent)]' aria-hidden='true' />正在加载收藏</div>
   }
 
   const toggleTagCat = (id: string) => {
@@ -82,11 +86,7 @@ export function FavoritesPanel({ onCtxMenu, onFavCtxMenu }: FavPanelProps) {
   const empty = favStore.subFavs.length === 0 && favStore.tagFavs.length === 0
   if (empty) {
     return (
-      <div className="text-sm text-[var(--color-text-secondary)] text-center py-10">
-        <div className="text-3xl mb-3">⭐</div>
-        <div>还没有收藏</div>
-        <div className="text-xs mt-1 opacity-70">右键子类或标签来添加收藏</div>
-      </div>
+      <div className='p-2'><EmptyState icon={Star} title='还没有收藏' description='右键子类或标签可添加收藏' /></div>
     )
   }
 
@@ -96,8 +96,8 @@ export function FavoritesPanel({ onCtxMenu, onFavCtxMenu }: FavPanelProps) {
       {favStore.subFavs.length > 0 && (
         <div className="ui-tree-card">
           <div className="ui-tree-header flex items-center gap-2 border-b border-[var(--color-border)] px-3 py-2">
-            <span className="text-sm font-medium text-[var(--color-text-primary)]">⭐ 收藏的子类</span>
-            <span className="text-xs text-[var(--color-text-secondary)] ml-auto">{favStore.subFavs.length}</span>
+            <Star size={14} className='text-[var(--color-accent-text)]' aria-hidden='true' /><span className="text-sm font-medium text-[var(--color-text-primary)]">收藏的子类</span>
+            <Badge className='ml-auto'>{favStore.subFavs.length}</Badge>
           </div>
           <div className="bg-[var(--color-bg-primary)]/30">
             {favStore.subFavs.map((sub: any) => {
@@ -105,14 +105,15 @@ export function FavoritesPanel({ onCtxMenu, onFavCtxMenu }: FavPanelProps) {
               return (
                 <div key={sub.id}
                   onClick={() => store.toggleSubSelect(sub.id)}
+                  onKeyDown={event => { if (event.target === event.currentTarget && (event.key === 'Enter' || event.key === ' ')) { event.preventDefault(); store.toggleSubSelect(sub.id) } }}
+                  role='button' tabIndex={0} aria-pressed={sel}
                   onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); onCtxMenu(e, { x: e.clientX, y: e.clientY, type: "subcategory", id: sub.id, name: sub.zh, parentId: sub.category_id }) }}
                   className={"flex cursor-pointer items-center gap-1 border-b border-[var(--color-border)]/20 pl-5 pr-2 py-1.5 text-xs group last:border-b-0 " + (sel ? "ui-tree-row-active" : "ui-tree-row")}>
                   <span className="flex-1">{sub.zh}</span>
                   <span className="ui-fav-path-label mr-1">{sub.cat_zh}</span>
                   <span className="ui-count-badge">{sub.tag_count}</span>
-                  {sel && <span className="text-[10px]">✓</span>}
-                  <button onClick={(e) => { e.stopPropagation(); favStore.toggleSubFav(sub.id) }}
-                    className="opacity-0 group-hover:opacity-100 text-[10px] text-[var(--color-text-secondary)] hover:text-red-400 px-0.5" title="取消收藏">✕</button>
+                  {sel && <Check size={12} aria-label='已选中' />}
+                  <IconButton icon={StarOff} label={`取消收藏 ${sub.zh}`} onClick={(e) => { e.stopPropagation(); void favStore.toggleSubFav(sub.id) }} className='ui-icon-button-danger h-6 w-6 flex-none' />
                 </div>
               )
             })}
@@ -124,8 +125,8 @@ export function FavoritesPanel({ onCtxMenu, onFavCtxMenu }: FavPanelProps) {
       {favStore.tagFavs.length > 0 && (
         <div className="ui-tree-card">
           <div className="ui-tree-header flex items-center gap-2 border-b border-[var(--color-border)] px-3 py-2">
-            <span className="text-sm font-medium text-[var(--color-text-primary)]">⭐ 收藏的标签</span>
-            <span className="text-xs text-[var(--color-text-secondary)] ml-auto">{favStore.tagFavs.length}</span>
+            <Star size={14} className='text-[var(--color-accent-text)]' aria-hidden='true' /><span className="text-sm font-medium text-[var(--color-text-primary)]">收藏的标签</span>
+            <Badge className='ml-auto'>{favStore.tagFavs.length}</Badge>
           </div>
           <div>
             {Array.from(groupedTags.entries()).map(([catId, subMap]) => {
@@ -136,8 +137,10 @@ export function FavoritesPanel({ onCtxMenu, onFavCtxMenu }: FavPanelProps) {
                 <div key={catId} className="border-b border-[var(--color-border)]/30 last:border-b-0">
                   {/* L1: 大类 */}
                   <div onClick={() => toggleTagCat(catId)}
+                    onKeyDown={event => { if (event.target === event.currentTarget && (event.key === 'Enter' || event.key === ' ')) { event.preventDefault(); toggleTagCat(catId) } }}
+                    role='button' tabIndex={0} aria-expanded={isExp}
                     className="ui-tree-header flex cursor-pointer items-center gap-1.5 px-3 py-1.5">
-                    <span className="w-3 shrink-0 text-center text-xs transition-transform" style={{ transform: isExp ? 'rotate(90deg)' : 'rotate(0deg)' }}>▸</span>
+                    <ChevronRight size={13} className='shrink-0 transition-transform' style={{ transform: isExp ? 'rotate(90deg)' : 'rotate(0deg)' }} aria-hidden='true' />
                     <span className="min-w-0 flex-1 truncate text-xs font-semibold text-[var(--color-text-primary)]">{catName}</span>
                     <span className="ui-count-badge">{totalInCat}</span>
                   </div>
@@ -150,8 +153,10 @@ export function FavoritesPanel({ onCtxMenu, onFavCtxMenu }: FavPanelProps) {
                           <div key={subId}>
                             {/* L2: 子类 */}
                             <div onClick={() => toggleTagSub(subId)}
+                              onKeyDown={event => { if (event.target === event.currentTarget && (event.key === 'Enter' || event.key === ' ')) { event.preventDefault(); toggleTagSub(subId) } }}
+                              role='button' tabIndex={0} aria-expanded={isSubExp}
                               className="ui-tree-row flex cursor-pointer items-center gap-1.5 border-b border-[var(--color-border)]/10 pl-7 pr-2 py-1.5 text-xs">
-                              <span className="w-3 shrink-0 text-center text-[10px] opacity-60 transition-transform" style={{ transform: isSubExp ? 'rotate(90deg)' : 'rotate(0deg)' }}>▸</span>
+                              <ChevronRight size={12} className='shrink-0 opacity-60 transition-transform' style={{ transform: isSubExp ? 'rotate(90deg)' : 'rotate(0deg)' }} aria-hidden='true' />
                               <span className="min-w-0 flex-1 truncate">{subName}</span>
                               <span className="ui-count-badge">{tags.length}</span>
                             </div>
@@ -164,6 +169,8 @@ export function FavoritesPanel({ onCtxMenu, onFavCtxMenu }: FavPanelProps) {
                                   return (
                                     <div key={item.fav_id || tagData.id}
                                       onClick={() => handleTagClick(tagData, item.catZh || '', item.subZh || '')}
+                                      onKeyDown={event => { if (event.target === event.currentTarget && (event.key === 'Enter' || event.key === ' ')) { event.preventDefault(); handleTagClick(tagData, item.catZh || '', item.subZh || '') } }}
+                                      role='button' tabIndex={0} aria-pressed={isPos}
                                       onContextMenu={(e) => {
                                         e.preventDefault()
                                         const ps = usePromptsStore.getState()
@@ -178,9 +185,8 @@ export function FavoritesPanel({ onCtxMenu, onFavCtxMenu }: FavPanelProps) {
                                       className={"flex cursor-pointer items-center gap-1 border-b border-[var(--color-border)]/10 pl-2 pr-2 py-1 text-xs group last:border-b-0 " + (isPos ? "ui-tree-row-active" : "ui-fav-tag-row")}>
                                       <span className="flex-1 truncate">{tagData.zh || item.zh || tagData.en || ''}</span>
                                       <span className="text-[9px] opacity-35">{tagData.en}</span>
-                                      {isPos && <span className="text-[10px]">✓</span>}
-                                      <button onClick={(e) => { e.stopPropagation(); favStore.toggleTagFav(tagData.id) }}
-                                        className="opacity-0 group-hover:opacity-100 text-[10px] text-[var(--color-text-secondary)] hover:text-red-400 px-0.5" title="取消收藏">✕</button>
+                                      {isPos && <Check size={12} aria-label='已添加到正面提示词' />}
+                                      <IconButton icon={StarOff} label={`取消收藏 ${tagData.zh || tagData.en}`} onClick={(e) => { e.stopPropagation(); void favStore.toggleTagFav(tagData.id) }} className='ui-icon-button-danger h-6 w-6 flex-none' />
                                     </div>
                                   )
                                 })}
@@ -199,6 +205,8 @@ export function FavoritesPanel({ onCtxMenu, onFavCtxMenu }: FavPanelProps) {
               return (
                 <div key={tag.id || tag.fav_id}
                   onClick={() => handleTagClick(tag, '', '')}
+                  onKeyDown={event => { if (event.target === event.currentTarget && (event.key === 'Enter' || event.key === ' ')) { event.preventDefault(); handleTagClick(tag, '', '') } }}
+                  role='button' tabIndex={0} aria-pressed={isPos}
                   className={"flex cursor-pointer items-center gap-1 border-b border-[var(--color-border)]/10 pl-4 pr-2 py-1.5 text-xs last:border-b-0 " + (isPos ? "ui-tree-row-active" : "ui-tree-row")}>
                   <span className="flex-1">{tag.zh || tag.en || ''}</span>
                 </div>

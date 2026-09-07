@@ -1,5 +1,6 @@
 // 魔导书 Grimoire v7 — 消息气泡
 import React, { useState } from 'react'
+import { Bot, Copy, Pencil, RefreshCw, Trash2, User } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { useChatStore } from '../../stores/chat.store'
@@ -39,7 +40,7 @@ export function MessageBubble({ message, isStreaming }: Props) {
   // User messages: right-aligned, AI messages: left-aligned
   const rowClass = isUser ? 'flex-row-reverse' : 'flex-row'
   const bubbleBg = isUser
-    ? 'bg-[var(--color-accent)] text-white'
+    ? 'bg-[var(--color-accent-fill)] text-[var(--color-accent-foreground)]'
     : 'bg-[var(--color-bg-secondary)] border border-[var(--color-border)] text-[var(--color-text-primary)]'
   const timeAlign = isUser ? 'text-right' : 'text-left'
 
@@ -47,14 +48,14 @@ export function MessageBubble({ message, isStreaming }: Props) {
     <div className={"flex gap-2 items-start " + rowClass}>
       {/* Avatar */}
       <div className={"w-7 h-7 rounded-full flex items-center justify-center text-xs flex-shrink-0 mt-0.5 " + (isUser ? 'bg-[var(--color-accent)]/10' : 'bg-[var(--color-accent)]/20')}>
-        {isUser ? '👤' : '🤖'}
+        {isUser ? <User size={14} aria-label='用户' /> : <Bot size={14} aria-label='AI' />}
       </div>
 
       {/* Bubble + time */}
       <div className="relative group max-w-[75%]">
         {/* Name label */}
         <div className={"text-[10px] text-[var(--color-text-secondary)] mb-0.5 opacity-60 " + timeAlign}>
-          {isUser ? '我' : '🤖 AI'}
+          {isUser ? '我' : 'AI'}
         </div>
 
         <div
@@ -105,22 +106,22 @@ export function MessageBubble({ message, isStreaming }: Props) {
           <>
             <div className="fixed inset-0 z-40" onClick={() => setMenuOpen(false)} />
             <div className={"absolute z-50 bg-[var(--color-bg-tertiary)] border border-[var(--color-border)] rounded-lg shadow-xl py-1 min-w-[140px] " + (isUser ? 'right-0' : 'left-0') + " top-8"}>
-              <button onClick={handleCopy} className="w-full text-left px-3 py-1.5 text-xs text-[var(--color-text-primary)] hover:bg-[var(--color-accent)]/10">
-                📋 复制
+              <button onClick={handleCopy} className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-[var(--color-text-primary)] hover:bg-[var(--color-accent)]/10">
+                <Copy size={13} aria-hidden='true' />复制
               </button>
               {isUser && (
-                <button onClick={handleEdit} className="w-full text-left px-3 py-1.5 text-xs text-[var(--color-text-primary)] hover:bg-[var(--color-accent)]/10">
-                  ✏ 编辑
+                <button onClick={handleEdit} className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-[var(--color-text-primary)] hover:bg-[var(--color-accent)]/10">
+                  <Pencil size={13} aria-hidden='true' />编辑
                 </button>
               )}
               {!isUser && (
-                <button onClick={handleResend} className="w-full text-left px-3 py-1.5 text-xs text-[var(--color-text-primary)] hover:bg-[var(--color-accent)]/10">
-                  🔄 重新生成
+                <button onClick={handleResend} className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-[var(--color-text-primary)] hover:bg-[var(--color-accent)]/10">
+                  <RefreshCw size={13} aria-hidden='true' />重新生成
                 </button>
               )}
               <div className="border-t border-[var(--color-border)]/30 my-1" />
-              <button onClick={handleDelete} className="w-full text-left px-3 py-1.5 text-xs text-red-400 hover:bg-red-400/10">
-                ✕ 删除
+              <button onClick={handleDelete} className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-[var(--color-danger)] hover:bg-[var(--color-danger-surface)]">
+                <Trash2 size={13} aria-hidden='true' />删除
               </button>
             </div>
           </>

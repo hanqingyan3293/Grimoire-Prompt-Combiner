@@ -1,6 +1,9 @@
-import React from "react"
-import { SimpleAIPanel } from "../ai/SimpleAIPanel"
+import React, { Suspense, lazy } from "react"
+import { ExternalLink, LoaderCircle } from 'lucide-react'
 import { useSettingsStore } from "../../stores/settings.store"
+import { Button } from '../ui/Button'
+
+const SimpleAIPanel = lazy(() => import('../ai/SimpleAIPanel').then(module => ({ default: module.SimpleAIPanel })))
 
 export type UtilityPopoverKey = "ai" | "settings"
 
@@ -27,22 +30,17 @@ export function QuickAIPanel({ variant = "popover" }: { variant?: "popover" | "e
     <div className={containerClassName}>
       <div className="flex items-center justify-between border-b border-[var(--color-border)] px-3 py-2">
         <span className="text-sm font-semibold text-[var(--color-text-primary)]">AI 助手</span>
-        <button
-          onClick={() => window.api.window.openAI()}
-          className="rounded border border-[var(--color-border)] px-2 py-1 text-xs text-[var(--color-text-secondary)] hover:border-[var(--color-accent)] hover:text-[var(--color-accent)]"
-        >
-          独立窗口
-        </button>
+        <Button size="sm" icon={ExternalLink} onClick={() => window.api.window.openAI()}>独立窗口</Button>
       </div>
       <div className="min-h-0 flex-1">
-        <SimpleAIPanel />
+        <Suspense fallback={<div className="flex h-full items-center justify-center gap-2 text-xs text-[var(--color-text-secondary)]"><LoaderCircle size={15} className="animate-spin" aria-hidden="true" />正在载入 AI</div>}><SimpleAIPanel /></Suspense>
       </div>
     </div>
   )
 }
 
 export function QuickSettingsPanel({ variant = "popover" }: { variant?: "popover" | "embedded" }) {
-  const { theme, ui_scale, ui_density, setSetting } = useSettingsStore()
+  const { theme, appearance_mode, ui_scale, ui_density, setSetting } = useSettingsStore()
   const panelClassName = variant === "embedded"
     ? "h-full overflow-y-auto p-3"
     : "max-h-[min(560px,calc(100vh-128px))] overflow-y-auto p-3"
@@ -51,15 +49,20 @@ export function QuickSettingsPanel({ variant = "popover" }: { variant?: "popover
     <div className={panelClassName}>
       <div className="mb-3 flex items-center justify-between">
         <span className="text-sm font-semibold text-[var(--color-text-primary)]">快捷设置</span>
-        <button
-          onClick={() => window.api.window.openSettings()}
-          className="rounded border border-[var(--color-border)] px-2 py-1 text-xs text-[var(--color-text-secondary)] hover:border-[var(--color-accent)] hover:text-[var(--color-accent)]"
-        >
-          完整设置
-        </button>
+        <Button size="sm" icon={ExternalLink} onClick={() => window.api.window.openSettings()}>完整设置</Button>
       </div>
 
       <div className="space-y-4">
+        <div>
+          <div className="mb-2 text-xs font-medium text-[var(--color-text-secondary)]">外观模式</div>
+          <div className="grid grid-cols-3 gap-2">
+            {[["system", "系统"], ["light", "浅色"], ["dark", "深色"]].map(([value, label]) => (
+              <button key={value} onClick={() => setSetting("appearance_mode", value)} className={"rounded border px-2 py-2 text-xs transition-colors " + (appearance_mode === value ? "border-[var(--color-accent)] bg-[var(--color-accent)]/15 text-[var(--color-accent-text)]" : "border-[var(--color-border)] text-[var(--color-text-secondary)] hover:border-[var(--color-accent)]/50")}>
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
         <div>
           <div className="mb-2 text-xs font-medium text-[var(--color-text-secondary)]">主题</div>
           <div className="grid grid-cols-2 gap-2">
@@ -67,7 +70,7 @@ export function QuickSettingsPanel({ variant = "popover" }: { variant?: "popover
               <button
                 key={item.key}
                 onClick={() => setSetting("theme", item.key)}
-                className={"flex items-center gap-2 rounded border px-3 py-2 text-xs transition-colors " + (theme === item.key ? "border-[var(--color-accent)] bg-[var(--color-accent)]/15 text-[var(--color-accent)]" : "border-[var(--color-border)] text-[var(--color-text-primary)] hover:border-[var(--color-accent)]/50")}
+                className={"flex items-center gap-2 rounded border px-3 py-2 text-xs transition-colors " + (theme === item.key ? "border-[var(--color-accent)] bg-[var(--color-accent)]/15 text-[var(--color-accent-text)]" : "border-[var(--color-border)] text-[var(--color-text-primary)] hover:border-[var(--color-accent)]/50")}
               >
                 <span className="h-3 w-3 rounded-full" style={{ backgroundColor: item.color }} />
                 <span>{item.label}</span>
@@ -79,7 +82,7 @@ export function QuickSettingsPanel({ variant = "popover" }: { variant?: "popover
         <div>
           <div className="mb-2 flex items-center justify-between text-xs">
             <span className="font-medium text-[var(--color-text-secondary)]">字体大小</span>
-            <span className="text-[var(--color-accent)]">{ui_scale}px</span>
+            <span className="text-[var(--color-accent-text)]">{ui_scale}px</span>
           </div>
           <input
             type="range"
@@ -107,7 +110,7 @@ export function QuickSettingsPanel({ variant = "popover" }: { variant?: "popover
               <button
                 key={value}
                 onClick={() => setSetting("ui_density", value)}
-                className={"flex-1 rounded border px-2 py-2 text-xs transition-colors " + (ui_density === value ? "border-[var(--color-accent)] bg-[var(--color-accent)]/15 text-[var(--color-accent)]" : "border-[var(--color-border)] text-[var(--color-text-secondary)] hover:border-[var(--color-accent)]/50")}
+                className={"flex-1 rounded border px-2 py-2 text-xs transition-colors " + (ui_density === value ? "border-[var(--color-accent)] bg-[var(--color-accent)]/15 text-[var(--color-accent-text)]" : "border-[var(--color-border)] text-[var(--color-text-secondary)] hover:border-[var(--color-accent)]/50")}
               >
                 {label}
               </button>

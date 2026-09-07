@@ -37,7 +37,7 @@ export function FixedWorkspace() {
   )
   const maximizedPanelId = workspace ? maximizedPanels[workspace.id] || null : null
   const maximizedPanel = useMemo(
-    () => maximizedPanelId ? findPanelNode(layout, maximizedPanelId) : null,
+    () => maximizedPanelId && layout ? findPanelNode(layout, maximizedPanelId) : null,
     [layout, maximizedPanelId]
   )
   const panelCount = useMemo(() => layout ? countPanelNodes(layout) : 0, [layout])
@@ -138,7 +138,7 @@ export function FixedWorkspace() {
           aria-orientation={isHorizontal ? "vertical" : "horizontal"}
           className={
             (isHorizontal ? "cursor-col-resize" : "cursor-row-resize") +
-            " shrink-0 bg-[var(--color-bg-tertiary)] outline outline-1 outline-[var(--color-border-strong)] hover:bg-[var(--color-accent)] hover:outline-[var(--color-accent)] transition-colors"
+            " ui-workspace-splitter shrink-0 bg-[var(--color-bg-tertiary)] outline outline-1 outline-[var(--color-border-strong)] hover:bg-[var(--color-accent)] hover:outline-[var(--color-accent)] transition-colors"
           }
           style={isHorizontal
             ? { width: "var(--panel-splitter-size)", cursor: "col-resize" }

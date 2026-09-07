@@ -71,7 +71,8 @@ export function WorkspaceBar() {
   }
 
   return (
-    <div className="ui-app-chrome flex h-8 shrink-0 items-center gap-1 border-b border-[var(--color-border)] px-2">
+    <div className="ui-app-chrome ui-workspace-bar flex h-8 shrink-0 items-center gap-1 border-b border-[var(--color-border)] px-2">
+      <div className="ui-workspace-tabs flex min-w-0 items-center gap-1" role="tablist" aria-label="工作区">
       {workspaces.map(workspace => (
         editingWorkspaceId === workspace.id ? (
           <input
@@ -100,16 +101,20 @@ export function WorkspaceBar() {
                 ? "ui-workspace-tab-active"
                 : "")
             }
+            role="tab"
+            aria-selected={workspace.id === activeWorkspaceId}
             title="双击重命名"
           >
-            {workspace.title}
+            <span className="block max-w-36 truncate">{workspace.title}</span>
           </button>
         )
       ))}
+      </div>
       <button
         onClick={createWorkspace}
-        className="ui-toolbar-button h-6 w-6 text-sm"
+        className="ui-toolbar-button ui-workspace-add h-6 w-6 text-sm"
         title="新建布局"
+        aria-label="新建布局"
       >
         +
       </button>
@@ -117,8 +122,10 @@ export function WorkspaceBar() {
       <div ref={layoutMenuRef} className="relative">
         <button
           onClick={() => setLayoutMenuOpen(open => !open)}
-          className="ui-subtle-button h-6 px-2 text-xs"
+          className="ui-subtle-button ui-layout-menu-trigger h-6 px-2 text-xs"
           title="布局管理"
+          aria-expanded={layoutMenuOpen}
+          aria-haspopup="menu"
         >
           布局
         </button>
@@ -152,7 +159,7 @@ export function WorkspaceBar() {
                 <div className="flex gap-1.5">
                   <button
                     onClick={commitLayoutPreset}
-                    className="flex-1 rounded bg-[var(--color-accent)] px-2 py-1 text-xs font-medium text-white hover:opacity-90"
+                    className="flex-1 rounded bg-[var(--color-accent-fill)] px-2 py-1 text-xs font-medium text-[var(--color-accent-foreground)] hover:bg-[var(--color-accent-fill-hover)]"
                   >
                     保存
                   </button>
@@ -161,7 +168,7 @@ export function WorkspaceBar() {
                       setSavingPreset(false)
                       setPresetName("")
                     }}
-                    className="flex-1 rounded border border-[var(--color-border)] px-2 py-1 text-xs text-[var(--color-text-secondary)] hover:border-[var(--color-accent)]/50 hover:text-[var(--color-accent)]"
+                    className="flex-1 rounded border border-[var(--color-border)] px-2 py-1 text-xs text-[var(--color-text-secondary)] hover:border-[var(--color-accent)]/50 hover:text-[var(--color-accent-text)]"
                   >
                     取消
                   </button>

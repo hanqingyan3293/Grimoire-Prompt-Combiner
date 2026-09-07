@@ -152,7 +152,16 @@ const VALID_PANEL_TYPES = new Set<PanelType>([
   "ai-chat",
   "ai-vision",
   "settings",
+  "tasks",
+  "wd14",
+  "comfyui",
+  "canvas",
+  "prompt-assets",
 ])
+
+export function isPersistablePanelType(value: unknown): value is PanelType {
+  return typeof value === 'string' && VALID_PANEL_TYPES.has(value as PanelType)
+}
 
 const createId = (prefix: string) => prefix + Math.random().toString(36).slice(2, 10)
 
@@ -240,7 +249,9 @@ function getInitialLayouts(workspaces: WorkspaceDefinition[]): WorkspaceLayouts 
     const raw = window.localStorage.getItem(LAYOUTS_STORAGE_KEY)
     if (!raw) return {}
     const parsed = JSON.parse(raw) as WorkspaceLayouts | VersionedLayoutsStorage
-    const rawLayouts = "layouts" in parsed ? parsed.layouts : parsed
+    const rawLayouts: WorkspaceLayouts = Object.prototype.hasOwnProperty.call(parsed, "layouts")
+      ? (parsed as VersionedLayoutsStorage).layouts
+      : parsed as WorkspaceLayouts
     if (!rawLayouts || typeof rawLayouts !== "object") return {}
     const layouts: WorkspaceLayouts = {}
     for (const workspace of workspaces) {
@@ -293,7 +304,7 @@ function sanitizeLayoutNode(
     return {
       kind: "panel",
       id: sanitizeLayoutId(value.id, "panel_", usedIds),
-      type: VALID_PANEL_TYPES.has(value.type as PanelType) ? value.type as PanelType : FALLBACK_PANEL_TYPE,
+      type: isPersistablePanelType(value.type) ? value.type : FALLBACK_PANEL_TYPE,
     }
   }
   if (value.kind === "split") {

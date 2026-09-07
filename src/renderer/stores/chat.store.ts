@@ -87,7 +87,7 @@ if (typeof window !== 'undefined') {
 
 // Auto-refresh on window focus
 if (typeof window !== 'undefined') {
-  let refreshTimer = 0
+  let refreshTimer: ReturnType<typeof setTimeout> | undefined
   window.addEventListener('grimoire:refresh', () => {
     clearTimeout(refreshTimer)
     refreshTimer = setTimeout(() => {
@@ -210,20 +210,26 @@ export const useChatStore = create<ChatState>((set, get) => ({
     set({ loadingMsg: true })
     try {
       const messages = await window.api.chat.getMessages(convId)
-      set({ messages, loadingMsg: false })
+      if (get().activeConversationId === convId) set({ messages, loadingMsg: false })
     } catch (e) {
       console.error('loadMessages:', e)
-      set({ loadingMsg: false })
+      if (get().activeConversationId === convId) set({ loadingMsg: false })
     }
   },
 
   sendMessage: async (content, providerId, model) => {
+    const normalizedContent = content.trim()
+    if (!normalizedContent) return
+    if (get().streamingMessageId) {
+      toast('请等待当前回复完成', 'info')
+      return
+    }
     const { activeConversationId } = get()
     if (!activeConversationId) {
       // 自动创建对话
       const newId = await get().createConversation(providerId, model)
       if (!newId) return
-      get().sendMessage(content, providerId, model)
+      await get().sendMessage(normalizedContent, providerId, model)
       return
     }
 
@@ -232,12 +238,18 @@ export const useChatStore = create<ChatState>((set, get) => ({
       id: 'msg_' + crypto.randomUUID().slice(0, 8),
       conv_id: activeConversationId,
       role: 'user',
-      content,
+      content: normalizedContent,
       model,
       token_count: 0,
       created_at: new Date().toISOString(),
     }
-    try { await window.api.chat.saveMessage(userMsg) } catch {}
+    try {
+      await window.api.chat.saveMessage(userMsg)
+    } catch (error) {
+      const message = error instanceof Error ? error.message : '用户消息保存失败'
+      toast('消息保存失败: ' + message, 'error')
+      return
+    }
 
     // 2. 创建空的 AI 消息
     const aiMsgId = 'msg_' + crypto.randomUUID().slice(0, 8)
@@ -257,7 +269,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
       ...previousMessages
         .filter(m => m.role !== 'system')
         .map(m => ({ role: m.role, content: m.content })),
-      { role: 'user', content },
+      { role: 'user', content: normalizedContent },
     ]
 
     // 4. 更新本地 state
@@ -277,60 +289,66 @@ export const useChatStore = create<ChatState>((set, get) => ({
     const { _chunkCleanup: oldCleanup } = get()
     if (oldCleanup) { oldCleanup(); set({ _chunkCleanup: null }) }
     let cleanup: (() => void) | null = null
+    let settled = false
+    const finish = (response: { fullText?: string; error?: string }) => {
+      if (settled) return
+      settled = true
+      const streamed = get().messages.find(message => message.id === aiMsgId)?.content || ''
+      const finalContent = response.error
+        ? `发送失败: ${response.error}`
+        : streamed || response.fullText || ''
+      set(state => ({
+        streamingMessageId: null,
+        _chunkCleanup: null,
+        messages: state.messages.map(message => message.id === aiMsgId ? { ...message, content: finalContent } : message),
+      }))
+      void window.api.chat.saveMessage({
+        id: aiMsgId,
+        conv_id: activeConversationId,
+        role: 'assistant',
+        content: finalContent,
+        model,
+      }).catch(error => {
+        console.error('save assistant message failed:', error)
+        toast('AI 回复保存失败', 'error')
+      })
+      if (response.error) toast('AI 回复失败: ' + response.error, 'error')
+      cleanup?.()
+    }
     try {
       cleanup = window.api.ai.onChunk((data: any) => {
         if (data.done) {
-          // 流结束 — 保存最终消息
-          const finalContent = data.fullText || data.error || ''
-          set(s => ({
-            streamingMessageId: null,
-            messages: s.messages.map(m =>
-              m.id === aiMsgId ? { ...m, content: m.content || finalContent } : m
-            ),
-          }))
-          // 保存到 DB
-          const finalMsg = get().messages.find(m => m.id === aiMsgId)
-          if (finalMsg) {
-            window.api.chat.saveMessage({
-              id: aiMsgId,
-              conv_id: activeConversationId,
-              role: 'assistant',
-              content: finalMsg.content,
-              model,
-            }).catch(() => {})
-          }
-          if (data.error) {
-            toast('AI 回复失败: ' + data.error, 'error')
-          }
-          if (cleanup) cleanup()
+          finish({ fullText: typeof data.fullText === 'string' ? data.fullText : '', error: typeof data.error === 'string' ? data.error : undefined })
         } else {
           // 逐帧更新
+          const text = typeof data.text === 'string' ? data.text : ''
+          if (!text) return
           set(s => ({
             messages: s.messages.map(m =>
-              m.id === aiMsgId ? { ...m, content: m.content + data.text } : m
+              m.id === aiMsgId ? { ...m, content: m.content + text } : m
             ),
           }))
         }
       })
+      set({ _chunkCleanup: cleanup })
     } catch (e) {
       console.error('onChunk registration failed:', e)
     }
 
     // 7. 发送消息
     try {
-      await window.api.ai.sendMessage({
+      const response = await window.api.ai.sendMessage({
         providerId,
         model,
         messages: apiMessages,
       })
+      if (!settled) {
+        if (response?.error) finish({ error: response.error })
+        else if (response?.success) finish({ fullText: response.text || '' })
+        else finish({ error: 'AI 服务未返回有效结果' })
+      }
     } catch (e: any) {
-      set(s => ({
-        streamingMessageId: null,
-        messages: s.messages.map(m =>
-          m.id === aiMsgId ? { ...m, content: '发送失败: ' + (e?.message || '未知错误') } : m
-        ),
-      }))
-      if (cleanup) cleanup()
+      finish({ error: e?.message || '未知错误' })
     }
 
     // 8. 更新对话列表顺序
