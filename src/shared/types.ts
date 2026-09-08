@@ -230,6 +230,7 @@ export const IPC_CHANNELS = {
   // Prompt assets
   PROMPT_ASSETS_LIST: "promptAssets:list",
   PROMPT_ASSETS_CREATE: "promptAssets:create",
+  PROMPT_ASSETS_DELETE: "promptAssets:delete",
 
   // Settings
   SETTINGS_GET_ALL: "settings:getAll",

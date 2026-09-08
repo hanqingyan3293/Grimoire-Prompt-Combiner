@@ -121,3 +121,9 @@ export function createPromptAsset(db: LegacyDatabase, input: unknown): PromptAss
   saveDatabase()
   return { id, sourceRef: sourceId, source: 'asset', name, prompt, detail, createdAt: now, nsfw: value.nsfw === true, variantCount: Number.isInteger(value.variantCount) ? Math.max(0, Number(value.variantCount)) : 0 }
 }
+
+export function deletePromptAsset(db: LegacyDatabase, sourceId: unknown): boolean {
+  const id = requireText(sourceId ?? '', '提示词资产 ID', 500)
+  const result = db.run("DELETE FROM prompt_assets WHERE source='asset' AND source_id=?", [id])
+  return Number(result.changes) > 0
+}

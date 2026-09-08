@@ -52,8 +52,9 @@ export const usePromptSourceStore = create<PromptSourceStore>()(
                 const savedSources = Array.isArray(persistedState.sources) ? persistedState.sources : [];
                 const enabledById = new Map(savedSources.map((source) => [source.id, source.enabled]));
                 const builtIn = [{ ...GRIMOIRE_SOURCE, enabled: enabledById.get(GRIMOIRE_SOURCE.id) ?? true }];
-                const custom = savedSources.filter((source) => !source.builtIn).map((source) => createPromptSource(source));
-                return { ...current, sources: [...builtIn, ...custom], schedule: { ...defaultSchedule, ...(persistedState.schedule || {}) } };
+                // The desktop build owns its prompt catalog in SQLite. Do not resurrect
+                // remote sources from an older browser build.
+                return { ...current, sources: builtIn, schedule: { ...defaultSchedule, ...(persistedState.schedule || {}) } };
             },
         },
     ),

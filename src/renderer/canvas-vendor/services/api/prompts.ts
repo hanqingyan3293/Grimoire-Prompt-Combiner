@@ -1,4 +1,5 @@
 import type { RawPrompt } from './prompt-source-runtime'
+import type { PromptAssetPage } from '@shared/prompt-asset-types'
 
 export type Prompt = RawPrompt & {
     sourceId: string;
@@ -41,8 +42,14 @@ type SourceCache = PromptSourceStatus & {
 };
 
 async function getAllPrompts(): Promise<Prompt[]> {
-    const page = await window.api.promptAssets.list({ source: 'asset', limit: 100, offset: 0 });
-    return page.items.map((item) => ({
+    const items: PromptAssetPage['items'] = [];
+    const pageSize = 100;
+    for (let offset = 0; offset < 10000; offset += pageSize) {
+        const page = await window.api.promptAssets.list({ source: 'asset', limit: pageSize, offset });
+        items.push(...page.items);
+        if (!page.items.length || items.length >= page.total) break;
+    }
+    return items.map((item) => ({
         id: item.sourceRef,
         title: item.name,
         prompt: item.prompt,
@@ -53,7 +60,7 @@ async function getAllPrompts(): Promise<Prompt[]> {
         preview: item.detail,
         createdAt: item.createdAt,
         updatedAt: item.createdAt,
-        sourceId: item.source,
+        sourceId: 'grimoire-assets',
         category: item.detail || '魔导书提示词资产',
         githubUrl: '',
     }));
@@ -61,7 +68,7 @@ async function getAllPrompts(): Promise<Prompt[]> {
 
 async function queryGrimoirePrompts(keyword: string, page: number, pageSize: number): Promise<PromptListResponse> {
     const result = await window.api.promptAssets.list({ query: keyword, source: 'asset', limit: pageSize, offset: Math.max(0, (page - 1) * pageSize) });
-    const items = result.items.map((item) => ({ id: item.sourceRef, title: item.name, prompt: item.prompt, description: item.detail, coverUrl: '', referenceImageUrls: [], tags: [], preview: item.detail, createdAt: item.createdAt, updatedAt: item.createdAt, sourceId: item.source, category: item.detail || '魔导书提示词资产', githubUrl: '' }));
+    const items = result.items.map((item) => ({ id: item.sourceRef, title: item.name, prompt: item.prompt, description: item.detail, coverUrl: '', referenceImageUrls: [], tags: [], preview: item.detail, createdAt: item.createdAt, updatedAt: item.createdAt, sourceId: 'grimoire-assets', category: item.detail || '魔导书提示词资产', githubUrl: '' }));
     return { items, tags: [], categories: Array.from(new Set(items.map(item => item.category))), total: result.total };
 }
 
@@ -84,7 +91,8 @@ export async function fetchPrompts({ keyword = "", tag = [], category = ALL_PROM
 }
 
 export async function fetchSourcePrompts(sourceId: string): Promise<Prompt[]> {
-    return (await getAllPrompts()).filter(item => item.sourceId === sourceId);
+    if (sourceId !== 'grimoire-assets') return [];
+    return getAllPrompts();
 }
 
 export async function refreshSource(sourceId: string): Promise<PromptSourceRefreshResult> {
@@ -103,7 +111,7 @@ export async function refreshDueSources(maxAgeMs: number): Promise<PromptSourceR
 
 export async function fetchPromptSourceStatuses(): Promise<Record<string, PromptSourceStatus>> {
     const items = await getAllPrompts();
-    return { grimoire: { sourceId: 'grimoire', count: items.length, lastSuccessAt: new Date().toISOString(), lastError: '' } };
+    return { 'grimoire-assets': { sourceId: 'grimoire-assets', count: items.length, lastSuccessAt: new Date().toISOString(), lastError: '' } };
 }
 
 function summarizeRefresh(results: PromptSourceRefreshResult[]): PromptSourceRefreshSummary {

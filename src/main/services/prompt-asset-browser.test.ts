@@ -1,7 +1,7 @@
 import { DatabaseSync } from 'node:sqlite'
 import { describe, expect, it } from 'vitest'
 import { createLegacyDatabase } from './sqlite.compat'
-import { queryPromptAssets, validatePromptAssetQuery } from './prompt-asset-browser'
+import { deletePromptAsset, queryPromptAssets, validatePromptAssetQuery } from './prompt-asset-browser'
 
 function createDatabase() {
   const native = new DatabaseSync(':memory:')
@@ -64,6 +64,16 @@ describe('prompt asset browser', () => {
     const { native, db } = createDatabase()
     db.run('INSERT INTO presets VALUES (?,?,?,?)', ['broken', '损坏预设', '{bad json', '2026-01-05'])
     expect(queryPromptAssets(db, {}).total).toBe(4)
+    native.close()
+  })
+
+  it('deletes only canvas-owned prompt assets by source reference', () => {
+    const { native, db } = createDatabase()
+    db.run('INSERT INTO prompt_assets VALUES (?,?,?,?,?,?,?,?,?,?,?)', ['asset2', 'canvas-ref', 'asset', '画布资产', 'blue sky', '', '', '', 0, 0, '2026-01-06'])
+    db.run('INSERT INTO prompt_assets VALUES (?,?,?,?,?,?,?,?,?,?,?)', ['legacy1', 'canvas-ref', 'suigu-search-index', '外部索引', 'blue sky', '', '', '', 0, 0, '2026-01-06'])
+    expect(deletePromptAsset(db, 'canvas-ref')).toBe(true)
+    expect(queryPromptAssets(db, { source: 'asset' }).items.map(item => item.sourceRef)).not.toContain('canvas-ref')
+    expect(db.exec("SELECT source FROM prompt_assets WHERE source_id='canvas-ref'")[0]?.values).toEqual([['suigu-search-index']])
     native.close()
   })
 })

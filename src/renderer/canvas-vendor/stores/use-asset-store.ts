@@ -28,15 +28,23 @@ function mapImage(image: ImageRow): ImageAsset {
   return { id: `image:${image.id}`, kind: 'image', title: image.original_name || `图片 ${image.id}`, coverUrl: url, tags: [], source: 'grimoire-image-library', createdAt: '', updatedAt: '', data: { dataUrl: url, width: 0, height: 0, bytes: image.file_size || 0, mimeType: image.mime_type || 'image/*' } }
 }
 function mapPrompt(row: PromptRow): TextAsset {
-  return { id: row.id, kind: 'text', title: row.name, coverUrl: '', tags: [], source: row.source, note: row.detail, createdAt: row.createdAt, updatedAt: row.createdAt, data: { content: row.prompt }, metadata: { sourceRef: row.sourceRef, nsfw: row.nsfw, variantCount: row.variantCount } }
+  return { id: `prompt:${row.sourceRef}`, kind: 'text', title: row.name, coverUrl: '', tags: [], source: row.source, note: row.detail, createdAt: row.createdAt, updatedAt: row.createdAt, data: { content: row.prompt }, metadata: { sourceRef: row.sourceRef, nsfw: row.nsfw, variantCount: row.variantCount } }
 }
 
 export const useAssetStore = create<AssetStore>((set, get) => ({
   hydrated: false,
   assets: [],
   refresh: async () => {
-    const [images, prompts] = await Promise.all([window.api.images.list(), window.api.promptAssets.list({ source: 'asset', limit: 100 })])
-    set({ assets: [...images.filter(image => image.available).map(mapImage), ...prompts.items.map(mapPrompt)] })
+    const imagesPromise = window.api.images.list()
+    const promptItems: PromptRow[] = []
+    const pageSize = 100
+    for (let offset = 0; offset < 10000; offset += pageSize) {
+      const page = await window.api.promptAssets.list({ source: 'asset', limit: pageSize, offset })
+      promptItems.push(...page.items as PromptRow[])
+      if (!page.items.length || promptItems.length >= page.total) break
+    }
+    const images = await imagesPromise
+    set({ assets: [...images.filter(image => image.available).map(mapImage), ...promptItems.map(mapPrompt)] })
   },
   addAsset: (asset) => {
     const now = new Date().toISOString()
@@ -44,7 +52,10 @@ export const useAssetStore = create<AssetStore>((set, get) => ({
     set(state => ({ assets: [{ ...asset, id, createdAt: now, updatedAt: now } as Asset, ...state.assets] }))
     if (asset.kind === 'text') {
       const textAsset = asset as Omit<TextAsset, 'id' | 'createdAt' | 'updatedAt'>
-      void window.api.promptAssets.create({ name: textAsset.title, prompt: textAsset.data.content, detail: textAsset.note || textAsset.source || '画布资产', sourceId: id }).then(() => get().refresh()).catch(console.error)
+      void window.api.promptAssets.create({ name: textAsset.title, prompt: textAsset.data.content, detail: textAsset.note || textAsset.source || '画布资产', sourceId: id }).then(() => get().refresh()).catch(error => {
+        console.error('canvas prompt asset save failed', error)
+        get().removeAsset(id)
+      })
     }
     return id
   },
@@ -52,6 +63,7 @@ export const useAssetStore = create<AssetStore>((set, get) => ({
   removeAsset: (id) => {
     set(state => ({ assets: state.assets.filter(asset => asset.id !== id) }))
     if (id.startsWith('image:')) void window.api.images.delete(Number(id.slice(6))).then(() => get().refresh()).catch(console.error)
+    if (id.startsWith('prompt:')) void window.api.promptAssets.delete(id.slice(7)).then(() => get().refresh()).catch(console.error)
   },
   replaceAssets: (assets) => set({ assets }),
   cleanupImages: () => undefined,

@@ -39,7 +39,7 @@ interface GrimoireAPI {
   promptAssets: {
     list: (query?: PromptAssetQuery) => Promise<PromptAssetPage>
     create: (input: { name: string; prompt: string; detail?: string; sourceId?: string; nsfw?: boolean; variantCount?: number }) => Promise<unknown>
-    create: (input: { name: string; prompt: string; detail?: string; sourceId?: string; nsfw?: boolean; variantCount?: number }) => Promise<unknown>
+    delete: (sourceId: string) => Promise<boolean>
   }
   settings: {
     getAll: () => Promise<{
@@ -56,7 +56,6 @@ interface GrimoireAPI {
     list: () => Promise<Array<{ id: number; file_path: string; storage_mode: 'managed' | 'external'; asset_hash: string | null; mime_type: string | null; file_size: number | null; original_name: string | null; available: boolean; created_at: string }>>
     add: (mode?: 'managed' | 'external') => Promise<{ id: number; file_path: string; storage_mode: 'managed' | 'external' } | null>
     delete: (id: number) => Promise<boolean>
-    importData: (dataBase64: string, originalName: string) => Promise<unknown>
     importData: (dataBase64: string, originalName: string) => Promise<unknown>
   }
   chat: {

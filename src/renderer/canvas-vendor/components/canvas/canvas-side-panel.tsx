@@ -1,4 +1,4 @@
-import { memo, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
+import { memo, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { App, Empty, Input, Popconfirm, Select, Spin, Tag } from "antd";
 import { useQuery } from "@tanstack/react-query";
 import { BookOpen, Check, ChevronRight, Download, Eye, FileText, Image as ImageIcon, ListChecks, Music2, Plus, Search, Settings2, Square, Trash2, Type, Video } from "lucide-react";
@@ -12,7 +12,6 @@ import { cn } from "@canvas/lib/utils";
 import { PromptDetailDialog } from "@canvas/pages/prompts/components/prompt-detail-dialog";
 import { fetchSourcePrompts, type Prompt } from "@canvas/services/api/prompts";
 import { uploadMediaFile } from "@canvas/services/file-storage";
-import { uploadImage } from "@canvas/services/image-storage";
 import { useAssetStore, type Asset, type AssetKind } from "@canvas/stores/use-asset-store";
 import { usePromptSourceStore } from "@canvas/stores/use-prompt-source-store";
 import { CANVAS_SIDE_PANEL_MAX_WIDTH, CANVAS_SIDE_PANEL_MIN_WIDTH, CANVAS_SIDE_PANEL_MOTION_MS, useCanvasSidePanelStore } from "@canvas/stores/use-canvas-side-panel-store";
@@ -307,6 +306,16 @@ const ASSET_GROUPS: { kind: AssetKind; icon: typeof Square }[] = [
     { kind: "text", icon: FileText },
 ];
 
+async function fileToBase64(file: File): Promise<string> {
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    let binary = "";
+    const chunkSize = 0x8000;
+    for (let offset = 0; offset < bytes.length; offset += chunkSize) {
+        binary += String.fromCharCode(...bytes.subarray(offset, offset + chunkSize));
+    }
+    return btoa(binary);
+}
+
 function buildInsertPayload(asset: Asset): InsertAssetPayload {
     if (asset.kind === "text") return { kind: "text", content: asset.data.content, title: asset.title };
     if (asset.kind === "video") return { kind: "video", url: asset.data.url, storageKey: asset.data.storageKey, title: asset.title, width: asset.data.width, height: asset.data.height };
@@ -343,11 +352,7 @@ const CanvasAssetsTab = memo(function CanvasAssetsTab({ onInsert, theme }: { onI
         try {
             for (const file of files) {
                 if (file.type.startsWith("image/")) {
-                    const image = await uploadImage(file);
-                    const buffer = new Uint8Array(await (await fetch(image.url)).arrayBuffer());
-                    let binary = "";
-                    for (const byte of buffer) binary += String.fromCharCode(byte);
-                    await window.api.images.importData(btoa(binary), file.name || t("assets.kinds.image"));
+                    await window.api.images.importData(await fileToBase64(file), file.name || t("assets.kinds.image"));
                     await useAssetStore.getState().refresh();
                     added += 1;
                 } else if (file.type.startsWith("video/")) {

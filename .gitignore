@@ -9,3 +9,4 @@ _out.log
 _check_*.py
 _verify*.py
 extract_tags_v2.py
+.npm-cache/
