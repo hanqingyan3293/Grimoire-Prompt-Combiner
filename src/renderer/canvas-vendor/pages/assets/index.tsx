@@ -11,6 +11,7 @@ import { getImageBlob, uploadImage } from "@canvas/services/image-storage";
 import { cn } from "@canvas/lib/utils";
 import { useAssetStore, type Asset, type AssetKind, type ImageAsset } from "@canvas/stores/use-asset-store";
 import { exportAssets, readAssetPackage } from "./asset-transfer";
+import { FloatingPreview } from "@canvas/components/ui/floating-preview";
 
 type AssetFormValues = {
     kind: AssetKind;
@@ -399,7 +400,9 @@ export default function AssetsPage() {
                 />
             </Modal>
 
-            <AssetDrawer asset={previewAsset} onClose={() => setPreviewAsset(null)} onCopy={copyAssetText} onDownload={downloadImage} />
+            <FloatingPreview open={Boolean(previewAsset)} title={previewAsset?.title || t("assets.details")} onClose={() => setPreviewAsset(null)} footer={previewAsset ? <Space>{previewAsset.kind === "text" ? <Button icon={<Copy className="size-4" />} onClick={() => copyAssetText(previewAsset)}>{t("assets.copyText")}</Button> : null}{previewAsset.kind === "image" || previewAsset.kind === "video" ? <Button icon={<Download className="size-4" />} onClick={() => downloadImage(previewAsset)}>{t("common.download")}</Button> : null}</Space> : null}>
+                {previewAsset ? <AssetPreviewContent asset={previewAsset} /> : null}
+            </FloatingPreview>
 
             <input ref={assetInputRef} type="file" accept="application/zip,.zip" className="hidden" onChange={(event) => void importAssetZip(event.target.files?.[0])} />
 
@@ -539,6 +542,14 @@ function AssetDrawer({ asset, onClose, onCopy, onDownload }: { asset: Asset | nu
             ) : null}
         </Drawer>
     );
+}
+
+function AssetPreviewContent({ asset }: { asset: Asset }) {
+    const cover = asset.coverUrl || (asset.kind === "image" ? asset.data.dataUrl : "");
+    return <div className="space-y-4">
+        {asset.kind === "text" ? <div className="whitespace-pre-wrap rounded-xl border-2 border-[var(--color-border-strong)] bg-[var(--color-bg-secondary)] p-5 text-sm leading-6">{asset.data.content}</div> : cover ? <img src={cover} alt={asset.title} className="mx-auto max-h-full max-w-full rounded-xl object-contain" /> : asset.kind === "video" ? <video src={asset.data.url} controls className="mx-auto max-h-full w-full rounded-xl bg-black" /> : null}
+        {asset.note ? <Typography.Paragraph>{asset.note}</Typography.Paragraph> : null}
+    </div>;
 }
 
 async function readAssetMediaBlob(asset: Extract<Asset, { kind: "image" | "video" }>) {

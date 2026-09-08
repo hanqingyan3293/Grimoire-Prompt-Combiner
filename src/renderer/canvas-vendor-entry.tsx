@@ -14,6 +14,7 @@ import { registerBundledCanvasPlugins } from './canvas-vendor-plugins'
 if (!window.api && window.parent !== window && window.parent.api) {
   Object.defineProperty(window, 'api', { value: window.parent.api, configurable: false, writable: false })
 }
+window.dispatchEvent(new CustomEvent('grimoire:canvas-mounted'))
 
 registerBuiltinNodes()
 registerBundledCanvasPlugins()

@@ -74,6 +74,7 @@ import { registerBuiltinNodes } from "@canvas/components/canvas/nodes/builtin-no
 import { CanvasPluginManagerModal } from "@canvas/components/canvas/canvas-plugin-manager-modal";
 import { CanvasRefreshShell } from "@canvas/components/canvas/canvas-refresh-shell";
 import { CanvasTopBar } from "@canvas/components/canvas/canvas-top-bar";
+import { FloatingPreview } from "@canvas/components/ui/floating-preview";
 import { ConnectionCreateMenu, NodeCreateMenu, type PendingConnectionCreate } from "@canvas/components/canvas/canvas-create-menus";
 import {
     CanvasNodeType,
@@ -3348,17 +3349,9 @@ function InfiniteCanvasPage() {
 
                 {angleNode?.metadata?.content ? <CanvasNodeAngleDialog dataUrl={angleNode.metadata.content} open={Boolean(angleNode)} onClose={() => setAngleNodeId(null)} onConfirm={(params) => void generateAngleNode(angleNode!, params)} /> : null}
 
-                <Modal
-                    title={t("canvas.projectPage.imageDetails")}
-                    open={Boolean(previewContent)}
-                    centered
-                    onCancel={() => setPreviewNodeId(null)}
-                    footer={null}
-                    width="auto"
-                    styles={{ body: { padding: 0, display: "flex", justifyContent: "center", alignItems: "center", maxHeight: "80vh" } }}
-                >
-                    {previewContent ? <img src={previewContent} alt={previewNode?.title || t("assets.kinds.image")} style={{ maxWidth: "100%", maxHeight: "80vh", objectFit: "contain" }} /> : null}
-                </Modal>
+                <FloatingPreview open={Boolean(previewContent)} title={previewNode?.title || t("assets.kinds.image")} onClose={() => setPreviewNodeId(null)}>
+                    {previewContent ? <img src={previewContent} alt={previewNode?.title || t("assets.kinds.image")} className="mx-auto block max-h-full max-w-full object-contain" /> : null}
+                </FloatingPreview>
 
                 <Modal
                     title={t("canvas.projectPage.clearTitle")}

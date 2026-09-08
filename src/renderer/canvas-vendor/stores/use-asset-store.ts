@@ -73,8 +73,22 @@ export const useAssetStore = create<AssetStore>((set, get) => ({
   cleanupImages: () => undefined,
 }))
 
-void useAssetStore.getState().refresh().then(() => useAssetStore.setState({ hydrated: true })).catch(error => {
+async function refreshWhenApiReady(attempt = 0): Promise<void> {
+  if (!window.api?.images?.list || !window.api?.promptAssets?.list) {
+    if (attempt < 40) {
+      await new Promise(resolve => window.setTimeout(resolve, 50))
+      return refreshWhenApiReady(attempt + 1)
+    }
+    throw new Error('魔导书 API 尚未就绪')
+  }
+  await useAssetStore.getState().refresh()
+}
+
+void refreshWhenApiReady().then(() => useAssetStore.setState({ hydrated: true })).catch(error => {
   console.error('grimoire asset library load failed', error)
   useAssetStore.setState({ hydrated: true })
 })
-if (typeof window !== 'undefined') window.addEventListener('grimoire:refresh', () => { void useAssetStore.getState().refresh().catch(console.error) })
+if (typeof window !== 'undefined') {
+  window.addEventListener('grimoire:refresh', () => { void refreshWhenApiReady().catch(console.error) })
+  window.addEventListener('grimoire:canvas-mounted', () => { void refreshWhenApiReady().catch(console.error) })
+}
