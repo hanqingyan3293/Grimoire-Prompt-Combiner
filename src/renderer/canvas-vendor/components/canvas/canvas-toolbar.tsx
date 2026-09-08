@@ -8,6 +8,7 @@ import { getNodePluginId, listNodeDefinitions, useNodeRegistryVersion } from "@c
 import { useThemeStore } from "@canvas/stores/use-theme-store";
 import { AnimatedThemeToggler } from "@canvas/components/ui/animated-theme-toggler";
 import { useTranslation } from "react-i18next";
+import { useSettingsStore } from "@renderer/stores/settings.store";
 
 export function CanvasToolbar({
     selectedCount,
@@ -59,6 +60,7 @@ export function CanvasToolbar({
     const rootRef = useRef<HTMLDivElement>(null);
     const colorTheme = useThemeStore((state) => state.theme);
     const setTheme = useThemeStore((state) => state.setTheme);
+    const setSetting = useSettingsStore((state) => state.setSetting);
     const theme = canvasThemes[colorTheme];
     const [hovered, setHovered] = useState<string | null>(null);
     const [tipX, setTipX] = useState(0);
@@ -213,11 +215,11 @@ export function CanvasToolbar({
                     <div className="px-1 pb-2 text-sm font-medium opacity-65">{t("canvas.toolbar.appearance")}</div>
                     <div className="px-1 pb-1.5 text-[11px] font-medium opacity-50">{t("canvas.toolbar.themeMode")}</div>
                     <div className="grid grid-cols-2 gap-1 rounded-lg p-1" style={{ background: theme.toolbar.itemHover }}>
-                        <CanvasThemeButton colorTheme={colorTheme} targetTheme="light" onThemeChange={setTheme}>
+                        <CanvasThemeButton colorTheme={colorTheme} targetTheme="light" onThemeChange={(next) => { setTheme(next); void setSetting('appearance_mode', 'light') }}>
                             <Sun className="size-4" />
                             {t("canvas.toolbar.light")}
                         </CanvasThemeButton>
-                        <CanvasThemeButton colorTheme={colorTheme} targetTheme="dark" onThemeChange={setTheme}>
+                        <CanvasThemeButton colorTheme={colorTheme} targetTheme="dark" onThemeChange={(next) => { setTheme(next); void setSetting('appearance_mode', 'dark') }}>
                             <Moon className="size-4" />
                             {t("canvas.toolbar.dark")}
                         </CanvasThemeButton>

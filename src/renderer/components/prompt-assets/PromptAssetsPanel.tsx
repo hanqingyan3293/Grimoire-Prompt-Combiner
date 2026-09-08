@@ -9,6 +9,7 @@ import { Button, IconButton } from '../ui/Button'
 import { EmptyState, PanelHeader } from '../ui/Feedback'
 import { Modal } from '../ui/Modal'
 import { ResourceCard, ResourceGroup } from '../ui/ResourceCards'
+import { FloatingPreview } from '../ui/FloatingPreview'
 
 const PAGE_SIZE = 40
 
@@ -145,9 +146,9 @@ export function PromptAssetsPanel() {
 
       {page.total > PAGE_SIZE && <div className='flex items-center justify-between border-t border-[var(--color-border)] pt-3'><IconButton icon={ChevronLeft} label='上一页' onClick={() => setOffset(Math.max(0, offset - PAGE_SIZE))} disabled={offset === 0 || loading} /><span className='text-xs text-[var(--color-text-secondary)]'>{currentPage} / {totalPages}</span><IconButton icon={ChevronRight} label='下一页' onClick={() => setOffset(offset + PAGE_SIZE)} disabled={offset + PAGE_SIZE >= page.total || loading} /></div>}
 
-      <Modal title={preview?.name || '提示词资产预览'} open={preview !== null} onClose={() => setPreview(null)} maxWidth='max-w-2xl'>
+      <FloatingPreview title={preview?.name || '提示词资产预览'} open={preview !== null} onClose={() => setPreview(null)}>
         {preview && <AssetPreview item={preview} onCopy={() => void copyPrompt(preview)} onApply={() => { apply(preview); setPreview(null) }} />}
-      </Modal>
+      </FloatingPreview>
     </div>
   )
 }

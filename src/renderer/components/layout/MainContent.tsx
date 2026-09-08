@@ -10,6 +10,7 @@ import { Clipboard, Eraser, Dices, ListChecks, Redo2, RotateCcw, Search, Trash2,
 import { Badge } from '../ui/Badge'
 import { Button, IconButton } from '../ui/Button'
 import { Modal } from '../ui/Modal'
+import { FloatingPreview } from '../ui/FloatingPreview'
 
 function promptChipScale(value: string): string {
   const fontSize = Number.parseInt(value, 10)
@@ -137,7 +138,7 @@ export function MainContent() {
             className="w-full h-20 px-3 py-2 bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded text-sm text-[var(--color-text-primary)] font-mono resize-none focus:outline-none focus:border-[var(--color-accent)]" />
         </div>
 
-        <Modal title="输出预览" open={magnifierOpen} onClose={() => setMagnifierOpen(false)} maxWidth="max-w-[800px]">
+        <FloatingPreview title="输出预览" open={magnifierOpen} onClose={() => setMagnifierOpen(false)}>
               <div className="space-y-4">
                 <div>
                   <div className="flex items-center justify-between mb-2">
@@ -156,7 +157,7 @@ export function MainContent() {
                     className="w-full h-28 px-3 py-2 bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded text-sm text-[var(--color-text-primary)] font-mono resize-none" />
                 </div>
               </div>
-        </Modal>
+        </FloatingPreview>
       </div>
     </div>
   )
