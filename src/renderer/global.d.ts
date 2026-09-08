@@ -52,11 +52,15 @@ interface GrimoireAPI {
     }>
     set: (key: string, value: string) => Promise<boolean>
   }
+  system: {
+    openExternal: (url: string) => Promise<boolean>
+  }
   images: {
     list: () => Promise<Array<{ id: number; file_path: string; storage_mode: 'managed' | 'external'; asset_hash: string | null; mime_type: string | null; file_size: number | null; original_name: string | null; available: boolean; created_at: string }>>
     add: (mode?: 'managed' | 'external') => Promise<{ id: number; file_path: string; storage_mode: 'managed' | 'external' } | null>
     delete: (id: number) => Promise<boolean>
     importData: (dataBase64: string, originalName: string) => Promise<unknown>
+    readData: (id: number) => Promise<string>
   }
   chat: {
     listGroups: () => Promise<Array<{ id: string; name: string; sort_order: number; created_at: string }>>

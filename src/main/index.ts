@@ -61,6 +61,16 @@ function configureWindowSecurity(window: BrowserWindow): void {
   })
 }
 
+function registerSystemIPC(): void {
+  ipcMain.handle(IPC_CHANNELS.OPEN_EXTERNAL, async (_event, url: unknown) => {
+    if (typeof url !== 'string') throw new Error('外部地址无效')
+    const parsed = new URL(url)
+    if (!['http:', 'https:'].includes(parsed.protocol)) throw new Error('仅允许打开 HTTP 或 HTTPS 地址')
+    await shell.openExternal(parsed.toString())
+    return true
+  })
+}
+
 function broadcastDatabaseReload(): void {
   for (const window of BrowserWindow.getAllWindows()) {
     if (!window.isDestroyed()) {
@@ -296,6 +306,7 @@ async function registerAllIPC(): Promise<void> {
   registerComfyIPC()
   registerCanvasIPC()
   registerPromptAssetsIPC()
+  registerSystemIPC()
   applyPersistedIntegrationSettings()
   markInterruptedTasks()
   taskRunner.start()

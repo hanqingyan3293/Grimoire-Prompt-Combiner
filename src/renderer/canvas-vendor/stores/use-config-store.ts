@@ -285,6 +285,23 @@ export function useEffectiveConfig() {
     return useMemo(() => ({ ...config, channelMode: "local" as const }), [config]);
 }
 
+// Desktop integration: hydrate the canvas model catalog from Grimoire's provider table.
+// Secrets remain in the main process; only public provider metadata is copied here.
+if (typeof window !== "undefined" && window.api?.providers?.list) {
+    void window.api.providers.list().then((providers) => {
+        const current = useConfigStore.getState().config
+        const channels = providers.map((provider) => ({
+            id: provider.id,
+            name: provider.name,
+            baseUrl: provider.base_url,
+            apiKey: "",
+            apiFormat: provider.protocol === "responses" ? "openai" as const : "openai" as const,
+            models: normalizeChannelModels(provider.models),
+        }))
+        if (channels.length) useConfigStore.setState({ config: { ...current, channels, models: modelOptionsFromChannels(channels) } })
+    }).catch((error) => console.warn("canvas provider catalog load failed", error))
+}
+
 /** Normalize a mixed list of raw model names or model objects into deduped ChannelModel entries. */
 export function normalizeChannelModels(models: Array<string | ChannelModel> | undefined): ChannelModel[] {
     const seen = new Set<string>();

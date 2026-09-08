@@ -25,7 +25,7 @@ export function ResourceGroup({ id, title, count, children, empty = false, force
         <span className="min-w-0 flex-1 truncate">{title}</span>
         {typeof count === 'number' && <span className="ui-count-badge">{count}</span>}
       </button>
-      {!isCollapsed && !empty && <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">{children}</div>}
+      {!isCollapsed && !empty && <div className="grid gap-2 [grid-template-columns:repeat(auto-fit,minmax(190px,1fr))]">{children}</div>}
       {!isCollapsed && empty && <div className="rounded-xl border border-dashed border-[var(--color-border)] px-3 py-5 text-center text-xs text-[var(--color-text-secondary)]">暂无内容</div>}
     </section>
   )

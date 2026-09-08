@@ -77,4 +77,13 @@ export function registerImagesIPC(): void {
       await fs.promises.rm(tempRoot, { recursive: true, force: true })
     }
   })
+
+  ipcMain.handle(IPC_CHANNELS.IMAGES_READ_DATA, async (_event, id: unknown) => {
+    requireId(String(id), '图片 ID')
+    const row = getDatabase().exec('SELECT file_path, mime_type, available FROM image_refs WHERE id=?', [Number(id)])
+    const value = row[0]?.values?.[0]
+    if (!value || Number(value[2]) === 0 || !fs.existsSync(String(value[0]))) throw new Error('图片文件不可用')
+    const mime = typeof value[1] === 'string' && value[1] ? value[1] : 'image/png'
+    return `data:${mime};base64,${(await fs.promises.readFile(String(value[0]))).toString('base64')}`
+  })
 }

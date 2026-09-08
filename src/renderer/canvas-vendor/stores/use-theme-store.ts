@@ -17,3 +17,17 @@ export const useThemeStore = create<ThemeStore>()(
         { name: "infinite-canvas:theme_store" },
     ),
 );
+
+function applyGrimoireAppearance() {
+    if (!window.api?.settings?.getAll) return
+    void window.api.settings.getAll().then((settings) => {
+        const mode = settings.appearance_mode === "light" ? "light" : settings.appearance_mode === "dark" ? "dark" : "dark"
+        useThemeStore.getState().setTheme(mode)
+    }).catch(() => undefined)
+}
+
+if (typeof window !== "undefined") {
+    applyGrimoireAppearance()
+    window.api?.db?.onRefresh?.(applyGrimoireAppearance)
+    window.api?.db?.onFocus?.(applyGrimoireAppearance)
+}

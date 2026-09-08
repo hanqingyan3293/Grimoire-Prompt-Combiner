@@ -22,10 +22,13 @@ type AssetStore = {
 type ImageRow = { id: number; file_path: string; original_name: string | null; mime_type: string | null; file_size: number | null; available: boolean }
 type PromptRow = { id: string; sourceRef: string; source: string; name: string; prompt: string; detail: string; createdAt: string; nsfw: boolean; variantCount: number }
 
-function fileUrl(filePath: string) { return `file://${filePath.replaceAll('\\', '/')}` }
-function mapImage(image: ImageRow): ImageAsset {
-  const url = fileUrl(image.file_path)
-  return { id: `image:${image.id}`, kind: 'image', title: image.original_name || `图片 ${image.id}`, coverUrl: url, tags: [], source: 'grimoire-image-library', createdAt: '', updatedAt: '', data: { dataUrl: url, width: 0, height: 0, bytes: image.file_size || 0, mimeType: image.mime_type || 'image/*' } }
+async function mapImage(image: ImageRow): Promise<ImageAsset | null> {
+  try {
+    const url = await window.api.images.readData(image.id)
+    return { id: `image:${image.id}`, kind: 'image', title: image.original_name || `图片 ${image.id}`, coverUrl: url, tags: [], source: 'grimoire-image-library', createdAt: '', updatedAt: '', data: { dataUrl: url, width: 0, height: 0, bytes: image.file_size || 0, mimeType: image.mime_type || 'image/*' } }
+  } catch {
+    return null
+  }
 }
 function mapPrompt(row: PromptRow): TextAsset {
   return { id: `prompt:${row.sourceRef}`, kind: 'text', title: row.name, coverUrl: '', tags: [], source: row.source, note: row.detail, createdAt: row.createdAt, updatedAt: row.createdAt, data: { content: row.prompt }, metadata: { sourceRef: row.sourceRef, nsfw: row.nsfw, variantCount: row.variantCount } }
@@ -44,7 +47,8 @@ export const useAssetStore = create<AssetStore>((set, get) => ({
       if (!page.items.length || promptItems.length >= page.total) break
     }
     const images = await imagesPromise
-    set({ assets: [...images.filter(image => image.available).map(mapImage), ...promptItems.map(mapPrompt)] })
+    const imageAssets = (await Promise.all(images.filter(image => image.available).map(mapImage))).filter((asset): asset is ImageAsset => Boolean(asset))
+    set({ assets: [...imageAssets, ...promptItems.map(mapPrompt)] })
   },
   addAsset: (asset) => {
     const now = new Date().toISOString()

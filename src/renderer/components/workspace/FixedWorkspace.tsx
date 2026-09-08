@@ -42,29 +42,41 @@ export function FixedWorkspace() {
   )
   const panelCount = useMemo(() => layout ? countPanelNodes(layout) : 0, [layout])
 
-  const startResize = (node: Extract<WorkspaceLayoutNode, { kind: "split" }>, event: React.MouseEvent) => {
+  const startResize = (node: Extract<WorkspaceLayoutNode, { kind: "split" }>, event: React.PointerEvent<HTMLDivElement>) => {
     event.preventDefault()
-    const container = (event.currentTarget.parentElement || containerRef.current) as HTMLElement | null
+    event.stopPropagation()
+    const splitter = event.currentTarget
+    splitter.setPointerCapture?.(event.pointerId)
+    const container = (splitter.parentElement || containerRef.current) as HTMLElement | null
     if (!container) return
 
     const rect = container.getBoundingClientRect()
-    const onMove = (moveEvent: MouseEvent) => {
-      if (!workspace) return
-      if (node.direction === "horizontal") {
-        const ratio = (moveEvent.clientX - rect.left) / rect.width
+    let frame = 0
+    let latestEvent: PointerEvent | null = null
+    const onMove = (moveEvent: PointerEvent) => {
+      latestEvent = moveEvent
+      if (frame) return
+      frame = requestAnimationFrame(() => {
+        frame = 0
+        if (!latestEvent || !workspace) return
+        const current = latestEvent
+        const ratio = node.direction === "horizontal"
+          ? (current.clientX - rect.left) / rect.width
+          : (current.clientY - rect.top) / rect.height
         setSplitRatio(workspace.id, node.id, ratio)
-      } else {
-        const ratio = (moveEvent.clientY - rect.top) / rect.height
-        setSplitRatio(workspace.id, node.id, ratio)
-      }
+      })
+      return
     }
 
     const cleanupResize = () => {
       document.body.style.cursor = ""
       document.documentElement.classList.remove("is-resizing-horizontal", "is-resizing-vertical")
       document.body.style.userSelect = ""
-      window.removeEventListener("mousemove", onMove)
-      window.removeEventListener("mouseup", cleanupResize)
+      if (frame) cancelAnimationFrame(frame)
+      try { splitter.releasePointerCapture?.(event.pointerId) } catch {}
+      window.removeEventListener("pointermove", onMove)
+      window.removeEventListener("pointerup", cleanupResize)
+      window.removeEventListener("pointercancel", cleanupResize)
       window.removeEventListener("blur", cleanupResize)
       document.removeEventListener("mouseleave", cleanupResize)
     }
@@ -72,8 +84,9 @@ export function FixedWorkspace() {
     document.body.style.cursor = node.direction === "horizontal" ? "col-resize" : "row-resize"
     document.documentElement.classList.add(node.direction === "horizontal" ? "is-resizing-horizontal" : "is-resizing-vertical")
     document.body.style.userSelect = "none"
-    window.addEventListener("mousemove", onMove)
-    window.addEventListener("mouseup", cleanupResize)
+    window.addEventListener("pointermove", onMove)
+    window.addEventListener("pointerup", cleanupResize)
+    window.addEventListener("pointercancel", cleanupResize)
     window.addEventListener("blur", cleanupResize)
     document.addEventListener("mouseleave", cleanupResize)
   }
@@ -133,7 +146,7 @@ export function FixedWorkspace() {
           {renderNode(node.first)}
         </div>
         <div
-          onMouseDown={(event) => startResize(node, event)}
+          onPointerDown={(event) => startResize(node, event)}
           role="separator"
           aria-orientation={isHorizontal ? "vertical" : "horizontal"}
           className={

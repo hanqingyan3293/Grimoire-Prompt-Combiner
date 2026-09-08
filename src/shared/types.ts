@@ -235,12 +235,14 @@ export const IPC_CHANNELS = {
   // Settings
   SETTINGS_GET_ALL: "settings:getAll",
   SETTINGS_SET: "settings:set",
+  OPEN_EXTERNAL: "system:openExternal",
 
   // Images
   IMAGES_LIST: "images:list",
   IMAGES_ADD: "images:add",
   IMAGES_DELETE: "images:delete",
   IMAGES_IMPORT_DATA: "images:importData",
+  IMAGES_READ_DATA: "images:readData",
 
   // AI
   AI_CHAT: "ai:chat",
