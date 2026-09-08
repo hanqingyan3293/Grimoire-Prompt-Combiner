@@ -38,6 +38,8 @@ interface GrimoireAPI {
   }
   promptAssets: {
     list: (query?: PromptAssetQuery) => Promise<PromptAssetPage>
+    create: (input: { name: string; prompt: string; detail?: string; sourceId?: string; nsfw?: boolean; variantCount?: number }) => Promise<unknown>
+    create: (input: { name: string; prompt: string; detail?: string; sourceId?: string; nsfw?: boolean; variantCount?: number }) => Promise<unknown>
   }
   settings: {
     getAll: () => Promise<{
@@ -54,6 +56,8 @@ interface GrimoireAPI {
     list: () => Promise<Array<{ id: number; file_path: string; storage_mode: 'managed' | 'external'; asset_hash: string | null; mime_type: string | null; file_size: number | null; original_name: string | null; available: boolean; created_at: string }>>
     add: (mode?: 'managed' | 'external') => Promise<{ id: number; file_path: string; storage_mode: 'managed' | 'external' } | null>
     delete: (id: number) => Promise<boolean>
+    importData: (dataBase64: string, originalName: string) => Promise<unknown>
+    importData: (dataBase64: string, originalName: string) => Promise<unknown>
   }
   chat: {
     listGroups: () => Promise<Array<{ id: string; name: string; sort_order: number; created_at: string }>>
@@ -173,6 +177,13 @@ interface GrimoireAPI {
     delete: (id: string) => Promise<boolean>
     exportPackage: (id: string, format: 'json' | 'zip') => Promise<boolean>
     importPackage: () => Promise<{ projectId: string; projectName: string; importedImages: number; skippedImages: number; warnings: string[]; importedPromptAssets: number; importedWorkflows: number } | null>
+    vendor: {
+      list: () => Promise<Array<{ id: string; title: string; createdAt: string; updatedAt: string }>>
+      get: (id: string) => Promise<unknown>
+      create: (title?: string, id?: string) => Promise<unknown>
+      save: (id: string, project: unknown) => Promise<unknown>
+      delete: (id: string) => Promise<boolean>
+    }
   }
 }
 

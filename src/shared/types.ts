@@ -229,6 +229,7 @@ export const IPC_CHANNELS = {
 
   // Prompt assets
   PROMPT_ASSETS_LIST: "promptAssets:list",
+  PROMPT_ASSETS_CREATE: "promptAssets:create",
 
   // Settings
   SETTINGS_GET_ALL: "settings:getAll",
@@ -238,6 +239,7 @@ export const IPC_CHANNELS = {
   IMAGES_LIST: "images:list",
   IMAGES_ADD: "images:add",
   IMAGES_DELETE: "images:delete",
+  IMAGES_IMPORT_DATA: "images:importData",
 
   // AI
   AI_CHAT: "ai:chat",
@@ -322,6 +324,13 @@ export const IPC_CHANNELS = {
   CANVAS_DELETE: "canvas:delete",
   CANVAS_EXPORT_PACKAGE: "canvas:exportPackage",
   CANVAS_IMPORT_PACKAGE: "canvas:importPackage",
+
+  // Vendored infinite-canvas projects
+  CANVAS_VENDOR_LIST: "canvasVendor:list",
+  CANVAS_VENDOR_GET: "canvasVendor:get",
+  CANVAS_VENDOR_CREATE: "canvasVendor:create",
+  CANVAS_VENDOR_SAVE: "canvasVendor:save",
+  CANVAS_VENDOR_DELETE: "canvasVendor:delete",
 } as const
 
 /** Default tag weight */

@@ -2,6 +2,8 @@ import type { LegacyDatabase } from './sqlite.compat'
 import type { PromptAssetItem, PromptAssetPage, PromptAssetQuery, PromptAssetSourceFilter } from '../../shared/prompt-asset-types'
 import type { PresetData } from '../../shared/types'
 import { requireText } from './input-validation'
+import crypto from 'crypto'
+import { saveDatabase } from '../database'
 
 const SOURCES = new Set<PromptAssetSourceFilter>(['all', 'asset', 'history', 'preset', 'favorite'])
 
@@ -104,4 +106,18 @@ export function queryPromptAssets(db: LegacyDatabase, input: unknown): PromptAss
     countStatement.free()
     listStatement.free()
   }
+}
+
+export function createPromptAsset(db: LegacyDatabase, input: unknown): PromptAssetItem {
+  if (!input || typeof input !== 'object' || Array.isArray(input)) throw new Error('提示词资产参数无效')
+  const value = input as Record<string, unknown>
+  const name = requireText(value.name ?? '', '资产名称', 500)
+  const prompt = requireText(value.prompt ?? '', '资产提示词', 100_000)
+  const detail = requireText(value.detail ?? '', '资产详情', 2_000)
+  const sourceId = typeof value.sourceId === 'string' && value.sourceId.trim() ? value.sourceId.trim().slice(0, 500) : `asset-${crypto.randomUUID()}`
+  const id = `asset:${crypto.randomUUID()}`
+  const now = new Date().toISOString()
+  db.run('INSERT INTO prompt_assets (id, source_id, source, name, prompt, chapter, section, subsection, nsfw, variant_count, source_fingerprint, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)', [id, sourceId, 'asset', name, prompt, detail, '', '', value.nsfw === true ? 1 : 0, Number.isInteger(value.variantCount) ? Math.max(0, Number(value.variantCount)) : 0, crypto.createHash('sha256').update(`${sourceId}:${name}:${prompt}`).digest('hex'), now, now])
+  saveDatabase()
+  return { id, sourceRef: sourceId, source: 'asset', name, prompt, detail, createdAt: now, nsfw: value.nsfw === true, variantCount: Number.isInteger(value.variantCount) ? Math.max(0, Number(value.variantCount)) : 0 }
 }

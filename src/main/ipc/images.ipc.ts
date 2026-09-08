@@ -2,6 +2,7 @@
 import { ipcMain, dialog } from 'electron'
 import fs from 'fs'
 import path from 'path'
+import os from 'os'
 import { getDatabase, saveDatabase } from '../database'
 import { IPC_CHANNELS, type ImageRef } from '../../shared/types'
 import { inspectImageFile } from '../services/asset.core'
@@ -63,5 +64,17 @@ export function registerImagesIPC(): void {
     db.run('DELETE FROM image_refs WHERE id=?', [id])
     saveDatabase()
     return true
+  })
+
+  ipcMain.handle(IPC_CHANNELS.IMAGES_IMPORT_DATA, async (_event, dataBase64: unknown, originalName: unknown) => {
+    if (typeof dataBase64 !== 'string' || !dataBase64 || dataBase64.length > 140_000_000) throw new Error('图片数据无效或过大')
+    const tempRoot = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'grimoire-image-import-'))
+    const tempPath = path.join(tempRoot, 'input')
+    try {
+      await fs.promises.writeFile(tempPath, Buffer.from(dataBase64, 'base64'))
+      return await registerManagedImage(tempPath, typeof originalName === 'string' ? originalName : undefined)
+    } finally {
+      await fs.promises.rm(tempRoot, { recursive: true, force: true })
+    }
   })
 }

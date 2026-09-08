@@ -1,12 +1,13 @@
 // @vitest-environment jsdom
 import React, { createRef } from 'react'
 import { fireEvent, render, screen } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { CanvasNode } from '../../../shared/canvas-types'
 import { CanvasToolbar } from './CanvasToolbar'
 import { CanvasNodeContent } from './CanvasNodeContent'
 
 const noop = () => {}
+afterEach(() => { document.body.innerHTML = '' })
 const toolbarProps = {
   project: { id: 'p', name: '画布' }, projects: [{ id: 'p', name: '画布' }], renaming: false, nameDraft: '', interactionMode: 'select' as const, selectedNodeCount: 0, selectedConnectionCount: 1, selectedConnectionTyped: true, selectedHasGroup: false, selectedGroupId: null, selectedGroupTitle: '', groupTitleDraft: '', organizeOpen: false, canUndo: false, canRedo: false, message: '', importRef: createRef<HTMLInputElement>(),
   onSelectProject: noop, onStartRename: noop, onNameDraftChange: noop, onCommitRename: noop, onCancelRename: noop, onCreateProject: noop, onAddNode: noop, onExportCanvas: noop, onExportPackage: noop, onImportPackage: noop, onImportCanvas: noop, onInteractionMode: noop, onGroup: noop, onUngroup: noop, onGroupTitleChange: noop, onRenameGroup: noop, onOrganizeOpen: noop, onAlign: noop, onDistribute: noop, onSnap: noop, onUndo: noop, onRedo: noop, onPluginDiagnostics: noop, onConnectionDetails: noop, onSynchronize: noop, onReconnect: noop, onDelete: noop,
@@ -26,6 +27,18 @@ describe('extracted canvas components', () => {
     rerender(<CanvasToolbar {...toolbarProps} selectedConnectionCount={2} />)
     expect(screen.queryByRole('button', { name: '连接详情' })).toBeNull()
     expect(screen.getByRole('button', { name: '删除连线 2' })).toBeTruthy()
+  })
+
+  it('exposes an explicit add-node menu and adds a selected node once', () => {
+    const onAddNode = vi.fn()
+    render(<CanvasToolbar {...toolbarProps} onAddNode={onAddNode} />)
+    fireEvent.click(screen.getAllByRole('button', { name: /添加节点/ })[0])
+    expect(screen.getByRole('menu')).toBeTruthy()
+    fireEvent.click(screen.getByRole('menuitem', { name: 'WD14 节点' }))
+    expect(onAddNode).toHaveBeenCalledWith('wd14')
+    fireEvent.click(screen.getByRole('menuitem', { name: '文本' }))
+    expect(onAddNode).toHaveBeenNthCalledWith(2, 'text')
+    expect(screen.getByRole('menu')).toBeTruthy()
   })
 
   it('routes prompt editing through callbacks and protects incomplete business nodes', () => {

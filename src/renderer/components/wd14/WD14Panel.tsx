@@ -43,15 +43,25 @@ export function WD14Panel() {
 
   const load = useCallback(async () => {
     setLoading(true)
-    const settings = await window.api.settings.getAll()
-    setPythonPath(typeof settings.wd14_python_path === 'string' ? settings.wd14_python_path : '')
-    setModelDirectory(typeof settings.wd14_model_directory === 'string' ? settings.wd14_model_directory : '')
-    const diagnosis = await window.api.wd14.diagnostics() as WD14Diagnostics
-    setDiagnostics(diagnosis)
-    const [imageList, modelList] = await Promise.all([window.api.images.list(), window.api.wd14.models()])
-    setImages(imageList.filter(image => image.available).map(image => ({ id: image.id, original_name: image.original_name, available: image.available })))
-    setModels(modelList.models.filter(model => Boolean(model.has_csv)).map(model => ({ id: String(model.id), name: String(model.name), has_csv: Boolean(model.has_csv) })))
-    setLoading(false)
+    try {
+      const settings = await window.api.settings.getAll()
+      setPythonPath(typeof settings.wd14_python_path === 'string' ? settings.wd14_python_path : '')
+      setModelDirectory(typeof settings.wd14_model_directory === 'string' ? settings.wd14_model_directory : '')
+      const diagnosis = await window.api.wd14.diagnostics() as WD14Diagnostics
+      setDiagnostics(diagnosis)
+      const imageList = await window.api.images.list()
+      setImages(imageList.filter(image => image.available).map(image => ({ id: image.id, original_name: image.original_name, available: image.available })))
+      if (diagnosis.blockingReason) {
+        setModels([])
+        setMessageTone('info')
+        setMessage(diagnosis.blockingReason + '；请选择正确的模型目录和 Python 后刷新')
+        return
+      }
+      const modelList = await window.api.wd14.models()
+      setModels(modelList.models.filter(model => Boolean(model.has_csv)).map(model => ({ id: String(model.id), name: String(model.name), has_csv: Boolean(model.has_csv) })))
+    } finally {
+      setLoading(false)
+    }
   }, [])
 
   useEffect(() => {
@@ -120,11 +130,11 @@ export function WD14Panel() {
                 {diagnostics.runtimeVersion && <Badge>v{diagnostics.runtimeVersion}</Badge>}
               </div>
               <div className='mt-1 truncate text-[11px] text-[var(--color-text-secondary)]' title={pythonPath || diagnostics.pythonPath}>解释器：{pythonPath || diagnostics.pythonPath}</div>
-              <div className='mt-1 flex flex-wrap items-center gap-2 text-[11px] text-[var(--color-text-secondary)]'><span className='truncate' title={diagnostics.modelDirectory}>模型：{diagnostics.pairedModelCount}/{diagnostics.modelCount} 个可用配对</span><StatusBadge tone={diagnostics.modelDirectoryExists && diagnostics.pairedModelCount > 0 ? 'success' : 'danger'}>{diagnostics.modelDirectoryExists && diagnostics.pairedModelCount > 0 ? '模型就绪' : '模型不可用'}</StatusBadge></div>
+              <div className='mt-1 flex flex-wrap items-center gap-2 text-[11px] text-[var(--color-text-secondary)]'><span className='truncate' title={diagnostics.modelDirectory}>模型：{diagnostics.pairedModelCount}/{diagnostics.modelCount} 个可用配对</span><StatusBadge tone={diagnostics.modelDirectoryExists && diagnostics.pairedModelCount > 0 ? 'success' : 'warning'}>{diagnostics.modelDirectoryExists && diagnostics.pairedModelCount > 0 ? '模型就绪' : '待配置模型'}</StatusBadge></div>
             </div>
             <StatusBadge tone={diagnostics.blockingReason ? 'warning' : 'success'}>{diagnostics.blockingReason || '可用'}</StatusBadge>
           </div>
-          {diagnostics.blockingReason && <div className='ui-inline-alert mt-3 text-xs' role='alert'><AlertTriangle size={15} className='mt-0.5 shrink-0' aria-hidden='true' /><span>{diagnostics.blockingReason}</span></div>}
+          {diagnostics.blockingReason && <div className='ui-inline-note ui-inline-note-info mt-3 text-xs' role='status'><Settings2 size={15} className='mt-0.5 shrink-0' aria-hidden='true' /><span>{diagnostics.blockingReason}；请选择模型目录和 Python 后刷新</span></div>}
           <div className='mt-3 flex flex-wrap gap-2'>
             <Button size='sm' icon={FolderOpen} onClick={() => void chooseModelDirectory()} disabled={busy}>选择模型目录</Button>
             <Button size='sm' icon={Settings2} onClick={() => void choosePythonPath()} disabled={busy}>选择 Python</Button>

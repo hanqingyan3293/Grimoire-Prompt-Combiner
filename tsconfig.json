@@ -1,6 +1,7 @@
 {
   "compilerOptions": {
     "target": "ES2022",
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
     "module": "ESNext",
     "moduleResolution": "bundler",
     "jsx": "react-jsx",
@@ -19,6 +20,12 @@
       ],
       "@renderer/*": [
         "src/renderer/*"
+      ],
+      "@canvas/*": [
+        "src/renderer/canvas-vendor/*"
+      ],
+      "@infinite-canvas/plugin-sdk": [
+        "src/renderer/canvas-plugin-sdk/index.ts"
       ]
     },
     "ignoreDeprecations": "6.0"

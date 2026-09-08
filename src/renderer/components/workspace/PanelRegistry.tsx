@@ -14,7 +14,7 @@ const AIVisionPanel = lazy(() => import('../ai/AIVisionPanel').then(module => ({
 const TasksPanel = lazy(() => import('../tasks/TasksPanel').then(module => ({ default: module.TasksPanel })))
 const WD14Panel = lazy(() => import('../wd14/WD14Panel').then(module => ({ default: module.WD14Panel })))
 const ComfyUIPanel = lazy(() => import('../comfy/ComfyUIPanel').then(module => ({ default: module.ComfyUIPanel })))
-const CanvasPanel = lazy(() => import('../canvas/CanvasPanel').then(module => ({ default: module.CanvasPanel })))
+const CanvasPanel = lazy(() => import('../canvas/CanvasVendorPanel').then(module => ({ default: module.CanvasVendorPanel })))
 const PromptAssetsPanel = lazy(() => import('../prompt-assets/PromptAssetsPanel').then(module => ({ default: module.PromptAssetsPanel })))
 
 export const PANEL_DEFINITIONS: Record<PanelType, PanelDefinition> = {

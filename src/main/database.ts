@@ -179,6 +179,14 @@ CREATE TABLE IF NOT EXISTS canvas_projects (
   updated_at TEXT NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS canvas_vendor_projects (
+  id TEXT PRIMARY KEY,
+  title TEXT NOT NULL,
+  data_json TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS chat_groups (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
@@ -258,6 +266,7 @@ CREATE INDEX IF NOT EXISTS idx_prompt_assets_source ON prompt_assets(source);
 CREATE INDEX IF NOT EXISTS idx_task_jobs_status ON task_jobs(status, created_at);
 CREATE INDEX IF NOT EXISTS idx_comfy_workflows_name ON comfy_workflows(name);
 CREATE INDEX IF NOT EXISTS idx_canvas_projects_updated ON canvas_projects(updated_at DESC);
+CREATE INDEX IF NOT EXISTS idx_canvas_vendor_projects_updated ON canvas_vendor_projects(updated_at DESC);
 CREATE INDEX IF NOT EXISTS idx_history_time ON history(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_task_image_refs_image ON task_image_refs(image_id);
 `

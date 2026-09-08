@@ -6,7 +6,7 @@ import type { ImageRef } from '../../../shared/types'
 import type { TaskRecord } from '../../../shared/task-types'
 import { usePromptsStore } from '../../stores/prompts.store'
 import { useTagsStore } from '../../stores/tags.store'
-import { alignSelectedNodes, deleteCanvasConnections, distributeSelectedNodes, expandGroupedSelection, groupBounds, groupSelectedNodes, moveSelectedNodesWithGuides, normalizeRect, renameCanvasGroup, resizeCanvasNode, selectNodesInRect, snapSelectedNodes, ungroupSelectedNodes, type CanvasAlignMode, type CanvasSnapGuides } from '../../../shared/canvas-operations'
+import { alignSelectedNodes, deleteCanvasConnections, distributeSelectedNodes, expandGroupedSelection, groupBounds, groupSelectedNodes, moveSelectedNodes, moveSelectedNodesWithGuides, normalizeRect, renameCanvasGroup, resizeCanvasNode, selectNodesInRect, snapSelectedNodes, ungroupSelectedNodes, type CanvasAlignMode, type CanvasSnapGuides } from '../../../shared/canvas-operations'
 import { canvasNodeHasCapability, getCanvasNodeDefinition, listCanvasPlugins } from './nodeRegistry'
 import { executeComfyBusinessNode, executePromptAssetBusinessNode, executeWD14BusinessNode, extractTaskImageIds, extractWD14TagNames, reconcileBusinessTaskNode, type CanvasWorkflowDefinition } from './businessNodeRuntime'
 import { CanvasConnectionLayer } from './CanvasConnectionLayer'
@@ -65,7 +65,7 @@ export function CanvasPanel() {
   const [groupTitleDraft, setGroupTitleDraft] = useState('')
   const panRef = useRef<{ x: number; y: number; startX: number; startY: number } | null>(null)
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const dragRef = useRef<{ ids: string[]; x: number; y: number } | null>(null)
+  const dragRef = useRef<{ ids: string[]; x: number; y: number; guides: boolean } | null>(null)
   const resizeRef = useRef<{ id: string; startX: number; startY: number; width: number; height: number } | null>(null)
   const viewportRef = useRef<HTMLDivElement>(null)
   const dragStartRef = useRef<CanvasDocument | null>(null)
@@ -95,8 +95,8 @@ export function CanvasPanel() {
       window.api.images.list().then(setImages),
       window.api.tasks.list().then(setTasks),
       window.api.promptAssets.list({ limit: 100 }).then(page => setPromptAssets(page.items)),
-      window.api.comfy.workflows().then(items => setWorkflows(items.map(item => ({ id: item.id, name: item.name, bindings: item.bindings, defaults: item.defaults })))),
-      window.api.wd14.models().then(result => setWD14Models(result.models.map(model => ({ id: String(model.id || ''), name: String(model.name || model.id || ''), hasCsv: Boolean(model.has_csv) })).filter(model => model.id && model.hasCsv))),
+      window.api.comfy.workflows().then(items => setWorkflows(items.map(item => ({ id: item.id, name: item.name, bindings: item.bindings, defaults: item.defaults })))).catch(() => setWorkflows([])),
+      window.api.wd14.models().then(result => setWD14Models(result.models.map(model => ({ id: String(model.id || ''), name: String(model.name || model.id || ''), hasCsv: Boolean(model.has_csv) })).filter(model => model.id && model.hasCsv))).catch(() => setWD14Models([])),
     ]).catch(error => setMessage(error instanceof Error ? error.message : '画布业务数据加载失败'))
     return window.api.tasks.onUpdated(event => {
       void window.api.tasks.list().then(setTasks).catch(() => {})
@@ -403,10 +403,11 @@ export function CanvasPanel() {
     const dx = (event.clientX - drag.x) / project.document.viewport.scale
     const dy = (event.clientY - drag.y) / project.document.viewport.scale
     if (Math.abs(dx) > 1 || Math.abs(dy) > 1) movedRef.current = true
-    const snapped = moveSelectedNodesWithGuides(project.document.nodes, drag.ids, dx, dy)
-    updateDocumentWithoutHistory({ ...project.document, nodes: snapped.nodes })
-    setSnapGuides(snapped.guides)
-    dragRef.current = { ...drag, x: event.clientX, y: event.clientY }
+    const guidesEnabled = event.shiftKey
+    const moved = guidesEnabled ? moveSelectedNodesWithGuides(project.document.nodes, drag.ids, dx, dy, 14) : { nodes: moveSelectedNodes(project.document.nodes, drag.ids, dx, dy), guides: {} }
+    updateDocumentWithoutHistory({ ...project.document, nodes: moved.nodes })
+    setSnapGuides(moved.guides)
+    dragRef.current = { ...drag, x: event.clientX, y: event.clientY, guides: guidesEnabled }
   }
 
   const finishNodeDrag = () => {
@@ -508,6 +509,31 @@ export function CanvasPanel() {
     setSnapGuides({})
   }
 
+  const selectNode = (node: CanvasNode, event: React.PointerEvent) => {
+    const additive = event.ctrlKey || event.metaKey || event.shiftKey
+    const groupMembers = node.groupId ? canvasDocument.nodes.filter(item => item.groupId === node.groupId).map(item => item.id) : [node.id]
+    const nextSelected = new Set(additive || selectedIds.has(node.id) ? selectedIds : [])
+    const removeGroup = additive && groupMembers.every(id => nextSelected.has(id))
+    for (const id of groupMembers) {
+      if (removeGroup) nextSelected.delete(id)
+      else nextSelected.add(id)
+    }
+    setSelectedIds(nextSelected)
+    setSelectedConnectionIds(new Set())
+    setReconnectingConnectionId(null)
+    setConnectionDetailsOpen(false)
+    return nextSelected
+  }
+
+  const startNodeDrag = (node: CanvasNode, event: React.PointerEvent) => {
+    const nextSelected = selectNode(node, event)
+    if (!nextSelected.has(node.id)) return
+    dragStartRef.current = clone(canvasDocument)
+    movedRef.current = false
+    event.currentTarget.setPointerCapture(event.pointerId)
+    dragRef.current = { ids: [...expandGroupedSelection(canvasDocument.nodes, nextSelected)], x: event.clientX, y: event.clientY, guides: event.shiftKey }
+  }
+
   const startBackgroundInteraction = (event: React.PointerEvent<HTMLDivElement>) => {
     const target = event.target as HTMLElement
     if (event.button === 1 || (event.button === 0 && interactionMode === 'pan')) {
@@ -533,13 +559,13 @@ export function CanvasPanel() {
   const selectedConnectionTo = selectedConnection ? canvasDocument.nodes.find(node => node.id === selectedConnection.toNodeId) : undefined
   return <div className='flex h-full min-h-0 flex-col'>
     <CanvasToolbar project={project} projects={projects} renaming={renaming} nameDraft={nameDraft} interactionMode={interactionMode} selectedNodeCount={selectedIds.size} selectedConnectionCount={selectedConnectionIds.size} selectedConnectionTyped={Boolean(selectedConnection?.dataType)} selectedHasGroup={canvasDocument.nodes.some(node => selectedIds.has(node.id) && Boolean(node.groupId))} selectedGroupId={selectedGroupId} selectedGroupTitle={(canvasDocument.groups || []).find(group => group.id === selectedGroupId)?.title || ''} groupTitleDraft={groupTitleDraft} organizeOpen={organizeOpen} canUndo={history.length > 0} canRedo={future.length > 0} message={message} importRef={importRef} onSelectProject={async id => { const next = await window.api.canvas.get(id); setProject(next); setSelectedIds(new Set()); setSelectedConnectionIds(new Set()); setConnectingFrom(null); setReconnectingConnectionId(null); setConnectionDetailsOpen(false); setHistory([]); setFuture([]) }} onStartRename={() => { setNameDraft(project.name); setRenaming(true) }} onNameDraftChange={setNameDraft} onCommitRename={() => void renameProject()} onCancelRename={() => setRenaming(false)} onCreateProject={() => void createProject()} onAddNode={addNodeFromToolbar} onExportCanvas={exportProject} onExportPackage={format => void exportPackage(format)} onImportPackage={() => void importPackage()} onImportCanvas={event => void importProject(event)} onInteractionMode={setInteractionMode} onGroup={groupSelection} onUngroup={ungroupSelection} onGroupTitleChange={setGroupTitleDraft} onRenameGroup={renameSelectedGroup} onOrganizeOpen={setOrganizeOpen} onAlign={mode => { alignSelection(mode); setOrganizeOpen(false) }} onDistribute={mode => { distributeSelection(mode); setOrganizeOpen(false) }} onSnap={() => { snapSelection(); setOrganizeOpen(false) }} onUndo={undo} onRedo={redo} onPluginDiagnostics={() => setPluginDetailsOpen(true)} onConnectionDetails={() => setConnectionDetailsOpen(true)} onSynchronize={synchronizeSelectedConnection} onReconnect={startReconnect} onDelete={deleteSelected} />
-    <div ref={viewportRef} className={'relative min-h-0 flex-1 overflow-hidden bg-[var(--color-bg-primary)] ' + (interactionMode === 'pan' ? 'cursor-grab active:cursor-grabbing' : 'cursor-crosshair')} onPointerMove={onPointerMove} onPointerUp={finishPointerInteraction} onPointerCancel={finishPointerInteraction} onWheel={event => { event.preventDefault(); const scale = Math.max(0.25, Math.min(2.5, canvasDocument.viewport.scale * (event.deltaY > 0 ? 0.9 : 1.1))); updateDocumentWithoutHistory({ ...canvasDocument, viewport: { ...canvasDocument.viewport, scale } }) }} onPointerDown={startBackgroundInteraction}>
+    <div ref={viewportRef} className={'relative min-h-0 flex-1 overflow-hidden bg-[var(--color-bg-primary)] ' + (interactionMode === 'pan' ? 'cursor-grab active:cursor-grabbing' : 'cursor-crosshair')} onPointerMove={onPointerMove} onPointerUp={finishPointerInteraction} onPointerCancel={finishPointerInteraction} onWheel={event => { if (!event.ctrlKey && !event.metaKey) return; event.preventDefault(); const scale = Math.max(0.25, Math.min(2.5, canvasDocument.viewport.scale * (event.deltaY > 0 ? 0.9 : 1.1))); updateDocumentWithoutHistory({ ...canvasDocument, viewport: { ...canvasDocument.viewport, scale } }) }} onPointerDown={startBackgroundInteraction}>
       <div data-canvas-background className='absolute inset-0 opacity-30' style={{ backgroundImage: 'radial-gradient(circle, var(--color-border) 1px, transparent 1px)', backgroundSize: `${24 * canvasDocument.viewport.scale}px ${24 * canvasDocument.viewport.scale}px`, backgroundPosition: `${canvasDocument.viewport.x}px ${canvasDocument.viewport.y}px` }} />
       {(canvasDocument.groups || []).map(group => { const bounds = groupBounds(canvasDocument.nodes, group.id); if (!bounds) return null; return <div key={group.id} className='pointer-events-none absolute rounded-lg border border-dashed border-[var(--color-accent)]/55 bg-[var(--color-accent)]/5' style={{ left: bounds.left * canvasDocument.viewport.scale + canvasDocument.viewport.x, top: bounds.top * canvasDocument.viewport.scale + canvasDocument.viewport.y, width: (bounds.right - bounds.left) * canvasDocument.viewport.scale, height: (bounds.bottom - bounds.top) * canvasDocument.viewport.scale }}><span className='absolute left-2 top-1 text-[10px] font-medium text-[var(--color-accent-text)]'>{group.title}</span></div> })}
       <CanvasConnectionLayer document={canvasDocument} selectedIds={selectedConnectionIds} onSelect={selectConnection} />
-      {canvasDocument.nodes.map(node => <div key={node.id} data-canvas-no-zoom className={'absolute z-20 overflow-visible rounded-lg border shadow-lg ' + (selectedIds.has(node.id) ? 'border-[var(--color-accent)] ring-2 ring-[var(--color-accent)]/30' : 'border-[var(--color-border)]')} style={{ left: node.position.x * canvasDocument.viewport.scale + canvasDocument.viewport.x, top: node.position.y * canvasDocument.viewport.scale + canvasDocument.viewport.y, width: node.width * canvasDocument.viewport.scale, height: node.height * canvasDocument.viewport.scale, background: 'var(--color-bg-secondary)' }} onPointerDown={event => { event.stopPropagation(); setSelectedConnectionIds(new Set()); setReconnectingConnectionId(null); setConnectionDetailsOpen(false); const additive = event.ctrlKey || event.metaKey || event.shiftKey; const groupMembers = node.groupId ? canvasDocument.nodes.filter(item => item.groupId === node.groupId).map(item => item.id) : [node.id]; const nextSelected = new Set(additive || selectedIds.has(node.id) ? selectedIds : []); const removeGroup = additive && groupMembers.every(id => nextSelected.has(id)); for (const id of groupMembers) { if (removeGroup) nextSelected.delete(id); else nextSelected.add(id) } setSelectedIds(nextSelected); if (!nextSelected.has(node.id)) return; dragStartRef.current = clone(canvasDocument); movedRef.current = false; event.currentTarget.setPointerCapture(event.pointerId); dragRef.current = { ids: [...expandGroupedSelection(canvasDocument.nodes, nextSelected)], x: event.clientX, y: event.clientY } }}>
+      {canvasDocument.nodes.map(node => <div key={node.id} data-canvas-no-zoom className={'absolute z-20 overflow-visible rounded-lg border shadow-lg ' + (selectedIds.has(node.id) ? 'border-[var(--color-accent)] ring-2 ring-[var(--color-accent)]/30' : 'border-[var(--color-border)]')} style={{ left: node.position.x * canvasDocument.viewport.scale + canvasDocument.viewport.x, top: node.position.y * canvasDocument.viewport.scale + canvasDocument.viewport.y, width: node.width * canvasDocument.viewport.scale, height: node.height * canvasDocument.viewport.scale, background: 'var(--color-bg-secondary)' }} onPointerDown={event => { event.stopPropagation(); selectNode(node, event) }}>
         <CanvasNodePorts node={node} scale={canvasDocument.viewport.scale} connectingFrom={connectingFrom} reconnecting={Boolean(reconnectingConnectionId)} onStart={(nodeId, portId) => setConnectingFrom({ nodeId, portId })} onConnect={(nodeId, portId) => { if (connectingFrom) connectToInputPort(nodeId, portId); else if (reconnectingConnectionId) reconnectToInputPort(nodeId, portId) }} />
-        <div className='flex items-center justify-between overflow-hidden rounded-t-lg border-b border-[var(--color-border)] px-2 py-1 text-xs font-semibold text-[var(--color-text-primary)]'><span className='min-w-0 truncate' title={getCanvasNodeDefinition(node.kind).pluginId ? `${getCanvasNodeDefinition(node.kind).pluginId} v${canvasPlugins.find(plugin => plugin.id === getCanvasNodeDefinition(node.kind).pluginId)?.version || '?'}` : undefined}>{node.title}</span></div>
+        <div onPointerDown={event => { event.stopPropagation(); startNodeDrag(node, event) }} className='flex min-h-8 cursor-grab items-center justify-between overflow-hidden rounded-t-lg border-b border-[var(--color-border)] px-2 py-1 text-xs font-semibold text-[var(--color-text-primary)] active:cursor-grabbing' title='拖动标题栏移动节点'><span className='min-w-0 truncate' title={getCanvasNodeDefinition(node.kind).pluginId ? `${getCanvasNodeDefinition(node.kind).pluginId} v${canvasPlugins.find(plugin => plugin.id === getCanvasNodeDefinition(node.kind).pluginId)?.version || '?'}` : undefined}>{node.title}</span><span className='ml-2 shrink-0 text-[10px] text-[var(--color-text-secondary)]'>拖动</span></div>
         <CanvasNodeContent node={node} images={images} promptAssets={promptAssets} workflows={workflows} wd14Models={wd14Models} tasks={tasks} executing={executingNodeId === node.id} onTextFocus={nodeId => { if (!textEditStartRef.current.has(nodeId)) textEditStartRef.current.set(nodeId, clone(canvasDocument)) }} onTextChange={(nodeId, content) => updateNodeWithoutHistory(nodeId, { content })} onTextBlur={finishTextEdit} onPatch={updateNode} onApplyPrompt={applyPromptNode} onBindImage={bindImageNode} onBindPromptAsset={bindPromptAssetNode} onApplyPromptAsset={applyPromptAssetNode} onBindWD14Image={bindWD14ImageNode} onBindWD14Model={bindWD14ModelNode} onCreateWD14={node => void createWD14NodeTask(node)} onApplyWD14={applyWD14Task} onBindComfyWorkflow={bindComfyWorkflowNode} onCreateComfy={node => void createComfyNodeTask(node)} onAddResultImage={addResultImageNode} onBindTask={bindTaskNode} canApplyWD14={canvasNodeHasCapability(node.kind, 'wd14.applyResult')} canImportComfyResult={canvasNodeHasCapability(node.kind, 'comfyui.importResult')} onCapabilityDenied={setMessage} />
         {selectedIds.has(node.id) && selectedIds.size === 1 && <button onPointerDown={event => { event.preventDefault(); event.stopPropagation(); dragStartRef.current = clone(canvasDocument); movedRef.current = false; event.currentTarget.setPointerCapture(event.pointerId); resizeRef.current = { id: node.id, startX: event.clientX, startY: event.clientY, width: node.width, height: node.height } }} className='absolute bottom-0 right-0 z-40 h-4 w-4 cursor-nwse-resize border-l border-t border-[var(--color-accent)] bg-[var(--color-accent)]/25' title='拖动缩放节点' aria-label='拖动缩放节点' />}
       </div>)}

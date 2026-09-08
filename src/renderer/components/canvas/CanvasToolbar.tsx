@@ -1,4 +1,5 @@
-import React from 'react'
+import React, { useState } from 'react'
+import { ChevronDown, Plus } from 'lucide-react'
 import type { CanvasAlignMode } from '../../../shared/canvas-operations'
 import type { CanvasNodeKind } from '../../../shared/canvas-types'
 
@@ -56,12 +57,16 @@ const nodeCommands: Array<{ kind: CanvasNodeKind; label: string }> = [
 ]
 
 export function CanvasToolbar(props: Props) {
+  const [nodeMenuOpen, setNodeMenuOpen] = useState(false)
   return (
     <div className='flex shrink-0 flex-wrap items-center gap-1.5 border-b border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-3 py-2'>
       {props.renaming ? <input autoFocus value={props.nameDraft} onChange={event => props.onNameDraftChange(event.target.value)} onBlur={props.onCommitRename} onKeyDown={event => { if (event.key === 'Enter') props.onCommitRename(); if (event.key === 'Escape') props.onCancelRename() }} className='w-36 rounded border border-[var(--color-accent)] bg-[var(--color-bg-primary)] px-2 py-1.5 text-xs text-[var(--color-text-primary)]' /> : <select value={props.project.id} onChange={event => props.onSelectProject(event.target.value)} className='min-w-36 rounded border border-[var(--color-border)] bg-[var(--color-bg-primary)] px-2 py-1.5 text-xs'><option value={props.project.id}>{props.project.name}</option>{props.projects.filter(item => item.id !== props.project.id).map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select>}
       <button onClick={props.onStartRename} className='ui-toolbar-button px-2 py-1 text-xs' title='重命名当前画布'>重命名</button>
       <button onClick={props.onCreateProject} className='ui-toolbar-button px-2 py-1 text-xs'>新建</button>
-      {nodeCommands.map(command => <button key={command.kind} onClick={() => props.onAddNode(command.kind)} className='ui-toolbar-button px-2 py-1 text-xs'>{command.label}</button>)}
+      <div className='relative'>
+        <button onClick={() => setNodeMenuOpen(open => !open)} className='ui-toolbar-button inline-flex items-center gap-1 px-2 py-1 text-xs' aria-expanded={nodeMenuOpen} aria-haspopup='menu'><Plus size={13} aria-hidden='true' />添加节点<ChevronDown size={13} aria-hidden='true' /></button>
+        {nodeMenuOpen && <div className='ui-popover-surface absolute left-0 top-full z-[80] mt-1 w-44 p-1' role='menu' onKeyDown={event => { if (event.key === 'Escape') setNodeMenuOpen(false) }}>{nodeCommands.map(command => <button key={command.kind} role='menuitem' onClick={() => props.onAddNode(command.kind)} className='ui-menu-item w-full px-2 py-1.5 text-left text-xs'>{command.label}</button>)}</div>}
+      </div>
       <button onClick={props.onExportCanvas} className='ui-toolbar-button px-2 py-1 text-xs'>画布 JSON</button><button onClick={() => props.onExportPackage('json')} className='ui-toolbar-button px-2 py-1 text-xs'>项目 JSON</button><button onClick={() => props.onExportPackage('zip')} className='ui-toolbar-button px-2 py-1 text-xs'>项目 ZIP</button><button onClick={props.onImportPackage} className='ui-toolbar-button px-2 py-1 text-xs'>导入项目包</button><button onClick={() => props.importRef.current?.click()} className='ui-toolbar-button px-2 py-1 text-xs'>导入画布</button><input ref={props.importRef} type='file' accept='application/json,.json' onChange={props.onImportCanvas} className='hidden' />
       <div className='ml-auto flex items-center rounded border border-[var(--color-border)] bg-[var(--color-bg-primary)] p-0.5'><button onClick={() => props.onInteractionMode('select')} className={'h-6 rounded px-2 text-[11px] ' + (props.interactionMode === 'select' ? 'bg-[var(--color-accent)]/15 text-[var(--color-accent-text)]' : 'text-[var(--color-text-secondary)]')}>选择</button><button onClick={() => props.onInteractionMode('pan')} className={'h-6 rounded px-2 text-[11px] ' + (props.interactionMode === 'pan' ? 'bg-[var(--color-accent)]/15 text-[var(--color-accent-text)]' : 'text-[var(--color-text-secondary)]')}>平移</button></div>
       <span className='min-w-14 text-center text-[11px] text-[var(--color-text-secondary)]'>{props.selectedConnectionCount ? `连线 ${props.selectedConnectionCount}` : props.selectedNodeCount ? `节点 ${props.selectedNodeCount}` : '未选择'}</span>

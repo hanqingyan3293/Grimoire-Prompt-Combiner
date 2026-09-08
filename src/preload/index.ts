@@ -13,8 +13,8 @@ const IPC_CHANNELS = {
   CATEGORY_CREATE: 'category:create', CATEGORY_UPDATE: 'category:update', CATEGORY_DELETE: 'category:delete', SUBCATEGORY_CREATE: 'subcategory:create', SUBCATEGORY_UPDATE: 'subcategory:update', SUBCATEGORY_DELETE: 'subcategory:delete',
   PRESETS_LIST: 'presets:list', PRESETS_SAVE: 'presets:save', PRESETS_DELETE: 'presets:delete',
   HISTORY_LIST: 'history:list', HISTORY_ADD: 'history:add', HISTORY_CLEAR: 'history:clear',
-  PROMPT_ASSETS_LIST: 'promptAssets:list', SETTINGS_GET_ALL: 'settings:getAll', SETTINGS_SET: 'settings:set',
-  IMAGES_LIST: 'images:list', IMAGES_ADD: 'images:add', IMAGES_DELETE: 'images:delete',
+  PROMPT_ASSETS_LIST: 'promptAssets:list', PROMPT_ASSETS_CREATE: 'promptAssets:create', SETTINGS_GET_ALL: 'settings:getAll', SETTINGS_SET: 'settings:set',
+  IMAGES_LIST: 'images:list', IMAGES_ADD: 'images:add', IMAGES_DELETE: 'images:delete', IMAGES_IMPORT_DATA: 'images:importData',
   AI_CHAT: 'ai:chat', AI_VISION: 'ai:vision', AI_CHAT_HISTORY: 'ai:chatHistory',
   ERROR_LOG: 'error:log', ERROR_GET_ALL: 'error:getAll', DB_EXPORT: 'db:export', DB_IMPORT: 'db:import',
   DIALOG_SAVE_TEXT: 'dialog:saveText', DIALOG_OPEN_TEXT: 'dialog:openText',
@@ -26,6 +26,7 @@ const IPC_CHANNELS = {
   WD14_STATUS: 'wd14:status', WD14_MODELS: 'wd14:models', WD14_SWITCH_MODEL: 'wd14:switchModel', WD14_CREATE_TASK: 'wd14:createTask', WD14_DIAGNOSTICS: 'wd14:diagnostics', WD14_SELECT_MODEL_DIRECTORY: 'wd14:selectModelDirectory', WD14_SELECT_PYTHON_PATH: 'wd14:selectPythonPath',
   COMFY_STATUS: 'comfy:status', COMFY_MODELS: 'comfy:models', COMFY_WORKFLOWS_LIST: 'comfy:workflows:list', COMFY_WORKFLOW_IMPORT: 'comfy:workflows:import', COMFY_WORKFLOW_DELETE: 'comfy:workflows:delete', COMFY_CREATE_TASK: 'comfy:createTask', COMFY_QUICK_GENERATE: 'comfy:quickGenerate',
   CANVAS_LIST: 'canvas:list', CANVAS_GET: 'canvas:get', CANVAS_CREATE: 'canvas:create', CANVAS_SAVE: 'canvas:save', CANVAS_DELETE: 'canvas:delete', CANVAS_EXPORT_PACKAGE: 'canvas:exportPackage', CANVAS_IMPORT_PACKAGE: 'canvas:importPackage',
+  CANVAS_VENDOR_LIST: 'canvasVendor:list', CANVAS_VENDOR_GET: 'canvasVendor:get', CANVAS_VENDOR_CREATE: 'canvasVendor:create', CANVAS_VENDOR_SAVE: 'canvasVendor:save', CANVAS_VENDOR_DELETE: 'canvasVendor:delete',
 } as const
 
 const api = {
@@ -69,6 +70,7 @@ const api = {
 
   promptAssets: {
     list: (query: PromptAssetQuery = {}): Promise<PromptAssetPage> => ipcRenderer.invoke(IPC_CHANNELS.PROMPT_ASSETS_LIST, query),
+    create: (input: { name: string; prompt: string; detail?: string; sourceId?: string; nsfw?: boolean; variantCount?: number }) => ipcRenderer.invoke(IPC_CHANNELS.PROMPT_ASSETS_CREATE, input),
   },
 
   settings: {
@@ -80,6 +82,7 @@ const api = {
     list: (): Promise<ImageRef[]> => ipcRenderer.invoke(IPC_CHANNELS.IMAGES_LIST),
     add: (mode: 'managed' | 'external' = 'managed') => ipcRenderer.invoke(IPC_CHANNELS.IMAGES_ADD, mode),
     delete: (id: number) => ipcRenderer.invoke(IPC_CHANNELS.IMAGES_DELETE, id),
+    importData: (dataBase64: string, originalName: string) => ipcRenderer.invoke(IPC_CHANNELS.IMAGES_IMPORT_DATA, dataBase64, originalName),
   },
 
   ai: {
@@ -237,6 +240,13 @@ const api = {
     delete: (id: string): Promise<boolean> => ipcRenderer.invoke(IPC_CHANNELS.CANVAS_DELETE, id),
     exportPackage: (id: string, format: 'json' | 'zip'): Promise<boolean> => ipcRenderer.invoke(IPC_CHANNELS.CANVAS_EXPORT_PACKAGE, id, format),
     importPackage: (): Promise<{ projectId: string; projectName: string; importedImages: number; skippedImages: number; warnings: string[]; importedPromptAssets: number; importedWorkflows: number } | null> => ipcRenderer.invoke(IPC_CHANNELS.CANVAS_IMPORT_PACKAGE),
+    vendor: {
+      list: () => ipcRenderer.invoke(IPC_CHANNELS.CANVAS_VENDOR_LIST),
+      get: (id: string) => ipcRenderer.invoke(IPC_CHANNELS.CANVAS_VENDOR_GET, id),
+      create: (title?: string, id?: string) => ipcRenderer.invoke(IPC_CHANNELS.CANVAS_VENDOR_CREATE, title, id),
+      save: (id: string, project: unknown) => ipcRenderer.invoke(IPC_CHANNELS.CANVAS_VENDOR_SAVE, id, project),
+      delete: (id: string) => ipcRenderer.invoke(IPC_CHANNELS.CANVAS_VENDOR_DELETE, id),
+    },
   },
 }
 

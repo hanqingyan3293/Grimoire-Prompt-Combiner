@@ -4,6 +4,7 @@ import type { CanvasDocument } from '../../shared/canvas-types'
 import { createCanvasProject, deleteCanvasProject, getCanvasProject, listCanvasProjects, saveCanvasProject } from '../services/canvas.service'
 import { requireId, requireText } from '../services/input-validation'
 import { exportProjectPackage, importProjectPackage } from '../services/project-package.service'
+import { createCanvasVendorProject, deleteCanvasVendorProject, getCanvasVendorProject, listCanvasVendorProjects, saveCanvasVendorProject } from '../services/canvas-vendor.service'
 
 export function registerCanvasIPC(): void {
   ipcMain.handle(IPC_CHANNELS.CANVAS_LIST, async () => listCanvasProjects().map(project => ({ id: project.id, name: project.name, created_at: project.created_at, updated_at: project.updated_at })))
@@ -31,4 +32,13 @@ export function registerCanvasIPC(): void {
     if (result.canceled || !result.filePaths.length) return null
     return importProjectPackage(result.filePaths[0])
   })
+  ipcMain.handle(IPC_CHANNELS.CANVAS_VENDOR_LIST, async () => listCanvasVendorProjects())
+  ipcMain.handle(IPC_CHANNELS.CANVAS_VENDOR_GET, async (_event, id: unknown) => {
+    const project = getCanvasVendorProject(requireId(id, '无限画布 ID'))
+    if (!project) throw new Error('无限画布项目不存在')
+    return project
+  })
+  ipcMain.handle(IPC_CHANNELS.CANVAS_VENDOR_CREATE, async (_event, title?: unknown, id?: unknown) => createCanvasVendorProject(typeof title === 'string' ? title : undefined, typeof id === 'string' ? id : undefined))
+  ipcMain.handle(IPC_CHANNELS.CANVAS_VENDOR_SAVE, async (_event, id: unknown, project: unknown) => saveCanvasVendorProject(requireId(id, '无限画布 ID'), project))
+  ipcMain.handle(IPC_CHANNELS.CANVAS_VENDOR_DELETE, async (_event, id: unknown) => deleteCanvasVendorProject(requireId(id, '无限画布 ID')))
 }

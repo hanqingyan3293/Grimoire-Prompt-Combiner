@@ -51,6 +51,14 @@ describe('canvas operations', () => {
     expect(result.guides).toEqual({ x: 205, y: 4 })
   })
 
+  it('keeps ordinary movement free of guides and snapping', () => {
+    const source = [
+      { ...nodes[0], position: { x: 0, y: 0 } },
+      { ...nodes[1], position: { x: 205, y: 4 }, width: 100, height: 80 },
+    ]
+    expect(moveSelectedNodes(source, ['a'], 103, 2)[0].position).toEqual({ x: 103, y: 2 })
+  })
+
   it('resizes nodes within limits, deletes connections, and renames groups', () => {
     expect(resizeCanvasNode(nodes, 'a', 50, 5000)[0]).toMatchObject({ width: 120, height: 4000 })
     const document: CanvasDocument = { version: 1, viewport: { x: 0, y: 0, scale: 1 }, nodes, connections: [{ id: 'edge', fromNodeId: 'a', toNodeId: 'b' }], groups: [{ id: 'g', title: '旧名' }] }
