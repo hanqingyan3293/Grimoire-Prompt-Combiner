@@ -92,6 +92,8 @@ export function PanelShell({
   const startCornerDrag = (corner: CornerPosition, event: React.PointerEvent) => {
     event.preventDefault()
     event.stopPropagation()
+    const handleElement = event.currentTarget
+    handleElement.setPointerCapture?.(event.pointerId)
     const startX = event.clientX
     const startY = event.clientY
     const panelRect = (event.currentTarget.closest("[data-panel-id]") as HTMLElement | null)?.getBoundingClientRect()
@@ -103,7 +105,7 @@ export function PanelShell({
       const dy = clientY - startY
       const absX = Math.abs(dx)
       const absY = Math.abs(dy)
-      if (Math.max(absX, absY) < 36) {
+      if (Math.max(absX, absY) < 28) {
         latestPreview = null
         latestMergeSide = null
         setCornerDragPreview(null)
@@ -146,6 +148,7 @@ export function PanelShell({
       window.removeEventListener("pointerup", handleUp)
       window.removeEventListener("pointercancel", cleanup)
       window.removeEventListener("blur", cleanup)
+      try { handleElement.releasePointerCapture?.(event.pointerId) } catch {}
       setCornerDragPreview(null)
       onCornerMergePreview?.(id, null)
     }
@@ -343,13 +346,13 @@ export function PanelShell({
 }
 
 function getOutsidePanelSide(rect: DOMRect, clientX: number, clientY: number): CornerMergeSide | null {
-  const threshold = 8
+  const threshold = 18
   const candidates: { side: CornerMergeSide; distance: number }[] = []
   if (clientX < rect.left - threshold) candidates.push({ side: "left", distance: (rect.left - threshold - clientX) / rect.width })
   if (clientX > rect.right + threshold) candidates.push({ side: "right", distance: (clientX - rect.right - threshold) / rect.width })
   if (clientY < rect.top - threshold) candidates.push({ side: "up", distance: (rect.top - threshold - clientY) / rect.height })
   if (clientY > rect.bottom + threshold) candidates.push({ side: "down", distance: (clientY - rect.bottom - threshold) / rect.height })
-  candidates.sort((a, b) => b.distance - a.distance)
+  candidates.sort((a, b) => a.distance - b.distance)
   return candidates[0]?.side ?? null
 }
 
@@ -369,11 +372,11 @@ function CornerHandle({
   return (
     <button
       onPointerDown={event => onPointerDown(position, event)}
-      className={"ui-panel-corner absolute z-30 h-3 w-3 opacity-0 hover:opacity-100 focus:opacity-100 " + positionClass}
+      className={"ui-panel-corner absolute z-30 h-6 w-6 opacity-0 hover:opacity-100 focus:opacity-100 " + positionClass}
       title="拖拽分割面板"
       aria-label="拖拽分割面板"
     >
-      <span className="block h-full w-full border border-[var(--color-accent)] bg-[var(--color-accent)]/30" />
+      <span className="pointer-events-none absolute inset-1 block rounded-sm border border-[var(--color-accent)] bg-[var(--color-accent)]/30" />
     </button>
   )
 }

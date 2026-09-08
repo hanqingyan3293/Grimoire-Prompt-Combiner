@@ -8,6 +8,7 @@ import { Badge } from '../ui/Badge'
 import { Button, IconButton } from '../ui/Button'
 import { EmptyState, PanelHeader } from '../ui/Feedback'
 import { Modal } from '../ui/Modal'
+import { ResourceCard, ResourceGroup } from '../ui/ResourceCards'
 
 const PAGE_SIZE = 40
 
@@ -133,8 +134,12 @@ export function PromptAssetsPanel() {
       ) : page.items.length === 0 ? (
         <EmptyState icon={Search} title={query ? '没有匹配的提示词资产' : '暂无提示词资产'} description={query ? '尝试缩短关键词或切换来源' : '导入朋友项目提示词、保存预设或产生历史记录后会显示在这里'} />
       ) : (
-        <div className='space-y-2'>
-          {page.items.map(item => <AssetCard key={item.id} item={item} onPreview={() => setPreview(item)} onCopy={() => void copyPrompt(item)} onApply={() => apply(item)} />)}
+        <div className='space-y-3'>
+          {(['asset', 'history', 'preset', 'favorite'] as PromptAssetItem['source'][]).map(group => {
+            const items = page.items.filter(item => item.source === group)
+            const title = SOURCE_META[group].label
+            return <ResourceGroup key={group} id={`prompt-assets:${group}`} title={title} count={items.length} empty={!items.length} forceOpen={Boolean(query)}>{items.map(item => <ResourceCard key={item.id} className='p-0'><AssetCard item={item} onPreview={() => setPreview(item)} onCopy={() => void copyPrompt(item)} onApply={() => apply(item)} /></ResourceCard>)}</ResourceGroup>
+          })}
         </div>
       )}
 
@@ -155,7 +160,7 @@ function SourceBadge({ item }: { item: PromptAssetItem }) {
 
 function AssetCard({ item, onPreview, onCopy, onApply }: { item: PromptAssetItem; onPreview: () => void; onCopy: () => void; onApply: () => void }) {
   return (
-    <article className='ui-list-card min-w-0 p-3'>
+    <div className='min-w-0 p-3'>
       <div className='flex min-w-0 items-start justify-between gap-2'>
         <div className='min-w-0 flex-1'>
           <div className='flex min-w-0 flex-wrap items-center gap-2'>
@@ -172,7 +177,7 @@ function AssetCard({ item, onPreview, onCopy, onApply }: { item: PromptAssetItem
         </div>
       </div>
       <Button size='sm' variant='primary' icon={FolderOpen} onClick={onApply} className='mt-3 w-full'>应用到提示词</Button>
-    </article>
+    </div>
   )
 }
 

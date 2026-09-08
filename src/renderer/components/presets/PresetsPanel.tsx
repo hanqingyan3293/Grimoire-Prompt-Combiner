@@ -9,6 +9,7 @@ import { Badge } from '../ui/Badge'
 import { Button, IconButton } from '../ui/Button'
 import { EmptyState, PanelHeader } from '../ui/Feedback'
 import type { Preset } from '@shared/types'
+import { ResourceCard, ResourceGroup } from '../ui/ResourceCards'
 
 export function PresetsPanel() {
   const { t } = useI18n()
@@ -91,11 +92,11 @@ export function PresetsPanel() {
       ) : presets.length === 0 ? (
         <EmptyState icon={Layers3} title={t.presets.noPresets} description='组合好提示词后，可保存为预设重复使用' />
       ) : (
-        <div className="space-y-2">
+        <ResourceGroup id="presets:saved" title="已保存预设" count={presets.length}>
           {presets.map(preset => (
-            <div
+            <ResourceCard
               key={preset.id}
-              className="ui-list-card p-3"
+              className="p-3"
             >
               <div className="flex items-center justify-between mb-1">
                 <span className="text-sm font-medium text-[var(--color-text-primary)]">{preset.name}</span>
@@ -106,9 +107,9 @@ export function PresetsPanel() {
                 {new Date(preset.updated_at).toLocaleString('zh-CN')}
               </div>
               <Button size='sm' icon={FolderOpen} onClick={() => void handleLoad(preset)} className='mt-2 w-full'>{t.presets.load}</Button>
-            </div>
+            </ResourceCard>
           ))}
-        </div>
+        </ResourceGroup>
       )}
       
       {/* Save Modal */}

@@ -372,6 +372,11 @@ button:disabled {
   transform: scale(1.15);
 }
 
+.ui-panel-corner:active {
+  opacity: 1;
+  transform: scale(1.2);
+}
+
 .ui-status-pill {
   display: inline-flex;
   align-items: center;

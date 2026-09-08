@@ -7,6 +7,7 @@ import { Button, IconButton } from '../ui/Button'
 import { EmptyState, PanelHeader } from '../ui/Feedback'
 import { Modal } from '../ui/Modal'
 import type { HistoryItem } from '@shared/types'
+import { ResourceCard, ResourceGroup } from '../ui/ResourceCards'
 
 export function HistoryPanel() {
   const { t } = useI18n()
@@ -70,11 +71,11 @@ export function HistoryPanel() {
       ) : history.length === 0 ? (
         <EmptyState icon={History} title={t.history.noHistory} description='复制或生成提示词后，历史记录会显示在这里' />
       ) : (
-        <div className="space-y-2">
+        <ResourceGroup id="history:records" title="历史记录" count={history.length}>
           {history.map(item => (
-            <div
+            <ResourceCard
               key={item.id}
-              className="ui-list-card group p-3"
+              className="group p-3"
             >
               <div className="mb-2 flex items-center justify-between gap-2">
                 <span className="flex items-center gap-1 text-xs text-[var(--color-text-secondary)]"><Clock3 size={12} aria-hidden='true' />
@@ -89,9 +90,9 @@ export function HistoryPanel() {
                 {item.prompt}
               </div>
               <Button size='sm' variant='ghost' icon={Copy} onClick={() => void handleCopy(item.prompt)}>{t.app.copy}</Button>
-            </div>
+            </ResourceCard>
           ))}
-        </div>
+        </ResourceGroup>
       )}
       
       {/* Clear Confirm */}

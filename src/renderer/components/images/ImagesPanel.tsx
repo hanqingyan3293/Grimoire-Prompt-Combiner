@@ -7,6 +7,7 @@ import { Button, IconButton } from '../ui/Button'
 import { EmptyState, PanelHeader, StatusBadge } from '../ui/Feedback'
 import { Modal } from '../ui/Modal'
 import type { ImageRef } from '@shared/types'
+import { ResourceCard, ResourceGroup } from '../ui/ResourceCards'
 
 export function ImagesPanel() {
   const { t } = useI18n()
@@ -92,11 +93,11 @@ export function ImagesPanel() {
       ) : images.length === 0 ? (
         <EmptyState icon={Images} title={t.images.noImages} description='导入图片后可用于反推提示词、画布编排和生成参考' />
       ) : (
-        <div className="space-y-2">
+        <ResourceGroup id="images:library" title="图片资源" count={images.length}>
           {images.map(img => (
-            <div
+            <ResourceCard
               key={img.id}
-              className="ui-list-card group p-2"
+              className="group p-2"
             >
               <div className="relative">
                 <IconButton
@@ -119,9 +120,9 @@ export function ImagesPanel() {
                   </div>
                 </div>
               </div>
-            </div>
+            </ResourceCard>
           ))}
-        </div>
+        </ResourceGroup>
       )}
       
       <Modal title={t.app.delete} open={deleteConfirm !== null} onClose={() => setDeleteConfirm(null)}>
