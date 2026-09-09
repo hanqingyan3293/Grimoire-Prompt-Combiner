@@ -8,6 +8,7 @@ import { EmptyState, PanelHeader, StatusBadge } from '../ui/Feedback'
 import { Modal } from '../ui/Modal'
 import type { ImageRef } from '@shared/types'
 import { ResourceCard, ResourceGroup } from '../ui/ResourceCards'
+import { FloatingPreview } from '../ui/FloatingPreview'
 
 export function ImagesPanel() {
   const { t } = useI18n()
@@ -16,6 +17,8 @@ export function ImagesPanel() {
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState<'managed' | 'external' | 'delete' | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [urls, setUrls] = useState<Record<number, string>>({})
+  const [preview, setPreview] = useState<ImageRef | null>(null)
 
   const notifyError = (message: string) => window.dispatchEvent(new CustomEvent('grimoire:toast', { detail: { message, type: 'error' } }))
   
@@ -24,6 +27,8 @@ export function ImagesPanel() {
     try {
       const list = await window.api.images.list()
       setImages(list)
+      const entries = await Promise.all(list.filter(item => item.available).map(async item => { try { return [item.id, await window.api.images.readData(item.id)] as const } catch { return null } }))
+      setUrls(Object.fromEntries(entries.filter((entry): entry is readonly [number, string] => Boolean(entry))))
       setError(null)
     } catch (cause) {
       console.error('Failed to load image library:', cause)
@@ -72,6 +77,11 @@ export function ImagesPanel() {
   const getFileName = (filePath: string) => {
     return filePath.split(/[\\/]/).pop() || filePath
   }
+
+  const openPreview = (image: ImageRef) => {
+    if (urls[image.id]) setPreview(image)
+    else notifyError('图片文件不可用')
+  }
   
   return (
     <div className="h-full space-y-3 overflow-auto p-3">
@@ -107,12 +117,9 @@ export function ImagesPanel() {
                   className='ui-icon-button-danger absolute right-1 top-1 z-10 bg-[var(--color-surface)]/90 shadow-sm'
                 />
                 <div className="flex-1 min-w-0">
-                  <img
-                    src={`file://${img.file_path.replace(/\\/g, '/')}`}
-                    alt={img.original_name || '参考图片'}
-                    className="ui-image-preview mb-2"
-                    onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
-                  />
+                  <button type='button' onClick={() => openPreview(img)} className='block w-full cursor-zoom-in overflow-hidden rounded-xl border-2 border-[var(--color-border-strong)] bg-[var(--color-bg-primary)]' title='点击查看大图'>
+                    {urls[img.id] ? <img src={urls[img.id]} alt={img.original_name || '参考图片'} className='ui-image-preview mb-2' /> : <span className='flex aspect-[4/3] items-center justify-center text-xs text-[var(--color-text-secondary)]'>图片不可用</span>}
+                  </button>
                   <div className='truncate text-xs font-medium text-[var(--color-text-primary)]' title={img.file_path}>{getFileName(img.original_name || img.file_path)}</div>
                   <div className='mt-2 flex flex-wrap gap-1.5'>
                     <Badge>{img.storage_mode === 'managed' ? '托管副本' : '外部链接'}</Badge>
@@ -134,6 +141,9 @@ export function ImagesPanel() {
           </div>
         </div>
       </Modal>
+      <FloatingPreview open={preview !== null} title={preview?.original_name || '图片预览'} onClose={() => setPreview(null)}>
+        {preview && urls[preview.id] ? <img src={urls[preview.id]} alt={preview.original_name || '参考图片'} className='mx-auto block max-h-full max-w-full object-contain' /> : null}
+      </FloatingPreview>
     </div>
   )
 }

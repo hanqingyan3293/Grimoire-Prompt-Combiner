@@ -28,8 +28,8 @@ function flushPendingSaves() {
 }
 function queueSave(project: CanvasProject) {
   pending.set(project.id, project)
-  if (saveTimer) return
-  saveTimer = setTimeout(() => { saveTimer = null; void flushPendingSaves() }, 80)
+  if (saveTimer) clearTimeout(saveTimer)
+  saveTimer = setTimeout(() => { saveTimer = null; void flushPendingSaves() }, 0)
 }
 async function loadProjects() {
   const records = await window.api.canvas.vendor.list()
@@ -39,7 +39,7 @@ export const useCanvasStore = create<CanvasStore>((set, get) => ({
   hydrated: false, projects: [], deletedProjects: [],
   createProject: (title = i18n.t('canvas.project.untitled')) => {
     const now = new Date().toISOString(); const id = nanoid(); const project: CanvasProject = { id, title, createdAt: now, updatedAt: now, nodes: [], connections: [], chatSessions: [], activeChatId: null, backgroundMode: 'lines', showImageInfo: false, viewport: initialViewport };
-    set(state => ({ projects: [project, ...state.projects] })); void window.api.canvas.vendor.create(title, id).catch(console.error); return id
+    set(state => ({ projects: [project, ...state.projects] })); void window.api.canvas.vendor.create(title, id).then(() => queueSave(project)).catch(console.error); return id
   },
   importProject: source => {
     const now = new Date().toISOString(); const project: CanvasProject = { id: nanoid(), title: source.title || i18n.t('canvas.project.imported'), createdAt: source.createdAt || now, updatedAt: now, nodes: source.nodes || [], connections: source.connections || [], chatSessions: source.chatSessions || [], activeChatId: source.activeChatId || null, backgroundMode: source.backgroundMode || 'lines', showImageInfo: source.showImageInfo || false, viewport: source.viewport || initialViewport };
@@ -49,7 +49,11 @@ export const useCanvasStore = create<CanvasStore>((set, get) => ({
   renameProject: (id, title) => { set(state => ({ projects: state.projects.map(project => project.id === id ? { ...project, title: title.trim() || project.title, updatedAt: new Date().toISOString() } : project) })); const project = get().projects.find(item => item.id === id); if (project) queueSave(project) },
   deleteProjects: ids => { set(state => ({ projects: state.projects.filter(project => !ids.includes(project.id)), deletedProjects: [...state.deletedProjects, ...ids.map(id => ({ id, deletedAt: new Date().toISOString() }))] })); for (const id of ids) void window.api.canvas.vendor.delete(id).catch(console.error) },
   replaceProjects: (projects, deletedProjects = []) => set({ projects, deletedProjects }),
-  updateProject: (id, patch) => { set(state => ({ projects: state.projects.map(project => project.id === id ? { ...project, ...patch, updatedAt: new Date().toISOString() } : project) })); const project = get().projects.find(item => item.id === id); if (project) queueSave(project) },
+  updateProject: (id, patch) => {
+    set(state => ({ projects: state.projects.map(project => project.id === id ? { ...project, ...patch, updatedAt: new Date().toISOString() } : project) }))
+    const project = get().projects.find(item => item.id === id)
+    if (project) { pending.set(project.id, project); void flushPendingSaves() }
+  },
 }))
 void loadProjects().then(projects => useCanvasStore.setState({ projects, hydrated: true })).catch(error => { console.error('canvas vendor load failed', error); useCanvasStore.setState({ hydrated: true }) })
 if (typeof window !== 'undefined') window.addEventListener('grimoire:refresh', () => { void flushPendingSaves().then(() => loadProjects()).then(projects => useCanvasStore.setState({ projects })).catch(console.error) })
