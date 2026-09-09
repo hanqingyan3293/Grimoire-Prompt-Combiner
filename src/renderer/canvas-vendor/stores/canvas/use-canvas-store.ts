@@ -12,10 +12,24 @@ type CanvasStore = { hydrated: boolean; projects: CanvasProject[]; deletedProjec
 const initialViewport: ViewportTransform = { x: 0, y: 0, k: 1 }
 const pending = new Map<string, CanvasProject>()
 let saveTimer: ReturnType<typeof setTimeout> | null = null
+let saveChain: Promise<void> = Promise.resolve()
+function flushPendingSaves() {
+  if (saveTimer) { clearTimeout(saveTimer); saveTimer = null }
+  const values = [...pending.values()]
+  pending.clear()
+  if (!values.length) return saveChain
+  saveChain = saveChain.then(async () => {
+    for (const value of values) {
+      try { await window.api.canvas.vendor.save(value.id, value) }
+      catch (error) { console.error('canvas vendor save failed', error) }
+    }
+  })
+  return saveChain
+}
 function queueSave(project: CanvasProject) {
   pending.set(project.id, project)
   if (saveTimer) return
-  saveTimer = setTimeout(() => { saveTimer = null; const values = [...pending.values()]; pending.clear(); void Promise.all(values.map(value => window.api.canvas.vendor.save(value.id, value))).catch(error => console.error('canvas vendor save failed', error)) }, 350)
+  saveTimer = setTimeout(() => { saveTimer = null; void flushPendingSaves() }, 80)
 }
 async function loadProjects() {
   const records = await window.api.canvas.vendor.list()
@@ -38,4 +52,8 @@ export const useCanvasStore = create<CanvasStore>((set, get) => ({
   updateProject: (id, patch) => { set(state => ({ projects: state.projects.map(project => project.id === id ? { ...project, ...patch, updatedAt: new Date().toISOString() } : project) })); const project = get().projects.find(item => item.id === id); if (project) queueSave(project) },
 }))
 void loadProjects().then(projects => useCanvasStore.setState({ projects, hydrated: true })).catch(error => { console.error('canvas vendor load failed', error); useCanvasStore.setState({ hydrated: true }) })
-if (typeof window !== 'undefined') window.addEventListener('grimoire:refresh', () => { void loadProjects().then(projects => useCanvasStore.setState({ projects })).catch(console.error) })
+if (typeof window !== 'undefined') window.addEventListener('grimoire:refresh', () => { void flushPendingSaves().then(() => loadProjects()).then(projects => useCanvasStore.setState({ projects })).catch(console.error) })
+if (typeof window !== 'undefined') {
+  window.addEventListener('pagehide', () => { void flushPendingSaves() })
+  window.addEventListener('beforeunload', () => { void flushPendingSaves() })
+}

@@ -378,22 +378,28 @@ export function SettingsWindow({ onClose }: { onClose: () => void }) {
                 ) : providers.length === 0 ? (
                   <EmptyState icon={Plug} title='尚未配置 API 供应商' description='添加一个兼容 Chat Completions 或 Responses API 的供应商' action={<Button size='sm' variant='primary' icon={Plus} onClick={() => { setEditingProvider(null); setShowProviderEditor(true) }}>新增供应商</Button>} />
                 ) : (
-                  <div className="space-y-3">
+                  <div className="grid gap-3 md:grid-cols-2">
                     {providers.map(p => (
                       <article key={p.id}
-                        className={`ui-list-card flex items-center gap-4 px-4 py-3 ${
+                        className={`ui-list-card flex min-h-52 flex-col justify-between gap-4 p-4 ${
                           p.is_active
                             ? "border-[var(--color-accent)] bg-[var(--color-accent)]/10"
                             : ""
                         }`}>
                         <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-3">
+                          <div className="flex items-start justify-between gap-3">
                             <span className="text-base font-semibold text-[var(--color-text-primary)] truncate">{p.name}</span>
                             {p.is_active && (
                               <StatusBadge tone='success'>当前</StatusBadge>
                             )}
                           </div>
-                          <div className="text-sm text-[var(--color-text-secondary)] truncate mt-1">{p.base_url} · {p.default_model}</div>
+                          <div className="mt-2 truncate text-xs text-[var(--color-text-secondary)]" title={p.base_url}>{p.base_url}</div>
+                          <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
+                            <div className="rounded-lg bg-[var(--color-bg-secondary)] p-2"><div className="text-[var(--color-text-secondary)]">协议</div><div className="mt-1 font-medium text-[var(--color-text-primary)]">{p.protocol === "chat_completions" ? "Chat Completions" : "Responses API"}</div></div>
+                            <div className="rounded-lg bg-[var(--color-bg-secondary)] p-2"><div className="text-[var(--color-text-secondary)]">模型</div><div className="mt-1 font-medium text-[var(--color-text-primary)]">{p.models.length} 个</div></div>
+                            <div className="rounded-lg bg-[var(--color-bg-secondary)] p-2"><div className="text-[var(--color-text-secondary)]">默认模型</div><div className="mt-1 truncate font-medium text-[var(--color-text-primary)]">{p.default_model || "未设置"}</div></div>
+                            <div className="rounded-lg bg-[var(--color-bg-secondary)] p-2"><div className="text-[var(--color-text-secondary)]">认证</div><div className="mt-1 font-medium text-[var(--color-text-primary)]">{p.has_api_key ? "已配置" : "未配置"}</div></div>
+                          </div>
                           {p.models.length > 0 && (
                             <div className="flex gap-1.5 mt-2 flex-wrap">
                               {p.models.slice(0, 5).map(m => (
@@ -403,7 +409,7 @@ export function SettingsWindow({ onClose }: { onClose: () => void }) {
                             </div>
                           )}
                         </div>
-                        <div className="flex shrink-0 items-center gap-1.5">
+                        <div className="flex flex-wrap justify-end gap-1.5 border-t border-[var(--color-border)] pt-3">
                           {!p.is_active && <Button size='sm' variant='ghost' onClick={() => void activateProvider(p)}>设为当前</Button>}
                           <IconButton icon={Pencil} label={`编辑供应商 ${p.name}`} onClick={() => { setEditingProvider(p); setShowProviderEditor(true) }} />
                           <IconButton icon={Trash2} label={`删除供应商 ${p.name}`} onClick={() => setProviderToDelete(p)} className='ui-icon-button-danger' />

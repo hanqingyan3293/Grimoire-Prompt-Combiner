@@ -29,7 +29,7 @@ export function FloatingPreview({ open, title, onClose, children, footer }: { op
   }, [open]);
   if (!open) return null;
   const startDrag = (event: React.PointerEvent) => { event.preventDefault(); dragRef.current = { x: event.clientX, y: event.clientY, rect }; document.body.style.userSelect = "none"; };
-  const startResize = (edge: ResizeEdge, event: React.PointerEvent) => { event.preventDefault(); event.stopPropagation(); resizeRef.current = { edge, x: event.clientX, y: event.clientY, rect }; document.body.style.userSelect = "none"; };
+  const startResize = (edge: ResizeEdge, event: React.PointerEvent<HTMLButtonElement>) => { event.preventDefault(); event.stopPropagation(); event.currentTarget.setPointerCapture?.(event.pointerId); resizeRef.current = { edge, x: event.clientX, y: event.clientY, rect }; document.body.style.userSelect = "none"; };
   return <div className="fixed inset-0 z-[1200] bg-black/45 backdrop-blur-[2px]" onPointerDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
     <section className="absolute flex flex-col overflow-visible rounded-2xl border-2 border-stone-400 bg-[var(--color-bg-primary)] shadow-[0_24px_80px_rgba(0,0,0,.42)] dark:border-stone-600" style={{ left: rect.left, top: rect.top, width: rect.width, height: rect.height }}>
       <header onPointerDown={startDrag} className="flex h-12 shrink-0 cursor-move items-center justify-between border-b-2 border-[var(--color-border-strong)] bg-[var(--color-bg-secondary)] px-4 font-semibold">
@@ -37,7 +37,7 @@ export function FloatingPreview({ open, title, onClose, children, footer }: { op
       </header>
       <div className="min-h-0 flex-1 overflow-auto p-4">{children}</div>
       {footer ? <footer className="shrink-0 border-t-2 border-[var(--color-border-strong)] bg-[var(--color-bg-secondary)] p-3">{footer}</footer> : null}
-      {(["n","s","e","w","ne","nw","se","sw"] as ResizeEdge[]).map(edge => <span key={edge} onPointerDown={event => startResize(edge, event)} className={`absolute z-10 ${edge.includes("n") ? "top-[-5px]" : edge.includes("s") ? "bottom-[-5px]" : "top-2 bottom-2"} ${edge.includes("e") ? "right-[-5px]" : edge.includes("w") ? "left-[-5px]" : "left-2 right-2"} ${edge.length === 2 ? "size-4" : edge === "n" || edge === "s" ? "h-3" : "w-3"} cursor-${edge}-resize`} />)}
+      {(["n","s","e","w","ne","nw","se","sw"] as ResizeEdge[]).map(edge => <button key={edge} type="button" aria-label={`调整预览窗口${edge}大小`} onPointerDown={event => startResize(edge, event)} className={`absolute z-[100] block touch-none border-0 bg-transparent p-0 ${edge === "n" ? "left-3 right-3 top-[-10px] h-5 cursor-n-resize" : edge === "s" ? "bottom-[-10px] left-3 right-3 h-5 cursor-s-resize" : edge === "e" ? "bottom-3 right-[-10px] top-3 w-5 cursor-e-resize" : edge === "w" ? "bottom-3 left-[-10px] top-3 w-5 cursor-w-resize" : edge === "ne" ? "right-[-10px] top-[-10px] size-6 cursor-ne-resize" : edge === "nw" ? "left-[-10px] top-[-10px] size-6 cursor-nw-resize" : edge === "se" ? "bottom-[-10px] right-[-10px] size-6 cursor-se-resize" : "bottom-[-10px] left-[-10px] size-6 cursor-sw-resize"}`}><span className="pointer-events-none absolute inset-1 rounded-md border-2 border-[var(--color-accent)] bg-[var(--color-accent)]/20 shadow-sm" /></button>)}
     </section>
   </div>;
 }

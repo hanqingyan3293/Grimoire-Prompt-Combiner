@@ -514,6 +514,10 @@ function InfiniteCanvasPage() {
     }, [activeChatId, backgroundMode, chatSessions, connections, nodes, projectId, projectLoaded, showImageInfo, updateProject]);
 
     useEffect(() => {
+        window.dispatchEvent(new CustomEvent('grimoire:canvas-document-updated', { detail: { projectId } }));
+    }, [activeChatId, backgroundMode, chatSessions, connections, nodes, projectId, showImageInfo]);
+
+    useEffect(() => {
         if (!dialogNodeId) setNodeImageSettingsOpen(false);
     }, [dialogNodeId]);
 
