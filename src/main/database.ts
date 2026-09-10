@@ -6,7 +6,9 @@ import fs from 'fs'
 import { app } from 'electron'
 import { createLegacyDatabase, type LegacyDatabase } from './services/sqlite.compat'
 
-const CURRENT_SCHEMA_VERSION = 7
+// v9 adds prompt asset category tables/indexes. Keep this bumped so existing
+// v8 databases run the additive migration instead of being treated as current.
+const CURRENT_SCHEMA_VERSION = 9
 let nativeDb: DatabaseSync | null = null
 let db: LegacyDatabase | null = null
 let dbPath = ''
@@ -123,6 +125,27 @@ CREATE TABLE IF NOT EXISTS prompt_assets (
   updated_at TEXT DEFAULT (datetime('now','localtime'))
 );
 
+CREATE TABLE IF NOT EXISTS prompt_asset_categories (
+  id TEXT PRIMARY KEY,
+  parent_id TEXT,
+  name TEXT NOT NULL,
+  source_scope TEXT NOT NULL DEFAULT 'asset',
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  is_builtin INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  FOREIGN KEY (parent_id) REFERENCES prompt_asset_categories(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS prompt_asset_category_links (
+  asset_id TEXT NOT NULL,
+  category_id TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  PRIMARY KEY (asset_id, category_id),
+  FOREIGN KEY (asset_id) REFERENCES prompt_assets(id) ON DELETE CASCADE,
+  FOREIGN KEY (category_id) REFERENCES prompt_asset_categories(id) ON DELETE CASCADE
+);
+
 CREATE TABLE IF NOT EXISTS migration_runs (
   id TEXT PRIMARY KEY,
   source TEXT NOT NULL,
@@ -184,7 +207,8 @@ CREATE TABLE IF NOT EXISTS canvas_vendor_projects (
   title TEXT NOT NULL,
   data_json TEXT NOT NULL,
   created_at TEXT NOT NULL,
-  updated_at TEXT NOT NULL
+  updated_at TEXT NOT NULL,
+  revision INTEGER NOT NULL DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS chat_groups (
@@ -263,6 +287,8 @@ CREATE INDEX IF NOT EXISTS idx_fav_tag ON favorites(tag_id);
 CREATE INDEX IF NOT EXISTS idx_presets_name ON presets(name);
 CREATE INDEX IF NOT EXISTS idx_prompt_assets_name ON prompt_assets(name);
 CREATE INDEX IF NOT EXISTS idx_prompt_assets_source ON prompt_assets(source);
+CREATE INDEX IF NOT EXISTS idx_prompt_asset_categories_parent ON prompt_asset_categories(parent_id, sort_order);
+CREATE INDEX IF NOT EXISTS idx_prompt_asset_category_links_category ON prompt_asset_category_links(category_id);
 CREATE INDEX IF NOT EXISTS idx_task_jobs_status ON task_jobs(status, created_at);
 CREATE INDEX IF NOT EXISTS idx_comfy_workflows_name ON comfy_workflows(name);
 CREATE INDEX IF NOT EXISTS idx_canvas_projects_updated ON canvas_projects(updated_at DESC);
@@ -318,6 +344,7 @@ export function initializeDatabaseConnection(connection: DatabaseSync, requireEx
   try { legacy.run("ALTER TABLE image_refs ADD COLUMN original_name TEXT") } catch {}
   try { legacy.run("ALTER TABLE image_refs ADD COLUMN available INTEGER NOT NULL DEFAULT 1") } catch {}
   try { legacy.run("ALTER TABLE history ADD COLUMN task_id TEXT") } catch {}
+  try { legacy.run("ALTER TABLE canvas_vendor_projects ADD COLUMN revision INTEGER NOT NULL DEFAULT 0") } catch {}
 
   legacy.exec(INDEX_SQL)
   legacy.run("CREATE INDEX IF NOT EXISTS idx_history_task ON history(task_id)")

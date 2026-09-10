@@ -10,11 +10,22 @@ export interface PromptAssetItem {
   name: string
   prompt: string
   detail: string
+  group?: string
+  categoryIds?: string[]
   createdAt: string
   nsfw: boolean
   variantCount: number
   presetData?: PresetData
   tagId?: string
+}
+
+export interface PromptAssetCategory {
+  id: string
+  parentId: string | null
+  name: string
+  sourceScope: PromptAssetSource
+  sortOrder: number
+  isBuiltin: boolean
 }
 
 export interface PromptAssetQuery {

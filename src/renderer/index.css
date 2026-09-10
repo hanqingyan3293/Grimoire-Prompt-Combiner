@@ -166,6 +166,37 @@ button:disabled {
   box-shadow: 0 12px 36px rgba(0,0,0,0.36), 0 0 0 1px rgba(255,255,255,0.035);
 }
 
+.ui-utility-popover {
+  right: 10px;
+  bottom: 64px;
+  width: min(480px, calc(100% - 20px));
+  min-width: min(340px, calc(100% - 20px));
+  max-width: calc(100% - 20px);
+  max-height: calc(100% - 76px);
+  overflow: hidden;
+  padding: 6px;
+}
+
+.ui-utility-panel {
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.ui-utility-panel > .overflow-y-auto {
+  scrollbar-gutter: stable;
+}
+
+@media (max-width: 420px) {
+  .ui-utility-popover {
+    right: 8px;
+    bottom: 60px;
+    width: calc(100% - 16px);
+    min-width: 0;
+    max-width: calc(100% - 16px);
+  }
+}
+
 .ui-popover-menu {
   overflow-x: hidden;
   overflow-y: auto;
@@ -311,6 +342,15 @@ button:disabled {
 .ui-panel-shell {
   border-radius: 6px;
   transition: border-color var(--motion-fast) ease, box-shadow var(--motion-fast) ease;
+}
+
+.ui-panel-content > * {
+  min-width: 0;
+}
+
+.ui-panel-content {
+  overflow-x: hidden;
+  scrollbar-gutter: stable;
 }
 
 .ui-panel-shell:hover {
@@ -464,7 +504,7 @@ button:disabled {
   justify-content: space-between;
   gap: 12px;
   border-bottom: 1px solid var(--color-border);
-  padding-bottom: 12px;
+  padding: 2px 2px 12px;
 }
 
 .ui-empty-state-icon {
@@ -692,7 +732,30 @@ button:disabled {
   border: 1px solid var(--color-border);
   border-radius: 7px;
   background: color-mix(in srgb, var(--color-bg-primary) 92%, var(--color-bg-secondary));
+  padding: 12px;
   transition: border-color 120ms ease, background-color 120ms ease, box-shadow 120ms ease;
+}
+
+.preview-body-inner {
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.preview-body-inner > * {
+  min-width: 0;
+}
+
+.ui-settings-content {
+  padding: 24px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: color-mix(in srgb, var(--color-bg-secondary) 72%, transparent);
+}
+
+@media (max-width: 640px) {
+  .ui-settings-content { padding: 16px; }
 }
 
 .ui-list-card:focus-within {
@@ -721,6 +784,8 @@ button:disabled {
   border-radius: 8px;
   color: var(--color-text-secondary);
   background: color-mix(in srgb, var(--color-bg-primary) 70%, transparent);
+  margin: 2px;
+  padding: 12px;
 }
 
 @media (prefers-reduced-motion: reduce) {

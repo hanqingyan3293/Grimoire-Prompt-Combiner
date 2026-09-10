@@ -22,7 +22,7 @@ export function AIWindow({ onClose }: Props) {
   return (
     <div className="h-screen flex flex-col bg-[var(--color-bg-primary)]">
       {/* Tab bar */}
-      <div className="ui-app-chrome flex shrink-0 items-center border-b border-[var(--color-border)] px-2 pt-1" role="tablist" aria-label="AI 工具">
+      <div className="ui-app-chrome flex shrink-0 items-center gap-1 border-b border-[var(--color-border)] px-3 pt-1" role="tablist" aria-label="AI 工具">
         <button
           onClick={() => setTab('chat')}
           role="tab" aria-selected={tab === 'chat'}
@@ -42,7 +42,7 @@ export function AIWindow({ onClose }: Props) {
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-hidden">
+      <div className="min-h-0 flex-1 overflow-hidden p-[3px]">
         <Suspense fallback={<div className="flex h-full items-center justify-center gap-2 text-sm text-[var(--color-text-secondary)]"><LoaderCircle size={17} className="animate-spin" aria-hidden="true" />正在载入</div>}>{tab === 'chat' ? <ChatLayout onClose={onClose} /> : <AIVisionPanel />}</Suspense>
       </div>
     </div>

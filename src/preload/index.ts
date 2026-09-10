@@ -13,7 +13,7 @@ const IPC_CHANNELS = {
   CATEGORY_CREATE: 'category:create', CATEGORY_UPDATE: 'category:update', CATEGORY_DELETE: 'category:delete', SUBCATEGORY_CREATE: 'subcategory:create', SUBCATEGORY_UPDATE: 'subcategory:update', SUBCATEGORY_DELETE: 'subcategory:delete',
   PRESETS_LIST: 'presets:list', PRESETS_SAVE: 'presets:save', PRESETS_DELETE: 'presets:delete',
   HISTORY_LIST: 'history:list', HISTORY_ADD: 'history:add', HISTORY_CLEAR: 'history:clear',
-  PROMPT_ASSETS_LIST: 'promptAssets:list', PROMPT_ASSETS_CREATE: 'promptAssets:create', PROMPT_ASSETS_DELETE: 'promptAssets:delete', SETTINGS_GET_ALL: 'settings:getAll', SETTINGS_SET: 'settings:set', OPEN_EXTERNAL: 'system:openExternal',
+  PROMPT_ASSETS_LIST: 'promptAssets:list', PROMPT_ASSETS_CREATE: 'promptAssets:create', PROMPT_ASSETS_DELETE: 'promptAssets:delete', PROMPT_ASSET_CATEGORIES_LIST: 'promptAssetCategories:list', PROMPT_ASSET_CATEGORIES_CREATE: 'promptAssetCategories:create', PROMPT_ASSET_CATEGORIES_RENAME: 'promptAssetCategories:rename', PROMPT_ASSET_CATEGORIES_DELETE: 'promptAssetCategories:delete', PROMPT_ASSET_CATEGORIES_ASSIGN: 'promptAssetCategories:assign', PROMPT_ASSET_CATEGORIES_MOVE: 'promptAssetCategories:move', SETTINGS_GET_ALL: 'settings:getAll', SETTINGS_SET: 'settings:set', OPEN_EXTERNAL: 'system:openExternal',
   IMAGES_LIST: 'images:list', IMAGES_ADD: 'images:add', IMAGES_DELETE: 'images:delete', IMAGES_IMPORT_DATA: 'images:importData', IMAGES_READ_DATA: 'images:readData',
   AI_CHAT: 'ai:chat', AI_VISION: 'ai:vision', AI_CHAT_HISTORY: 'ai:chatHistory',
   ERROR_LOG: 'error:log', ERROR_GET_ALL: 'error:getAll', DB_EXPORT: 'db:export', DB_IMPORT: 'db:import',
@@ -72,6 +72,14 @@ const api = {
     list: (query: PromptAssetQuery = {}): Promise<PromptAssetPage> => ipcRenderer.invoke(IPC_CHANNELS.PROMPT_ASSETS_LIST, query),
     create: (input: { name: string; prompt: string; detail?: string; sourceId?: string; nsfw?: boolean; variantCount?: number }) => ipcRenderer.invoke(IPC_CHANNELS.PROMPT_ASSETS_CREATE, input),
     delete: (sourceId: string): Promise<boolean> => ipcRenderer.invoke(IPC_CHANNELS.PROMPT_ASSETS_DELETE, sourceId),
+    categories: {
+      list: () => ipcRenderer.invoke(IPC_CHANNELS.PROMPT_ASSET_CATEGORIES_LIST),
+      create: (input: { name: string; parentId?: string | null; sourceScope?: string }) => ipcRenderer.invoke(IPC_CHANNELS.PROMPT_ASSET_CATEGORIES_CREATE, input),
+      rename: (input: { id: string; name: string }) => ipcRenderer.invoke(IPC_CHANNELS.PROMPT_ASSET_CATEGORIES_RENAME, input),
+      delete: (id: string) => ipcRenderer.invoke(IPC_CHANNELS.PROMPT_ASSET_CATEGORIES_DELETE, id),
+      assign: (input: { assetId: string; categoryId: string }) => ipcRenderer.invoke(IPC_CHANNELS.PROMPT_ASSET_CATEGORIES_ASSIGN, input),
+      move: (input: { id: string; parentId: string | null }) => ipcRenderer.invoke(IPC_CHANNELS.PROMPT_ASSET_CATEGORIES_MOVE, input),
+    },
   },
 
   settings: {

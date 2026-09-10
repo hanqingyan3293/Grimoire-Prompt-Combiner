@@ -471,4 +471,4 @@ Settings → **💾 Data**:
 
 ---
 
-*Grimoire v7 — GPL-3.0 License*
+*Grimoire v7.2 — AGPL-3.0-or-later License*

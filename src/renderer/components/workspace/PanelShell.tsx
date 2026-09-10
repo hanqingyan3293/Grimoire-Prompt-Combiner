@@ -202,7 +202,7 @@ export function PanelShell({
       {showHeader && (
         <div
           className={
-            "ui-panel-header relative shrink-0 flex items-center gap-1 px-2 border-b border-[var(--color-border)] bg-[var(--color-bg-secondary)] overflow-visible " +
+            "ui-panel-header relative shrink-0 flex min-w-0 items-center gap-1.5 px-3 border-b border-[var(--color-border)] bg-[var(--color-bg-secondary)] overflow-visible " +
             (addMenuOpen ? "z-[120]" : "z-40")
           }
           style={{ height: "var(--panel-header-height)" }}
@@ -302,7 +302,7 @@ export function PanelShell({
           </button>
         </div>
       )}
-      <div className="flex-1 min-h-0 min-w-0 overflow-auto">
+      <div className="ui-panel-content flex-1 min-h-0 min-w-0 overflow-auto p-[3px]">
         {children}
       </div>
       <CornerHandle position="top-left" onPointerDown={startCornerDrag} />

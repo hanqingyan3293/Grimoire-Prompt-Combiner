@@ -1,64 +1,32 @@
-﻿# Grimoire v7
+# Grimoire v7.2
 
-> AI Prompt Combiner — A desktop toolbox for AI art and AI chat
+> AI Prompt Combiner — a local Windows workspace for prompt engineering, AI providers and infinite-canvas workflows.
 
-中文: [README.md](./README.md)
+## Highlights
 
-## Overview
+- 4000+ bilingual tag library with categories, subcategories, search and favorites.
+- Positive/negative prompt builder with weights, undo/redo and export.
+- Multi-provider AI chat and vision tools.
+- Infinite canvas projects with persistent documents, autosave and recovery.
+- Prompt library and prompt assets with collapsible source/category/subcategory trees.
+- Draggable, resizable and scrollable preview windows.
+- Image preview zoom from 0.1x to 10x with pointer-centered zoom and panning.
+- Seven themes, synchronized between the host app and canvas iframe.
 
-Grimoire is a Windows desktop application designed for AI creators. It deeply integrates **4000+ tag library management**, **visual prompt composition**, **multi-provider AI chat**, and **AI vision-based tag suggestion** to make prompt engineering intuitive and efficient.
+## Release files
 
-### Core Features
+Each GitHub Release provides Windows x64 files:
 
-- **📚 Tag Library** — 4000+ bilingual (EN/ZH) tags in a 3-level tree: Category → Subcategory → Tag. Search, filter, random pick.
-- **🏷️ Tag Groups** — Multiple independent tag databases. Switch, import, export, rename, copy for different creative scenarios.
-- **⭐ Favorites** — Favorite subcategories and tags with a dedicated favorites view for quick access.
-- **✏️ Prompt Builder** — Positive/negative prompt panels, weight sliders, undo/redo, one-click copy and export.
-- **🤖 AI Assistant** — Standalone AI chat window, multi-model switching, persistent messages, conversation grouping.
-- **🔍 AI Vision** — Upload images → AI recognition → auto-suggest matching tags. Multi-select and drag-and-drop support.
-- **📊 Simple AI Panel** — Embedded right-panel in main window. Chat + Vision dual modes, synced with AI window.
-- **⚙️ Provider Configuration** — Multi-provider API management. Supports Chat Completions / Responses API protocols, model list fetching, connection testing.
-- **🎨 Themes** — 7 built-in themes (Neon/Clean/Gold/Midnight/Sakura/Forest/Sunset), custom accent color, font/UI scaling.
-- **⌨️ Shortcuts** — Global keyboard shortcuts for send/newline/search/undo/redo/copy, fully customizable.
+- Grimoire Setup 7.2.0.exe — NSIS installer.
+- Grimoire 7.2.0.exe — single-file portable executable.
+- Grimoire-portable-7.2.0.zip — ZIP portable distribution.
+- SHA256SUMS-v7.2.0.txt — integrity checksums.
 
-### Tech Stack
-
-| Technology | Purpose |
-|------------|---------|
-| Electron 34 | Desktop framework |
-| React 19 + TypeScript 5 | UI rendering |
-| Vite 8 + Tailwind CSS v4 | Build & styling |
-| sql.js (WASM SQLite) | Local database |
-| Zustand | State management |
-| OpenAI SDK | AI communication |
-| electron-builder | Distribution packaging |
-
-## Quick Start
-
-### Requirements
-
-- Windows 10/11 (x64)
-- Node.js 18+
-
-### Installation
-
-**Option 1: Installer (Recommended)**
-
-1. Download `Grimoire-Setup-7.0.0.exe` from the [latest Release](https://github.com/hanqingyan3293/grimoire/releases/latest)
-2. Double-click to install, choose installation directory
-3. Launch from desktop shortcut
-
-**Option 2: Portable**
-
-1. Download `Grimoire-portable-7.0.0.zip`
-2. Extract to any directory
-3. Run `Grimoire.exe` — all data and configs stay in the folder
-
-**Option 3: From Source**
+## From source
 
 ```bash
-git clone https://github.com/hanqingyan3293/grimoire.git
-cd grimoire
+git clone https://github.com/hanqingyan3293/Grimoire-Prompt-Combiner.git
+cd Grimoire-Prompt-Combiner
 npm install
 npm run build
 npm start
@@ -66,8 +34,11 @@ npm start
 
 ## Documentation
 
-For detailed instructions, see [USER_MANUAL.en.md](./USER_MANUAL.en.md)
+See USER_MANUAL.en.md and 操作文档.md.
 
 ## License
 
-GPL-3.0 License — [hanqingyan3293](https://github.com/hanqingyan3293)
+This project is licensed under the GNU Affero General Public License v3.0 or later (AGPL-3.0-or-later). See LICENSE.
+
+Author: hanqingyan3293
+Repository: https://github.com/hanqingyan3293/Grimoire-Prompt-Combiner

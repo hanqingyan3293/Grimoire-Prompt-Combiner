@@ -14,6 +14,7 @@ export function PromptCard({
     actionType = "text",
     extraAction,
     compact = false,
+    onDragStart,
 }: {
     item: Prompt;
     onOpen: () => void;
@@ -23,11 +24,14 @@ export function PromptCard({
     actionType?: "text" | "primary";
     extraAction?: ReactNode;
     compact?: boolean;
+    onDragStart?: (event: React.DragEvent) => void;
 }) {
     const { i18n, t } = useTranslation();
     return (
         <Card
             hoverable
+            draggable={Boolean(onDragStart)}
+            onDragStart={onDragStart}
             className={compact ? "group cursor-pointer overflow-hidden transition-transform duration-200 hover:-translate-y-1" : "flex h-full flex-col overflow-hidden"}
             styles={{ body: compact ? { padding: 0 } : { display: "flex", flex: 1, flexDirection: "column", padding: 0 } }}
             cover={

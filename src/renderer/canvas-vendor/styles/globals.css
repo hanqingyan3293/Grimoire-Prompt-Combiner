@@ -152,6 +152,21 @@ body,
     min-height: 0;
 }
 
+.preview-body-inner {
+    display: flex;
+    width: 100%;
+    min-width: 0;
+    min-height: 100%;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.grimoire-canvas-vendor main,
+.grimoire-canvas-vendor [role="main"] {
+    min-width: 0;
+    min-height: 0;
+}
+
 @layer utilities {
     .ai-title-aurora {
         background: linear-gradient(90deg, #111827 0%, #111827 36%, #6b7280 54%, #111827 72%, #111827 100%);

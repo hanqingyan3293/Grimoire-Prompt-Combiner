@@ -1,4 +1,4 @@
-# 魔导书 Grimoire v7
+# 魔导书 Grimoire v7.2
 
 > AI 提示词组合器 — 为 AI 绘画和 AI 对话打造的桌面工具箱
 
@@ -59,19 +59,19 @@ English: [README.en.md](./README.en.md)
 
 **方式一：免安装单文件版（推荐）**
 
-1. 下载 [最新 Release](https://github.com/hanqingyan3293/grimoire/releases/latest) 中的 `Grimoire.7.1.0.exe`
+    1. 下载 [最新 Release](https://github.com/hanqingyan3293/Grimoire-Prompt-Combiner/releases/latest) 中的 `Grimoire 7.2.0.exe`
 2. 放到任意目录后双击运行
 3. 无需安装，适合移动硬盘、U 盘或多目录备份
 
 **方式二：ZIP 便携版**
 
-1. 下载 `Grimoire-portable-7.1.0.zip`
+1. 下载 `Grimoire-portable-7.2.0.zip`
 2. 解压到任意目录
 3. 双击解压目录中的 `Grimoire.exe`
 
 **方式三：安装包**
 
-1. 下载 `Grimoire.Setup.7.1.0.exe`
+1. 下载 `Grimoire Setup 7.2.0.exe`
 2. 双击安装，选择安装目录
 3. 桌面快捷方式启动
 
@@ -110,6 +110,28 @@ grimoire/
 
 详细操作说明请参阅 [操作文档.md](./操作文档.md)
 
+## v7.2 发布内容
+
+- 无限画布项目自动保存与安全恢复，支持 revision 保护和保存队列。
+- 无限画布提示词库与工具侧栏提示词资产支持来源、分类、子分类折叠和拖拽归类。
+- 主应用与无限画布预览窗口统一支持拖动、缩放、滚动内容和底部操作区。
+- 图片预览支持 0.1–10 倍缩放、鼠标中心缩放和左键拖动。
+- 主题设置、画布 iframe、工具栏小设置统一同步。
+- 设置页、资产卡片、弹窗和工作区间距与边界缓冲统一优化。
+
+## 发布文件
+
+每个 GitHub Release 提供 Windows x64 文件：
+
+- Grimoire Setup 7.2.0.exe：NSIS 安装版。
+- Grimoire 7.2.0.exe：单文件免安装版。
+- Grimoire-portable-7.2.0.zip：ZIP 便携版。
+- SHA256SUMS-v7.2.0.txt：文件完整性校验。
+
 ## 许可证
 
-GPL-3.0 License — [hanqingyan3293](https://github.com/hanqingyan3293)
+本项目采用 GNU Affero General Public License v3.0 或更高版本（AGPL-3.0-or-later）。完整许可证见 LICENSE。
+
+作者：[hanqingyan3293](https://github.com/hanqingyan3293)
+
+项目仓库：[Grimoire-Prompt-Combiner](https://github.com/hanqingyan3293/Grimoire-Prompt-Combiner)

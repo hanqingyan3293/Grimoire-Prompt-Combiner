@@ -44,7 +44,7 @@ describe('database lifecycle', () => {
 
     const categoryColumns = getDatabase().exec('PRAGMA table_info(categories)')[0].values.map(row => row[1])
     expect(categoryColumns).toContain('group_id')
-    expect(getDatabase().exec("SELECT value FROM schema_meta WHERE key='schema_version'")[0].values[0][0]).toBe('7')
+    expect(getDatabase().exec("SELECT value FROM schema_meta WHERE key='schema_version'")[0].values[0][0]).toBe('9')
     expect(fs.readdirSync(testRoot).some(name => name.startsWith('grimoire.db.pre-migration-'))).toBe(true)
   })
 
@@ -69,7 +69,7 @@ describe('database lifecycle', () => {
     importDatabase(importPath)
 
     expect(getDatabase().exec("SELECT value FROM settings WHERE key='test_marker'")[0].values[0][0]).toBe('imported')
-    expect(getDatabase().exec("SELECT value FROM schema_meta WHERE key='schema_version'")[0].values[0][0]).toBe('7')
+    expect(getDatabase().exec("SELECT value FROM schema_meta WHERE key='schema_version'")[0].values[0][0]).toBe('9')
     expect(fs.readdirSync(testRoot).some(name => name.startsWith('grimoire.db.before-import-'))).toBe(true)
   })
 })

@@ -4,6 +4,8 @@ import type { PromptAssetPage } from '@shared/prompt-asset-types'
 export type Prompt = RawPrompt & {
     sourceId: string;
     category: string;
+    categoryIds: string[];
+    assetId: string;
     githubUrl: string;
 };
 
@@ -41,7 +43,7 @@ type SourceCache = PromptSourceStatus & {
     signature: string;
 };
 
-async function getAllPrompts(): Promise<Prompt[]> {
+export async function getAllPrompts(): Promise<Prompt[]> {
     const items: PromptAssetPage['items'] = [];
     const pageSize = 100;
     for (let offset = 0; offset < 10000; offset += pageSize) {
@@ -61,14 +63,16 @@ async function getAllPrompts(): Promise<Prompt[]> {
         createdAt: item.createdAt,
         updatedAt: item.createdAt,
         sourceId: 'grimoire-assets',
-        category: item.detail || '魔导书提示词资产',
+        category: item.group || item.detail || '魔导书提示词资产',
+        categoryIds: item.categoryIds || [],
+        assetId: item.id.replace(/^asset:/, ''),
         githubUrl: '',
     }));
 }
 
 async function queryGrimoirePrompts(keyword: string, page: number, pageSize: number): Promise<PromptListResponse> {
     const result = await window.api.promptAssets.list({ query: keyword, source: 'asset', limit: pageSize, offset: Math.max(0, (page - 1) * pageSize) });
-    const items = result.items.map((item) => ({ id: item.sourceRef, title: item.name, prompt: item.prompt, description: item.detail, coverUrl: '', referenceImageUrls: [], tags: [], preview: item.detail, createdAt: item.createdAt, updatedAt: item.createdAt, sourceId: 'grimoire-assets', category: item.detail || '魔导书提示词资产', githubUrl: '' }));
+    const items = result.items.map((item) => ({ id: item.sourceRef, title: item.name, prompt: item.prompt, description: item.detail, coverUrl: '', referenceImageUrls: [], tags: [], preview: item.detail, createdAt: item.createdAt, updatedAt: item.createdAt, sourceId: 'grimoire-assets', category: item.group || item.detail || '魔导书提示词资产', categoryIds: item.categoryIds || [], assetId: item.id.replace(/^asset:/, ''), githubUrl: '' }));
     return { items, tags: [], categories: Array.from(new Set(items.map(item => item.category))), total: result.total };
 }
 

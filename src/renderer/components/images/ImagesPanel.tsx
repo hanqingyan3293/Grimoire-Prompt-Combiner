@@ -19,6 +19,19 @@ export function ImagesPanel() {
   const [error, setError] = useState<string | null>(null)
   const [urls, setUrls] = useState<Record<number, string>>({})
   const [preview, setPreview] = useState<ImageRef | null>(null)
+  const [previewScale, setPreviewScale] = useState(1)
+  const [previewOffset, setPreviewOffset] = useState({ x: 0, y: 0 })
+  const [previewDragging, setPreviewDragging] = useState(false)
+  const previewViewportRef = React.useRef<HTMLDivElement>(null)
+  const previewImageRef = React.useRef<HTMLImageElement>(null)
+  const [previewBaseSize, setPreviewBaseSize] = useState({ width: 0, height: 0 })
+  const fitPreviewImage = React.useCallback(() => {
+    const viewport = previewViewportRef.current
+    const image = previewImageRef.current
+    if (!viewport || !image?.naturalWidth || !image.naturalHeight) return
+    const fit = Math.min(Math.max(80, viewport.clientWidth - 24) / image.naturalWidth, Math.max(80, viewport.clientHeight - 24) / image.naturalHeight)
+    setPreviewBaseSize({ width: Math.max(1, image.naturalWidth * fit), height: Math.max(1, image.naturalHeight * fit) })
+  }, [])
 
   const notifyError = (message: string) => window.dispatchEvent(new CustomEvent('grimoire:toast', { detail: { message, type: 'error' } }))
   
@@ -79,7 +92,7 @@ export function ImagesPanel() {
   }
 
   const openPreview = (image: ImageRef) => {
-    if (urls[image.id]) setPreview(image)
+    if (urls[image.id]) { setPreviewScale(1); setPreviewOffset({ x: 0, y: 0 }); setPreviewBaseSize({ width: 0, height: 0 }); setPreview(image) }
     else notifyError('图片文件不可用')
   }
   
@@ -141,8 +154,65 @@ export function ImagesPanel() {
           </div>
         </div>
       </Modal>
-      <FloatingPreview open={preview !== null} title={preview?.original_name || '图片预览'} onClose={() => setPreview(null)}>
-        {preview && urls[preview.id] ? <img src={urls[preview.id]} alt={preview.original_name || '参考图片'} className='mx-auto block max-h-full max-w-full object-contain' /> : null}
+      <FloatingPreview open={preview !== null} title={preview?.original_name || '图片预览'} onClose={() => { setPreview(null); setPreviewScale(1); setPreviewOffset({ x: 0, y: 0 }); setPreviewDragging(false) }}>
+        {preview && urls[preview.id] ? (
+          <div
+            ref={previewViewportRef}
+            className={`relative flex h-full min-h-[220px] min-w-0 items-start justify-start overflow-hidden rounded-lg bg-[var(--color-bg-secondary)] p-3 ${previewDragging ? 'cursor-grabbing select-none' : 'cursor-grab'}`}
+            onPointerDown={event => {
+              if (event.button !== 0) return
+              event.preventDefault()
+              event.currentTarget.setPointerCapture(event.pointerId)
+              setPreviewDragging(true)
+              ;(event.currentTarget as HTMLDivElement).dataset.dragX = String(event.clientX)
+              ;(event.currentTarget as HTMLDivElement).dataset.dragY = String(event.clientY)
+            }}
+            onPointerMove={event => {
+              if (!previewDragging) return
+              const target = event.currentTarget as HTMLDivElement
+              const lastX = Number(target.dataset.dragX || event.clientX)
+              const lastY = Number(target.dataset.dragY || event.clientY)
+              setPreviewOffset(current => ({ x: current.x + event.clientX - lastX, y: current.y + event.clientY - lastY }))
+              target.dataset.dragX = String(event.clientX)
+              target.dataset.dragY = String(event.clientY)
+            }}
+            onPointerUp={event => { event.currentTarget.releasePointerCapture?.(event.pointerId); setPreviewDragging(false) }}
+            onPointerCancel={event => { event.currentTarget.releasePointerCapture?.(event.pointerId); setPreviewDragging(false) }}
+            onWheel={event => {
+              event.preventDefault()
+              const image = previewImageRef.current
+              const viewport = previewViewportRef.current
+              if (image && viewport && previewBaseSize.width) {
+                const imageRect = image.getBoundingClientRect()
+                const nextScale = Math.min(10, Math.max(0.1, previewScale * (event.deltaY < 0 ? 1.1 : 0.9)))
+                const baseLeft = imageRect.left - previewOffset.x
+                const baseTop = imageRect.top - previewOffset.y
+                const localX = (event.clientX - imageRect.left) / Math.max(0.0001, previewScale)
+                const localY = (event.clientY - imageRect.top) / Math.max(0.0001, previewScale)
+                setPreviewOffset({
+                  x: event.clientX - baseLeft - localX * nextScale,
+                  y: event.clientY - baseTop - localY * nextScale,
+                })
+                setPreviewScale(nextScale)
+              }
+            }}
+            aria-label={`图片缩放 ${Math.round(previewScale * 100)}%`}
+          >
+            <div className='pointer-events-none absolute inset-3'>
+              <img
+                ref={previewImageRef}
+                src={urls[preview.id]}
+                alt={preview.original_name || '参考图片'}
+                onLoad={fitPreviewImage}
+                className='absolute block max-w-none rounded-lg object-contain'
+                style={{ width: previewBaseSize.width || undefined, height: previewBaseSize.height || undefined, left: Math.max(0, ((previewViewportRef.current?.clientWidth || 0) - 24 - previewBaseSize.width) / 2), top: Math.max(0, ((previewViewportRef.current?.clientHeight || 0) - 24 - previewBaseSize.height) / 2), transform: `translate(${previewOffset.x}px, ${previewOffset.y}px) scale(${previewScale})`, transformOrigin: 'top left', willChange: 'transform' }}
+              />
+            </div>
+            <span className='pointer-events-none absolute bottom-2 right-2 rounded bg-black/55 px-2 py-1 text-[11px] text-white'>
+              {Math.round(previewScale * 100)}%
+            </span>
+          </div>
+        ) : null}
       </FloatingPreview>
     </div>
   )

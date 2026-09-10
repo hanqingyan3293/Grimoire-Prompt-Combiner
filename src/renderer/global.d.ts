@@ -40,6 +40,14 @@ interface GrimoireAPI {
     list: (query?: PromptAssetQuery) => Promise<PromptAssetPage>
     create: (input: { name: string; prompt: string; detail?: string; sourceId?: string; nsfw?: boolean; variantCount?: number }) => Promise<unknown>
     delete: (sourceId: string) => Promise<boolean>
+    categories: {
+      list: () => Promise<Array<{ id: string; parentId: string | null; name: string; sourceScope: string; sortOrder: number; isBuiltin: boolean }>>
+      create: (input: { name: string; parentId?: string | null; sourceScope?: string }) => Promise<unknown>
+      rename: (input: { id: string; name: string }) => Promise<boolean>
+      delete: (id: string) => Promise<boolean>
+      assign: (input: { assetId: string; categoryId: string }) => Promise<boolean>
+      move: (input: { id: string; parentId: string | null }) => Promise<boolean>
+    }
   }
   settings: {
     getAll: () => Promise<{

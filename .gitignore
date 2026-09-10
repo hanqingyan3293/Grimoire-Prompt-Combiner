@@ -6,6 +6,7 @@ _log.txt
 _stdout.log
 _stderr.log
 _out.log
+grimoire-dev.log
 _check_*.py
 _verify*.py
 extract_tags_v2.py

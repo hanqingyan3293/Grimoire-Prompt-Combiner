@@ -57,6 +57,7 @@ export function SettingsWindow({ onClose }: { onClose: () => void }) {
     random_min,
     random_max,
     setSetting,
+    setThemePreference,
   } = useSettingsStore()
   const { providers, activeProvider, loading: providersLoading, loadProviders, saveProvider, deleteProvider, setActive } = useProviderStore()
   const [section, setSection] = useState<Section>("general")
@@ -222,8 +223,8 @@ export function SettingsWindow({ onClose }: { onClose: () => void }) {
       </aside>
 
       {/* Right content */}
-      <div className="flex-1 overflow-y-auto p-8">
-        <div className="mx-auto max-w-5xl">
+      <div className="ui-settings-scroll min-h-0 flex-1 overflow-y-auto p-4 sm:p-7">
+        <div className="ui-settings-content mx-auto w-full max-w-5xl pb-5">
         {section === "general" && (
           <div className="space-y-5">
             <PanelHeader icon={Settings} title='通用设置' description='调整语言、字号、界面密度和随机标签范围' />
@@ -306,8 +307,7 @@ export function SettingsWindow({ onClose }: { onClose: () => void }) {
                     key={tm.key}
                     onClick={async () => {
                       setAccentInput(tm.color)
-                      await setSetting("theme", tm.key)
-                      await setSetting("custom_accent", tm.color)
+                      await setThemePreference(tm.key, tm.color)
                       await setSetting("custom_bg_primary", "")
                       await setSetting("custom_bg_secondary", "")
                       await setSetting("custom_bg_tertiary", "")
@@ -360,7 +360,8 @@ export function SettingsWindow({ onClose }: { onClose: () => void }) {
             <PanelHeader icon={Plug} title='API 供应商' description='管理模型接口、协议和本地保存的认证信息' actions={!showProviderEditor && <Button variant='primary' icon={Plus} onClick={() => { setEditingProvider(null); setShowProviderEditor(true) }}>新增供应商</Button>} />
 
             {showProviderEditor ? (
-              <div className="ui-list-card ui-list-card-no-hover overflow-hidden">
+              <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/35 p-4 backdrop-blur-[2px]" role="dialog" aria-modal="true" aria-label={editingProvider ? '编辑供应商' : '新增供应商'}>
+                <div className="flex h-[min(760px,calc(100vh-32px))] w-[min(920px,calc(100vw-32px))] min-w-0 flex-col overflow-hidden rounded-xl border border-[var(--color-border-strong)] bg-[var(--color-bg-primary)] shadow-[0_24px_80px_rgba(0,0,0,.42)]">
                 <ProviderEditor
                   key={editingProvider?.id || "new"}
                   provider={editingProvider}
@@ -370,6 +371,7 @@ export function SettingsWindow({ onClose }: { onClose: () => void }) {
                   }}
                   onCancel={() => { setShowProviderEditor(false); setEditingProvider(null) }}
                 />
+                </div>
               </div>
             ) : (
               <>
@@ -513,8 +515,10 @@ export function SettingsWindow({ onClose }: { onClose: () => void }) {
           <div className="space-y-3">
             <PanelHeader icon={Info} title='关于' description='应用版本、许可证和技术栈' />
             <div className="text-2xl font-bold text-[var(--color-text-primary)]">魔导书 Grimoire</div>
-            <div className="text-sm text-[var(--color-text-secondary)]">版本 v7.1.0 · GPL-3.0</div>
-            <div className="text-sm text-[var(--color-text-secondary)]">Electron + React + TypeScript + Tailwind CSS</div>
+            <div className="text-sm text-[var(--color-text-secondary)]">版本 v7.2.0 · AGPL-3.0-only</div>
+            <div className="text-sm text-[var(--color-text-secondary)]">作者：hanqingyan3293 · GitHub：github.com/hanqingyan3293/Grimoire-Prompt-Combiner</div>
+            <div className="text-sm text-[var(--color-text-secondary)]">Electron + React + TypeScript + Vite + Tailwind CSS + SQLite</div>
+            <div className="text-sm leading-6 text-[var(--color-text-secondary)]">本项目是开源软件，允许使用、研究、修改和再分发。分发修改后的版本或通过网络提供服务时，请按照 AGPL-3.0 的要求提供对应源代码和许可证文本。</div>
           </div>
         )}
         </div>

@@ -115,14 +115,14 @@ export function ProviderEditor({ provider, onSave, onCancel }: Props) {
 
   return (
     <div className="flex flex-col" style={{ height: "100%" }}>
-      <div className="flex items-center justify-between px-5 py-3 border-b border-[var(--color-border)]">
+      <div className="flex shrink-0 items-center justify-between px-5 py-3.5 border-b border-[var(--color-border)]">
         <span className="font-semibold text-sm text-[var(--color-text-primary)]">
           {isNew ? "新增供应商" : "编辑供应商"}
         </span>
         <IconButton icon={X} label='关闭供应商编辑器' onClick={onCancel} />
       </div>
 
-      <div className="flex-1 overflow-y-auto p-5 space-y-4" style={{ minHeight: 0 }}>
+      <div className="min-h-0 flex-1 overflow-y-auto p-5 space-y-5" style={{ minHeight: 0 }}>
         <Field label="名称" desc="供应商显示名称，用于快速识别">
           <input value={name} onChange={e => setName(e.target.value)} placeholder="例如：OpenAI、NovelAI"
             className="ui-field" />
@@ -264,7 +264,7 @@ export function ProviderEditor({ provider, onSave, onCancel }: Props) {
         </Field>
       </div>
 
-      <div className="shrink-0 flex gap-3 px-5 py-3 border-t border-[var(--color-border)]">
+      <div className="shrink-0 flex gap-3 px-5 py-3.5 border-t border-[var(--color-border)]">
         <Button onClick={onCancel} className='flex-1' disabled={saving}>取消</Button>
         <Button variant='primary' icon={Save} onClick={() => void handleSave()} disabled={!name.trim() || saving} className='flex-1'>{saving ? '保存中' : '保存供应商'}</Button>
       </div>

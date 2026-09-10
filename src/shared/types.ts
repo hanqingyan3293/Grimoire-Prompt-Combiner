@@ -334,6 +334,12 @@ export const IPC_CHANNELS = {
   CANVAS_VENDOR_CREATE: "canvasVendor:create",
   CANVAS_VENDOR_SAVE: "canvasVendor:save",
   CANVAS_VENDOR_DELETE: "canvasVendor:delete",
+  PROMPT_ASSET_CATEGORIES_LIST: "promptAssetCategories:list",
+  PROMPT_ASSET_CATEGORIES_CREATE: "promptAssetCategories:create",
+  PROMPT_ASSET_CATEGORIES_RENAME: "promptAssetCategories:rename",
+  PROMPT_ASSET_CATEGORIES_DELETE: "promptAssetCategories:delete",
+  PROMPT_ASSET_CATEGORIES_ASSIGN: "promptAssetCategories:assign",
+  PROMPT_ASSET_CATEGORIES_MOVE: "promptAssetCategories:move",
 } as const
 
 /** Default tag weight */

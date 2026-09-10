@@ -88,7 +88,7 @@ export function TagCards() {
   }
 
   return (
-    <div className="h-full overflow-y-auto p-4">
+    <div className="h-full overflow-x-hidden overflow-y-auto p-4">
       {selectedSubs.length === 0 ? (
         <div className="flex items-center justify-center h-full">
           <div className="text-center text-[var(--color-text-secondary)]">
@@ -97,7 +97,7 @@ export function TagCards() {
           </div>
         </div>
       ) : (
-        <div className="space-y-6">
+        <div className="space-y-6 p-[2px]">
           {selectedSubs.map(({ sub, cat }) => {
             const filtered = searchQuery
               ? sub.tags.filter(t => t.en.toLowerCase().includes(searchQuery.toLowerCase()) || t.zh.includes(searchQuery))

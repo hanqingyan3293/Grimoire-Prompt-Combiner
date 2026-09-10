@@ -96,7 +96,7 @@ export function MainContent() {
 
   return (
     <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-      <div className="ui-toolbar flex flex-wrap items-center gap-1.5 px-3 py-2">
+      <div className="ui-toolbar flex shrink-0 flex-wrap items-center gap-2 px-3 py-2.5">
         <IconButton icon={RotateCcw} onClick={undo} disabled={!canUndo()} label="撤销" title="撤销（Ctrl+Z）" />
         <IconButton icon={Redo2} onClick={redo} disabled={!canRedo()} label="重做" title="重做（Ctrl+Y）" />
         <div className="w-px h-4 bg-[var(--color-border)] mx-1" />
@@ -109,22 +109,22 @@ export function MainContent() {
       </div>
 
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-        <div className="flex-1 overflow-auto border-b border-[var(--color-border)]">
+        <div className="min-h-0 flex-1 overflow-auto border-b border-[var(--color-border)] p-[3px]">
           <TagCards />
         </div>
 
         <div className="ui-prompt-section overflow-auto" style={{ maxHeight: "30%", minHeight: "100px" }}>
-          <div className="px-3 py-2">
+          <div className="px-3 py-2.5">
             <div className="mb-2 flex items-center gap-2"><Badge tone="success">正面</Badge><span className="text-xs text-[var(--color-muted-foreground)]">{positive.length} 个标签</span></div>
             <TagChipList tags={positive} onRemove={removePositive} onWeightChange={updateWeight} scaleClass={scaleClass} tone="positive" />
           </div>
-          <div className="px-3 py-2 border-t border-[var(--color-border)]">
+          <div className="border-t border-[var(--color-border)] px-3 py-2.5">
             <div className="mb-2 flex items-center gap-2"><Badge tone="danger">负面</Badge><span className="text-xs text-[var(--color-muted-foreground)]">{negative.length} 个标签</span></div>
             <TagChipList tags={negative} onRemove={removeNegative} onWeightChange={updateWeight} scaleClass={scaleClass} tone="negative" />
           </div>
         </div>
 
-        <div className="ui-prompt-section shrink-0 p-3">
+        <div className="ui-prompt-section shrink-0 p-3.5">
           <div className="flex items-center justify-between mb-2 flex-wrap gap-1">
             <span className="ui-section-label">输出</span>
             <div className="flex items-center gap-1">

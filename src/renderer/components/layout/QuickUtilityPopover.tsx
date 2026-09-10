@@ -27,8 +27,8 @@ export function QuickAIPanel({ variant = "popover" }: { variant?: "popover" | "e
     : "flex h-[min(560px,calc(100vh-128px))] min-h-[360px] flex-col"
 
   return (
-    <div className={containerClassName}>
-      <div className="flex items-center justify-between border-b border-[var(--color-border)] px-3 py-2">
+    <div className={`${containerClassName} ui-utility-panel`}>
+      <div className="flex shrink-0 items-center justify-between gap-3 border-b border-[var(--color-border)] px-4 py-3">
         <span className="text-sm font-semibold text-[var(--color-text-primary)]">AI 助手</span>
         <Button size="sm" icon={ExternalLink} onClick={() => window.api.window.openAI()}>独立窗口</Button>
       </div>
@@ -40,20 +40,20 @@ export function QuickAIPanel({ variant = "popover" }: { variant?: "popover" | "e
 }
 
 export function QuickSettingsPanel({ variant = "popover" }: { variant?: "popover" | "embedded" }) {
-  const { theme, appearance_mode, ui_scale, ui_density, setSetting } = useSettingsStore()
+  const { theme, appearance_mode, ui_scale, ui_density, setSetting, setThemePreference } = useSettingsStore()
   const panelClassName = variant === "embedded"
-    ? "h-full overflow-y-auto p-3"
-    : "max-h-[min(560px,calc(100vh-128px))] overflow-y-auto p-3"
+    ? "h-full overflow-y-auto p-4"
+    : "max-h-full overflow-y-auto p-4"
 
   return (
     <div className={panelClassName}>
-      <div className="mb-3 flex items-center justify-between">
+      <div className="mb-5 flex items-center justify-between gap-4 border-b border-[var(--color-border)] px-1 pb-3.5">
         <span className="text-sm font-semibold text-[var(--color-text-primary)]">快捷设置</span>
         <Button size="sm" icon={ExternalLink} onClick={() => window.api.window.openSettings()}>完整设置</Button>
       </div>
 
       <div className="space-y-4">
-        <div>
+        <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-primary)] p-4">
           <div className="mb-2 text-xs font-medium text-[var(--color-text-secondary)]">外观模式</div>
           <div className="grid grid-cols-3 gap-2">
             {[["system", "系统"], ["light", "浅色"], ["dark", "深色"]].map(([value, label]) => (
@@ -63,13 +63,13 @@ export function QuickSettingsPanel({ variant = "popover" }: { variant?: "popover
             ))}
           </div>
         </div>
-        <div>
+        <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-primary)] p-4">
           <div className="mb-2 text-xs font-medium text-[var(--color-text-secondary)]">主题</div>
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
             {THEMES.map(item => (
               <button
                 key={item.key}
-                onClick={() => setSetting("theme", item.key)}
+                onClick={() => void setThemePreference(item.key, item.color)}
                 className={"flex items-center gap-2 rounded border px-3 py-2 text-xs transition-colors " + (theme === item.key ? "border-[var(--color-accent)] bg-[var(--color-accent)]/15 text-[var(--color-accent-text)]" : "border-[var(--color-border)] text-[var(--color-text-primary)] hover:border-[var(--color-accent)]/50")}
               >
                 <span className="h-3 w-3 rounded-full" style={{ backgroundColor: item.color }} />
@@ -79,7 +79,7 @@ export function QuickSettingsPanel({ variant = "popover" }: { variant?: "popover
           </div>
         </div>
 
-        <div>
+        <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-primary)] p-4">
           <div className="mb-2 flex items-center justify-between text-xs">
             <span className="font-medium text-[var(--color-text-secondary)]">字体大小</span>
             <span className="text-[var(--color-accent-text)]">{ui_scale}px</span>
@@ -99,7 +99,7 @@ export function QuickSettingsPanel({ variant = "popover" }: { variant?: "popover
           />
         </div>
 
-        <div>
+        <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-primary)] p-4">
           <div className="mb-2 text-xs font-medium text-[var(--color-text-secondary)]">界面密度</div>
           <div className="flex gap-2">
             {[

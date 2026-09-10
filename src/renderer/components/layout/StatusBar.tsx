@@ -45,7 +45,7 @@ export function StatusBar() {
               <AlertTriangle size={11} aria-hidden='true' />{errorCount} 错误
             </button>
           )}
-          <span className="ui-status-pill">Grimoire v7.1.0 | GPL-3.0</span>
+          <span className="ui-status-pill">Grimoire v7.2.0 | AGPL-3.0</span>
         </div>
       </div>
       

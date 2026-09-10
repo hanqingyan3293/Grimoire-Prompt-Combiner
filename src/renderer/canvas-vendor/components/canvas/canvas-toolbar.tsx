@@ -67,7 +67,7 @@ export function CanvasToolbar({
     const rootRef = useRef<HTMLDivElement>(null);
     const colorTheme = useThemeStore((state) => state.theme);
     const setTheme = useThemeStore((state) => state.setTheme);
-    const setSetting = useSettingsStore((state) => state.setSetting);
+    const setThemePreference = useSettingsStore((state) => state.setThemePreference);
     const currentAppTheme = useSettingsStore((state) => state.theme);
     const theme = canvasThemes[colorTheme];
     const [hovered, setHovered] = useState<string | null>(null);
@@ -234,7 +234,7 @@ export function CanvasToolbar({
                     </div>
                     <div className="mt-3 px-1 pb-1.5 text-[11px] font-medium opacity-50">主题色</div>
                     <div className="grid grid-cols-4 gap-1.5">
-                        {CANVAS_THEMES.map((item) => <button key={item.key} type="button" aria-pressed={currentAppTheme === item.key} onClick={() => { void setSetting('theme', item.key); void setSetting('custom_accent', item.color) }} className={`h-7 rounded-md border-2 transition ${currentAppTheme === item.key ? 'border-[var(--color-text-primary)] ring-2 ring-[var(--color-accent)]/40' : 'border-transparent'}`} style={{ background: item.color }} title={item.key} />)}
+                        {CANVAS_THEMES.map((item) => <button key={item.key} type="button" aria-pressed={currentAppTheme === item.key} onClick={() => { void setThemePreference(item.key, item.color) }} className={`h-7 rounded-md border-2 transition ${currentAppTheme === item.key ? 'border-[var(--color-text-primary)] ring-2 ring-[var(--color-accent)]/40' : 'border-transparent'}`} style={{ background: item.color }} title={item.key} />)}
                     </div>
                     <div className="mt-3 px-1 pb-1.5 text-[11px] font-medium opacity-50">{t("canvas.toolbar.gridStyle")}</div>
                     <Segmented

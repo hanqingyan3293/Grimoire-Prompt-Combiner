@@ -56,7 +56,7 @@ export function RightPanel() {
   return (
     <div className="relative flex h-full w-full min-w-0 flex-col border-l border-[var(--color-border)] bg-[var(--color-bg-secondary)]">
       {/* Tab Bar */}
-      <div className="ui-toolbar flex" role="tablist" aria-label="工具面板">
+      <div className="ui-toolbar flex px-1" role="tablist" aria-label="工具面板">
         {tabs.map(tab => { const Icon = tab.icon; return (
           <button key={tab.key} onClick={() => setActiveTab(tab.key)}
             role="tab" aria-selected={activeTab === tab.key}
@@ -66,7 +66,7 @@ export function RightPanel() {
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-auto">
+      <div className="min-h-0 flex-1 overflow-auto p-[3px]">
         {activeTab === 'assets' && <Suspense fallback={<div className='flex h-full items-center justify-center text-xs text-[var(--color-text-secondary)]'>正在载入资产</div>}><PromptAssetsPanel /></Suspense>}
         {activeTab === 'presets' && <PresetsPanel />}
         {activeTab === 'history' && <HistoryPanel />}
@@ -78,13 +78,13 @@ export function RightPanel() {
       {popover && (
         <div
           ref={popoverRef}
-          className="ui-popover-surface absolute bottom-12 right-2 z-50 w-[min(420px,calc(100vw-32px))]"
+          className="ui-popover-surface ui-utility-popover absolute z-50"
         >
           <QuickUtilityPopover type={popover} />
         </div>
       )}
 
-      <div className="flex gap-2 border-t border-[var(--color-border)] p-2">
+      <div className="flex shrink-0 gap-2 border-t border-[var(--color-border)] p-3">
         <Button size="sm" icon={Bot} onClick={() => setPopover(popover === 'ai' ? null : 'ai')} variant={popover === 'ai' ? 'primary' : 'secondary'} className="flex-1">AI 助手</Button>
         <Button size="sm" icon={Settings} onClick={() => setPopover(popover === 'settings' ? null : 'settings')} variant={popover === 'settings' ? 'primary' : 'secondary'} className="flex-1">设置</Button>
       </div>

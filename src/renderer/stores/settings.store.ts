@@ -7,6 +7,7 @@ interface SettingsState extends AppSettings {
   loading: boolean
   loadSettings: () => Promise<void>
   setSetting: (key: string, value: string) => Promise<void>
+  setThemePreference: (theme: string, accent: string) => Promise<void>
   getShortcut: (key: string) => string
 }
 
@@ -215,6 +216,15 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
       const sk = key.replace("shortcut_", "")
       set(s => ({ shortcuts: { ...s.shortcuts, [sk]: value } }))
     }
+  },
+
+  setThemePreference: async (theme, accent) => {
+    set({ theme, custom_accent: accent, custom_bg_primary: '', custom_bg_secondary: '', custom_bg_tertiary: '', custom_border: '' })
+    await Promise.all(['theme', 'custom_accent', 'custom_bg_primary', 'custom_bg_secondary', 'custom_bg_tertiary', 'custom_border'].map(key => window.api.settings.set(key, key === 'theme' ? theme : key === 'custom_accent' ? accent : '')))
+    document.documentElement.setAttribute('data-theme', theme)
+    applyAccent(accent)
+    try { if (window.parent && window.parent !== window) { window.parent.document.documentElement.setAttribute('data-theme', theme); window.parent.document.documentElement.style.setProperty('--color-accent', accent) } } catch {}
+    window.dispatchEvent(new CustomEvent('grimoire:theme-changed', { detail: { theme, accent } }))
   },
 
   getShortcut: (key: string) => {

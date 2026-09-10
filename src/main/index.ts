@@ -19,6 +19,7 @@ import { registerWD14IPC } from "./ipc/wd14.ipc"
 import { registerComfyIPC } from "./ipc/comfy.ipc"
 import { registerCanvasIPC } from "./ipc/canvas.ipc"
 import { registerPromptAssetsIPC } from "./ipc/prompt-assets.ipc"
+import { importDefaultPromptAssets, seedDefaultPromptAssetCategories } from './services/default-prompt-assets.service'
 import { configureComfyUI } from './services/comfy-client'
 import { requireHttpUrl } from './services/input-validation'
 import { taskRunner } from "./services/task-runner"
@@ -386,6 +387,19 @@ app.whenReady().then(async () => {
     await registerAllIPC()
     await initDefaultTags()
     createWindow()
+    const defaultPromptAssetDirectory = process.env.VITE_DEV_SERVER_URL
+      ? path.join(__dirname, '../../../data/default-prompt-assets')
+      : path.join(process.resourcesPath, 'data', 'default-prompt-assets')
+    void importDefaultPromptAssets(defaultPromptAssetDirectory).then((added) => {
+      const linked = seedDefaultPromptAssetCategories()
+      if (added > 0) {
+        logEvent('info', 'prompt-assets', 'Imported ' + added + ' built-in prompt assets')
+        broadcastDatabaseReload()
+      }
+      if (linked > 0) broadcastDatabaseReload()
+    }).catch((error) => {
+      console.warn('Built-in prompt asset import deferred:', error)
+    })
     logEvent('info', 'application', 'Application ready')
   } catch (err) {
     logError("启动失败: " + (err instanceof Error ? err.message : "未知错误"), err instanceof Error ? err.stack || "" : "")

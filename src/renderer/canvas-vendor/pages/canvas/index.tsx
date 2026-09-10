@@ -36,7 +36,10 @@ export default function CanvasPage() {
         const agentHash = hasAgentUrlBootstrap(window.location.hash) ? window.location.hash : "";
         navigate(`/canvas/${id}${agentQuery}${agentHash}`, { replace: Boolean(agentHash) });
     };
-    const createAndEnter = () => enterProject(createProject(t("canvas.defaultTitle", { count: projects.length + 1 })));
+    const createAndEnter = async () => {
+        try { enterProject(await createProject(t("canvas.defaultTitle", { count: projects.length + 1 }))); }
+        catch { message.error(t("canvas.createFailed")); }
+    };
     const importCanvas = async (file?: File) => {
         if (!file) return;
         try {
@@ -54,7 +57,7 @@ export default function CanvasPage() {
                     }),
                 ),
             );
-            data.projects.forEach((item) => importProject(item.project));
+            await Promise.all(data.projects.map((item) => importProject(item.project)));
             message.success(t("canvas.imported", { count: data.projects.length }));
         } catch {
             message.error(t("canvas.importFailed"));
@@ -66,7 +69,10 @@ export default function CanvasPage() {
     useEffect(() => {
         if (!hydrated || autoOpenRef.current || (mode !== "new" && mode !== "recent")) return;
         autoOpenRef.current = true;
-        enterProject(mode === "new" ? createProject(t("canvas.defaultTitle", { count: projects.length + 1 })) : projects[0]?.id || createProject(t("canvas.defaultTitle", { count: projects.length + 1 })));
+        if (mode === "new") {
+            void createProject(t("canvas.defaultTitle", { count: projects.length + 1 })).then(enterProject).catch(() => message.error(t("canvas.createFailed")));
+        } else if (projects[0]?.id) enterProject(projects[0].id);
+        else void createProject(t("canvas.defaultTitle", { count: projects.length + 1 })).then(enterProject).catch(() => message.error(t("canvas.createFailed")));
     }, [createProject, hydrated, mode, projects, t]);
 
     if (hydrated && (mode === "new" || mode === "recent")) return <main className="flex h-full items-center justify-center bg-background text-sm text-stone-500">{t("canvas.opening")}</main>;

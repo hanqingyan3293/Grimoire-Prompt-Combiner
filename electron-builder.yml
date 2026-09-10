@@ -1,6 +1,6 @@
 ﻿appId: com.grimoire.prompt-combiner
 productName: Grimoire
-copyright: GPL-3.0 License
+copyright: AGPL-3.0-only License — hanqingyan3293
 directories:
   output: release
   buildResources: resources

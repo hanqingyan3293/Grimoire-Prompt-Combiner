@@ -1,7 +1,7 @@
 {
     "name": "grimoire",
-    "version": "7.1.0",
-    "description": "魔导书 Grimoire v7 — AI提示词组合器 / AI Prompt Combiner",
+    "version": "7.2.0",
+    "description": "魔导书 Grimoire — 本地 AI 提示词工作台、无限画布与多供应商助手",
     "main": "dist/main/main/index.js",
     "scripts": {
         "dev": "concurrently \"npm run dev:renderer\" \"npm run dev:electron\"",
@@ -9,7 +9,7 @@
         "dev:electron": "wait-on http://localhost:5173 && electron .",
         "build:renderer": "vite build",
         "build:main": "tsc -p tsconfig.node.json",
-        "build": "npm run build:renderer && npm run build:main && node -e \"require('fs').cpSync('data/tags.json','dist/main/data/tags.json',{recursive:true})\"",
+        "build": "npm run build:renderer && npm run build:main && node -e \"require('fs').cpSync('data/tags.json','dist/main/data/tags.json',{recursive:true}); require('fs').cpSync('data/default-prompt-assets','dist/main/data/default-prompt-assets',{recursive:true})\"",
         "start": "electron .",
         "pack": "npm run build && electron-builder --dir",
         "dist": "npm run build && electron-builder",
@@ -25,7 +25,7 @@
         "stable-diffusion"
     ],
     "author": "hanqingyan3293",
-    "license": "GPL-3.0",
+    "license": "AGPL-3.0-only",
     "dependencies": {
         "@ant-design/icons": "^6.3.4",
         "@ant-design/pro-components": "^3.0.0-beta.3",
@@ -85,7 +85,7 @@
     "build": {
         "productName": "Grimoire",
         "appId": "com.grimoire.prompt-combiner",
-        "copyright": "GPL-3.0 License",
+        "copyright": "AGPL-3.0-only License — hanqingyan3293",
         "directories": {
             "output": "release",
             "buildResources": "resources"

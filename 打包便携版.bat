@@ -1,11 +1,11 @@
 @echo off
 chcp 65001 >nul
 setlocal
-title Build Grimoire Portable
+title Build Grimoire v7.2.0 Portable
 cd /d "%~dp0"
 
 echo ================================================
-echo  Grimoire v7.1 - portable EXE builder
+echo  Grimoire v7.2.0 - portable EXE builder
 echo ================================================
 echo.
 

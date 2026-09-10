@@ -53,7 +53,7 @@ export const PANEL_DEFINITIONS: Record<PanelType, PanelDefinition> = {
   wd14: { type: "wd14", title: "WD14 反推", description: "本地图片标签反推", enabled: true },
   comfyui: { type: "comfyui", title: "ComfyUI", description: "工作流、模型和生成任务", enabled: true },
   canvas: { type: "canvas", title: "无限画布", description: "图片、提示词和任务画布", enabled: true },
-  "prompt-assets": { type: "prompt-assets", title: "提示词资产", description: "统一搜索迁移资产、历史、预设和收藏", enabled: true },
+  "prompt-assets": { type: "prompt-assets", title: "提示词资产", description: "统一搜索资产、历史、预设和收藏", enabled: true },
 }
 
 export const ENABLED_PANEL_OPTIONS = Object.values(PANEL_DEFINITIONS).filter(panel => panel.enabled)

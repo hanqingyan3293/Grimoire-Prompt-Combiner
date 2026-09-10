@@ -167,7 +167,7 @@ export function FixedWorkspace() {
   }
 
   return (
-    <div ref={containerRef} className="flex flex-1 overflow-hidden">
+    <div ref={containerRef} className="flex min-h-0 min-w-0 flex-1 overflow-hidden p-[3px]">
       {layout && renderNode(maximizedPanel || layout)}
     </div>
   )

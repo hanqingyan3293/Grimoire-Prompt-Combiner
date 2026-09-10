@@ -12,7 +12,7 @@ export function CanvasVendorPanel() {
     <iframe
       title='无限画布工作台'
       src={src}
-      className='block h-full min-h-0 w-full border-0 bg-[var(--color-bg-primary)]'
+      className='block h-full min-h-0 w-full border-0 bg-[var(--color-bg-primary)] p-[2px]'
       allow='clipboard-read; clipboard-write'
     />
   )
