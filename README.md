@@ -1,4 +1,4 @@
-﻿# 魔导书 Grimoire v7
+﻿# 魔导书 Grimoire v7.2
 
 > AI 提示词组合器 — 为 AI 绘画和 AI 对话打造的桌面工具箱
 
