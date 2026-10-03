@@ -24,13 +24,13 @@ export function createPromptSource(source?: Partial<PromptSource>): PromptSource
 }
 
 export const DEFAULT_PROMPT_SOURCES: PromptSource[] = [
-    registrySource("banana-prompt-quicker", "Banana Prompt Quicker", "https://glidea.github.io/banana-prompt-quicker/"),
-    registrySource("davidwu-gpt-image2-prompts", "DavidWu GPT Image 2", "https://github.com/davidwuw0811-boop/awesome-gpt-image2-prompts"),
-    registrySource("freestylefly-gpt-image-2", "Freestylefly GPT Image 2", "https://github.com/freestylefly/awesome-gpt-image-2"),
-    registrySource("awesome-gpt-image", "Awesome GPT Image", "https://github.com/ZeroLu/awesome-gpt-image"),
-    registrySource("awesome-gpt4o-image-prompts", "Awesome GPT-4o", "https://github.com/ImgEdify/Awesome-GPT4o-Image-Prompts"),
-    registrySource("youmind-gpt-image-2", "YouMind GPT Image 2", "https://github.com/YouMind-OpenLab/awesome-gpt-image-2"),
-    registrySource("youmind-nano-banana-pro", "YouMind Nano Banana Pro", "https://github.com/YouMind-OpenLab/awesome-nano-banana-pro-prompts"),
+    registrySource("banana-prompt-quicker", "香蕉提示词加速器", "https://glidea.github.io/banana-prompt-quicker/"),
+    registrySource("davidwu-gpt-image2-prompts", "DavidWu GPT 图像提示词", "https://github.com/davidwuw0811-boop/awesome-gpt-image2-prompts"),
+    registrySource("freestylefly-gpt-image-2", "自由飞 GPT 图像提示词", "https://github.com/freestylefly/awesome-gpt-image-2"),
+    registrySource("awesome-gpt-image", "精选 GPT 图像提示词", "https://github.com/ZeroLu/awesome-gpt-image"),
+    registrySource("awesome-gpt4o-image-prompts", "精选 GPT-4o 提示词", "https://github.com/ImgEdify/Awesome-GPT4o-Image-Prompts"),
+    registrySource("youmind-gpt-image-2", "YouMind GPT 图像提示词", "https://github.com/YouMind-OpenLab/awesome-gpt-image-2"),
+    registrySource("youmind-nano-banana-pro", "YouMind Nano Banana Pro 提示词", "https://github.com/YouMind-OpenLab/awesome-nano-banana-pro-prompts"),
 ];
 
 function registrySource(id: string, name: string, homepage: string): PromptSource {

@@ -8,7 +8,7 @@ import { createLegacyDatabase, type LegacyDatabase } from './services/sqlite.com
 
 // v9 adds prompt asset category tables/indexes. Keep this bumped so existing
 // v8 databases run the additive migration instead of being treated as current.
-const CURRENT_SCHEMA_VERSION = 9
+const CURRENT_SCHEMA_VERSION = 10
 let nativeDb: DatabaseSync | null = null
 let db: LegacyDatabase | null = null
 let dbPath = ''
@@ -173,6 +173,21 @@ CREATE TABLE IF NOT EXISTS task_jobs (
   updated_at TEXT NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS wd14_history (
+  id TEXT PRIMARY KEY,
+  task_id TEXT NOT NULL UNIQUE,
+  image_id INTEGER NOT NULL,
+  image_name TEXT NOT NULL DEFAULT '',
+  tags_json TEXT NOT NULL DEFAULT '{}',
+  model_id TEXT NOT NULL DEFAULT '',
+  threshold REAL NOT NULL DEFAULT 0.35,
+  status TEXT NOT NULL DEFAULT 'succeeded',
+  error_message TEXT,
+  created_at TEXT NOT NULL,
+  FOREIGN KEY (task_id) REFERENCES task_jobs(id) ON DELETE CASCADE,
+  FOREIGN KEY (image_id) REFERENCES image_refs(id) ON DELETE CASCADE
+);
+
 CREATE TABLE IF NOT EXISTS comfy_workflows (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
@@ -290,6 +305,8 @@ CREATE INDEX IF NOT EXISTS idx_prompt_assets_source ON prompt_assets(source);
 CREATE INDEX IF NOT EXISTS idx_prompt_asset_categories_parent ON prompt_asset_categories(parent_id, sort_order);
 CREATE INDEX IF NOT EXISTS idx_prompt_asset_category_links_category ON prompt_asset_category_links(category_id);
 CREATE INDEX IF NOT EXISTS idx_task_jobs_status ON task_jobs(status, created_at);
+CREATE INDEX IF NOT EXISTS idx_wd14_history_created ON wd14_history(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_wd14_history_image ON wd14_history(image_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_comfy_workflows_name ON comfy_workflows(name);
 CREATE INDEX IF NOT EXISTS idx_canvas_projects_updated ON canvas_projects(updated_at DESC);
 CREATE INDEX IF NOT EXISTS idx_canvas_vendor_projects_updated ON canvas_vendor_projects(updated_at DESC);

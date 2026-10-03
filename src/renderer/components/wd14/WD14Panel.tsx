@@ -1,8 +1,9 @@
 import React, { useCallback, useEffect, useState } from 'react'
-import { AlertTriangle, CheckCircle2, FolderOpen, ImagePlus, LoaderCircle, RefreshCw, Settings2 } from 'lucide-react'
+import { AlertTriangle, CheckCircle2, Clipboard, FolderOpen, History, ImagePlus, LoaderCircle, RefreshCw, Search, Settings2, Trash2 } from 'lucide-react'
 import { Button, IconButton } from '../ui/Button'
 import { EmptyState, PanelHeader, StatusBadge } from '../ui/Feedback'
 import { Badge } from '../ui/Badge'
+import type { WD14HistoryRecord } from '../../../shared/wd14-types'
 
 interface WD14Model {
   id: string
@@ -26,6 +27,7 @@ interface WD14Image {
   id: number
   original_name: string | null
   available: boolean
+  dataUrl?: string
 }
 
 export function WD14Panel() {
@@ -40,6 +42,9 @@ export function WD14Panel() {
   const [modelDirectory, setModelDirectory] = useState('')
   const [loading, setLoading] = useState(true)
   const [messageTone, setMessageTone] = useState<'info' | 'success' | 'danger'>('info')
+  const [history, setHistory] = useState<WD14HistoryRecord[]>([])
+  const [historyQuery, setHistoryQuery] = useState('')
+  const [historyLoading, setHistoryLoading] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -50,7 +55,12 @@ export function WD14Panel() {
       const diagnosis = await window.api.wd14.diagnostics() as WD14Diagnostics
       setDiagnostics(diagnosis)
       const imageList = await window.api.images.list()
-      setImages(imageList.filter(image => image.available).map(image => ({ id: image.id, original_name: image.original_name, available: image.available })))
+      const availableImages = imageList.filter(image => image.available).map(image => ({ id: image.id, original_name: image.original_name, available: image.available }))
+      const withData = await Promise.all(availableImages.map(async image => {
+        try { return { ...image, dataUrl: await window.api.images.readData(image.id) } }
+        catch { return image }
+      }))
+      setImages(withData)
       if (diagnosis.blockingReason) {
         setModels([])
         setMessageTone('info')
@@ -64,6 +74,13 @@ export function WD14Panel() {
     }
   }, [])
 
+  const loadHistory = useCallback(async () => {
+    setHistoryLoading(true)
+    try { setHistory(await window.api.wd14.history.list({ query: historyQuery, limit: 100 })) }
+    catch (error) { showMessage(error instanceof Error ? error.message : 'WD14 历史记录读取失败', 'danger') }
+    finally { setHistoryLoading(false) }
+  }, [historyQuery])
+
   useEffect(() => {
     void load().catch(error => {
       setLoading(false)
@@ -71,6 +88,15 @@ export function WD14Panel() {
       setMessage(error instanceof Error ? error.message : 'WD14 Worker 不可用')
     })
   }, [load])
+
+  useEffect(() => { void loadHistory() }, [loadHistory])
+
+  useEffect(() => {
+    const cleanup = window.api.tasks.onUpdated(event => {
+      if (event.kind === 'wd14' && (event.status === 'succeeded' || event.status === 'failed')) void loadHistory()
+    })
+    return cleanup
+  }, [loadHistory])
 
   const showMessage = (value: string, tone: 'info' | 'success' | 'danger' = 'info') => {
     setMessageTone(tone)
@@ -149,14 +175,62 @@ export function WD14Panel() {
       <label className='block text-xs text-[var(--color-text-secondary)]' htmlFor='wd14-threshold'>阈值：{threshold}</label>
       <input id='wd14-threshold' type='range' min='0.01' max='0.99' step='0.01' value={threshold} onChange={event => setThreshold(event.target.value)} className='w-full accent-[var(--color-accent)]' disabled={busy} />
       {message && <div className={'ui-inline-note ui-inline-note-' + messageTone} role={messageTone === 'danger' ? 'alert' : 'status'}>{messageTone === 'success' ? <CheckCircle2 size={15} aria-hidden='true' /> : <AlertTriangle size={15} aria-hidden='true' />}<span>{message}</span></div>}
-      <div className='space-y-2'>
-        {loading && images.length === 0 ? <div className='ui-empty-state flex-col gap-2 text-sm' role='status'><LoaderCircle size={20} className='ui-spin' aria-hidden='true' />正在读取图片资源</div> : images.length === 0 ? <EmptyState icon={ImagePlus} title='没有可反推的图片' description='请先在图片资源库导入可用图片' /> : images.map(image => (
-          <div key={image.id} className='ui-list-card flex items-center justify-between gap-2 p-3'>
-            <span className='min-w-0 truncate text-sm text-[var(--color-text-primary)]'>{image.original_name || ('图片 ' + image.id)}</span>
-            <Button size='sm' variant='primary' icon={ImagePlus} disabled={busy || Boolean(diagnostics?.blockingReason)} onClick={() => void createTask(image.id)}>反推</Button>
+      <section className='space-y-2'>
+        <div className='flex items-center justify-between gap-2'>
+          <div className='flex items-center gap-2 text-sm font-medium text-[var(--color-text-primary)]'><ImagePlus size={15} className='text-[var(--color-accent-text)]' aria-hidden='true' />待反推图片</div>
+          <span className='text-xs text-[var(--color-text-secondary)]'>{images.length} 张</span>
+        </div>
+        {loading && images.length === 0 ? <div className='ui-empty-state flex-col gap-2 text-sm' role='status'><LoaderCircle size={20} className='ui-spin' aria-hidden='true' />正在读取图片资源</div> : images.length === 0 ? <EmptyState icon={ImagePlus} title='没有可反推的图片' description='请先在图片资源库导入可用图片' /> : (
+          <div className='grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-3'>
+            {images.map(image => (
+              <div key={image.id} className='group relative min-w-0'>
+                <article className='ui-list-card overflow-hidden'>
+                  {image.dataUrl ? <img src={image.dataUrl} alt={image.original_name || ('图片 ' + image.id)} className='aspect-[4/3] w-full object-cover' loading='lazy' /> : <div className='grid aspect-[4/3] place-items-center bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)]'><ImagePlus size={28} /></div>}
+                  <div className='space-y-2 p-3'>
+                    <div className='truncate text-sm font-medium text-[var(--color-text-primary)]' title={image.original_name || ('图片 ' + image.id)}>{image.original_name || ('图片 ' + image.id)}</div>
+                    <Button size='sm' variant='primary' icon={ImagePlus} className='w-full' disabled={busy || Boolean(diagnostics?.blockingReason)} onClick={() => void createTask(image.id)}>反推</Button>
+                  </div>
+                </article>
+                <div className='pointer-events-none absolute left-full top-0 z-50 ml-3 hidden w-[320px] max-w-[calc(100vw-32px)] overflow-hidden rounded-lg border border-[var(--color-border-strong)] bg-[var(--color-bg-primary)] p-2 shadow-xl transition-opacity duration-150 group-hover:pointer-events-auto group-hover:block' style={{ transitionDelay: '500ms' }}>
+                  {image.dataUrl ? <img src={image.dataUrl} alt='' className='max-h-[260px] w-full rounded object-contain' /> : <div className='grid h-40 place-items-center text-xs text-[var(--color-text-secondary)]'>图片不可用</div>}
+                  <div className='mt-2 truncate px-1 text-xs text-[var(--color-text-secondary)]'>{image.original_name || ('图片 ' + image.id)}</div>
+                </div>
+              </div>
+            ))}
           </div>
-        ))}
-      </div>
+        )}
+      </section>
+
+      <section className='space-y-2 border-t border-[var(--color-border)] pt-3'>
+        <div className='flex items-center justify-between gap-2'>
+          <div className='flex items-center gap-2 text-sm font-medium text-[var(--color-text-primary)]'><History size={15} className='text-[var(--color-accent-text)]' aria-hidden='true' />反推历史</div>
+          <IconButton icon={RefreshCw} label='刷新反推历史' onClick={() => void loadHistory()} disabled={historyLoading} className={historyLoading ? 'ui-spin-icon' : ''} />
+        </div>
+        <div className='relative'>
+          <Search size={14} className='pointer-events-none absolute left-2.5 top-2.5 text-[var(--color-text-secondary)]' aria-hidden='true' />
+          <input value={historyQuery} onChange={event => setHistoryQuery(event.target.value)} className='ui-field w-full pl-8' placeholder='搜索文件名、标签或模型' aria-label='搜索反推历史' />
+        </div>
+        {history.length === 0 ? <div className='py-5 text-center text-xs text-[var(--color-text-secondary)]'>暂无反推历史</div> : (
+          <div className='space-y-2'>
+            {history.map(item => {
+              const image = images.find(candidate => candidate.id === item.image_id)
+              const tags = Object.values(item.tags).flat().map(tag => tag.name).filter(Boolean)
+              return <article key={item.id} className='ui-list-card flex gap-3 p-3'>
+                {image?.dataUrl ? <img src={image.dataUrl} alt='' className='size-16 shrink-0 rounded object-cover' /> : <div className='grid size-16 shrink-0 place-items-center rounded bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)]'><ImagePlus size={20} /></div>}
+                <div className='min-w-0 flex-1'>
+                  <div className='truncate text-xs font-medium text-[var(--color-text-primary)]' title={item.image_name}>{item.image_name}</div>
+                  <div className='mt-1 line-clamp-3 text-[11px] leading-5 text-[var(--color-text-secondary)]'>{item.status === 'failed' ? item.error_message || '反推失败' : tags.join(', ') || '未返回标签'}</div>
+                  <div className='mt-1 text-[10px] text-[var(--color-text-secondary)]'>{item.model_id || '自动模型'} · 阈值 {item.threshold}</div>
+                </div>
+                <div className='flex shrink-0 flex-col gap-1'>
+                  <button type='button' className='grid size-7 place-items-center rounded hover:bg-[var(--color-bg-tertiary)]' title='复制标签' onClick={() => void navigator.clipboard.writeText(tags.join(', '))}><Clipboard size={14} /></button>
+                  <button type='button' className='grid size-7 place-items-center rounded text-red-500 hover:bg-red-500/10' title='删除历史' onClick={() => void window.api.wd14.history.delete(item.id).then(() => loadHistory())}><Trash2 size={14} /></button>
+                </div>
+              </article>
+            })}
+          </div>
+        )}
+      </section>
     </div>
   )
 }

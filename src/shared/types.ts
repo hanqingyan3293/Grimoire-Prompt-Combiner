@@ -309,6 +309,10 @@ export const IPC_CHANNELS = {
   WD14_DIAGNOSTICS: "wd14:diagnostics",
   WD14_SELECT_MODEL_DIRECTORY: "wd14:selectModelDirectory",
   WD14_SELECT_PYTHON_PATH: "wd14:selectPythonPath",
+  WD14_HISTORY_LIST: "wd14:history:list",
+  WD14_HISTORY_GET: "wd14:history:get",
+  WD14_HISTORY_DELETE: "wd14:history:delete",
+  WD14_HISTORY_CLEAR: "wd14:history:clear",
 
   // ComfyUI
   COMFY_STATUS: "comfy:status",

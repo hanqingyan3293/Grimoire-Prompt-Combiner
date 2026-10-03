@@ -3,6 +3,7 @@ import { IPC_CHANNELS } from '../../shared/types'
 import { createPersistedTask } from '../services/task-repository'
 import { optionalBoundedNumber, requireId } from '../services/input-validation'
 import { configureWD14ModelDirectory, configureWD14PythonPath, wd14Worker } from '../services/wd14-worker'
+import { clearWD14History, deleteWD14History, getWD14History, listWD14History } from '../services/wd14-history.service'
 
 export function registerWD14IPC(): void {
   ipcMain.handle('wd14:diagnostics', async () => wd14Worker.diagnostics())
@@ -42,4 +43,16 @@ export function registerWD14IPC(): void {
       input: { imageId, threshold: threshold ?? 0.35, modelId: value.modelId || undefined },
     })
   })
+  ipcMain.handle(IPC_CHANNELS.WD14_HISTORY_LIST, async (_event, input: unknown) => {
+    const value = input && typeof input === 'object' ? input as Record<string, unknown> : {}
+    return listWD14History({
+      query: typeof value.query === 'string' ? value.query : '',
+      status: value.status === 'failed' || value.status === 'succeeded' ? value.status : undefined,
+      limit: Number.isFinite(Number(value.limit)) ? Number(value.limit) : 100,
+      offset: Number.isFinite(Number(value.offset)) ? Number(value.offset) : 0,
+    })
+  })
+  ipcMain.handle(IPC_CHANNELS.WD14_HISTORY_GET, async (_event, id: unknown) => getWD14History(requireId(id, '历史记录 ID')))
+  ipcMain.handle(IPC_CHANNELS.WD14_HISTORY_DELETE, async (_event, id: unknown) => deleteWD14History(requireId(id, '历史记录 ID')))
+  ipcMain.handle(IPC_CHANNELS.WD14_HISTORY_CLEAR, async () => clearWD14History())
 }

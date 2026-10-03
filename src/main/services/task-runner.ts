@@ -13,6 +13,7 @@ import { applyComfyBindings } from './comfy-workflow.core'
 import { getComfyWorkflow } from './comfy-workflow.service'
 import { registerManagedImage } from './image-asset.service'
 import { buildQuickWorkflow, type ComfyQuickInput } from './comfy-quick-workflow'
+import { saveWD14History } from './wd14-history.service'
 import crypto from 'crypto'
 
 interface WD14Input {
@@ -177,6 +178,7 @@ class TaskRunner {
         return
       }
       const done = updatePersistedTask(task.id, transitionTask(running, 'succeeded', { output_json: JSON.stringify(result) }))
+      saveWD14History({ taskId: task.id, imageId: input.imageId, tags: result, modelId: input.modelId, threshold: input.threshold, status: 'succeeded' })
       broadcast(done)
       logEvent('info', 'task-runner', 'Task succeeded', { taskId: task.id, phase: 'complete' })
     } catch (error) {
@@ -187,6 +189,14 @@ class TaskRunner {
         const cancelled = updatePersistedTask(task.id, transitionTask(current, 'cancelled', { error_code: 'TASK_CANCELLED', error_message: '任务已取消' }))
         broadcast(cancelled)
         return
+      }
+      if (current.kind === 'wd14') {
+        try {
+          const failedInput = JSON.parse(current.input_json) as WD14Input
+          if (Number.isInteger(failedInput.imageId) && failedInput.imageId > 0) {
+            saveWD14History({ taskId: task.id, imageId: failedInput.imageId, modelId: failedInput.modelId, threshold: failedInput.threshold, status: 'failed', errorMessage: message })
+          }
+        } catch {}
       }
       const source = current.status === 'running' ? current : transitionTask(task, 'running')
       const failed = updatePersistedTask(task.id, transitionTask(source, 'failed', { error_code: 'TASK_EXECUTION_ERROR', error_message: message }))

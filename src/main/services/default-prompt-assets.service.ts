@@ -4,15 +4,15 @@ import path from 'path'
 import { getDatabase, saveDatabase } from '../database'
 
 const IMPORT_MARKER = 'default_prompt_assets_local_v1'
-const CATEGORY_MARKER = 'default_prompt_asset_categories_v6'
+const CATEGORY_MARKER = 'default_prompt_asset_categories_v7'
 const SOURCES = [
-  ['banana-prompt-quicker', 'Banana Prompt Quicker'],
-  ['davidwu-gpt-image2-prompts', 'DavidWu GPT Image 2'],
-  ['freestylefly-gpt-image-2', 'Freestylefly GPT Image 2'],
-  ['awesome-gpt-image', 'Awesome GPT Image'],
-  ['awesome-gpt4o-image-prompts', 'Awesome GPT-4o'],
-  ['youmind-gpt-image-2', 'YouMind GPT Image 2'],
-  ['youmind-nano-banana-pro', 'YouMind Nano Banana Pro'],
+  ['banana-prompt-quicker', '香蕉提示词加速器'],
+  ['davidwu-gpt-image2-prompts', 'DavidWu GPT 图像提示词'],
+  ['freestylefly-gpt-image-2', '自由飞 GPT 图像提示词'],
+  ['awesome-gpt-image', '精选 GPT 图像提示词'],
+  ['awesome-gpt4o-image-prompts', '精选 GPT-4o 提示词'],
+  ['youmind-gpt-image-2', 'YouMind GPT 图像提示词'],
+  ['youmind-nano-banana-pro', 'YouMind Nano Banana Pro 提示词'],
 ] as const
 
 type RawPrompt = { id?: unknown; title?: unknown; prompt?: unknown; description?: unknown; detail?: unknown; tags?: unknown; variantCount?: unknown }
@@ -110,7 +110,7 @@ export function seedDefaultPromptAssetCategories(): number {
       linked += Number(result.changes || 0)
     }
   }
-  db.run("DELETE FROM schema_meta WHERE key IN ('default_prompt_asset_categories_v3','default_prompt_asset_categories_v4','default_prompt_asset_categories_v5')")
+  db.run("DELETE FROM schema_meta WHERE key IN ('default_prompt_asset_categories_v3','default_prompt_asset_categories_v4','default_prompt_asset_categories_v5','default_prompt_asset_categories_v6')")
   db.run('INSERT OR REPLACE INTO schema_meta (key,value) VALUES (?,?)', [CATEGORY_MARKER, 'complete'])
   saveDatabase()
   return linked

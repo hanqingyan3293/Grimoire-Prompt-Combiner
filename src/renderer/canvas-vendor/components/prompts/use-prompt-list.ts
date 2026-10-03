@@ -57,3 +57,32 @@ export function useGroupedPromptList({ keyword, enabled = true }: { keyword: str
 
     return { query, groups };
 }
+
+export function usePagedGroupedPromptList({ keyword, pageSize = 24, enabled = true }: { keyword: string; pageSize?: number; enabled?: boolean }) {
+    const [debouncedKeyword, setDebouncedKeyword] = useState(keyword);
+    useEffect(() => {
+        const timer = setTimeout(() => setDebouncedKeyword(keyword), 300);
+        return () => clearTimeout(timer);
+    }, [keyword]);
+
+    const query = useInfiniteQuery({
+        queryKey: ["grouped-prompts", debouncedKeyword],
+        queryFn: ({ pageParam }) => fetchPrompts({ keyword: debouncedKeyword, page: pageParam, pageSize }),
+        initialPageParam: 1,
+        getNextPageParam: (lastPage, pages) => (pages.reduce((total, page) => total + page.items.length, 0) < lastPage.total ? pages.length + 1 : undefined),
+        enabled,
+    });
+
+    const groups = useMemo<PromptGroupList>(() => {
+        if (!query.data) return [];
+        const map = new Map<string, Prompt[]>();
+        for (const prompt of query.data.pages.flatMap((page) => page.items)) {
+            const list = map.get(prompt.category) || [];
+            list.push(prompt);
+            map.set(prompt.category, list);
+        }
+        return Array.from(map, ([category, items]) => ({ category, items, total: items.length }));
+    }, [query.data]);
+
+    return { query, groups };
+}

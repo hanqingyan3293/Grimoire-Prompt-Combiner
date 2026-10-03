@@ -1,5 +1,6 @@
 import { create } from "zustand"
 import type { PanelType } from "../components/workspace/panelTypes"
+import { workspaceDocumentFromLegacy, type WorkspaceDocument } from "../components/workspace/workspace-document"
 
 export interface WorkspaceSlot {
   id: string
@@ -125,6 +126,7 @@ interface WorkspaceState {
   applyLayoutPresetToCurrentWorkspace: (presetId: string) => void
   deleteLayoutPreset: (presetId: string) => void
   getLayout: (workspaceId: string) => WorkspaceLayoutNode
+  getWorkspaceDocument: (workspaceId?: string) => WorkspaceDocument
   getMaximizedPanelId: (workspaceId: string) => string | null
   findPanel: (workspaceId: string, panelId: string) => Extract<WorkspaceLayoutNode, { kind: "panel" }> | null
 }
@@ -714,6 +716,10 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   getLayout: (workspaceId) => {
     const workspace = get().workspaces.find(item => item.id === workspaceId)
     return get().layouts[workspaceId] || createDefaultLayout(workspace || WORKSPACES[0])
+  },
+  getWorkspaceDocument: (workspaceId) => {
+    const id = workspaceId || get().activeWorkspaceId
+    return workspaceDocumentFromLegacy(id, get().getLayout(id))
   },
   getMaximizedPanelId: (workspaceId) => get().maximizedPanels[workspaceId] || null,
   findPanel: (workspaceId, panelId) => findPanelNode(get().getLayout(workspaceId), panelId),

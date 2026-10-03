@@ -23,7 +23,7 @@ const IPC_CHANNELS = {
   FAV_TAG_LIST: 'fav:tagList', FAV_TAG_ADD: 'fav:tagAdd', FAV_TAG_REMOVE: 'fav:tagRemove', FAV_TAG_CHECK: 'fav:tagCheck', FAV_SUB_LIST: 'fav:subList', FAV_SUB_ADD: 'fav:subAdd', FAV_SUB_REMOVE: 'fav:subRemove', FAV_SUB_CHECK: 'fav:subCheck',
   MIGRATION_SELECT_FRIEND_PROMPTS: 'migration:selectFriendPrompts', MIGRATION_IMPORT_FRIEND_PROMPTS: 'migration:importFriendPrompts',
   TASKS_CREATE: 'tasks:create', TASKS_LIST: 'tasks:list', TASKS_GET: 'tasks:get', TASKS_CANCEL: 'tasks:cancel', TASKS_RETRY: 'tasks:retry', TASKS_SUBSCRIBE: 'tasks:subscribe',
-  WD14_STATUS: 'wd14:status', WD14_MODELS: 'wd14:models', WD14_SWITCH_MODEL: 'wd14:switchModel', WD14_CREATE_TASK: 'wd14:createTask', WD14_DIAGNOSTICS: 'wd14:diagnostics', WD14_SELECT_MODEL_DIRECTORY: 'wd14:selectModelDirectory', WD14_SELECT_PYTHON_PATH: 'wd14:selectPythonPath',
+  WD14_STATUS: 'wd14:status', WD14_MODELS: 'wd14:models', WD14_SWITCH_MODEL: 'wd14:switchModel', WD14_CREATE_TASK: 'wd14:createTask', WD14_DIAGNOSTICS: 'wd14:diagnostics', WD14_SELECT_MODEL_DIRECTORY: 'wd14:selectModelDirectory', WD14_SELECT_PYTHON_PATH: 'wd14:selectPythonPath', WD14_HISTORY_LIST: 'wd14:history:list', WD14_HISTORY_GET: 'wd14:history:get', WD14_HISTORY_DELETE: 'wd14:history:delete', WD14_HISTORY_CLEAR: 'wd14:history:clear',
   COMFY_STATUS: 'comfy:status', COMFY_MODELS: 'comfy:models', COMFY_WORKFLOWS_LIST: 'comfy:workflows:list', COMFY_WORKFLOW_IMPORT: 'comfy:workflows:import', COMFY_WORKFLOW_DELETE: 'comfy:workflows:delete', COMFY_CREATE_TASK: 'comfy:createTask', COMFY_QUICK_GENERATE: 'comfy:quickGenerate',
   CANVAS_LIST: 'canvas:list', CANVAS_GET: 'canvas:get', CANVAS_CREATE: 'canvas:create', CANVAS_SAVE: 'canvas:save', CANVAS_DELETE: 'canvas:delete', CANVAS_EXPORT_PACKAGE: 'canvas:exportPackage', CANVAS_IMPORT_PACKAGE: 'canvas:importPackage',
   CANVAS_VENDOR_LIST: 'canvasVendor:list', CANVAS_VENDOR_GET: 'canvasVendor:get', CANVAS_VENDOR_CREATE: 'canvasVendor:create', CANVAS_VENDOR_SAVE: 'canvasVendor:save', CANVAS_VENDOR_DELETE: 'canvasVendor:delete',
@@ -235,6 +235,12 @@ const api = {
     models: () => ipcRenderer.invoke(IPC_CHANNELS.WD14_MODELS),
     switchModel: (modelId: string) => ipcRenderer.invoke(IPC_CHANNELS.WD14_SWITCH_MODEL, modelId),
     createTask: (input: { imageId: number; threshold?: number; modelId?: string }) => ipcRenderer.invoke(IPC_CHANNELS.WD14_CREATE_TASK, input),
+    history: {
+      list: (input?: { query?: string; status?: 'succeeded' | 'failed'; limit?: number; offset?: number }) => ipcRenderer.invoke(IPC_CHANNELS.WD14_HISTORY_LIST, input || {}),
+      get: (id: string) => ipcRenderer.invoke(IPC_CHANNELS.WD14_HISTORY_GET, id),
+      delete: (id: string) => ipcRenderer.invoke(IPC_CHANNELS.WD14_HISTORY_DELETE, id),
+      clear: () => ipcRenderer.invoke(IPC_CHANNELS.WD14_HISTORY_CLEAR),
+    },
   },
   comfy: {
     status: () => ipcRenderer.invoke(IPC_CHANNELS.COMFY_STATUS),

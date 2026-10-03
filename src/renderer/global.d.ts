@@ -3,6 +3,7 @@
 import type { TaskEvent, TaskRecord, TaskStatus } from '../shared/task-types'
 import type { CanvasDocument, CanvasProject } from '../shared/canvas-types'
 import type { PromptAssetPage, PromptAssetQuery } from '../shared/prompt-asset-types'
+import type { WD14HistoryRecord } from '../shared/wd14-types'
 
 // 预加载 API 类型
 interface GrimoireAPI {
@@ -170,6 +171,12 @@ interface GrimoireAPI {
     models: () => Promise<{ models: Array<Record<string, unknown>> }>
     switchModel: (modelId: string) => Promise<Record<string, unknown>>
     createTask: (input: { imageId: number; threshold?: number; modelId?: string }) => Promise<Record<string, unknown>>
+    history: {
+      list: (input?: { query?: string; status?: 'succeeded' | 'failed'; limit?: number; offset?: number }) => Promise<WD14HistoryRecord[]>
+      get: (id: string) => Promise<WD14HistoryRecord | null>
+      delete: (id: string) => Promise<boolean>
+      clear: () => Promise<boolean>
+    }
   }
   comfy: {
     status: () => Promise<{ online: boolean; comfyui_version: string | null; error?: string }>

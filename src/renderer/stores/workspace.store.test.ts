@@ -63,6 +63,15 @@ describe('workspace panel persistence', () => {
     useWorkspaceStore.getState().resetWorkspace()
     expect(useWorkspaceStore.getState().getLayout('compose')).toEqual(getDefaultLayout('compose'))
   })
+
+  it('exposes a document model without changing the legacy layout API', () => {
+    resetWorkspace()
+    const document = useWorkspaceStore.getState().getWorkspaceDocument('compose')
+    expect(document.version).toBe(1)
+    expect(document.workspaceId).toBe('compose')
+    expect(Object.values(document.editors).some(editor => editor.type === 'prompt-workbench')).toBe(true)
+    expect(document.root.kind).toBe('split')
+  })
 })
 
 function findPanelByType(node: ReturnType<typeof getDefaultLayout>, type: string): { id: string; type: string } | null {

@@ -1,6 +1,7 @@
 // 魔导书 Grimoire v7 — 设置窗口（独立窗口版）
 import React, { useState, useEffect, useRef } from "react"
-import { AlertTriangle, CheckCircle2, Database, Download, Info, Keyboard, LoaderCircle, Palette, Pencil, Plug, Plus, RefreshCw, Save, Settings, Trash2, Upload, X } from "lucide-react"
+import { AlertTriangle, CheckCircle2, Database, Download, Info, Keyboard, LoaderCircle, Palette, PanelsTopLeft, Pencil, Plug, Plus, RefreshCw, Save, Settings, Trash2, Upload, X } from "lucide-react"
+import { App as AntApp } from "antd"
 import type { LucideIcon } from "lucide-react"
 import { useSettingsStore } from "../../stores/settings.store"
 import { useProviderStore } from "../../stores/providers.store"
@@ -10,6 +11,8 @@ import { Button, IconButton } from "../ui/Button"
 import { EmptyState, PanelHeader, StatusBadge } from "../ui/Feedback"
 import { Modal } from "../ui/Modal"
 import type { Provider } from "@shared/types"
+import { AppConfigPanel } from "@canvas/components/layout/app-config-modal"
+import { useAgentStore } from "@canvas/stores/use-agent-store"
 
 const THEMES = [
   { key: "neon", zh: "霓虹", color: "#a855f7" },
@@ -21,7 +24,7 @@ const THEMES = [
   { key: "sunset", zh: "日落", color: "#f97316" },
 ]
 
-type Section = "general" | "appearance" | "api" | "shortcuts" | "data" | "about"
+type Section = "general" | "appearance" | "api" | "canvas" | "shortcuts" | "data" | "about"
 
 const DEFAULT_SHORTCUTS: Record<string, string> = {
   "chat.send": "Enter",
@@ -37,6 +40,7 @@ const SECTIONS: { key: Section; label: string; description: string; icon: Lucide
   { key: "general", label: "通用", description: "语言、字号和界面密度", icon: Settings },
   { key: "appearance", label: "外观", description: "深浅模式与主题色", icon: Palette },
   { key: "api", label: "API 配置", description: "模型供应商与认证", icon: Plug },
+  { key: "canvas", label: "无限画布", description: "原版画布、Agent 和同步配置", icon: PanelsTopLeft },
   { key: "shortcuts", label: "快捷键", description: "键盘操作映射", icon: Keyboard },
   { key: "data", label: "数据", description: "备份、迁移与诊断", icon: Database },
   { key: "about", label: "关于", description: "版本与技术信息", icon: Info },
@@ -435,6 +439,8 @@ export function SettingsWindow({ onClose }: { onClose: () => void }) {
           </div>
         )}
 
+        {section === "canvas" && <CanvasSettingsSection />}
+
         {section === "shortcuts" && (
           <div className="space-y-4">
             <PanelHeader icon={Keyboard} title='快捷键管理' description='选择快捷键后按下新组合键，设置会自动保存' />
@@ -527,6 +533,65 @@ export function SettingsWindow({ onClose }: { onClose: () => void }) {
         <p className='text-sm text-[var(--color-text-primary)]'>确认删除供应商“{providerToDelete?.name}”？保存的配置与认证信息将一并移除。</p>
         <div className='mt-4 flex gap-2'><Button onClick={() => setProviderToDelete(null)} className='flex-1' disabled={providerDeleteBusy}>取消</Button><Button variant='danger' icon={Trash2} onClick={() => void confirmDeleteProvider()} className='flex-1' disabled={providerDeleteBusy}>{providerDeleteBusy ? '删除中' : '删除'}</Button></div>
       </Modal>
+    </div>
+  )
+}
+
+function CanvasSettingsSection() {
+  const url = useAgentStore(state => state.url)
+  const token = useAgentStore(state => state.token)
+  const permissionMode = useAgentStore(state => state.permissionMode)
+  const connected = useAgentStore(state => state.connected)
+  const activity = useAgentStore(state => state.activity)
+  const setAgentState = useAgentStore(state => state.setAgentState)
+  const connectAgent = useAgentStore(state => state.connectAgent)
+  const disconnectAgent = useAgentStore(state => state.disconnectAgent)
+  const [urlDraft, setUrlDraft] = useState(url)
+  const [tokenDraft, setTokenDraft] = useState(token)
+
+  useEffect(() => {
+    setUrlDraft(url)
+    setTokenDraft(token)
+  }, [token, url])
+
+  const saveAgentConfig = (connect: boolean) => {
+    const endpoint = urlDraft.trim().replace(/\/$/, "")
+    const nextToken = tokenDraft.trim()
+    setAgentState({ url: endpoint, token: nextToken, permissionMode })
+    localStorage.setItem("canvas-agent-url", endpoint)
+    localStorage.setItem("canvas-agent-token", nextToken)
+    if (connect) connectAgent()
+  }
+
+  return (
+    <div className="space-y-5">
+      <PanelHeader icon={PanelsTopLeft} title="无限画布" description="原版无限画布配置、模型渠道、提示词源、同步和 Agent 连接" />
+      <section className="ui-list-card space-y-4 p-4">
+        <div className="text-sm font-semibold text-[var(--color-text-primary)]">Codex / Canvas Agent</div>
+        <Field label="Agent 地址" desc="默认连接本机 Canvas Agent 服务">
+          <input className="ui-field w-full" value={urlDraft} onChange={event => setUrlDraft(event.target.value)} placeholder="http://127.0.0.1:17371" />
+        </Field>
+        <Field label="Agent Token">
+          <input type="password" className="ui-field w-full" value={tokenDraft} onChange={event => setTokenDraft(event.target.value)} placeholder="输入 Agent Token" />
+        </Field>
+        <Field label="权限模式" desc="控制 Agent 执行画布工具和本地操作时的确认策略">
+          <select className="ui-field w-full" value={permissionMode} onChange={event => setAgentState({ permissionMode: event.target.value as typeof permissionMode })}>
+            <option value="request">每次请求确认</option>
+            <option value="automatic">自动允许低风险操作</option>
+            <option value="full">完全自动</option>
+          </select>
+        </Field>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button variant="primary" onClick={() => saveAgentConfig(true)}>{connected ? "重新连接 Agent" : "保存并连接 Agent"}</Button>
+          {connected ? <Button onClick={() => disconnectAgent()}>断开连接</Button> : null}
+          <span className="text-xs text-[var(--color-text-secondary)]">{activity || (connected ? "已连接" : "未连接")}</span>
+        </div>
+      </section>
+      <section className="ui-list-card p-4">
+        <AntApp>
+          <AppConfigPanel showDoneButton={false} initialTab="channels" />
+        </AntApp>
+      </section>
     </div>
   )
 }
