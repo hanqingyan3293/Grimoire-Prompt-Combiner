@@ -17,7 +17,7 @@
 
 Each GitHub Release provides Windows x64 files:
 
-- Grimoire Setup 7.2.0.exe — NSIS installer.
+- Grimoire.Setup.7.2.0.exe — NSIS installer.
 - Grimoire 7.2.0.exe — single-file portable executable.
 - Grimoire-portable-7.2.0.zip — ZIP portable distribution.
 - SHA256SUMS-v7.2.0.txt — integrity checksums.
@@ -38,7 +38,7 @@ See USER_MANUAL.en.md and 操作文档.md.
 
 ## License
 
-This project is licensed under the GNU Affero General Public License v3.0 or later (AGPL-3.0-or-later). See LICENSE.
+This project is licensed under the GNU Affero General Public License v3.0 only (AGPL-3.0-only). See LICENSE.
 
 Author: hanqingyan3293
 Repository: https://github.com/hanqingyan3293/Grimoire-Prompt-Combiner

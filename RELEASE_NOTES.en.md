@@ -6,7 +6,7 @@
 
 | File | Description |
 |---|---|
-| Grimoire Setup 7.2.0.exe | NSIS installer |
+| Grimoire.Setup.7.2.0.exe | NSIS installer |
 | Grimoire 7.2.0.exe | Single-file portable executable |
 | Grimoire-portable-7.2.0.zip | ZIP portable distribution |
 | SHA256SUMS-v7.2.0.txt | SHA-256 integrity checksums |
@@ -22,4 +22,4 @@
 
 ## License
 
-AGPL-3.0-or-later. See LICENSE.
+AGPL-3.0-only. See LICENSE.

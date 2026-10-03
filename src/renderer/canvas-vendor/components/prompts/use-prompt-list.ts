@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useInfiniteQuery } from "@tanstack/react-query";
 
-import { ALL_PROMPTS_OPTION, fetchPrompts } from "@canvas/services/api/prompts";
+import { type Prompt, ALL_PROMPTS_OPTION, fetchPrompts } from "@canvas/services/api/prompts";
 
 export const PROMPT_PAGE_SIZE = 20;
 
@@ -26,4 +26,34 @@ export function usePromptList({ keyword, tags, category, enabled = true }: { key
         categories: useMemo(() => [ALL_PROMPTS_OPTION, ...(firstPage?.categories || [])], [firstPage?.categories]),
         total: firstPage?.total || 0,
     };
+}
+
+type PromptGroupList = { category: string; items: Prompt[]; total: number }[];
+
+export function useGroupedPromptList({ keyword, enabled = true }: { keyword: string; enabled?: boolean }) {
+    const [debouncedKeyword, setDebouncedKeyword] = useState(keyword);
+    useEffect(() => {
+        const timer = setTimeout(() => setDebouncedKeyword(keyword), 300);
+        return () => clearTimeout(timer);
+    }, [keyword]);
+
+    const query = useInfiniteQuery({
+        queryKey: ["grouped-prompts", debouncedKeyword],
+        queryFn: () => fetchPrompts({ keyword: debouncedKeyword, pageSize: 500 }),
+        initialPageParam: 1,
+        enabled,
+    });
+
+    const groups = useMemo<PromptGroupList>(() => {
+        if (!query.data) return [];
+        const map = new Map<string, Prompt[]>();
+        for (const prompt of query.data.items) {
+            const list = map.get(prompt.category) || [];
+            list.push(prompt);
+            map.set(prompt.category, list);
+        }
+        return Array.from(map, ([category, items]) => ({ category, items, total: items.length }));
+    }, [query.data]);
+
+    return { query, groups };
 }

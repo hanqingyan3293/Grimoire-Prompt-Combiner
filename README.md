@@ -71,7 +71,7 @@ English: [README.en.md](./README.en.md)
 
 **方式三：安装包**
 
-1. 下载 `Grimoire Setup 7.2.0.exe`
+1. 下载 `Grimoire.Setup.7.2.0.exe`
 2. 双击安装，选择安装目录
 3. 桌面快捷方式启动
 
@@ -123,14 +123,14 @@ grimoire/
 
 每个 GitHub Release 提供 Windows x64 文件：
 
-- Grimoire Setup 7.2.0.exe：NSIS 安装版。
+- Grimoire.Setup.7.2.0.exe：NSIS 安装版。
 - Grimoire 7.2.0.exe：单文件免安装版。
 - Grimoire-portable-7.2.0.zip：ZIP 便携版。
 - SHA256SUMS-v7.2.0.txt：文件完整性校验。
 
 ## 许可证
 
-本项目采用 GNU Affero General Public License v3.0 或更高版本（AGPL-3.0-or-later）。完整许可证见 LICENSE。
+本项目采用 GNU Affero General Public License v3.0（AGPL-3.0-only）。完整许可证见 LICENSE。
 
 作者：[hanqingyan3293](https://github.com/hanqingyan3293)
 

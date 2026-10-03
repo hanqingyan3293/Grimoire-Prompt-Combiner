@@ -10,7 +10,7 @@
 |------|------|
 | `Grimoire 7.2.0.exe` | 免安装单文件版，下载后直接运行 |
 | `Grimoire-portable-7.2.0.zip` | ZIP 便携版，解压后运行 |
-| `Grimoire Setup 7.2.0.exe` | NSIS 安装包 |
+| `Grimoire.Setup.7.2.0.exe` | NSIS 安装包 |
 | `SHA256SUMS-v7.2.0.txt` | SHA-256 完整性校验 |
 
 ---
@@ -54,4 +54,4 @@
 
 ---
 
-*Grimoire v7.2.0 — AGPL-3.0-or-later License*
+*Grimoire v7.2.0 — AGPL-3.0-only License*
