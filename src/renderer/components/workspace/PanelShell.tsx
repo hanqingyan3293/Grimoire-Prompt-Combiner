@@ -40,6 +40,7 @@ interface PanelShellProps {
   onSplit?: (direction: "horizontal" | "vertical") => void
   onMaximize?: () => void
   onFloat?: () => void
+  onFloatingDragStart?: (event: React.PointerEvent<HTMLDivElement>) => void
   onClose?: () => void
   maximized?: boolean
   floating?: boolean
@@ -71,6 +72,7 @@ export function PanelShell({
   onSplit,
   onMaximize,
   onFloat,
+  onFloatingDragStart,
   onClose,
   maximized = false,
   floating = false,
@@ -230,6 +232,9 @@ export function PanelShell({
             "ui-panel-header relative shrink-0 flex min-w-0 items-center gap-1.5 px-3 border-b border-[var(--color-border)] bg-[var(--color-bg-secondary)] overflow-visible " +
             (addMenuOpen ? "z-[120]" : "z-40")
           }
+          onPointerDown={event => {
+            if (floating && onFloatingDragStart && !(event.target as HTMLElement).closest("button,select,input,textarea")) onFloatingDragStart(event)
+          }}
           style={{ height: "var(--panel-header-height)" }}
         >
           <select

@@ -31,6 +31,11 @@ import { IPC_CHANNELS } from "../shared/types"
 let mainWindow: BrowserWindow | null = null
 let settingsWindow: BrowserWindow | null = null
 let aiWindow: BrowserWindow | null = null
+const hasSingleInstanceLock = app.requestSingleInstanceLock()
+
+if (!hasSingleInstanceLock) {
+  app.quit()
+}
 
 
 function getPreloadPath(): string {
@@ -380,6 +385,14 @@ async function initDefaultTags(): Promise<void> {
 process.on("uncaughtException", (err) => { logError("未捕获异常: " + err.message, err.stack || ""); console.error(err) })
 process.on("unhandledRejection", (reason) => { logError("未处理的 Promise: " + String(reason), reason instanceof Error ? reason.stack : "") })
 
+if (hasSingleInstanceLock) {
+  app.on('second-instance', () => {
+    if (!mainWindow || mainWindow.isDestroyed()) return
+    if (mainWindow.isMinimized()) mainWindow.restore()
+    mainWindow.show()
+    mainWindow.focus()
+  })
+
 app.whenReady().then(async () => {
   try {
     logEvent('info', 'application', 'Application startup')
@@ -410,3 +423,4 @@ app.whenReady().then(async () => {
 
 app.on("window-all-closed", () => { if (BrowserWindow.getAllWindows().length === 0) { taskRunner.stop(); void wd14Worker.stop(); closeDatabase(); app.quit() } })
 app.on("activate", () => { if (BrowserWindow.getAllWindows().length === 0) createWindow() })
+}

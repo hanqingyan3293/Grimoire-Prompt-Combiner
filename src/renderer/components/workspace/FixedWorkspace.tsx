@@ -33,6 +33,7 @@ export function FixedWorkspace() {
   const setFloatingPanel = useWorkspaceStore(s => s.setFloatingPanel)
   const containerRef = useRef<HTMLDivElement>(null)
   const [mergePreview, setMergePreview] = useState<MergePreview>(null)
+  const [floatingPositions, setFloatingPositions] = useState<Record<string, { x: number; y: number }>>({})
   const workspace = useMemo(
     () => workspaces.find(w => w.id === activeWorkspaceId) || workspaces[0],
     [activeWorkspaceId, workspaces]
@@ -113,6 +114,46 @@ export function FixedWorkspace() {
     return mergePanelByRects(workspace.id, panelId, targetPanelId, side as MergeSide, rects)
   }
 
+  const startFloatingDrag = (panelId: string, event: React.PointerEvent<HTMLDivElement>) => {
+    const container = containerRef.current
+    const panel = event.currentTarget.closest("[data-panel-id]") as HTMLElement | null
+    if (!container || !panel) return
+    event.preventDefault()
+    event.stopPropagation()
+    const containerRect = container.getBoundingClientRect()
+    const panelRect = panel.getBoundingClientRect()
+    const current = floatingPositions[panelId] || { x: panelRect.left - containerRect.left, y: panelRect.top - containerRect.top }
+    const startX = event.clientX
+    const startY = event.clientY
+    const startLeft = current.x
+    const startTop = current.y
+    const update = (moveEvent: PointerEvent) => {
+      const maxX = Math.max(0, containerRect.width - panelRect.width)
+      const maxY = Math.max(0, containerRect.height - panelRect.height)
+      setFloatingPositions(previous => ({
+        ...previous,
+        [panelId]: {
+          x: Math.min(maxX, Math.max(0, startLeft + moveEvent.clientX - startX)),
+          y: Math.min(maxY, Math.max(0, startTop + moveEvent.clientY - startY)),
+        },
+      }))
+    }
+    const cleanup = () => {
+      document.body.style.userSelect = ""
+      document.body.style.cursor = ""
+      window.removeEventListener("pointermove", update)
+      window.removeEventListener("pointerup", cleanup)
+      window.removeEventListener("pointercancel", cleanup)
+      window.removeEventListener("blur", cleanup)
+    }
+    document.body.style.userSelect = "none"
+    document.body.style.cursor = "move"
+    window.addEventListener("pointermove", update)
+    window.addEventListener("pointerup", cleanup)
+    window.addEventListener("pointercancel", cleanup)
+    window.addEventListener("blur", cleanup)
+  }
+
   const renderNode = (node: WorkspaceLayoutNode, renderFloating = false): React.ReactNode => {
     if (node.kind === "panel") {
       if (!renderFloating && (floatingPanels[workspace.id] || []).includes(node.id)) return <div className="h-full w-full" aria-hidden="true" />
@@ -142,6 +183,7 @@ export function FixedWorkspace() {
           onSplit={(direction) => splitPanel(workspace.id, node.id, direction)}
           onMaximize={() => setMaximizedPanel(workspace.id, maximizedPanelId === node.id ? null : node.id)}
           onFloat={() => setFloatingPanel(workspace.id, node.id, !(floatingPanels[workspace.id] || []).includes(node.id))}
+          onFloatingDragStart={(event) => startFloatingDrag(node.id, event)}
           floating={(floatingPanels[workspace.id] || []).includes(node.id)}
           onClose={() => closePanel(workspace.id, node.id)}
           maximized={maximizedPanelId === node.id}
@@ -190,7 +232,8 @@ export function FixedWorkspace() {
       {workspace && (floatingPanels[workspace.id] || []).map(panelId => {
         const panel = layout ? findPanelNode(layout, panelId) : null
         if (!panel) return null
-        return <div key={panelId} className="absolute right-5 top-5 z-[80] h-[min(680px,calc(100%-40px))] w-[min(520px,calc(100%-40px))] shadow-2xl">
+        const position = floatingPositions[panelId]
+        return <div key={panelId} className="absolute z-[80] h-[min(680px,calc(100%-40px))] w-[min(520px,calc(100%-40px))] shadow-2xl" style={position ? { left: position.x, top: position.y } : { right: 20, top: 20 }}>
           {renderNode(panel, true)}
         </div>
       })}
