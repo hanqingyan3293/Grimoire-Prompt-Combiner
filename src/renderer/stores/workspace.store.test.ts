@@ -88,6 +88,15 @@ describe('workspace panel persistence', () => {
     expect(panel.tabs).toHaveLength(1)
     expect(panel.type).toBe('canvas')
   })
+
+  it('moves an editor tab between panel groups', () => {
+    resetWorkspace()
+    const tabId = useWorkspaceStore.getState().addTab('compose', 'main-workbench', 'canvas')!
+    expect(useWorkspaceStore.getState().moveTab('compose', 'main-workbench', 'right-sidebar', tabId)).toBe(true)
+    expect(useWorkspaceStore.getState().findPanel('compose', 'main-workbench')!.tabs).toHaveLength(1)
+    const target = useWorkspaceStore.getState().findPanel('compose', 'right-sidebar')!
+    expect(target.tabs?.some(tab => tab.id === tabId && tab.type === 'canvas')).toBe(true)
+  })
 })
 
 function findPanelByType(node: ReturnType<typeof getDefaultLayout>, type: string): { id: string; type: string } | null {

@@ -24,6 +24,7 @@ export function FixedWorkspace() {
   const addTab = useWorkspaceStore(s => s.addTab)
   const setActiveTab = useWorkspaceStore(s => s.setActiveTab)
   const closeTab = useWorkspaceStore(s => s.closeTab)
+  const moveTab = useWorkspaceStore(s => s.moveTab)
   const splitPanel = useWorkspaceStore(s => s.splitPanel)
   const mergePanelByRects = useWorkspaceStore(s => s.mergePanelByRects)
   const closePanel = useWorkspaceStore(s => s.closePanel)
@@ -134,6 +135,7 @@ export function FixedWorkspace() {
           activeTabId={activeTabId}
           onTabChange={(tabId) => setActiveTab(workspace.id, node.id, tabId)}
           onTabClose={(tabId) => closeTab(workspace.id, node.id, tabId)}
+          onTabDrop={(sourcePanelId, tabId) => { moveTab(workspace.id, sourcePanelId, node.id, tabId) }}
           onAddPanel={(type, direction, placement, ratio) => splitPanel(workspace.id, node.id, direction, type, placement, ratio)}
           onCornerMergePreview={updateMergePreview}
           onCornerMergeDrop={mergePanelFromDrag}

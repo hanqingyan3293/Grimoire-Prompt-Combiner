@@ -34,6 +34,7 @@ interface PanelShellProps {
   activeTabId?: string
   onTabChange?: (tabId: string) => void
   onTabClose?: (tabId: string) => void
+  onTabDrop?: (sourcePanelId: string, tabId: string) => void
   onCornerMergePreview?: (panelId: string, side: CornerMergeSide | null) => void
   onCornerMergeDrop?: (panelId: string, side: CornerMergeSide) => boolean
   onSplit?: (direction: "horizontal" | "vertical") => void
@@ -64,6 +65,7 @@ export function PanelShell({
   activeTabId,
   onTabChange,
   onTabClose,
+  onTabDrop,
   onCornerMergePreview,
   onCornerMergeDrop,
   onSplit,
@@ -210,6 +212,15 @@ export function PanelShell({
     <section
       data-panel-id={id}
       data-panel-type={type}
+      onDragOver={event => event.preventDefault()}
+      onDrop={event => {
+        const raw = event.dataTransfer.getData("application/x-grimoire-tab")
+        if (!raw) return
+        try {
+          const payload = JSON.parse(raw) as { panelId?: string; tabId?: string }
+          if (payload.panelId && payload.tabId) onTabDrop?.(payload.panelId, payload.tabId)
+        } catch {}
+      }}
       className={"ui-panel-shell relative flex h-full w-full min-h-0 min-w-0 flex-col overflow-hidden border border-[var(--color-border-strong)] bg-[var(--color-bg-primary)] shadow-[0_1px_2px_var(--color-panel-shadow),inset_0_1px_0_rgba(255,255,255,0.035)] " + className}
       style={style}
     >
@@ -339,7 +350,7 @@ export function PanelShell({
             const active = tab.id === activeTabId
             return (
               <div key={tab.id} className={"flex min-w-0 shrink-0 items-center rounded-md border text-[11px] " + (active ? "border-[var(--color-accent)] bg-[var(--color-accent)]/15 text-[var(--color-accent-text)]" : "border-transparent text-[var(--color-text-secondary)] hover:border-[var(--color-border)]")}>
-                <button type="button" className="max-w-36 truncate px-2 py-1" onClick={() => onTabChange?.(tab.id)} title={option?.description || option?.title || tab.type}>{option?.title || tab.type}</button>
+                <button type="button" draggable onDragStart={event => { event.dataTransfer.effectAllowed = "move"; event.dataTransfer.setData("application/x-grimoire-tab", JSON.stringify({ panelId: id, tabId: tab.id })) }} className="max-w-36 truncate px-2 py-1" onClick={() => onTabChange?.(tab.id)} title={option?.description || option?.title || tab.type}>{option?.title || tab.type}</button>
                 <button type="button" className="px-1.5 py-1 text-[10px] opacity-60 hover:opacity-100" onClick={() => onTabClose?.(tab.id)} aria-label="关闭标签">×</button>
               </div>
             )

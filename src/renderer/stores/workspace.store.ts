@@ -125,6 +125,7 @@ interface WorkspaceState {
   addTab: (workspaceId: string, panelId: string, type: PanelType) => string | null
   setActiveTab: (workspaceId: string, panelId: string, tabId: string) => void
   closeTab: (workspaceId: string, panelId: string, tabId: string) => void
+  moveTab: (workspaceId: string, sourcePanelId: string, targetPanelId: string, tabId: string) => boolean
   splitPanel: (workspaceId: string, panelId: string, direction: SplitDirection, type?: PanelType, placement?: SplitPlacement, ratio?: number) => void
   mergePanelByRects: (workspaceId: string, panelId: string, targetPanelId: string, side: MergeSide, rects: WorkspacePanelRect[]) => boolean
   closePanel: (workspaceId: string, panelId: string) => void
@@ -677,6 +678,25 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
     const next = { ...get().layouts, [workspaceId]: nextLayout }
     saveLayouts(next)
     set({ layouts: next })
+  },
+  moveTab: (workspaceId, sourcePanelId, targetPanelId, tabId) => {
+    if (sourcePanelId === targetPanelId) return false
+    const layout = get().getLayout(workspaceId)
+    const source = findPanelNode(layout, sourcePanelId)
+    if (!source) return false
+    const sourceTabs = normalizePanelTabs(source)
+    const moved = sourceTabs.find(tab => tab.id === tabId)
+    if (!moved || sourceTabs.length <= 1) return false
+    const withoutSource = removeTabFromLayout(layout, sourcePanelId, tabId)
+    const nextLayout = normalizeLayoutNode(updateLayoutNode(withoutSource, targetPanelId, node => {
+      if (node.kind !== "panel") return node
+      const tabs = normalizePanelTabs(node)
+      return { ...node, tabs: [...tabs, moved], activeTabId: moved.id, type: moved.type }
+    }))
+    const next = { ...get().layouts, [workspaceId]: nextLayout }
+    saveLayouts(next)
+    set({ layouts: next })
+    return true
   },
   splitPanel: (workspaceId, panelId, direction, type, placement = "after", ratio = 0.5) => {
     const layout = get().getLayout(workspaceId)
