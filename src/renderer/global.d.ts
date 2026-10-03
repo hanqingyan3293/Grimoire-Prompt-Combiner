@@ -138,6 +138,11 @@ interface GrimoireAPI {
     openSettings: () => Promise<void>
     openAI: () => Promise<void>
   }
+  workspace: {
+    openPopout: (input: { popoutId: string; panelType: string; title: string }) => Promise<boolean>
+    closePopout: (popoutId: string) => Promise<boolean>
+    focusPopout: (popoutId: string) => Promise<boolean>
+  }
   error: {
     getAll: () => Promise<Array<{ id: number; message: string; stack: string; context: string; created_at: string }>>
     log: (message: string, stack?: string, context?: string) => Promise<boolean>

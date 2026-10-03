@@ -1,9 +1,11 @@
 import React, { useCallback, useEffect, useState } from 'react'
-import { AlertTriangle, CheckCircle2, Clipboard, FolderOpen, History, ImagePlus, LoaderCircle, RefreshCw, Search, Settings2, Trash2 } from 'lucide-react'
+import { AlertTriangle, CheckCircle2, Clipboard, FolderOpen, History, ImagePlus, LoaderCircle, Plus, RefreshCw, Search, Settings2, Trash2 } from 'lucide-react'
 import { Button, IconButton } from '../ui/Button'
 import { EmptyState, PanelHeader, StatusBadge } from '../ui/Feedback'
 import { Badge } from '../ui/Badge'
 import type { WD14HistoryRecord } from '../../../shared/wd14-types'
+import { usePromptsStore } from '../../stores/prompts.store'
+import { useTagsStore } from '../../stores/tags.store'
 
 interface WD14Model {
   id: string
@@ -45,6 +47,8 @@ export function WD14Panel() {
   const [history, setHistory] = useState<WD14HistoryRecord[]>([])
   const [historyQuery, setHistoryQuery] = useState('')
   const [historyLoading, setHistoryLoading] = useState(false)
+  const allTags = useTagsStore(state => state.tags)
+  const addPositive = usePromptsStore(state => state.addPositive)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -137,6 +141,20 @@ export function WD14Panel() {
     }
   }
 
+  const applyHistoryTags = (item: WD14HistoryRecord) => {
+    const names = Object.values(item.tags).flat().map(tag => tag.name).filter(Boolean)
+    const tagMap = new Map(allTags.flatMap(tag => [[tag.en.toLowerCase(), tag], [tag.zh, tag]]))
+    let added = 0
+    let unknown = 0
+    for (const name of names) {
+      const tag = tagMap.get(name.toLowerCase()) || tagMap.get(name)
+      if (!tag) { unknown += 1; continue }
+      addPositive(tag, '', '')
+      added += 1
+    }
+    showMessage('已应用 ' + added + ' 个标签' + (unknown ? '，未匹配 ' + unknown + ' 个' : ''), added ? 'success' : 'info')
+  }
+
   return (
     <div className='h-full space-y-3 overflow-auto p-4'>
       <PanelHeader
@@ -224,6 +242,7 @@ export function WD14Panel() {
                 </div>
                 <div className='flex shrink-0 flex-col gap-1'>
                   <button type='button' className='grid size-7 place-items-center rounded hover:bg-[var(--color-bg-tertiary)]' title='复制标签' onClick={() => void navigator.clipboard.writeText(tags.join(', '))}><Clipboard size={14} /></button>
+                  {item.status === 'succeeded' && <button type='button' className='grid size-7 place-items-center rounded hover:bg-[var(--color-bg-tertiary)]' title='应用到正面提示词' onClick={() => applyHistoryTags(item)}><Plus size={14} /></button>}
                   <button type='button' className='grid size-7 place-items-center rounded text-red-500 hover:bg-red-500/10' title='删除历史' onClick={() => void window.api.wd14.history.delete(item.id).then(() => loadHistory())}><Trash2 size={14} /></button>
                 </div>
               </article>
