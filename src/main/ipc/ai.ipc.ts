@@ -2,7 +2,8 @@
 import { ipcMain, BrowserWindow } from 'electron'
 import { getDatabase } from '../database'
 import { decryptKey } from './providers.ipc'
-import { createClient, chatStream, vision, generateImage, fetchModels } from '../ai/client'
+import { createClient, vision, generateImage, fetchModels } from '../ai/client'
+import { OpenAICompatibleRuntime } from '../ai/runtime/openai-compatible.runtime'
 
 // 从 DB 读取完整 Provider 配置（含解密后的 API Key）
 function getProvider(providerId: string) {
@@ -46,15 +47,17 @@ export function registerAIIPC(): void {
     const win = BrowserWindow.fromWebContents(event.sender)
     if (!win || win.isDestroyed()) return { error: '窗口已关闭' }
 
-    const client = createClient(provider)
+    const runtime = new OpenAICompatibleRuntime({ baseUrl: provider.base_url, apiKey: provider.api_key })
+    const session = runtime.createSession(args.model, args.messages as Array<{ role: 'system' | 'user' | 'assistant' | 'tool'; content: string | unknown[] }>)
     let seq = 0
     let fullText = ''
 
     try {
-      for await (const chunk of chatStream(client, args.model, args.messages)) {
-        fullText += chunk
+      for await (const event of runtime.send({ sessionId: session.id, model: args.model, messages: session.messages })) {
+        if (event.type === 'text-delta') fullText += event.text
+        if (event.type !== 'text-delta') continue
         if (!win.isDestroyed()) {
-          win.webContents.send('ai:chunk', { seq: seq++, text: chunk, done: false })
+          win.webContents.send('ai:chunk', { seq: seq++, text: event.text, done: false })
         }
       }
       if (!win.isDestroyed()) {
