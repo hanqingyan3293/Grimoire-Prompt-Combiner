@@ -31,6 +31,7 @@ import { IPC_CHANNELS } from "../shared/types"
 let mainWindow: BrowserWindow | null = null
 let settingsWindow: BrowserWindow | null = null
 let aiWindow: BrowserWindow | null = null
+const workspacePopouts = new Map<string, BrowserWindow>()
 const hasSingleInstanceLock = app.requestSingleInstanceLock()
 
 if (!hasSingleInstanceLock) {
@@ -169,6 +170,59 @@ function createAIWindow(): void {
   aiWindow.on('focus', () => {
     aiWindow?.webContents.send('window:focused')
   })
+}
+
+const WORKSPACE_POPOUT_TYPES = new Set([
+  'tag-sidebar', 'prompt-workbench', 'utility-sidebar', 'presets', 'history', 'images',
+  'ai-assistant', 'ai-chat', 'ai-vision', 'settings', 'tasks', 'wd14', 'comfyui', 'canvas', 'prompt-assets',
+])
+
+function createWorkspacePopout(popoutId: string, panelType: string, title: string, parent?: BrowserWindow | null): boolean {
+  if (!WORKSPACE_POPOUT_TYPES.has(panelType)) throw new Error('不支持的 Workspace 面板类型')
+  const existing = workspacePopouts.get(popoutId)
+  if (existing && !existing.isDestroyed()) {
+    if (existing.isMinimized()) existing.restore()
+    existing.show()
+    existing.focus()
+    return true
+  }
+  const popout = new BrowserWindow({
+    width: 1100,
+    height: 760,
+    minWidth: 560,
+    minHeight: 360,
+    title: title || 'Grimoire Workspace',
+    parent: parent && !parent.isDestroyed() ? parent : undefined,
+    autoHideMenuBar: true,
+    webPreferences: {
+      preload: getPreloadPath(),
+      contextIsolation: true,
+      nodeIntegration: false,
+      sandbox: true,
+    },
+  })
+  workspacePopouts.set(popoutId, popout)
+  configureWindowSecurity(popout)
+  const hash = 'workspace-popout?popoutId=' + encodeURIComponent(popoutId) + '&panelType=' + encodeURIComponent(panelType) + '&title=' + encodeURIComponent(title || panelType)
+  popout.loadURL(getRendererURL(hash))
+  popout.on('closed', () => workspacePopouts.delete(popoutId))
+  return true
+}
+
+function closeWorkspacePopout(popoutId: string): boolean {
+  const popout = workspacePopouts.get(popoutId)
+  if (!popout || popout.isDestroyed()) return false
+  popout.close()
+  return true
+}
+
+function focusWorkspacePopout(popoutId: string): boolean {
+  const popout = workspacePopouts.get(popoutId)
+  if (!popout || popout.isDestroyed()) return false
+  if (popout.isMinimized()) popout.restore()
+  popout.show()
+  popout.focus()
+  return true
 }
 
 function createWindow(): void {
@@ -324,6 +378,17 @@ async function registerAllIPC(): Promise<void> {
   // 窗口管理
   ipcMain.handle("window:openSettings", async () => { createSettingsWindow() })
   ipcMain.handle("window:openAI", async () => { createAIWindow() })
+  ipcMain.handle(IPC_CHANNELS.WORKSPACE_OPEN_POPOUT, async (event, input: unknown) => {
+    if (!input || typeof input !== 'object') throw new Error('Workspace 弹出窗口参数无效')
+    const value = input as Record<string, unknown>
+    const popoutId = typeof value.popoutId === 'string' ? value.popoutId.trim() : ''
+    const panelType = typeof value.panelType === 'string' ? value.panelType.trim() : ''
+    const title = typeof value.title === 'string' ? value.title.trim() : panelType
+    if (!popoutId || !panelType) throw new Error('Workspace 弹出窗口参数缺失')
+    return createWorkspacePopout(popoutId, panelType, title, BrowserWindow.fromWebContents(event.sender))
+  })
+  ipcMain.handle(IPC_CHANNELS.WORKSPACE_CLOSE_POPOUT, async (_event, popoutId: unknown) => closeWorkspacePopout(String(popoutId || '')))
+  ipcMain.handle(IPC_CHANNELS.WORKSPACE_FOCUS_POPOUT, async (_event, popoutId: unknown) => focusWorkspacePopout(String(popoutId || '')))
 
 
   ipcMain.handle(IPC_CHANNELS.ERROR_GET_ALL, async () => getErrorLogs(50))

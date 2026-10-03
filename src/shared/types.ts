@@ -314,6 +314,11 @@ export const IPC_CHANNELS = {
   WD14_HISTORY_DELETE: "wd14:history:delete",
   WD14_HISTORY_CLEAR: "wd14:history:clear",
 
+  // Workspace popout windows
+  WORKSPACE_OPEN_POPOUT: "workspace:openPopout",
+  WORKSPACE_CLOSE_POPOUT: "workspace:closePopout",
+  WORKSPACE_FOCUS_POPOUT: "workspace:focusPopout",
+
   // ComfyUI
   COMFY_STATUS: "comfy:status",
   COMFY_MODELS: "comfy:models",

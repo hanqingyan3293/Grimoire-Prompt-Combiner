@@ -184,6 +184,7 @@ export function FixedWorkspace() {
           onMaximize={() => setMaximizedPanel(workspace.id, maximizedPanelId === node.id ? null : node.id)}
           onFloat={() => setFloatingPanel(workspace.id, node.id, !(floatingPanels[workspace.id] || []).includes(node.id))}
           onFloatingDragStart={(event) => startFloatingDrag(node.id, event)}
+          onPopout={() => void window.api.workspace.openPopout({ popoutId: workspace.id + ':' + node.id, panelType: activeType, title: definition.title })}
           floating={(floatingPanels[workspace.id] || []).includes(node.id)}
           onClose={() => closePanel(workspace.id, node.id)}
           maximized={maximizedPanelId === node.id}

@@ -10,6 +10,8 @@ import { Toast } from './components/ui/Toast'
 import { ErrorBoundary } from './components/ui/ErrorBoundary'
 import { FixedWorkspace } from './components/workspace/FixedWorkspace'
 import { WorkspaceBar } from './components/workspace/WorkspaceBar'
+import { WorkspacePopoutWindow } from './components/workspace/WorkspacePopoutWindow'
+import { isPersistablePanelType } from './stores/workspace.store'
 import './styles/themes.css'
 
 const SettingsWindow = lazy(() => import('./components/settings/SettingsWindow').then(module => ({ default: module.SettingsWindow })))
@@ -51,6 +53,11 @@ function AppInner() {
     return () => { if (cleanup) cleanup() }
   }, [loadSettings])
 
+  const popoutParams = windowType.startsWith('workspace-popout?') ? new URLSearchParams(windowType.slice('workspace-popout?'.length)) : null
+  const popoutId = popoutParams?.get('popoutId') || ''
+  const popoutType = popoutParams?.get('panelType') || ''
+  const popoutTitle = popoutParams?.get('title') || popoutType
+
   // 跨窗口数据同步：监听主进程广播的 data:refresh
   useEffect(() => {
     let cleanup: (() => void) | null = null
@@ -79,6 +86,10 @@ function AppInner() {
         <Suspense fallback={windowFallback}><AIWindow onClose={() => window.close()} /></Suspense>
       </div>
     )
+  }
+
+  if (popoutParams && popoutId && isPersistablePanelType(popoutType)) {
+    return <WorkspacePopoutWindow popoutId={popoutId} panelType={popoutType} title={popoutTitle} />
   }
 
   return (

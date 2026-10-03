@@ -26,7 +26,7 @@ const IPC_CHANNELS = {
   WD14_STATUS: 'wd14:status', WD14_MODELS: 'wd14:models', WD14_SWITCH_MODEL: 'wd14:switchModel', WD14_CREATE_TASK: 'wd14:createTask', WD14_DIAGNOSTICS: 'wd14:diagnostics', WD14_SELECT_MODEL_DIRECTORY: 'wd14:selectModelDirectory', WD14_SELECT_PYTHON_PATH: 'wd14:selectPythonPath', WD14_HISTORY_LIST: 'wd14:history:list', WD14_HISTORY_GET: 'wd14:history:get', WD14_HISTORY_DELETE: 'wd14:history:delete', WD14_HISTORY_CLEAR: 'wd14:history:clear',
   COMFY_STATUS: 'comfy:status', COMFY_MODELS: 'comfy:models', COMFY_WORKFLOWS_LIST: 'comfy:workflows:list', COMFY_WORKFLOW_IMPORT: 'comfy:workflows:import', COMFY_WORKFLOW_DELETE: 'comfy:workflows:delete', COMFY_CREATE_TASK: 'comfy:createTask', COMFY_QUICK_GENERATE: 'comfy:quickGenerate',
   CANVAS_LIST: 'canvas:list', CANVAS_GET: 'canvas:get', CANVAS_CREATE: 'canvas:create', CANVAS_SAVE: 'canvas:save', CANVAS_DELETE: 'canvas:delete', CANVAS_EXPORT_PACKAGE: 'canvas:exportPackage', CANVAS_IMPORT_PACKAGE: 'canvas:importPackage',
-  CANVAS_VENDOR_LIST: 'canvasVendor:list', CANVAS_VENDOR_GET: 'canvasVendor:get', CANVAS_VENDOR_CREATE: 'canvasVendor:create', CANVAS_VENDOR_SAVE: 'canvasVendor:save', CANVAS_VENDOR_DELETE: 'canvasVendor:delete',
+  CANVAS_VENDOR_LIST: 'canvasVendor:list', CANVAS_VENDOR_GET: 'canvasVendor:get', CANVAS_VENDOR_CREATE: 'canvasVendor:create', CANVAS_VENDOR_SAVE: 'canvasVendor:save', CANVAS_VENDOR_DELETE: 'canvasVendor:delete', WORKSPACE_OPEN_POPOUT: 'workspace:openPopout', WORKSPACE_CLOSE_POPOUT: 'workspace:closePopout', WORKSPACE_FOCUS_POPOUT: 'workspace:focusPopout',
 } as const
 
 const api = {
@@ -241,6 +241,11 @@ const api = {
       delete: (id: string) => ipcRenderer.invoke(IPC_CHANNELS.WD14_HISTORY_DELETE, id),
       clear: () => ipcRenderer.invoke(IPC_CHANNELS.WD14_HISTORY_CLEAR),
     },
+  },
+  workspace: {
+    openPopout: (input: { popoutId: string; panelType: string; title: string }) => ipcRenderer.invoke(IPC_CHANNELS.WORKSPACE_OPEN_POPOUT, input),
+    closePopout: (popoutId: string) => ipcRenderer.invoke(IPC_CHANNELS.WORKSPACE_CLOSE_POPOUT, popoutId),
+    focusPopout: (popoutId: string) => ipcRenderer.invoke(IPC_CHANNELS.WORKSPACE_FOCUS_POPOUT, popoutId),
   },
   comfy: {
     status: () => ipcRenderer.invoke(IPC_CHANNELS.COMFY_STATUS),

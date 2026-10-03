@@ -40,6 +40,7 @@ interface PanelShellProps {
   onSplit?: (direction: "horizontal" | "vertical") => void
   onMaximize?: () => void
   onFloat?: () => void
+  onPopout?: () => void
   onFloatingDragStart?: (event: React.PointerEvent<HTMLDivElement>) => void
   onClose?: () => void
   maximized?: boolean
@@ -72,6 +73,7 @@ export function PanelShell({
   onSplit,
   onMaximize,
   onFloat,
+  onPopout,
   onFloatingDragStart,
   onClose,
   maximized = false,
@@ -336,6 +338,14 @@ export function PanelShell({
             title={floating ? "嵌回面板" : "浮动面板"}
           >
             {floating ? "↙" : "↗"}
+          </button>
+          <button
+            onClick={onPopout}
+            className="shrink-0 rounded border border-transparent bg-[var(--color-bg-primary)]/60 text-[12px] text-[var(--color-text-secondary)] hover:border-[var(--color-accent)]/40 hover:text-[var(--color-accent-text)] hover:bg-[var(--color-accent)]/10"
+            style={{ width: "var(--panel-control-size)", height: "var(--panel-control-size)" }}
+            title="弹出到独立窗口"
+          >
+            ↗□
           </button>
           <button
             onClick={onClose}
