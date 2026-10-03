@@ -20,6 +20,7 @@ export function FixedWorkspace() {
   const layouts = useWorkspaceStore(s => s.layouts)
   const maximizedPanels = useWorkspaceStore(s => s.maximizedPanels)
   const floatingPanels = useWorkspaceStore(s => s.floatingPanels)
+  const floatingPositions = useWorkspaceStore(s => s.floatingPositions)
   const setPanelType = useWorkspaceStore(s => s.setPanelType)
   const addTab = useWorkspaceStore(s => s.addTab)
   const setActiveTab = useWorkspaceStore(s => s.setActiveTab)
@@ -31,9 +32,10 @@ export function FixedWorkspace() {
   const setSplitRatio = useWorkspaceStore(s => s.setSplitRatio)
   const setMaximizedPanel = useWorkspaceStore(s => s.setMaximizedPanel)
   const setFloatingPanel = useWorkspaceStore(s => s.setFloatingPanel)
+  const setFloatingPanelPosition = useWorkspaceStore(s => s.setFloatingPanelPosition)
+  const focusFloatingPanel = useWorkspaceStore(s => s.focusFloatingPanel)
   const containerRef = useRef<HTMLDivElement>(null)
   const [mergePreview, setMergePreview] = useState<MergePreview>(null)
-  const [floatingPositions, setFloatingPositions] = useState<Record<string, { x: number; y: number }>>({})
   const workspace = useMemo(
     () => workspaces.find(w => w.id === activeWorkspaceId) || workspaces[0],
     [activeWorkspaceId, workspaces]
@@ -122,21 +124,19 @@ export function FixedWorkspace() {
     event.stopPropagation()
     const containerRect = container.getBoundingClientRect()
     const panelRect = panel.getBoundingClientRect()
-    const current = floatingPositions[panelId] || { x: panelRect.left - containerRect.left, y: panelRect.top - containerRect.top }
+    const current = floatingPositions[workspace.id]?.[panelId] || { x: panelRect.left - containerRect.left, y: panelRect.top - containerRect.top, zIndex: 1 }
     const startX = event.clientX
     const startY = event.clientY
     const startLeft = current.x
     const startTop = current.y
+    focusFloatingPanel(workspace.id, panelId)
     const update = (moveEvent: PointerEvent) => {
       const maxX = Math.max(0, containerRect.width - panelRect.width)
       const maxY = Math.max(0, containerRect.height - panelRect.height)
-      setFloatingPositions(previous => ({
-        ...previous,
-        [panelId]: {
-          x: Math.min(maxX, Math.max(0, startLeft + moveEvent.clientX - startX)),
-          y: Math.min(maxY, Math.max(0, startTop + moveEvent.clientY - startY)),
-        },
-      }))
+      setFloatingPanelPosition(workspace.id, panelId, {
+        x: Math.min(maxX, Math.max(0, startLeft + moveEvent.clientX - startX)),
+        y: Math.min(maxY, Math.max(0, startTop + moveEvent.clientY - startY)),
+      })
     }
     const cleanup = () => {
       document.body.style.userSelect = ""
@@ -232,8 +232,8 @@ export function FixedWorkspace() {
       {workspace && (floatingPanels[workspace.id] || []).map(panelId => {
         const panel = layout ? findPanelNode(layout, panelId) : null
         if (!panel) return null
-        const position = floatingPositions[panelId]
-        return <div key={panelId} className="absolute z-[80] h-[min(680px,calc(100%-40px))] w-[min(520px,calc(100%-40px))] shadow-2xl" style={position ? { left: position.x, top: position.y } : { right: 20, top: 20 }}>
+        const position = floatingPositions[workspace.id]?.[panelId]
+        return <div key={panelId} className="absolute z-[80] h-[min(680px,calc(100%-40px))] w-[min(520px,calc(100%-40px))] shadow-2xl" style={position ? { left: position.x, top: position.y, zIndex: position.zIndex } : { right: 20, top: 20, zIndex: 80 }} onPointerDown={() => focusFloatingPanel(workspace.id, panelId)}>
           {renderNode(panel, true)}
         </div>
       })}

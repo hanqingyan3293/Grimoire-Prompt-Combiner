@@ -46,6 +46,7 @@ export type WorkspaceLayoutNode =
 type WorkspaceLayouts = Record<string, WorkspaceLayoutNode>
 type MaximizedPanels = Record<string, string | null>
 type FloatingPanels = Record<string, string[]>
+type FloatingPositions = Record<string, Record<string, { x: number; y: number; zIndex: number }>>
 type VersionedLayoutsStorage = { version: number; layouts: WorkspaceLayouts }
 type VersionedWorkspacesStorage = { version: number; workspaces: WorkspaceDefinition[] }
 type VersionedLayoutPresetsStorage = { version: number; presets: WorkspaceLayoutPreset[] }
@@ -117,6 +118,7 @@ interface WorkspaceState {
   layouts: WorkspaceLayouts
   maximizedPanels: MaximizedPanels
   floatingPanels: FloatingPanels
+  floatingPositions: FloatingPositions
   layoutPresets: WorkspaceLayoutPreset[]
   setActiveWorkspace: (id: string) => void
   createWorkspace: () => void
@@ -132,6 +134,8 @@ interface WorkspaceState {
   setSplitRatio: (workspaceId: string, splitId: string, ratio: number) => void
   setMaximizedPanel: (workspaceId: string, panelId: string | null) => void
   setFloatingPanel: (workspaceId: string, panelId: string, floating: boolean) => void
+  setFloatingPanelPosition: (workspaceId: string, panelId: string, position: { x: number; y: number }) => void
+  focusFloatingPanel: (workspaceId: string, panelId: string) => void
   resetWorkspace: () => void
   resetAllWorkspaces: () => void
   copyWorkspaceLayout: (sourceWorkspaceId: string, targetWorkspaceId: string) => void
@@ -150,6 +154,7 @@ const WORKSPACES_STORAGE_KEY = "grimoire.workspaces"
 const LAYOUTS_STORAGE_KEY = "grimoire.workspaceLayouts"
 const MAXIMIZED_STORAGE_KEY = "grimoire.workspaceMaximizedPanels"
 const FLOATING_STORAGE_KEY = "grimoire.workspaceFloatingPanels"
+const FLOATING_POSITIONS_STORAGE_KEY = "grimoire.workspaceFloatingPositions"
 const LAYOUT_PRESETS_STORAGE_KEY = "grimoire.workspaceLayoutPresets"
 const WORKSPACES_STORAGE_VERSION = 1
 const LAYOUTS_STORAGE_VERSION = 2
@@ -371,6 +376,20 @@ function getInitialFloatingPanels(): FloatingPanels {
 function saveFloatingPanels(floatingPanels: FloatingPanels) {
   if (typeof window === "undefined") return
   window.localStorage.setItem(FLOATING_STORAGE_KEY, JSON.stringify(floatingPanels))
+}
+
+function getInitialFloatingPositions(): FloatingPositions {
+  if (typeof window === "undefined") return {}
+  try {
+    const raw = window.localStorage.getItem(FLOATING_POSITIONS_STORAGE_KEY)
+    const parsed = raw ? JSON.parse(raw) as FloatingPositions : {}
+    return parsed && typeof parsed === "object" ? parsed : {}
+  } catch { return {} }
+}
+
+function saveFloatingPositions(positions: FloatingPositions) {
+  if (typeof window === "undefined") return
+  window.localStorage.setItem(FLOATING_POSITIONS_STORAGE_KEY, JSON.stringify(positions))
 }
 
 function getInitialLayoutPresets(): WorkspaceLayoutPreset[] {
@@ -601,6 +620,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   layouts: getInitialLayouts(INITIAL_WORKSPACES),
   maximizedPanels: getInitialMaximizedPanels(),
   floatingPanels: getInitialFloatingPanels(),
+  floatingPositions: getInitialFloatingPositions(),
   layoutPresets: getInitialLayoutPresets(),
   setActiveWorkspace: (id) => {
     if (!get().workspaces.some(w => w.id === id)) return
@@ -765,6 +785,27 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
     const next = { ...get().floatingPanels, [workspaceId]: nextIds }
     saveFloatingPanels(next)
     set({ floatingPanels: next })
+  },
+  setFloatingPanelPosition: (workspaceId, panelId, position) => {
+    const current = get().floatingPositions[workspaceId] || {}
+    const currentMax = Math.max(0, ...Object.values(current).map(item => item.zIndex || 0))
+    const next = {
+      ...get().floatingPositions,
+      [workspaceId]: {
+        ...current,
+        [panelId]: { x: position.x, y: position.y, zIndex: currentMax + 1 },
+      },
+    }
+    saveFloatingPositions(next)
+    set({ floatingPositions: next })
+  },
+  focusFloatingPanel: (workspaceId, panelId) => {
+    const current = get().floatingPositions[workspaceId] || {}
+    const currentMax = Math.max(0, ...Object.values(current).map(item => item.zIndex || 0))
+    const existing = current[panelId] || { x: 20, y: 20, zIndex: 0 }
+    const next = { ...get().floatingPositions, [workspaceId]: { ...current, [panelId]: { ...existing, zIndex: currentMax + 1 } } }
+    saveFloatingPositions(next)
+    set({ floatingPositions: next })
   },
   resetWorkspace: () => {
     const { activeWorkspaceId, layouts, maximizedPanels } = get()

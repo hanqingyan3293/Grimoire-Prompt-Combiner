@@ -3,6 +3,23 @@ Set-Location -LiteralPath $PSScriptRoot
 
 Write-Host '[Grimoire] Project:' $PSScriptRoot
 
+$stale = @()
+try {
+  $stale += Get-Process electron -ErrorAction SilentlyContinue | Where-Object {
+    $_.Path -and $_.Path.StartsWith($PSScriptRoot, [System.StringComparison]::OrdinalIgnoreCase)
+  }
+} catch {}
+$portOwners = @()
+try { $portOwners = Get-NetTCPConnection -LocalPort 5173 -State Listen -ErrorAction SilentlyContinue } catch {}
+if ($stale.Count -gt 0 -or $portOwners.Count -gt 0) {
+  Write-Host '[Grimoire] 检测到已有开发实例或 5173 端口占用。' -ForegroundColor Yellow
+  if ($stale.Count -gt 0) { Write-Host ('[Grimoire] Electron PID: ' + (($stale | Select-Object -ExpandProperty Id) -join ', ')) -ForegroundColor Yellow }
+  if ($portOwners.Count -gt 0) { Write-Host ('[Grimoire] 5173 端口 PID: ' + (($portOwners | Select-Object -ExpandProperty OwningProcess -Unique) -join ', ')) -ForegroundColor Yellow }
+  Write-Host '[Grimoire] 请先关闭旧的魔导书窗口/进程，再重新运行此脚本。脚本不会自动结束进程。' -ForegroundColor Red
+  Read-Host 'Press Enter to close'
+  exit 2
+}
+
 if (-not (Get-Command node -ErrorAction SilentlyContinue)) {
   Write-Host '[Grimoire] Node.js was not found in PATH.' -ForegroundColor Red
   Read-Host 'Press Enter to close'

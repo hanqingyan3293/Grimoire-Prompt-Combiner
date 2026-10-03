@@ -2,6 +2,13 @@
 setlocal
 cd /d "%~dp0"
 
+echo [Grimoire] Checking for an existing development instance...
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$port = Get-NetTCPConnection -LocalPort 5173 -State Listen -ErrorAction SilentlyContinue; if ($port) { Write-Host '[Grimoire] Port 5173 is already in use. Close the old Grimoire instance first.' -ForegroundColor Red; exit 2 }"
+if errorlevel 2 (
+  pause
+  exit /b 2
+)
+
 where node >nul 2>nul
 if errorlevel 1 (
   echo [Grimoire] Node.js was not found in PATH.

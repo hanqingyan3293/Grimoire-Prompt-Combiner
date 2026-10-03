@@ -15,6 +15,9 @@ import { registerBundledCanvasPlugins } from './canvas-vendor-plugins'
 if (!window.api && window.parent !== window && window.parent.api) {
   Object.defineProperty(window, 'api', { value: window.parent.api, configurable: false, writable: false })
 }
+if (!window.api?.canvas?.vendor) {
+  window.parent?.postMessage({ type: 'grimoire:canvas-error', message: '无限画布 API 桥接未就绪' }, '*')
+}
 window.dispatchEvent(new CustomEvent('grimoire:canvas-mounted'))
 
 registerBuiltinNodes()
@@ -43,3 +46,5 @@ createRoot(document.getElementById('root')!).render(
     </AppProviders>
   </React.StrictMode>,
 )
+
+window.parent?.postMessage({ type: 'grimoire:canvas-ready' }, '*')
