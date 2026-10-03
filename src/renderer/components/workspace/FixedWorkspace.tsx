@@ -2,7 +2,7 @@ import React, { useMemo, useRef, useState } from "react"
 import { PanelShell, type CornerMergeSide } from "./PanelShell"
 import { ENABLED_PANEL_OPTIONS, PANEL_DEFINITIONS, PANEL_OPTION_GROUPS, renderPanel } from "./PanelRegistry"
 import { findPanelNode, useWorkspaceStore } from "../../stores/workspace.store"
-import type { MergeSide, WorkspaceLayoutNode, WorkspacePanelRect } from "../../stores/workspace.store"
+import { normalizePanelTabs, type MergeSide, type WorkspaceLayoutNode, type WorkspacePanelRect } from "../../stores/workspace.store"
 
 type MergePreview = {
   panelId: string
@@ -19,12 +19,17 @@ export function FixedWorkspace() {
   const workspaces = useWorkspaceStore(s => s.workspaces)
   const layouts = useWorkspaceStore(s => s.layouts)
   const maximizedPanels = useWorkspaceStore(s => s.maximizedPanels)
+  const floatingPanels = useWorkspaceStore(s => s.floatingPanels)
   const setPanelType = useWorkspaceStore(s => s.setPanelType)
+  const addTab = useWorkspaceStore(s => s.addTab)
+  const setActiveTab = useWorkspaceStore(s => s.setActiveTab)
+  const closeTab = useWorkspaceStore(s => s.closeTab)
   const splitPanel = useWorkspaceStore(s => s.splitPanel)
   const mergePanelByRects = useWorkspaceStore(s => s.mergePanelByRects)
   const closePanel = useWorkspaceStore(s => s.closePanel)
   const setSplitRatio = useWorkspaceStore(s => s.setSplitRatio)
   const setMaximizedPanel = useWorkspaceStore(s => s.setMaximizedPanel)
+  const setFloatingPanel = useWorkspaceStore(s => s.setFloatingPanel)
   const containerRef = useRef<HTMLDivElement>(null)
   const [mergePreview, setMergePreview] = useState<MergePreview>(null)
   const workspace = useMemo(
@@ -107,31 +112,42 @@ export function FixedWorkspace() {
     return mergePanelByRects(workspace.id, panelId, targetPanelId, side as MergeSide, rects)
   }
 
-  const renderNode = (node: WorkspaceLayoutNode): React.ReactNode => {
+  const renderNode = (node: WorkspaceLayoutNode, renderFloating = false): React.ReactNode => {
     if (node.kind === "panel") {
-      const definition = PANEL_DEFINITIONS[node.type]
+      if (!renderFloating && (floatingPanels[workspace.id] || []).includes(node.id)) return <div className="h-full w-full" aria-hidden="true" />
+      const tabs = normalizePanelTabs(node)
+      const activeTabId = node.activeTabId || tabs[0].id
+      const activeType = tabs.find(tab => tab.id === activeTabId)?.type || node.type
+      const definition = PANEL_DEFINITIONS[activeType]
       return (
         <PanelShell
           id={node.id}
-          type={node.type}
+          type={activeType}
           title={definition.title}
           style={{ width: "100%", height: "100%" }}
           showHeader
           panelOptions={ENABLED_PANEL_OPTIONS}
           panelOptionGroups={PANEL_OPTION_GROUPS}
           onTypeChange={(type) => setPanelType(workspace.id, node.id, type)}
+          onAddTab={(type) => addTab(workspace.id, node.id, type)}
+          tabs={tabs}
+          activeTabId={activeTabId}
+          onTabChange={(tabId) => setActiveTab(workspace.id, node.id, tabId)}
+          onTabClose={(tabId) => closeTab(workspace.id, node.id, tabId)}
           onAddPanel={(type, direction, placement, ratio) => splitPanel(workspace.id, node.id, direction, type, placement, ratio)}
           onCornerMergePreview={updateMergePreview}
           onCornerMergeDrop={mergePanelFromDrag}
           onSplit={(direction) => splitPanel(workspace.id, node.id, direction)}
           onMaximize={() => setMaximizedPanel(workspace.id, maximizedPanelId === node.id ? null : node.id)}
+          onFloat={() => setFloatingPanel(workspace.id, node.id, !(floatingPanels[workspace.id] || []).includes(node.id))}
+          floating={(floatingPanels[workspace.id] || []).includes(node.id)}
           onClose={() => closePanel(workspace.id, node.id)}
           maximized={maximizedPanelId === node.id}
           closeDisabled={panelCount <= 1}
           mergeHighlighted={mergePreview?.panelId === node.id}
           mergePreviewRect={mergePreview?.panelId === node.id ? mergePreview.rect : null}
         >
-          {renderPanel(node.type)}
+          {renderPanel(activeType)}
         </PanelShell>
       )
     }
@@ -167,8 +183,15 @@ export function FixedWorkspace() {
   }
 
   return (
-    <div ref={containerRef} className="flex min-h-0 min-w-0 flex-1 overflow-hidden p-[3px]">
+    <div ref={containerRef} className="relative flex min-h-0 min-w-0 flex-1 overflow-hidden p-[3px]">
       {layout && renderNode(maximizedPanel || layout)}
+      {workspace && (floatingPanels[workspace.id] || []).map(panelId => {
+        const panel = layout ? findPanelNode(layout, panelId) : null
+        if (!panel) return null
+        return <div key={panelId} className="absolute right-5 top-5 z-[80] h-[min(680px,calc(100%-40px))] w-[min(520px,calc(100%-40px))] shadow-2xl">
+          {renderNode(panel, true)}
+        </div>
+      })}
     </div>
   )
 }

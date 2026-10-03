@@ -12,6 +12,11 @@ export type SplitDirection = "horizontal" | "vertical"
 export type SplitPlacement = "before" | "after"
 export type MergeSide = "left" | "right" | "up" | "down"
 
+export interface WorkspaceTab {
+  id: string
+  type: PanelType
+}
+
 export interface WorkspacePanelRect {
   id: string
   type: PanelType
@@ -26,6 +31,8 @@ export type WorkspaceLayoutNode =
       kind: "panel"
       id: string
       type: PanelType
+      tabs?: WorkspaceTab[]
+      activeTabId?: string
     }
   | {
       kind: "split"
@@ -38,6 +45,7 @@ export type WorkspaceLayoutNode =
 
 type WorkspaceLayouts = Record<string, WorkspaceLayoutNode>
 type MaximizedPanels = Record<string, string | null>
+type FloatingPanels = Record<string, string[]>
 type VersionedLayoutsStorage = { version: number; layouts: WorkspaceLayouts }
 type VersionedWorkspacesStorage = { version: number; workspaces: WorkspaceDefinition[] }
 type VersionedLayoutPresetsStorage = { version: number; presets: WorkspaceLayoutPreset[] }
@@ -108,16 +116,21 @@ interface WorkspaceState {
   workspaces: WorkspaceDefinition[]
   layouts: WorkspaceLayouts
   maximizedPanels: MaximizedPanels
+  floatingPanels: FloatingPanels
   layoutPresets: WorkspaceLayoutPreset[]
   setActiveWorkspace: (id: string) => void
   createWorkspace: () => void
   renameWorkspace: (id: string, title: string) => void
   setPanelType: (workspaceId: string, panelId: string, type: PanelType) => void
+  addTab: (workspaceId: string, panelId: string, type: PanelType) => string | null
+  setActiveTab: (workspaceId: string, panelId: string, tabId: string) => void
+  closeTab: (workspaceId: string, panelId: string, tabId: string) => void
   splitPanel: (workspaceId: string, panelId: string, direction: SplitDirection, type?: PanelType, placement?: SplitPlacement, ratio?: number) => void
   mergePanelByRects: (workspaceId: string, panelId: string, targetPanelId: string, side: MergeSide, rects: WorkspacePanelRect[]) => boolean
   closePanel: (workspaceId: string, panelId: string) => void
   setSplitRatio: (workspaceId: string, splitId: string, ratio: number) => void
   setMaximizedPanel: (workspaceId: string, panelId: string | null) => void
+  setFloatingPanel: (workspaceId: string, panelId: string, floating: boolean) => void
   resetWorkspace: () => void
   resetAllWorkspaces: () => void
   copyWorkspaceLayout: (sourceWorkspaceId: string, targetWorkspaceId: string) => void
@@ -135,6 +148,7 @@ const STORAGE_KEY = "grimoire.activeWorkspace"
 const WORKSPACES_STORAGE_KEY = "grimoire.workspaces"
 const LAYOUTS_STORAGE_KEY = "grimoire.workspaceLayouts"
 const MAXIMIZED_STORAGE_KEY = "grimoire.workspaceMaximizedPanels"
+const FLOATING_STORAGE_KEY = "grimoire.workspaceFloatingPanels"
 const LAYOUT_PRESETS_STORAGE_KEY = "grimoire.workspaceLayoutPresets"
 const WORKSPACES_STORAGE_VERSION = 1
 const LAYOUTS_STORAGE_VERSION = 2
@@ -344,6 +358,20 @@ function saveMaximizedPanels(maximizedPanels: MaximizedPanels) {
   window.localStorage.setItem(MAXIMIZED_STORAGE_KEY, JSON.stringify(maximizedPanels))
 }
 
+function getInitialFloatingPanels(): FloatingPanels {
+  if (typeof window === "undefined") return {}
+  try {
+    const raw = window.localStorage.getItem(FLOATING_STORAGE_KEY)
+    const parsed = raw ? JSON.parse(raw) as FloatingPanels : {}
+    return parsed && typeof parsed === "object" ? parsed : {}
+  } catch { return {} }
+}
+
+function saveFloatingPanels(floatingPanels: FloatingPanels) {
+  if (typeof window === "undefined") return
+  window.localStorage.setItem(FLOATING_STORAGE_KEY, JSON.stringify(floatingPanels))
+}
+
 function getInitialLayoutPresets(): WorkspaceLayoutPreset[] {
   if (typeof window === "undefined") return []
   try {
@@ -513,13 +541,41 @@ function uniqueSorted(values: number[]) {
 }
 
 function normalizeLayoutNode(node: WorkspaceLayoutNode): WorkspaceLayoutNode {
-  if (node.kind === "panel") return node
+  if (node.kind === "panel") {
+    const tabs = normalizePanelTabs(node)
+    return {
+      ...node,
+      tabs,
+      activeTabId: node.activeTabId && tabs.some(tab => tab.id === node.activeTabId) ? node.activeTabId : tabs[0]?.id,
+      type: tabs.find(tab => tab.id === (node.activeTabId || tabs[0]?.id))?.type || node.type,
+    }
+  }
   return {
     ...node,
     ratio: clampRatio(node.ratio),
     first: normalizeLayoutNode(node.first),
     second: normalizeLayoutNode(node.second),
   }
+}
+
+export function normalizePanelTabs(node: Extract<WorkspaceLayoutNode, { kind: "panel" }>): WorkspaceTab[] {
+  const tabs = Array.isArray(node.tabs) && node.tabs.length ? node.tabs : [{ id: node.id, type: node.type }]
+  return tabs.map(tab => ({
+    id: typeof tab.id === "string" && tab.id ? tab.id : node.id,
+    type: isPersistablePanelType(tab.type) ? tab.type : node.type,
+  }))
+}
+
+function removeTabFromLayout(node: WorkspaceLayoutNode, panelId: string, tabId: string): WorkspaceLayoutNode {
+  if (node.kind === "panel") {
+    if (node.id !== panelId) return node
+    const tabs = normalizePanelTabs(node)
+    if (tabs.length <= 1) return node
+    const remaining = tabs.filter(tab => tab.id !== tabId)
+    const nextActive = remaining.find(tab => tab.id === node.activeTabId) || remaining[0]
+    return { ...node, tabs: remaining, activeTabId: nextActive.id, type: nextActive.type }
+  }
+  return { ...node, first: removeTabFromLayout(node.first, panelId, tabId), second: removeTabFromLayout(node.second, panelId, tabId) }
 }
 
 export function findPanelNode(
@@ -543,6 +599,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   workspaces: INITIAL_WORKSPACES,
   layouts: getInitialLayouts(INITIAL_WORKSPACES),
   maximizedPanels: getInitialMaximizedPanels(),
+  floatingPanels: getInitialFloatingPanels(),
   layoutPresets: getInitialLayoutPresets(),
   setActiveWorkspace: (id) => {
     if (!get().workspaces.some(w => w.id === id)) return
@@ -579,8 +636,44 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   setPanelType: (workspaceId, panelId, type) => {
     const layout = get().getLayout(workspaceId)
     const nextLayout = normalizeLayoutNode(updateLayoutNode(layout, panelId, node =>
-      node.kind === "panel" ? { ...node, type } : node
+      node.kind === "panel"
+        ? { ...node, type, tabs: normalizePanelTabs(node).map(tab => tab.id === (node.activeTabId || node.id) ? { ...tab, type } : tab) }
+        : node
     ))
+    const next = { ...get().layouts, [workspaceId]: nextLayout }
+    saveLayouts(next)
+    set({ layouts: next })
+  },
+  addTab: (workspaceId, panelId, type) => {
+    const layout = get().getLayout(workspaceId)
+    let tabId: string | null = null
+    const nextLayout = normalizeLayoutNode(updateLayoutNode(layout, panelId, node => {
+      if (node.kind !== "panel") return node
+      tabId = createId("tab_")
+      const tabs = normalizePanelTabs(node)
+      return { ...node, tabs: [...tabs, { id: tabId, type }], activeTabId: tabId, type }
+    }))
+    if (!tabId) return null
+    const next = { ...get().layouts, [workspaceId]: nextLayout }
+    saveLayouts(next)
+    set({ layouts: next })
+    return tabId
+  },
+  setActiveTab: (workspaceId, panelId, tabId) => {
+    const layout = get().getLayout(workspaceId)
+    const nextLayout = normalizeLayoutNode(updateLayoutNode(layout, panelId, node => {
+      if (node.kind !== "panel") return node
+      const tabs = normalizePanelTabs(node)
+      const active = tabs.find(tab => tab.id === tabId)
+      return active ? { ...node, tabs, activeTabId: active.id, type: active.type } : node
+    }))
+    const next = { ...get().layouts, [workspaceId]: nextLayout }
+    saveLayouts(next)
+    set({ layouts: next })
+  },
+  closeTab: (workspaceId, panelId, tabId) => {
+    const layout = get().getLayout(workspaceId)
+    const nextLayout = normalizeLayoutNode(removeTabFromLayout(layout, panelId, tabId))
     const next = { ...get().layouts, [workspaceId]: nextLayout }
     saveLayouts(next)
     set({ layouts: next })
@@ -645,6 +738,13 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
     const next = { ...get().maximizedPanels, [workspaceId]: panelId }
     saveMaximizedPanels(next)
     set({ maximizedPanels: next })
+  },
+  setFloatingPanel: (workspaceId, panelId, floating) => {
+    const current = get().floatingPanels[workspaceId] || []
+    const nextIds = floating ? Array.from(new Set([...current, panelId])) : current.filter(id => id !== panelId)
+    const next = { ...get().floatingPanels, [workspaceId]: nextIds }
+    saveFloatingPanels(next)
+    set({ floatingPanels: next })
   },
   resetWorkspace: () => {
     const { activeWorkspaceId, layouts, maximizedPanels } = get()

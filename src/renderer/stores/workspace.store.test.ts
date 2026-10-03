@@ -72,6 +72,22 @@ describe('workspace panel persistence', () => {
     expect(Object.values(document.editors).some(editor => editor.type === 'prompt-workbench')).toBe(true)
     expect(document.root.kind).toBe('split')
   })
+
+  it('supports adding, activating and closing editor tabs inside a panel', () => {
+    resetWorkspace()
+    const tabId = useWorkspaceStore.getState().addTab('compose', 'main-workbench', 'canvas')
+    expect(tabId).toBeTruthy()
+    let panel = useWorkspaceStore.getState().findPanel('compose', 'main-workbench')!
+    expect(panel.tabs).toHaveLength(2)
+    expect(panel.type).toBe('canvas')
+    useWorkspaceStore.getState().setActiveTab('compose', 'main-workbench', 'main-workbench')
+    panel = useWorkspaceStore.getState().findPanel('compose', 'main-workbench')!
+    expect(panel.type).toBe('prompt-workbench')
+    useWorkspaceStore.getState().closeTab('compose', 'main-workbench', 'main-workbench')
+    panel = useWorkspaceStore.getState().findPanel('compose', 'main-workbench')!
+    expect(panel.tabs).toHaveLength(1)
+    expect(panel.type).toBe('canvas')
+  })
 })
 
 function findPanelByType(node: ReturnType<typeof getDefaultLayout>, type: string): { id: string; type: string } | null {

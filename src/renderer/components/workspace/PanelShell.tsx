@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react"
 import type { PanelDefinition, PanelType } from "./panelTypes"
-import type { SplitPlacement } from "../../stores/workspace.store"
+import type { SplitPlacement, WorkspaceTab } from "../../stores/workspace.store"
 
 type AddPanelDirection = "left" | "right" | "up" | "down"
 type CornerPosition = "top-left" | "top-right" | "bottom-left" | "bottom-right"
@@ -29,12 +29,19 @@ interface PanelShellProps {
   panelOptionGroups?: { title: string; types: PanelType[] }[]
   onTypeChange?: (type: PanelType) => void
   onAddPanel?: (type: PanelType, direction: "horizontal" | "vertical", placement: SplitPlacement, ratio?: number) => void
+  onAddTab?: (type: PanelType) => void
+  tabs?: WorkspaceTab[]
+  activeTabId?: string
+  onTabChange?: (tabId: string) => void
+  onTabClose?: (tabId: string) => void
   onCornerMergePreview?: (panelId: string, side: CornerMergeSide | null) => void
   onCornerMergeDrop?: (panelId: string, side: CornerMergeSide) => boolean
   onSplit?: (direction: "horizontal" | "vertical") => void
   onMaximize?: () => void
+  onFloat?: () => void
   onClose?: () => void
   maximized?: boolean
+  floating?: boolean
   closeDisabled?: boolean
   mergeHighlighted?: boolean
   mergePreviewRect?: MergePreviewRect
@@ -52,12 +59,19 @@ export function PanelShell({
   panelOptionGroups = [],
   onTypeChange,
   onAddPanel,
+  onAddTab,
+  tabs = [],
+  activeTabId,
+  onTabChange,
+  onTabClose,
   onCornerMergePreview,
   onCornerMergeDrop,
   onSplit,
   onMaximize,
+  onFloat,
   onClose,
   maximized = false,
+  floating = false,
   closeDisabled = false,
   mergeHighlighted = false,
   mergePreviewRect = null,
@@ -268,6 +282,14 @@ export function PanelShell({
             )}
           </div>
           <button
+            onClick={() => onAddTab?.(type)}
+            className="shrink-0 rounded border border-transparent bg-[var(--color-bg-primary)]/60 text-[12px] text-[var(--color-text-secondary)] hover:border-[var(--color-accent)]/40 hover:text-[var(--color-accent-text)] hover:bg-[var(--color-accent)]/10"
+            style={{ width: "var(--panel-control-size)", height: "var(--panel-control-size)" }}
+            title="当前面板加入标签组"
+          >
+            页
+          </button>
+          <button
             onClick={() => onSplit?.("horizontal")}
             className="shrink-0 rounded border border-transparent bg-[var(--color-bg-primary)]/60 text-[12px] text-[var(--color-text-secondary)] hover:border-[var(--color-accent)]/40 hover:text-[var(--color-accent-text)] hover:bg-[var(--color-accent)]/10"
             style={{ width: "var(--panel-control-size)", height: "var(--panel-control-size)" }}
@@ -292,6 +314,14 @@ export function PanelShell({
             {maximized ? "▣" : "□"}
           </button>
           <button
+            onClick={onFloat}
+            className="shrink-0 rounded border border-transparent bg-[var(--color-bg-primary)]/60 text-[12px] text-[var(--color-text-secondary)] hover:border-[var(--color-accent)]/40 hover:text-[var(--color-accent-text)] hover:bg-[var(--color-accent)]/10"
+            style={{ width: "var(--panel-control-size)", height: "var(--panel-control-size)" }}
+            title={floating ? "嵌回面板" : "浮动面板"}
+          >
+            {floating ? "↙" : "↗"}
+          </button>
+          <button
             onClick={onClose}
             disabled={closeDisabled}
             className="shrink-0 rounded border border-transparent bg-[var(--color-bg-primary)]/60 text-[12px] text-[var(--color-text-secondary)] hover:border-red-400/40 hover:text-red-400 hover:bg-red-500/10 disabled:cursor-not-allowed disabled:opacity-35 disabled:hover:border-transparent disabled:hover:bg-[var(--color-bg-primary)]/60 disabled:hover:text-[var(--color-text-secondary)]"
@@ -300,6 +330,20 @@ export function PanelShell({
           >
             ×
           </button>
+        </div>
+      )}
+      {tabs.length > 1 && (
+        <div className="flex min-w-0 shrink-0 items-center gap-1 overflow-x-auto border-b border-[var(--color-border)] bg-[var(--color-bg-tertiary)] px-2 py-1">
+          {tabs.map(tab => {
+            const option = panelOptions.find(item => item.type === tab.type)
+            const active = tab.id === activeTabId
+            return (
+              <div key={tab.id} className={"flex min-w-0 shrink-0 items-center rounded-md border text-[11px] " + (active ? "border-[var(--color-accent)] bg-[var(--color-accent)]/15 text-[var(--color-accent-text)]" : "border-transparent text-[var(--color-text-secondary)] hover:border-[var(--color-border)]")}>
+                <button type="button" className="max-w-36 truncate px-2 py-1" onClick={() => onTabChange?.(tab.id)} title={option?.description || option?.title || tab.type}>{option?.title || tab.type}</button>
+                <button type="button" className="px-1.5 py-1 text-[10px] opacity-60 hover:opacity-100" onClick={() => onTabClose?.(tab.id)} aria-label="关闭标签">×</button>
+              </div>
+            )
+          })}
         </div>
       )}
       <div className="ui-panel-content flex-1 min-h-0 min-w-0 overflow-auto p-[3px]">
