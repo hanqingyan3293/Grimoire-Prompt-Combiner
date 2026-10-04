@@ -42,6 +42,7 @@ interface GrimoireAPI {
     }
     suggestions: {
       list: (input?: { assetType?: string; assetKey?: string; status?: string }) => Promise<unknown[]>
+      create: (input: { assetType: string; assetKey: string; values: Array<{ value: string; confidence?: number; namespace?: string }>; source: string }) => Promise<unknown[]>
       accept: (id: string) => Promise<unknown>
       reject: (id: string) => Promise<unknown>
       map: (input: { id: string; tagId: string }) => Promise<unknown>

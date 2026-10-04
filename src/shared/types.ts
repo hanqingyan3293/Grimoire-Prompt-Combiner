@@ -218,6 +218,7 @@ export const IPC_CHANNELS = {
   TAG_RELATIONS_UPDATE: "tags:relations:update",
   TAG_RELATIONS_DELETE: "tags:relations:delete",
   TAG_SUGGESTIONS_LIST: "tags:suggestions:list",
+  TAG_SUGGESTIONS_CREATE: "tags:suggestions:create",
   TAG_SUGGESTIONS_ACCEPT: "tags:suggestions:accept",
   TAG_SUGGESTIONS_REJECT: "tags:suggestions:reject",
   TAG_SUGGESTIONS_MAP: "tags:suggestions:map",

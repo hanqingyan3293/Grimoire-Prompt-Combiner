@@ -61,6 +61,7 @@ export function AIVisionPanel() {
       const text = result.text || ''
       const nextSuggestions = parseVisionSuggestions(text)
       setSuggestions(nextSuggestions)
+      await window.api.tags.suggestions.create({ assetType: 'ai-vision', assetKey: 'vision:' + Date.now(), source: 'ai-vision', values: nextSuggestions.map(item => ({ value: item.en, namespace: 'vision', confidence: 0.5 })) })
       // Save to history
       const tagNames = nextSuggestions.map(s => s.en)
       setHistory(prev => [{ time: new Date().toLocaleTimeString('zh-CN'), image: images[0], tags: tagNames }, ...prev].slice(0, 50))

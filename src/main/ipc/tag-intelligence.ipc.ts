@@ -1,7 +1,7 @@
 import { ipcMain } from 'electron'
 import { IPC_CHANNELS } from '../../shared/types'
 import { getDatabase } from '../database'
-import { assignAssetTag, batchAssignAssetTags, batchRemoveAssetTags, batchResolveTagSuggestions, createTagAlias, createTagRelation, deleteTagAlias, deleteTagRelation, getTagIntelligence, listAssetTagLinks, listTagAliases, listTagRelations, listTagSuggestions, removeAssetTag, resolveTagSuggestion, searchTags, updateTagRelation } from '../services/tag-intelligence.service'
+import { assignAssetTag, batchAssignAssetTags, batchRemoveAssetTags, batchResolveTagSuggestions, createTagAlias, createTagRelation, createTagSuggestions, deleteTagAlias, deleteTagRelation, getTagIntelligence, listAssetTagLinks, listTagAliases, listTagRelations, listTagSuggestions, removeAssetTag, resolveTagSuggestion, searchTags, updateTagRelation } from '../services/tag-intelligence.service'
 
 export function registerTagIntelligenceIPC(): void {
   ipcMain.handle(IPC_CHANNELS.TAGS_SEARCH, async (_event, input: unknown) => {
@@ -17,6 +17,7 @@ export function registerTagIntelligenceIPC(): void {
   ipcMain.handle(IPC_CHANNELS.TAG_RELATIONS_UPDATE, async (_event, input: unknown) => updateTagRelation(getDatabase(), input as Record<string, unknown>))
   ipcMain.handle(IPC_CHANNELS.TAG_RELATIONS_DELETE, async (_event, id: unknown) => deleteTagRelation(getDatabase(), id))
   ipcMain.handle(IPC_CHANNELS.TAG_SUGGESTIONS_LIST, async (_event, input: unknown) => listTagSuggestions(getDatabase(), input && typeof input === 'object' ? input as Record<string, unknown> : {}))
+  ipcMain.handle(IPC_CHANNELS.TAG_SUGGESTIONS_CREATE, async (_event, input: unknown) => createTagSuggestions(getDatabase(), input as { assetType: string; assetKey: string; values: Array<{ value: string; confidence?: number; namespace?: string; metadata?: Record<string, unknown> }>; source: 'wd14' | 'ai-vision' | 'parsed' | 'manual' | 'imported' | 'inferred' }))
   ipcMain.handle(IPC_CHANNELS.TAG_SUGGESTIONS_ACCEPT, async (_event, id: unknown) => resolveTagSuggestion(getDatabase(), { id, action: 'accept' }))
   ipcMain.handle(IPC_CHANNELS.TAG_SUGGESTIONS_REJECT, async (_event, id: unknown) => resolveTagSuggestion(getDatabase(), { id, action: 'reject' }))
   ipcMain.handle(IPC_CHANNELS.TAG_SUGGESTIONS_MAP, async (_event, input: unknown) => resolveTagSuggestion(getDatabase(), { ...(input as Record<string, unknown>), action: 'map' }))

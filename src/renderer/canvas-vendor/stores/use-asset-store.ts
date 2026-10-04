@@ -48,7 +48,19 @@ export const useAssetStore = create<AssetStore>((set, get) => ({
     }
     const images = await imagesPromise
     const imageAssets = (await Promise.all(images.filter(image => image.available).map(mapImage))).filter((asset): asset is ImageAsset => Boolean(asset))
-    set({ assets: [...imageAssets, ...promptItems.map(mapPrompt)] })
+    const tagData = await window.api.tags.getAll().catch(() => ({ tags: [] as Array<{ id: string; en: string; zh: string }> }))
+    const tagMap = new Map(tagData.tags.map(tag => [tag.id, tag.zh || tag.en]))
+    const withTags = async (asset: Asset, assetType: string) => {
+      try {
+        const links = await window.api.tags.assetLinks.list({ assetType, assetKey: asset.id }) as Array<{ tagId: string; status: string }>
+        return { ...asset, tags: links.filter(link => link.status === 'accepted').map(link => tagMap.get(link.tagId) || link.tagId) } as Asset
+      } catch { return asset }
+    }
+    const allAssets = await Promise.all([
+      ...imageAssets.map(asset => withTags(asset, 'image')),
+      ...promptItems.map(mapPrompt).map(asset => withTags(asset, 'prompt')),
+    ])
+    set({ assets: allAssets })
   },
   addAsset: (asset) => {
     const now = new Date().toISOString()
