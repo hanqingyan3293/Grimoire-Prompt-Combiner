@@ -7,6 +7,8 @@ import { PresetsPanel } from "../presets/PresetsPanel"
 import { HistoryPanel } from "../history/HistoryPanel"
 import { ImagesPanel } from "../images/ImagesPanel"
 import { QuickAIPanel, QuickSettingsPanel } from "../layout/QuickUtilityPopover"
+import { AgentSessionsPanel } from "../ai/AgentSessionsPanel"
+import { McpPanel } from "../ai/McpPanel"
 import type { PanelDefinition, PanelType } from "./panelTypes"
 
 const ChatLayout = lazy(() => import('../ai/ChatLayout').then(module => ({ default: module.ChatLayout })))
@@ -47,6 +49,8 @@ export const PANEL_DEFINITIONS: Record<PanelType, PanelDefinition> = {
   "ai-assistant": { type: "ai-assistant", title: "AI 助手", description: "聊天和识图聚合面板", enabled: true },
   "ai-chat": { type: "ai-chat", title: "AI 聊天", description: "AI 对话面板", enabled: true },
   "ai-vision": { type: "ai-vision", title: "AI 识图", description: "图片识别和标签建议", enabled: true },
+  "agent-sessions": { type: "agent-sessions", title: "Agent 会话", description: "Codex、OpenCode、Pi 和模型 Agent 会话", enabled: true },
+  mcp: { type: "mcp", title: "MCP 管理", description: "外部 MCP Server 和工具连接", enabled: true },
   settings: { type: "settings", title: "设置", description: "快捷主题、字体和界面密度设置", enabled: true },
   errors: { type: "errors", title: "错误", description: "错误日志", enabled: false },
   tasks: { type: "tasks", title: "任务队列", description: "后台反推和生成任务", enabled: true },
@@ -60,7 +64,7 @@ export const ENABLED_PANEL_OPTIONS = Object.values(PANEL_DEFINITIONS).filter(pan
 export const PANEL_OPTION_GROUPS: { title: string; types: PanelType[] }[] = [
   { title: "核心", types: ["tag-sidebar", "prompt-workbench", "utility-sidebar"] },
   { title: "素材", types: ["prompt-assets", "presets", "history", "images"] },
-  { title: "AI", types: ["ai-assistant", "ai-chat", "ai-vision"] },
+  { title: "AI", types: ["ai-assistant", "ai-chat", "ai-vision", "agent-sessions", "mcp"] },
   { title: "创作工具", types: ["canvas", "wd14", "comfyui", "tasks"] },
   { title: "设置", types: ["settings"] },
 ]
@@ -85,6 +89,10 @@ export function renderPanel(type: PanelType): React.ReactNode {
       return <LazyPanel><ChatLayout /></LazyPanel>
     case "ai-vision":
       return <LazyPanel><AIVisionPanel /></LazyPanel>
+    case "agent-sessions":
+      return <LazyPanel><AgentSessionsPanel /></LazyPanel>
+    case "mcp":
+      return <LazyPanel><McpPanel /></LazyPanel>
     case "wd14":
       return <LazyPanel><WD14Panel /></LazyPanel>
     case "tasks":

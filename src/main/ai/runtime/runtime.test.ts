@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { createAgentRuntime, hasAgentRuntime, listAgentRuntimes, registerAgentRuntime } from "./registry"
+import { createAgentRuntime, hasAgentRuntime, listAgentRuntimes, registerAgentRuntime, registerBuiltInAgentRuntimes } from "./registry"
 
 describe("agent runtime registry", () => {
   it("registers and creates independent runtime adapters", () => {
@@ -11,5 +11,10 @@ describe("agent runtime registry", () => {
     expect(hasAgentRuntime("codex")).toBe(true)
     expect(listAgentRuntimes()).toContain("codex")
     expect(createAgentRuntime("codex").createSession("test").runtime).toBe("codex")
+  })
+
+  it("registers the four built-in runtime kinds", () => {
+    registerBuiltInAgentRuntimes()
+    expect(listAgentRuntimes()).toEqual(expect.arrayContaining(['openai-compatible', 'codex', 'opencode', 'pi']))
   })
 })

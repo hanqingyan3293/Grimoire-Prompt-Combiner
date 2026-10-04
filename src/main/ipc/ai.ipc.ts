@@ -4,6 +4,7 @@ import { getDatabase } from '../database'
 import { decryptKey } from './providers.ipc'
 import { createClient, vision, generateImage, fetchModels } from '../ai/client'
 import { OpenAICompatibleRuntime } from '../ai/runtime/openai-compatible.runtime'
+import { registerBuiltInAgentRuntimes } from '../ai/runtime/registry'
 
 // 从 DB 读取完整 Provider 配置（含解密后的 API Key）
 function getProvider(providerId: string) {
@@ -35,6 +36,7 @@ function getProvider(providerId: string) {
 }
 
 export function registerAIIPC(): void {
+  registerBuiltInAgentRuntimes()
   // ========== 流式聊天 ==========
   ipcMain.handle('ai:sendMessage', async (event, args: {
     providerId: string

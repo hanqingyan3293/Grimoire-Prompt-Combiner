@@ -13,6 +13,8 @@ export type PanelType =
   | "ai-assistant"
   | "ai-chat"
   | "ai-vision"
+  | "agent-sessions"
+  | "mcp"
   | "settings"
   | "errors"
   | "tasks"
