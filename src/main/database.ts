@@ -8,7 +8,7 @@ import { createLegacyDatabase, type LegacyDatabase } from './services/sqlite.com
 
 // v9 adds prompt asset category tables/indexes. Keep this bumped so existing
 // v8 databases run the additive migration instead of being treated as current.
-const CURRENT_SCHEMA_VERSION = 13
+const CURRENT_SCHEMA_VERSION = 14
 let nativeDb: DatabaseSync | null = null
 let db: LegacyDatabase | null = null
 let dbPath = ''
@@ -183,9 +183,10 @@ CREATE TABLE IF NOT EXISTS wd14_history (
   threshold REAL NOT NULL DEFAULT 0.35,
   status TEXT NOT NULL DEFAULT 'succeeded',
   error_message TEXT,
+  image_snapshot_path TEXT,
+  image_snapshot_mime TEXT,
   created_at TEXT NOT NULL,
-  FOREIGN KEY (task_id) REFERENCES task_jobs(id) ON DELETE CASCADE,
-  FOREIGN KEY (image_id) REFERENCES image_refs(id) ON DELETE CASCADE
+  FOREIGN KEY (task_id) REFERENCES task_jobs(id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS comfy_workflows (
@@ -399,6 +400,41 @@ function configureConnection(connection: DatabaseSync): void {
   connection.exec('PRAGMA busy_timeout=5000;')
 }
 
+function migrateWD14HistoryTable(legacy: LegacyDatabase): void {
+  const columns = legacy.exec('PRAGMA table_info(wd14_history)')[0]?.values || []
+  const names = new Set(columns.map(row => String(row[1])))
+  if (!names.has('image_snapshot_path')) legacy.run('ALTER TABLE wd14_history ADD COLUMN image_snapshot_path TEXT')
+  if (!names.has('image_snapshot_mime')) legacy.run('ALTER TABLE wd14_history ADD COLUMN image_snapshot_mime TEXT')
+
+  const foreignKeys = legacy.exec('PRAGMA foreign_key_list(wd14_history)')[0]?.values || []
+  const imageForeignKey = foreignKeys.some(row => String(row[3]) === 'image_id')
+  if (!imageForeignKey) return
+
+  legacy.exec('PRAGMA foreign_keys=OFF')
+  try {
+    legacy.exec(`CREATE TABLE wd14_history_new (
+      id TEXT PRIMARY KEY,
+      task_id TEXT NOT NULL UNIQUE,
+      image_id INTEGER NOT NULL,
+      image_name TEXT NOT NULL DEFAULT '',
+      tags_json TEXT NOT NULL DEFAULT '{}',
+      model_id TEXT NOT NULL DEFAULT '',
+      threshold REAL NOT NULL DEFAULT 0.35,
+      status TEXT NOT NULL DEFAULT 'succeeded',
+      error_message TEXT,
+      image_snapshot_path TEXT,
+      image_snapshot_mime TEXT,
+      created_at TEXT NOT NULL,
+      FOREIGN KEY (task_id) REFERENCES task_jobs(id) ON DELETE CASCADE
+    )`)
+    legacy.exec('INSERT INTO wd14_history_new (id,task_id,image_id,image_name,tags_json,model_id,threshold,status,error_message,image_snapshot_path,image_snapshot_mime,created_at) SELECT id,task_id,image_id,image_name,tags_json,model_id,threshold,status,error_message,image_snapshot_path,image_snapshot_mime,created_at FROM wd14_history')
+    legacy.exec('DROP TABLE wd14_history')
+    legacy.exec('ALTER TABLE wd14_history_new RENAME TO wd14_history')
+  } finally {
+    legacy.exec('PRAGMA foreign_keys=ON')
+  }
+}
+
 export function initializeDatabaseConnection(connection: DatabaseSync, requireExistingGrimoire = false): LegacyDatabase {
   if (requireExistingGrimoire) assertGrimoireDatabase(connection)
   configureConnection(connection)
@@ -419,6 +455,7 @@ export function initializeDatabaseConnection(connection: DatabaseSync, requireEx
   try { legacy.run("ALTER TABLE image_refs ADD COLUMN available INTEGER NOT NULL DEFAULT 1") } catch {}
   try { legacy.run("ALTER TABLE history ADD COLUMN task_id TEXT") } catch {}
   try { legacy.run("ALTER TABLE canvas_vendor_projects ADD COLUMN revision INTEGER NOT NULL DEFAULT 0") } catch {}
+  migrateWD14HistoryTable(legacy)
 
   legacy.exec(INDEX_SQL)
   legacy.run("CREATE INDEX IF NOT EXISTS idx_history_task ON history(task_id)")

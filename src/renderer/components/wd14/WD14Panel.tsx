@@ -45,6 +45,7 @@ export function WD14Panel() {
   const [loading, setLoading] = useState(true)
   const [messageTone, setMessageTone] = useState<'info' | 'success' | 'danger'>('info')
   const [history, setHistory] = useState<WD14HistoryRecord[]>([])
+  const [historyImages, setHistoryImages] = useState<Record<string, string>>({})
   const [historyQuery, setHistoryQuery] = useState('')
   const [historyLoading, setHistoryLoading] = useState(false)
   const allTags = useTagsStore(state => state.tags)
@@ -80,7 +81,12 @@ export function WD14Panel() {
 
   const loadHistory = useCallback(async () => {
     setHistoryLoading(true)
-    try { setHistory(await window.api.wd14.history.list({ query: historyQuery, limit: 100 })) }
+    try {
+      const items = await window.api.wd14.history.list({ query: historyQuery, limit: 100 })
+      setHistory(items)
+      const imageEntries = await Promise.all(items.map(async item => [item.id, await window.api.wd14.history.readImage(item.id)] as const))
+      setHistoryImages(Object.fromEntries(imageEntries.filter((entry): entry is readonly [string, string] => Boolean(entry[1]))))
+    }
     catch (error) { showMessage(error instanceof Error ? error.message : 'WD14 历史记录读取失败', 'danger') }
     finally { setHistoryLoading(false) }
   }, [historyQuery])
@@ -155,6 +161,18 @@ export function WD14Panel() {
     showMessage('已应用 ' + added + ' 个标签' + (unknown ? '，未匹配 ' + unknown + ' 个' : ''), added ? 'success' : 'info')
   }
 
+  const deleteHistory = async (item: WD14HistoryRecord) => {
+    if (!window.confirm('确定删除“' + item.image_name + '”的反推历史吗？')) return
+    await window.api.wd14.history.delete(item.id)
+    await loadHistory()
+  }
+
+  const clearHistory = async () => {
+    if (!history.length || !window.confirm('确定清空全部 WD14 反推历史吗？此操作不可撤销。')) return
+    await window.api.wd14.history.clear()
+    await loadHistory()
+  }
+
   return (
     <div className='h-full space-y-3 overflow-auto p-4'>
       <PanelHeader
@@ -222,7 +240,10 @@ export function WD14Panel() {
       <section className='space-y-2 border-t border-[var(--color-border)] pt-3'>
         <div className='flex items-center justify-between gap-2'>
           <div className='flex items-center gap-2 text-sm font-medium text-[var(--color-text-primary)]'><History size={15} className='text-[var(--color-accent-text)]' aria-hidden='true' />反推历史</div>
-          <IconButton icon={RefreshCw} label='刷新反推历史' onClick={() => void loadHistory()} disabled={historyLoading} className={historyLoading ? 'ui-spin-icon' : ''} />
+          <div className='flex gap-1'>
+            {history.length > 0 && <IconButton icon={Trash2} label='清空反推历史' onClick={() => void clearHistory()} className='ui-icon-button-danger' />}
+            <IconButton icon={RefreshCw} label='刷新反推历史' onClick={() => void loadHistory()} disabled={historyLoading} className={historyLoading ? 'ui-spin-icon' : ''} />
+          </div>
         </div>
         <div className='relative'>
           <Search size={14} className='pointer-events-none absolute left-2.5 top-2.5 text-[var(--color-text-secondary)]' aria-hidden='true' />
@@ -232,9 +253,10 @@ export function WD14Panel() {
           <div className='space-y-2'>
             {history.map(item => {
               const image = images.find(candidate => candidate.id === item.image_id)
+              const historyImage = historyImages[item.id] || image?.dataUrl
               const tags = Object.values(item.tags).flat().map(tag => tag.name).filter(Boolean)
               return <article key={item.id} className='ui-list-card flex gap-3 p-3'>
-                {image?.dataUrl ? <img src={image.dataUrl} alt='' className='size-16 shrink-0 rounded object-cover' /> : <div className='grid size-16 shrink-0 place-items-center rounded bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)]'><ImagePlus size={20} /></div>}
+                {historyImage ? <img src={historyImage} alt='' className='size-16 shrink-0 rounded object-cover' /> : <div className='grid size-16 shrink-0 place-items-center rounded bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)]'><ImagePlus size={20} /></div>}
                 <div className='min-w-0 flex-1'>
                   <div className='truncate text-xs font-medium text-[var(--color-text-primary)]' title={item.image_name}>{item.image_name}</div>
                   <div className='mt-1 line-clamp-3 text-[11px] leading-5 text-[var(--color-text-secondary)]'>{item.status === 'failed' ? item.error_message || '反推失败' : tags.join(', ') || '未返回标签'}</div>
@@ -243,7 +265,7 @@ export function WD14Panel() {
                 <div className='flex shrink-0 flex-col gap-1'>
                   <button type='button' className='grid size-7 place-items-center rounded hover:bg-[var(--color-bg-tertiary)]' title='复制标签' onClick={() => void navigator.clipboard.writeText(tags.join(', '))}><Clipboard size={14} /></button>
                   {item.status === 'succeeded' && <button type='button' className='grid size-7 place-items-center rounded hover:bg-[var(--color-bg-tertiary)]' title='应用到正面提示词' onClick={() => applyHistoryTags(item)}><Plus size={14} /></button>}
-                  <button type='button' className='grid size-7 place-items-center rounded text-red-500 hover:bg-red-500/10' title='删除历史' onClick={() => void window.api.wd14.history.delete(item.id).then(() => loadHistory())}><Trash2 size={14} /></button>
+                  <button type='button' className='grid size-7 place-items-center rounded text-red-500 hover:bg-red-500/10' title='删除历史' onClick={() => void deleteHistory(item)}><Trash2 size={14} /></button>
                 </div>
               </article>
             })}

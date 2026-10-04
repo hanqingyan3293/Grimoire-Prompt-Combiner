@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { GitBranch, MessageSquare, Plus, RefreshCw, Send, Trash2 } from 'lucide-react'
+import { GitBranch, MessageSquare, Plus, RefreshCw, Send, ShieldAlert, Trash2 } from 'lucide-react'
 import type { AgentRuntimeKind, AgentSessionRecord } from '@shared/agent-types'
 import { Button, IconButton } from '../ui/Button'
 import { EmptyState, PanelHeader, StatusBadge } from '../ui/Feedback'
@@ -22,6 +22,7 @@ export function AgentSessionsPanel() {
   const [eventText, setEventText] = useState('')
   const [sending, setSending] = useState(false)
   const [events, setEvents] = useState<Array<{ id: string; type: string; data: Record<string, unknown> }>>([])
+  const [permissionRequests, setPermissionRequests] = useState<Array<{ requestId: string; sessionId: string; permission: 'read' | 'write' | 'execute' | 'network'; detail?: unknown }>>([])
 
   const load = async () => {
     setLoading(true)
@@ -31,6 +32,18 @@ export function AgentSessionsPanel() {
   }
 
   useEffect(() => { void load() }, [])
+  useEffect(() => window.api.agent.sessions.onPermissionRequest(request => {
+    setPermissionRequests(current => current.some(item => item.requestId === request.requestId) ? current : [...current, request])
+  }), [])
+
+  const decidePermission = async (requestId: string, decision: 'allowOnce' | 'allowForSession' | 'deny' | 'cancel') => {
+    try {
+      await window.api.agent.sessions.decidePermission({ requestId, decision })
+      setPermissionRequests(current => current.filter(item => item.requestId !== requestId))
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : '提交权限决定失败')
+    }
+  }
 
   const create = async () => {
     try {
@@ -73,6 +86,18 @@ export function AgentSessionsPanel() {
   return (
     <div className='h-full space-y-3 overflow-auto p-4'>
       <PanelHeader icon={MessageSquare} title='Agent 会话' description='统一管理 Codex、OpenCode、Pi 和 OpenAI 兼容会话' actions={<IconButton icon={RefreshCw} label='刷新会话' onClick={() => void load()} disabled={loading} className={loading ? 'ui-spin-icon' : ''} />} />
+      {permissionRequests.length > 0 && <section className='ui-list-card space-y-2 border-amber-500/40 bg-amber-500/10 p-3' role='alert'>
+        <div className='flex items-center gap-2 text-sm font-semibold text-amber-700 dark:text-amber-300'><ShieldAlert size={16} />等待权限确认</div>
+        {permissionRequests.map(request => <div key={request.requestId} className='rounded-lg border border-amber-500/30 bg-[var(--color-bg-primary)] p-3'>
+          <div className='text-xs text-[var(--color-text-secondary)]'>会话 {request.sessionId} 请求 <span className='font-semibold text-[var(--color-text-primary)]'>{request.permission}</span> 权限</div>
+          {request.detail !== undefined && <pre className='mt-2 max-h-28 overflow-auto whitespace-pre-wrap break-words text-[11px] text-[var(--color-text-secondary)]'>{JSON.stringify(request.detail, null, 2)}</pre>}
+          <div className='mt-2 flex flex-wrap gap-2'>
+            <Button size='sm' variant='primary' onClick={() => void decidePermission(request.requestId, 'allowOnce')}>允许一次</Button>
+            <Button size='sm' variant='secondary' onClick={() => void decidePermission(request.requestId, 'allowForSession')}>本会话允许</Button>
+            <Button size='sm' variant='ghost' onClick={() => void decidePermission(request.requestId, 'deny')}>拒绝</Button>
+          </div>
+        </div>)}
+      </section>}
       <section className='ui-list-card space-y-3 p-3'>
         <div className='grid gap-2 sm:grid-cols-2'>
           <select className='ui-field' value={runtime} onChange={event => setRuntime(event.target.value as AgentRuntimeKind)} aria-label='Agent Runtime'>

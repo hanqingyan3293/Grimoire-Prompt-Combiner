@@ -17,5 +17,6 @@ export type WD14HistoryRecord = {
   threshold: number
   status: "succeeded" | "failed"
   error_message: string | null
+  image_snapshot_available?: boolean
   created_at: string
 }

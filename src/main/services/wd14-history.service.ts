@@ -1,6 +1,8 @@
 import crypto from "crypto"
+import fs from 'fs'
+import path from 'path'
 import type { WD14HistoryRecord, WD14TagBuckets } from "../../shared/wd14-types"
-import { getDatabase, saveDatabase } from "../database"
+import { getDatabase, getResourceRoot, saveDatabase } from "../database"
 
 type HistoryStatus = WD14HistoryRecord["status"]
 
@@ -26,19 +28,31 @@ function rowToHistory(row: unknown[]): WD14HistoryRecord {
     threshold: Number(row[6] || 0.35),
     status: row[7] === "failed" ? "failed" : "succeeded",
     error_message: row[8] == null ? null : String(row[8]),
-    created_at: String(row[9]),
+    image_snapshot_available: typeof row[9] === 'string' && Boolean(row[9]) && fs.existsSync(String(row[9])),
+    created_at: String(row[11] || row[9]),
   }
 }
 
 export function saveWD14History(input: { taskId: string; imageId: number; tags?: unknown; modelId?: string; threshold?: number; status?: HistoryStatus; errorMessage?: string | null }): WD14HistoryRecord {
   const db = getDatabase()
-  const image = db.exec("SELECT original_name FROM image_refs WHERE id=?", [input.imageId])[0]?.values?.[0]
+  const image = db.exec("SELECT file_path, original_name, mime_type FROM image_refs WHERE id=?", [input.imageId])[0]?.values?.[0]
   const now = new Date().toISOString()
   const id = "wd14_hist_" + crypto.createHash("sha256").update(input.taskId).digest("hex").slice(0, 24)
   const tags = normalizeTags(input.tags)
+  const imageName = String(image?.[1] || "图片 " + input.imageId)
+  const imageMime = typeof image?.[2] === 'string' && image[2] ? String(image[2]) : 'image/png'
+  const snapshotRoot = path.join(getResourceRoot(), 'wd14-history')
+  const extension = imageMime.split('/')[1]?.replace(/[^a-z0-9]/gi, '') || 'png'
+  const snapshotPath = path.join(snapshotRoot, id + '.' + extension)
+  if (typeof image?.[0] === 'string' && fs.existsSync(String(image[0]))) {
+    try {
+      fs.mkdirSync(snapshotRoot, { recursive: true })
+      fs.copyFileSync(String(image[0]), snapshotPath)
+    } catch { /* The history row remains usable even when snapshot copying fails. */ }
+  }
   db.run(
-    "INSERT OR REPLACE INTO wd14_history (id, task_id, image_id, image_name, tags_json, model_id, threshold, status, error_message, created_at) VALUES (?,?,?,?,?,?,?,?,?,?)",
-    [id, input.taskId, input.imageId, String(image?.[0] || "图片 " + input.imageId), JSON.stringify(tags), input.modelId || "", Number(input.threshold || 0.35), input.status || "succeeded", input.errorMessage || null, now],
+    "INSERT OR REPLACE INTO wd14_history (id, task_id, image_id, image_name, tags_json, model_id, threshold, status, error_message, image_snapshot_path, image_snapshot_mime, created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
+    [id, input.taskId, input.imageId, imageName, JSON.stringify(tags), input.modelId || "", Number(input.threshold || 0.35), input.status || "succeeded", input.errorMessage || null, fs.existsSync(snapshotPath) ? snapshotPath : null, imageMime, now],
   )
   saveDatabase()
   return getWD14History(id)!
@@ -52,26 +66,44 @@ export function listWD14History(options: { query?: string; status?: HistoryStatu
   const clauses: string[] = []
   const params: unknown[] = []
   if (options.status) { clauses.push("status=?"); params.push(options.status) }
-  if (query) { clauses.push("(lower(image_name) LIKE ? OR lower(tags_json) LIKE ? OR lower(model_id) LIKE ?)"); const pattern = "%" + query + "%"; params.push(pattern, pattern, pattern) }
+  if (query) { clauses.push("(lower(image_name) LIKE ? OR lower(tags_json) LIKE ? OR lower(model_id) LIKE ? OR lower(created_at) LIKE ?)"); const pattern = "%" + query + "%"; params.push(pattern, pattern, pattern, pattern) }
   const where = clauses.length ? " WHERE " + clauses.join(" AND ") : ""
-  const result = db.exec("SELECT id, task_id, image_id, image_name, tags_json, model_id, threshold, status, error_message, created_at FROM wd14_history" + where + " ORDER BY created_at DESC LIMIT ? OFFSET ?", [...params, limit, offset])
+  const result = db.exec("SELECT id, task_id, image_id, image_name, tags_json, model_id, threshold, status, error_message, image_snapshot_path, image_snapshot_mime, created_at FROM wd14_history" + where + " ORDER BY created_at DESC LIMIT ? OFFSET ?", [...params, limit, offset])
   return (result[0]?.values || []).map(rowToHistory)
 }
 
 export function getWD14History(id: string): WD14HistoryRecord | null {
   const db = getDatabase()
-  const result = db.exec("SELECT id, task_id, image_id, image_name, tags_json, model_id, threshold, status, error_message, created_at FROM wd14_history WHERE id=?", [id])
+  const result = db.exec("SELECT id, task_id, image_id, image_name, tags_json, model_id, threshold, status, error_message, image_snapshot_path, image_snapshot_mime, created_at FROM wd14_history WHERE id=?", [id])
   return result[0]?.values?.[0] ? rowToHistory(result[0].values[0]) : null
 }
 
 export function deleteWD14History(id: string): boolean {
+  const row = getDatabase().exec("SELECT image_snapshot_path FROM wd14_history WHERE id=?", [id])[0]?.values?.[0]
   const result = getDatabase().run("DELETE FROM wd14_history WHERE id=?", [id])
+  if (typeof row?.[0] === 'string') { try { fs.rmSync(String(row[0]), { force: true }) } catch {} }
   saveDatabase()
   return Number(result.changes || 0) > 0
 }
 
 export function clearWD14History(): boolean {
+  const rows = getDatabase().exec("SELECT image_snapshot_path FROM wd14_history WHERE image_snapshot_path IS NOT NULL")[0]?.values || []
   getDatabase().run("DELETE FROM wd14_history")
+  for (const row of rows) if (typeof row[0] === 'string') { try { fs.rmSync(String(row[0]), { force: true }) } catch {} }
   saveDatabase()
   return true
+}
+
+export async function readWD14HistoryImageData(id: string): Promise<string | null> {
+  const row = getDatabase().exec("SELECT image_snapshot_path, image_snapshot_mime, image_id FROM wd14_history WHERE id=?", [id])[0]?.values?.[0]
+  if (!row) return null
+  let filePath = typeof row[0] === 'string' && row[0] ? String(row[0]) : ''
+  let mime = typeof row[1] === 'string' && row[1] ? String(row[1]) : 'image/png'
+  if (!filePath || !fs.existsSync(filePath)) {
+    const image = getDatabase().exec('SELECT file_path,mime_type FROM image_refs WHERE id=?', [Number(row[2])])[0]?.values?.[0]
+    filePath = typeof image?.[0] === 'string' ? String(image[0]) : ''
+    mime = typeof image?.[1] === 'string' && image[1] ? String(image[1]) : mime
+  }
+  if (!filePath || !fs.existsSync(filePath)) return null
+  return `data:${mime};base64,${(await fs.promises.readFile(filePath)).toString('base64')}`
 }

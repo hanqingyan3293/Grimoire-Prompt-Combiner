@@ -6,9 +6,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 let testRoot = ''
 vi.mock('electron', () => ({ app: { getPath: () => testRoot } }))
-import { closeDatabase, initDatabase } from '../database'
+import { closeDatabase, getDatabase, initDatabase } from '../database'
 import { appendAgentSessionEvent, branchAgentSession, createAgentSession, deleteAgentSession, getAgentSession } from './agent-session.service'
 import { deleteMcpServer, listMcpServers, saveMcpServer, updateMcpServerStatus } from './mcp.service'
+import { createPersistedTask } from './task-repository'
+import { deleteWD14History, getWD14History, readWD14HistoryImageData, saveWD14History } from './wd14-history.service'
 
 beforeEach(() => { testRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'grimoire-agent-')) })
 afterEach(() => { closeDatabase(); fs.rmSync(testRoot, { recursive: true, force: true }) })
@@ -48,5 +50,21 @@ describe('MCP server persistence', () => {
     expect(listMcpServers()[0]).toMatchObject({ id: server.id, name: 'test', status: 'disconnected', env: {} })
     expect(updateMcpServerStatus(server.id, 'failed', 'unreachable')).toMatchObject({ status: 'failed', error_message: 'unreachable' })
     expect(deleteMcpServer(server.id)).toBe(true)
+  })
+})
+
+describe('WD14 history snapshots', () => {
+  it('keeps the history image readable after the source image row is deleted', async () => {
+    await initDatabase()
+    const sourcePath = path.join(testRoot, 'source.png')
+    fs.writeFileSync(sourcePath, Buffer.from('snapshot-data'))
+    getDatabase().run('INSERT INTO image_refs (file_path,storage_mode,mime_type,original_name,available) VALUES (?,?,?,?,?)', [sourcePath, 'managed', 'image/png', 'source.png', 1])
+    const imageId = Number(getDatabase().exec('SELECT last_insert_rowid()')[0].values[0][0])
+    const task = createPersistedTask({ kind: 'wd14', input: { imageId } })
+    const history = saveWD14History({ taskId: task.id, imageId, tags: { general: [{ name: 'cat', confidence: 0.9 }] } })
+    getDatabase().run('DELETE FROM image_refs WHERE id=?', [imageId])
+    expect(getWD14History(history.id)?.image_snapshot_available).toBe(true)
+    expect(await readWD14HistoryImageData(history.id)).toBe('data:image/png;base64,' + Buffer.from('snapshot-data').toString('base64'))
+    expect(deleteWD14History(history.id)).toBe(true)
   })
 })

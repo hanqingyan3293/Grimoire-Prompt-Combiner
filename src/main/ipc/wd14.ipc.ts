@@ -3,7 +3,7 @@ import { IPC_CHANNELS } from '../../shared/types'
 import { createPersistedTask } from '../services/task-repository'
 import { optionalBoundedNumber, requireId } from '../services/input-validation'
 import { configureWD14ModelDirectory, configureWD14PythonPath, wd14Worker } from '../services/wd14-worker'
-import { clearWD14History, deleteWD14History, getWD14History, listWD14History } from '../services/wd14-history.service'
+import { clearWD14History, deleteWD14History, getWD14History, listWD14History, readWD14HistoryImageData } from '../services/wd14-history.service'
 
 export function registerWD14IPC(): void {
   ipcMain.handle('wd14:diagnostics', async () => wd14Worker.diagnostics())
@@ -55,4 +55,5 @@ export function registerWD14IPC(): void {
   ipcMain.handle(IPC_CHANNELS.WD14_HISTORY_GET, async (_event, id: unknown) => getWD14History(requireId(id, '历史记录 ID')))
   ipcMain.handle(IPC_CHANNELS.WD14_HISTORY_DELETE, async (_event, id: unknown) => deleteWD14History(requireId(id, '历史记录 ID')))
   ipcMain.handle(IPC_CHANNELS.WD14_HISTORY_CLEAR, async () => clearWD14History())
+  ipcMain.handle(IPC_CHANNELS.WD14_HISTORY_READ_IMAGE, async (_event, id: unknown) => readWD14HistoryImageData(requireId(id, '历史记录 ID')))
 }

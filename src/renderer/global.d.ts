@@ -161,6 +161,8 @@ interface GrimoireAPI {
       branch: (input: { sessionId: string; title?: string }) => Promise<AgentSessionRecord>
       update: (input: { id: string; status?: string; title?: string; data?: Record<string, unknown> }) => Promise<AgentSessionRecord>
       delete: (id: string) => Promise<boolean>
+      onPermissionRequest: (callback: (value: { requestId: string; sessionId: string; permission: 'read' | 'write' | 'execute' | 'network'; detail?: unknown }) => void) => () => void
+      decidePermission: (value: { requestId: string; decision: 'allowOnce' | 'allowForSession' | 'deny' | 'cancel' }) => Promise<boolean>
     }
     mcp: {
       list: () => Promise<McpServerRecord[]>
@@ -209,6 +211,7 @@ interface GrimoireAPI {
       get: (id: string) => Promise<WD14HistoryRecord | null>
       delete: (id: string) => Promise<boolean>
       clear: () => Promise<boolean>
+      readImage: (id: string) => Promise<string | null>
     }
   }
   comfy: {

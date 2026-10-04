@@ -3,6 +3,15 @@ export type AgentRuntimeKind = "openai-compatible" | "codex" | "opencode" | "pi"
 export type RuntimeMessage = {
   role: "system" | "user" | "assistant" | "tool"
   content: string | unknown[]
+  name?: string
+  toolCallId?: string
+  toolCalls?: RuntimeToolCall[]
+}
+
+export type RuntimeToolCall = {
+  callId: string
+  name: string
+  input: unknown
 }
 
 export type RuntimeEvent =
@@ -11,7 +20,7 @@ export type RuntimeEvent =
   | { type: "tool-started"; callId: string; name: string; input?: unknown }
   | { type: "tool-finished"; callId: string; output?: unknown; error?: string }
   | { type: "permission-requested"; requestId: string; action: string; detail?: unknown }
-  | { type: "completed"; text: string }
+  | { type: "completed"; text: string; toolCalls?: RuntimeToolCall[] }
   | { type: "failed"; error: string }
 
 export type RuntimeSession = {

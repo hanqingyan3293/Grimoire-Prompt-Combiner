@@ -29,6 +29,7 @@ import { clearWD14ModelDirectory, clearWD14PythonPath, configureWD14ModelDirecto
 import { markInterruptedTasks } from "./services/task-repository"
 import { logError, logEvent, getErrorLogs } from "./services/logger.service"
 import { IPC_CHANNELS } from "../shared/types"
+import { isWorkspacePopoutType } from '../shared/workspace-panels'
 
 let mainWindow: BrowserWindow | null = null
 let settingsWindow: BrowserWindow | null = null
@@ -174,13 +175,8 @@ function createAIWindow(): void {
   })
 }
 
-const WORKSPACE_POPOUT_TYPES = new Set([
-  'tag-sidebar', 'prompt-workbench', 'utility-sidebar', 'presets', 'history', 'images',
-  'ai-assistant', 'ai-chat', 'ai-vision', 'agent-sessions', 'mcp', 'settings', 'tasks', 'wd14', 'comfyui', 'canvas', 'prompt-assets',
-])
-
 function createWorkspacePopout(popoutId: string, panelType: string, title: string, parent?: BrowserWindow | null): boolean {
-  if (!WORKSPACE_POPOUT_TYPES.has(panelType)) throw new Error('不支持的 Workspace 面板类型')
+  if (!isWorkspacePopoutType(panelType)) throw new Error('不支持的 Workspace 面板类型')
   const existing = workspacePopouts.get(popoutId)
   if (existing && !existing.isDestroyed()) {
     if (existing.isMinimized()) existing.restore()

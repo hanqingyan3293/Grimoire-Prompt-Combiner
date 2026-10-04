@@ -313,6 +313,7 @@ export const IPC_CHANNELS = {
   WD14_HISTORY_GET: "wd14:history:get",
   WD14_HISTORY_DELETE: "wd14:history:delete",
   WD14_HISTORY_CLEAR: "wd14:history:clear",
+  WD14_HISTORY_READ_IMAGE: "wd14:history:readImage",
 
   // Workspace popout windows
   WORKSPACE_OPEN_POPOUT: "workspace:openPopout",
@@ -341,6 +342,8 @@ export const IPC_CHANNELS = {
   MCP_SERVER_CONNECT: "mcp:server:connect",
   MCP_SERVER_DISCONNECT: "mcp:server:disconnect",
   MCP_SERVER_CALL_TOOL: "mcp:server:callTool",
+  AGENT_PERMISSION_REQUEST: "agent:permissionRequest",
+  AGENT_PERMISSION_DECISION: "agent:permissionDecision",
 
   // ComfyUI
   COMFY_STATUS: "comfy:status",
