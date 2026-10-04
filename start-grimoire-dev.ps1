@@ -5,17 +5,24 @@ Write-Host '[Grimoire] Project:' $PSScriptRoot
 
 $stale = @()
 try {
-  $stale += Get-Process electron -ErrorAction SilentlyContinue | Where-Object {
+  $stale = @(Get-Process electron -ErrorAction SilentlyContinue | Where-Object {
     $_.Path -and $_.Path.StartsWith($PSScriptRoot, [System.StringComparison]::OrdinalIgnoreCase)
-  }
+  })
 } catch {}
+
 $portOwners = @()
-try { $portOwners = Get-NetTCPConnection -LocalPort 5173 -State Listen -ErrorAction SilentlyContinue } catch {}
+try { $portOwners = @(Get-NetTCPConnection -LocalPort 5173 -State Listen -ErrorAction SilentlyContinue) } catch {}
+
 if ($stale.Count -gt 0 -or $portOwners.Count -gt 0) {
-  Write-Host '[Grimoire] 检测到已有开发实例或 5173 端口占用。' -ForegroundColor Yellow
-  if ($stale.Count -gt 0) { Write-Host ('[Grimoire] Electron PID: ' + (($stale | Select-Object -ExpandProperty Id) -join ', ')) -ForegroundColor Yellow }
-  if ($portOwners.Count -gt 0) { Write-Host ('[Grimoire] 5173 端口 PID: ' + (($portOwners | Select-Object -ExpandProperty OwningProcess -Unique) -join ', ')) -ForegroundColor Yellow }
-  Write-Host '[Grimoire] 请先关闭旧的魔导书窗口/进程，再重新运行此脚本。脚本不会自动结束进程。' -ForegroundColor Red
+  Write-Host '[Grimoire] An existing development instance or port 5173 listener was found.' -ForegroundColor Yellow
+  if ($stale.Count -gt 0) {
+    Write-Host ('[Grimoire] Electron PID: ' + (($stale | Select-Object -ExpandProperty Id) -join ', ')) -ForegroundColor Yellow
+  }
+  if ($portOwners.Count -gt 0) {
+    Write-Host ('[Grimoire] Port 5173 PID: ' + (($portOwners | Select-Object -ExpandProperty OwningProcess -Unique) -join ', ')) -ForegroundColor Yellow
+  }
+  Write-Host '[Grimoire] Close the old Grimoire window/process, then run this script again.' -ForegroundColor Red
+  Write-Host '[Grimoire] This script will not terminate processes automatically.' -ForegroundColor Red
   Read-Host 'Press Enter to close'
   exit 2
 }
@@ -54,7 +61,7 @@ Write-Host '[Grimoire] Starting development mode...' -ForegroundColor Cyan
 & npm run dev
 $code = $LASTEXITCODE
 if ($code -ne 0) {
-  Write-Host "[Grimoire] Development mode exited with code $code" -ForegroundColor Red
+  Write-Host ('[Grimoire] Development mode exited with code ' + $code) -ForegroundColor Red
   Read-Host 'Press Enter to close'
 }
 exit $code

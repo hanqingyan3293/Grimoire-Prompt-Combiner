@@ -57,7 +57,7 @@ function AppInner() {
   }, [loadSettings])
 
   useEffect(() => {
-    if (windowType !== 'main') return
+    if (windowType !== 'main' && !windowType.startsWith('workspace-popout?')) return
     return startWorkspacePersistence()
   }, [windowType])
 
