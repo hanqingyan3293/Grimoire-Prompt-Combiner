@@ -1,7 +1,7 @@
 import { ipcMain } from 'electron'
 import { IPC_CHANNELS } from '../../shared/types'
 import { getDatabase } from '../database'
-import { assignAssetTag, createTagAlias, createTagRelation, deleteTagAlias, deleteTagRelation, getTagIntelligence, listAssetTagLinks, listTagAliases, listTagRelations, listTagSuggestions, removeAssetTag, resolveTagSuggestion, searchTags, updateTagRelation } from '../services/tag-intelligence.service'
+import { assignAssetTag, batchAssignAssetTags, batchRemoveAssetTags, batchResolveTagSuggestions, createTagAlias, createTagRelation, deleteTagAlias, deleteTagRelation, getTagIntelligence, listAssetTagLinks, listTagAliases, listTagRelations, listTagSuggestions, removeAssetTag, resolveTagSuggestion, searchTags, updateTagRelation } from '../services/tag-intelligence.service'
 
 export function registerTagIntelligenceIPC(): void {
   ipcMain.handle(IPC_CHANNELS.TAGS_SEARCH, async (_event, input: unknown) => {
@@ -26,4 +26,7 @@ export function registerTagIntelligenceIPC(): void {
   })
   ipcMain.handle(IPC_CHANNELS.TAG_ASSET_LINKS_ASSIGN, async (_event, input: unknown) => assignAssetTag(getDatabase(), input as Record<string, unknown>))
   ipcMain.handle(IPC_CHANNELS.TAG_ASSET_LINKS_REMOVE, async (_event, input: unknown) => removeAssetTag(getDatabase(), input as Record<string, unknown>))
+  ipcMain.handle(IPC_CHANNELS.TAG_ASSET_LINKS_BATCH_ASSIGN, async (_event, input: unknown) => batchAssignAssetTags(getDatabase(), input as { assetType: string; assetKeys: string[]; tagIds: string[]; source?: string; confidence?: number; polarity?: string }))
+  ipcMain.handle(IPC_CHANNELS.TAG_ASSET_LINKS_BATCH_REMOVE, async (_event, input: unknown) => batchRemoveAssetTags(getDatabase(), input as { assetType: string; assetKeys: string[]; tagIds: string[] }))
+  ipcMain.handle(IPC_CHANNELS.TAG_SUGGESTIONS_BATCH_RESOLVE, async (_event, input: unknown) => batchResolveTagSuggestions(getDatabase(), input as { ids: string[]; action: 'accept' | 'reject' | 'ignore'; tagId?: string }))
 }

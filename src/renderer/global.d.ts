@@ -50,6 +50,8 @@ interface GrimoireAPI {
       list: (input: { assetType: string; assetKey: string }) => Promise<unknown[]>
       assign: (input: Record<string, unknown>) => Promise<unknown>
       remove: (input: { assetType: string; assetKey: string; tagId: string }) => Promise<boolean>
+      batchAssign: (input: { assetType: string; assetKeys: string[]; tagIds: string[]; source?: string; confidence?: number; polarity?: string }) => Promise<number>
+      batchRemove: (input: { assetType: string; assetKeys: string[]; tagIds: string[] }) => Promise<number>
     }
   }
   presets: {

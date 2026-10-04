@@ -224,6 +224,9 @@ export const IPC_CHANNELS = {
   TAG_ASSET_LINKS_LIST: "tags:assetLinks:list",
   TAG_ASSET_LINKS_ASSIGN: "tags:assetLinks:assign",
   TAG_ASSET_LINKS_REMOVE: "tags:assetLinks:remove",
+  TAG_ASSET_LINKS_BATCH_ASSIGN: "tags:assetLinks:batchAssign",
+  TAG_ASSET_LINKS_BATCH_REMOVE: "tags:assetLinks:batchRemove",
+  TAG_SUGGESTIONS_BATCH_RESOLVE: "tags:suggestions:batchResolve",
 
   // Category / Subcategory
   CATEGORY_CREATE: "category:create",
