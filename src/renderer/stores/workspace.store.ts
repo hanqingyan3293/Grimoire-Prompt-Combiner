@@ -123,6 +123,15 @@ export const WORKSPACES: WorkspaceDefinition[] = [
       { id: "presets", type: "presets", className: "w-[320px] min-w-[320px]" },
     ],
   },
+  {
+    id: "tag-assets",
+    title: "标签与资产",
+    slots: [
+      { id: "left-sidebar", type: "tag-sidebar", className: "w-[280px] min-w-[280px]" },
+      { id: "tag-asset-manager", type: "tag-asset-manager", className: "flex-1" },
+      { id: "right-sidebar", type: "prompt-assets", className: "w-[360px] min-w-[320px]" },
+    ],
+  },
 ]
 
 interface WorkspaceState {
@@ -203,6 +212,7 @@ const VALID_PANEL_TYPES = new Set<PanelType>([
   "comfyui",
   "canvas",
   "prompt-assets",
+  "tag-asset-manager",
 ])
 
 export function isPersistablePanelType(value: unknown): value is PanelType {

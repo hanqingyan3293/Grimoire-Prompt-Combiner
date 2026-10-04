@@ -31,10 +31,20 @@ export function Sidebar() {
 
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; type: "category" | "subcategory"; id: string; name: string; parentId?: string } | null>(null)
   const [favCtxMenu, setFavCtxMenu] = useState<{ x: number; y: number; tag: any; catZh: string; subZh: string; isNegative: boolean } | null>(null)
+  const [searchTagIds, setSearchTagIds] = useState<Set<string> | null>(null)
 
   useEffect(() => { setExpandedCats(prev => { const n = new Set(prev); categories.forEach(c => n.add(c.id)); return n }) }, [categories])
   useEffect(() => { favStore.loadFavorites() }, [])
   useEffect(() => { loadGroups() }, [])
+  useEffect(() => {
+    let disposed = false
+    const query = searchQuery.trim()
+    if (!query) { setSearchTagIds(null); return () => { disposed = true } }
+    void window.api.tags.search({ query, limit: 200 }).then((items: any[]) => {
+      if (!disposed) setSearchTagIds(new Set(items.map(item => String(item?.tag?.id || '')).filter(Boolean)))
+    }).catch(() => { if (!disposed) setSearchTagIds(new Set()) })
+    return () => { disposed = true }
+  }, [searchQuery])
 
   const loadGroups = async () => {
     try {
@@ -204,10 +214,10 @@ const handleCtxEdit = () => {
       ...cat,
       subcategories: cat.subcategories.map(sub => ({
         ...sub,
-        tags: sub.tags.filter(t => t.en.toLowerCase().includes(q) || t.zh.includes(q)),
+        tags: sub.tags.filter(t => t.en.toLowerCase().includes(q) || t.zh.includes(q) || Boolean(searchTagIds?.has(t.id))),
       })).filter(sub => sub.tags.length > 0 || sub.zh.includes(q) || cat.zh.includes(q)),
     })).filter(cat => cat.subcategories.length > 0 || cat.zh.includes(q))
-  }, [categories, searchQuery])
+  }, [categories, searchQuery, searchTagIds])
 
   
 

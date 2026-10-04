@@ -14,6 +14,7 @@ import { getComfyWorkflow } from './comfy-workflow.service'
 import { registerManagedImage } from './image-asset.service'
 import { buildQuickWorkflow, type ComfyQuickInput } from './comfy-quick-workflow'
 import { saveWD14History } from './wd14-history.service'
+import { createTagSuggestions } from './tag-intelligence.service'
 import crypto from 'crypto'
 
 interface WD14Input {
@@ -179,6 +180,8 @@ class TaskRunner {
       }
       const done = updatePersistedTask(task.id, transitionTask(running, 'succeeded', { output_json: JSON.stringify(result) }))
       saveWD14History({ taskId: task.id, imageId: input.imageId, tags: result, modelId: input.modelId, threshold: input.threshold, status: 'succeeded' })
+      const tagValues = (['general', 'character', 'rating', 'quality'] as const).flatMap(namespace => result[namespace].map(item => ({ value: item.name, confidence: item.confidence, namespace }))).filter(item => item.value)
+      if (tagValues.length) createTagSuggestions(getDatabase(), { assetType: 'image', assetKey: 'image:' + input.imageId, source: 'wd14', values: tagValues })
       broadcast(done)
       logEvent('info', 'task-runner', 'Task succeeded', { taskId: task.id, phase: 'complete' })
     } catch (error) {

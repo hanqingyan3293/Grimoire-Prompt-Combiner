@@ -27,6 +27,30 @@ interface GrimoireAPI {
     createSubcategory: (data: { category_id: string; zh: string }) => Promise<{ id: string }>
     updateSubcategory: (data: { id: string; zh: string }) => Promise<boolean>
     deleteSubcategory: (id: string) => Promise<boolean>
+    search: (input: { query?: string; limit?: number }) => Promise<unknown[]>
+    getIntelligence: (id: string) => Promise<unknown>
+    aliases: {
+      list: (tagId: string) => Promise<unknown[]>
+      create: (input: { tagId: string; alias: string; language?: string; source?: string }) => Promise<unknown>
+      delete: (id: string) => Promise<boolean>
+    }
+    relations: {
+      list: (tagId?: string) => Promise<unknown[]>
+      create: (input: { sourceTagId: string; targetTagId: string; relationType: string; confidence?: number; source?: string }) => Promise<unknown>
+      update: (input: { id: string; confidence?: number; enabled?: boolean }) => Promise<boolean>
+      delete: (id: string) => Promise<boolean>
+    }
+    suggestions: {
+      list: (input?: { assetType?: string; assetKey?: string; status?: string }) => Promise<unknown[]>
+      accept: (id: string) => Promise<unknown>
+      reject: (id: string) => Promise<unknown>
+      map: (input: { id: string; tagId: string }) => Promise<unknown>
+    }
+    assetLinks: {
+      list: (input: { assetType: string; assetKey: string }) => Promise<unknown[]>
+      assign: (input: Record<string, unknown>) => Promise<unknown>
+      remove: (input: { assetType: string; assetKey: string; tagId: string }) => Promise<boolean>
+    }
   }
   presets: {
     list: () => Promise<Array<{ id: string; name: string; data: { positive: Array<{ tag_id: string; weight: number }>; negative: Array<{ tag_id: string; weight: number }> }; created_at: string; updated_at: string }>>

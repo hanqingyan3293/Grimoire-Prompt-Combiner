@@ -10,7 +10,7 @@ import type { AgentSessionEventRecord, AgentSessionRecord, McpServerRecord } fro
 // disappear from the bundle, but a runtime import would be unavailable to a
 // sandboxed Electron preload in the packaged app.
 const IPC_CHANNELS = {
-  TAGS_GET_ALL: 'tags:getAll', TAGS_CREATE: 'tags:create', TAGS_UPDATE: 'tags:update', TAGS_DELETE: 'tags:delete', TAGS_IMPORT: 'tags:import', TAGS_RESET: 'tags:reset',
+  TAGS_GET_ALL: 'tags:getAll', TAGS_CREATE: 'tags:create', TAGS_UPDATE: 'tags:update', TAGS_DELETE: 'tags:delete', TAGS_IMPORT: 'tags:import', TAGS_RESET: 'tags:reset', TAGS_SEARCH: 'tags:search', TAGS_GET_INTELLIGENCE: 'tags:getIntelligence', TAG_ALIASES_LIST: 'tags:aliases:list', TAG_ALIASES_CREATE: 'tags:aliases:create', TAG_ALIASES_DELETE: 'tags:aliases:delete', TAG_RELATIONS_LIST: 'tags:relations:list', TAG_RELATIONS_CREATE: 'tags:relations:create', TAG_RELATIONS_UPDATE: 'tags:relations:update', TAG_RELATIONS_DELETE: 'tags:relations:delete', TAG_SUGGESTIONS_LIST: 'tags:suggestions:list', TAG_SUGGESTIONS_ACCEPT: 'tags:suggestions:accept', TAG_SUGGESTIONS_REJECT: 'tags:suggestions:reject', TAG_SUGGESTIONS_MAP: 'tags:suggestions:map', TAG_ASSET_LINKS_LIST: 'tags:assetLinks:list', TAG_ASSET_LINKS_ASSIGN: 'tags:assetLinks:assign', TAG_ASSET_LINKS_REMOVE: 'tags:assetLinks:remove',
   CATEGORY_CREATE: 'category:create', CATEGORY_UPDATE: 'category:update', CATEGORY_DELETE: 'category:delete', SUBCATEGORY_CREATE: 'subcategory:create', SUBCATEGORY_UPDATE: 'subcategory:update', SUBCATEGORY_DELETE: 'subcategory:delete',
   PRESETS_LIST: 'presets:list', PRESETS_SAVE: 'presets:save', PRESETS_DELETE: 'presets:delete',
   HISTORY_LIST: 'history:list', HISTORY_ADD: 'history:add', HISTORY_CLEAR: 'history:clear',
@@ -55,6 +55,30 @@ const api = {
       ipcRenderer.invoke(IPC_CHANNELS.SUBCATEGORY_UPDATE, data),
     deleteSubcategory: (id: string) =>
       ipcRenderer.invoke(IPC_CHANNELS.SUBCATEGORY_DELETE, id),
+    search: (input: { query?: string; limit?: number }) => ipcRenderer.invoke(IPC_CHANNELS.TAGS_SEARCH, input),
+    getIntelligence: (id: string) => ipcRenderer.invoke(IPC_CHANNELS.TAGS_GET_INTELLIGENCE, id),
+    aliases: {
+      list: (tagId: string) => ipcRenderer.invoke(IPC_CHANNELS.TAG_ALIASES_LIST, tagId),
+      create: (input: { tagId: string; alias: string; language?: string; source?: string }) => ipcRenderer.invoke(IPC_CHANNELS.TAG_ALIASES_CREATE, input),
+      delete: (id: string) => ipcRenderer.invoke(IPC_CHANNELS.TAG_ALIASES_DELETE, id),
+    },
+    relations: {
+      list: (tagId?: string) => ipcRenderer.invoke(IPC_CHANNELS.TAG_RELATIONS_LIST, tagId),
+      create: (input: { sourceTagId: string; targetTagId: string; relationType: string; confidence?: number; source?: string }) => ipcRenderer.invoke(IPC_CHANNELS.TAG_RELATIONS_CREATE, input),
+      update: (input: { id: string; confidence?: number; enabled?: boolean }) => ipcRenderer.invoke(IPC_CHANNELS.TAG_RELATIONS_UPDATE, input),
+      delete: (id: string) => ipcRenderer.invoke(IPC_CHANNELS.TAG_RELATIONS_DELETE, id),
+    },
+    suggestions: {
+      list: (input?: { assetType?: string; assetKey?: string; status?: string }) => ipcRenderer.invoke(IPC_CHANNELS.TAG_SUGGESTIONS_LIST, input || {}),
+      accept: (id: string) => ipcRenderer.invoke(IPC_CHANNELS.TAG_SUGGESTIONS_ACCEPT, id),
+      reject: (id: string) => ipcRenderer.invoke(IPC_CHANNELS.TAG_SUGGESTIONS_REJECT, id),
+      map: (input: { id: string; tagId: string }) => ipcRenderer.invoke(IPC_CHANNELS.TAG_SUGGESTIONS_MAP, input),
+    },
+    assetLinks: {
+      list: (input: { assetType: string; assetKey: string }) => ipcRenderer.invoke(IPC_CHANNELS.TAG_ASSET_LINKS_LIST, input),
+      assign: (input: { assetType: string; assetKey: string; tagId: string; polarity?: string; weight?: number; confidence?: number; source?: string; status?: string }) => ipcRenderer.invoke(IPC_CHANNELS.TAG_ASSET_LINKS_ASSIGN, input),
+      remove: (input: { assetType: string; assetKey: string; tagId: string }) => ipcRenderer.invoke(IPC_CHANNELS.TAG_ASSET_LINKS_REMOVE, input),
+    },
   },
 
   presets: {

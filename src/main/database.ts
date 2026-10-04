@@ -8,7 +8,7 @@ import { createLegacyDatabase, type LegacyDatabase } from './services/sqlite.com
 
 // v9 adds prompt asset category tables/indexes. Keep this bumped so existing
 // v8 databases run the additive migration instead of being treated as current.
-const CURRENT_SCHEMA_VERSION = 14
+const CURRENT_SCHEMA_VERSION = 15
 let nativeDb: DatabaseSync | null = null
 let db: LegacyDatabase | null = null
 let dbPath = ''
@@ -52,6 +52,73 @@ CREATE TABLE IF NOT EXISTS tags (
   source TEXT DEFAULT 'builtin',
   created_at TEXT DEFAULT (datetime('now','localtime')),
   FOREIGN KEY (subcategory_id) REFERENCES subcategories(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS tag_metadata (
+  tag_id TEXT PRIMARY KEY,
+  namespace TEXT NOT NULL DEFAULT '',
+  normalized_key TEXT NOT NULL DEFAULT '',
+  description TEXT NOT NULL DEFAULT '',
+  color TEXT NOT NULL DEFAULT '',
+  is_active INTEGER NOT NULL DEFAULT 1,
+  source TEXT NOT NULL DEFAULT 'builtin',
+  FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS tag_aliases (
+  id TEXT PRIMARY KEY,
+  tag_id TEXT NOT NULL,
+  alias TEXT NOT NULL,
+  normalized_alias TEXT NOT NULL,
+  language TEXT NOT NULL DEFAULT '',
+  source TEXT NOT NULL DEFAULT 'manual',
+  is_builtin INTEGER NOT NULL DEFAULT 0,
+  UNIQUE(tag_id, normalized_alias),
+  FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS tag_relations (
+  id TEXT PRIMARY KEY,
+  source_tag_id TEXT NOT NULL,
+  target_tag_id TEXT NOT NULL,
+  relation_type TEXT NOT NULL,
+  confidence REAL NOT NULL DEFAULT 1,
+  source TEXT NOT NULL DEFAULT 'manual',
+  enabled INTEGER NOT NULL DEFAULT 1,
+  UNIQUE(source_tag_id, target_tag_id, relation_type),
+  FOREIGN KEY (source_tag_id) REFERENCES tags(id) ON DELETE CASCADE,
+  FOREIGN KEY (target_tag_id) REFERENCES tags(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS asset_tag_links (
+  id TEXT PRIMARY KEY,
+  asset_type TEXT NOT NULL,
+  asset_key TEXT NOT NULL,
+  tag_id TEXT NOT NULL,
+  polarity TEXT NOT NULL DEFAULT 'neutral',
+  weight REAL NOT NULL DEFAULT 1,
+  confidence REAL NOT NULL DEFAULT 1,
+  source TEXT NOT NULL DEFAULT 'manual',
+  status TEXT NOT NULL DEFAULT 'accepted',
+  created_at TEXT NOT NULL,
+  UNIQUE(asset_type, asset_key, tag_id, polarity),
+  FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS tag_suggestions (
+  id TEXT PRIMARY KEY,
+  asset_type TEXT NOT NULL,
+  asset_key TEXT NOT NULL,
+  raw_value TEXT NOT NULL,
+  normalized_value TEXT NOT NULL,
+  tag_id TEXT,
+  namespace TEXT NOT NULL DEFAULT '',
+  confidence REAL NOT NULL DEFAULT 0,
+  source TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'pending',
+  metadata_json TEXT NOT NULL DEFAULT '{}',
+  resolved_at TEXT,
+  FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE SET NULL
 );
 
 CREATE TABLE IF NOT EXISTS favorites (
@@ -352,6 +419,14 @@ CREATE INDEX IF NOT EXISTS idx_tag_sub ON tags(subcategory_id);
 CREATE INDEX IF NOT EXISTS idx_cat_group ON categories(group_id);
 CREATE INDEX IF NOT EXISTS idx_sub_group ON subcategories(group_id);
 CREATE INDEX IF NOT EXISTS idx_tag_group ON tags(group_id);
+CREATE INDEX IF NOT EXISTS idx_tag_metadata_normalized ON tag_metadata(normalized_key);
+CREATE INDEX IF NOT EXISTS idx_tag_aliases_normalized ON tag_aliases(normalized_alias);
+CREATE INDEX IF NOT EXISTS idx_tag_relations_source ON tag_relations(source_tag_id, enabled);
+CREATE INDEX IF NOT EXISTS idx_tag_relations_target ON tag_relations(target_tag_id, enabled);
+CREATE INDEX IF NOT EXISTS idx_asset_tag_links_asset ON asset_tag_links(asset_type, asset_key, status);
+CREATE INDEX IF NOT EXISTS idx_asset_tag_links_tag ON asset_tag_links(tag_id, status);
+CREATE INDEX IF NOT EXISTS idx_tag_suggestions_asset ON tag_suggestions(asset_type, asset_key, status);
+CREATE INDEX IF NOT EXISTS idx_tag_suggestions_status ON tag_suggestions(status, id);
 CREATE INDEX IF NOT EXISTS idx_sub_fav ON sub_favorites(subcategory_id);
 CREATE INDEX IF NOT EXISTS idx_fav_tag ON favorites(tag_id);
 CREATE INDEX IF NOT EXISTS idx_presets_name ON presets(name);
@@ -435,6 +510,35 @@ function migrateWD14HistoryTable(legacy: LegacyDatabase): void {
   }
 }
 
+function normalizeTagValue(value: unknown): string {
+  return String(value || '').trim().toLowerCase().replace(/[\s_]+/g, ' ')
+}
+
+function migrateTagIntelligence(legacy: LegacyDatabase): void {
+  const rows = legacy.exec('SELECT id,en,zh,source FROM tags')[0]?.values || []
+  const now = new Date().toISOString()
+  for (const row of rows) {
+    const tagId = String(row[0])
+    const en = String(row[1] || '').trim()
+    const zh = String(row[2] || '').trim()
+    const source = String(row[3] || 'builtin')
+    const canonical = normalizeTagValue(en || zh)
+    legacy.run(
+      'INSERT OR IGNORE INTO tag_metadata (tag_id,namespace,normalized_key,description,color,is_active,source) VALUES (?,?,?,?,?,?,?)',
+      [tagId, '', canonical, '', '', 1, source],
+    )
+    if (en) legacy.run(
+      'INSERT OR IGNORE INTO tag_aliases (id,tag_id,alias,normalized_alias,language,source,is_builtin) VALUES (?,?,?,?,?,?,?)',
+      ['alias_' + tagId + '_en', tagId, en, normalizeTagValue(en), 'en', 'migration', 1],
+    )
+    if (zh && normalizeTagValue(zh) !== canonical) legacy.run(
+      'INSERT OR IGNORE INTO tag_aliases (id,tag_id,alias,normalized_alias,language,source,is_builtin) VALUES (?,?,?,?,?,?,?)',
+      ['alias_' + tagId + '_zh', tagId, zh, normalizeTagValue(zh), 'zh', 'migration', 1],
+    )
+  }
+  legacy.run("INSERT OR REPLACE INTO schema_meta (key,value) VALUES ('tag_intelligence_migrated_at',?)", [now])
+}
+
 export function initializeDatabaseConnection(connection: DatabaseSync, requireExistingGrimoire = false): LegacyDatabase {
   if (requireExistingGrimoire) assertGrimoireDatabase(connection)
   configureConnection(connection)
@@ -456,6 +560,7 @@ export function initializeDatabaseConnection(connection: DatabaseSync, requireEx
   try { legacy.run("ALTER TABLE history ADD COLUMN task_id TEXT") } catch {}
   try { legacy.run("ALTER TABLE canvas_vendor_projects ADD COLUMN revision INTEGER NOT NULL DEFAULT 0") } catch {}
   migrateWD14HistoryTable(legacy)
+  migrateTagIntelligence(legacy)
 
   legacy.exec(INDEX_SQL)
   legacy.run("CREATE INDEX IF NOT EXISTS idx_history_task ON history(task_id)")

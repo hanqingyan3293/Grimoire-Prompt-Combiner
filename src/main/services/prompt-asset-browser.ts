@@ -4,6 +4,7 @@ import type { PresetData } from '../../shared/types'
 import { requireText } from './input-validation'
 import crypto from 'crypto'
 import { saveDatabase } from '../database'
+import { createTagSuggestions } from './tag-intelligence.service'
 
 const SOURCES = new Set<PromptAssetSourceFilter>(['all', 'asset', 'history', 'preset', 'favorite'])
 
@@ -186,6 +187,11 @@ export function createPromptAsset(db: LegacyDatabase, input: unknown): PromptAss
   const id = `asset:${crypto.randomUUID()}`
   const now = new Date().toISOString()
   db.run('INSERT INTO prompt_assets (id, source_id, source, name, prompt, chapter, section, subsection, nsfw, variant_count, source_fingerprint, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)', [id, sourceId, 'asset', name, prompt, detail, '', '', value.nsfw === true ? 1 : 0, Number.isInteger(value.variantCount) ? Math.max(0, Number(value.variantCount)) : 0, crypto.createHash('sha256').update(`${sourceId}:${name}:${prompt}`).digest('hex'), now, now])
+  const hasSuggestionTable = db.exec("SELECT name FROM sqlite_master WHERE type='table' AND name='tag_suggestions'")[0]?.values?.length
+  if (hasSuggestionTable) {
+    const values = prompt.replace(/\r/g, '').split(/[,\n]/).map(item => item.trim()).filter(Boolean).map(item => ({ value: item.replace(/^\((.*):[0-9]+(?:\.[0-9]+)?\)$/, '$1').trim() })).filter(item => item.value && item.value !== '--neg')
+    if (values.length) createTagSuggestions(db, { assetType: 'prompt', assetKey: id, source: 'parsed', values })
+  }
   saveDatabase()
   return { id, sourceRef: sourceId, source: 'asset', name, prompt, detail, createdAt: now, nsfw: value.nsfw === true, variantCount: Number.isInteger(value.variantCount) ? Math.max(0, Number(value.variantCount)) : 0 }
 }

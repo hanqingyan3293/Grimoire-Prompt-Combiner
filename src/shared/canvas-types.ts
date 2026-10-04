@@ -15,6 +15,8 @@ export function isCanvasTaskNodeKind(kind: CanvasNodeKind): kind is 'task' | 'wd
 
 export interface CanvasNodeConfig {
   assetId?: string
+  tagIds?: string[]
+  assetKey?: string
   imageId?: number
   modelId?: string
   threshold?: number

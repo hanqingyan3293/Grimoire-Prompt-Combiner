@@ -10,6 +10,7 @@ import { QuickAIPanel, QuickSettingsPanel } from "../layout/QuickUtilityPopover"
 import { AgentSessionsPanel } from "../ai/AgentSessionsPanel"
 import { McpPanel } from "../ai/McpPanel"
 import type { PanelDefinition, PanelType } from "./panelTypes"
+import { TagAssetManagerPanel } from "../tags/TagAssetManagerPanel"
 
 const ChatLayout = lazy(() => import('../ai/ChatLayout').then(module => ({ default: module.ChatLayout })))
 const AIVisionPanel = lazy(() => import('../ai/AIVisionPanel').then(module => ({ default: module.AIVisionPanel })))
@@ -58,12 +59,13 @@ export const PANEL_DEFINITIONS: Record<PanelType, PanelDefinition> = {
   comfyui: { type: "comfyui", title: "ComfyUI", description: "工作流、模型和生成任务", enabled: true },
   canvas: { type: "canvas", title: "无限画布", description: "图片、提示词和任务画布", enabled: true },
   "prompt-assets": { type: "prompt-assets", title: "提示词资产", description: "统一搜索资产、历史、预设和收藏", enabled: true },
+  "tag-asset-manager": { type: "tag-asset-manager", title: "标签与资产", description: "标签关系、候选确认和资产标注", enabled: true },
 }
 
 export const ENABLED_PANEL_OPTIONS = Object.values(PANEL_DEFINITIONS).filter(panel => panel.enabled)
 export const PANEL_OPTION_GROUPS: { title: string; types: PanelType[] }[] = [
   { title: "核心", types: ["tag-sidebar", "prompt-workbench", "utility-sidebar"] },
-  { title: "素材", types: ["prompt-assets", "presets", "history", "images"] },
+  { title: "素材", types: ["prompt-assets", "tag-asset-manager", "presets", "history", "images"] },
   { title: "AI", types: ["ai-assistant", "ai-chat", "ai-vision", "agent-sessions", "mcp"] },
   { title: "创作工具", types: ["canvas", "wd14", "comfyui", "tasks"] },
   { title: "设置", types: ["settings"] },
@@ -103,6 +105,8 @@ export function renderPanel(type: PanelType): React.ReactNode {
       return <LazyPanel><CanvasPanel /></LazyPanel>
     case "prompt-assets":
       return <LazyPanel><PromptAssetsPanel /></LazyPanel>
+    case "tag-asset-manager":
+      return <LazyPanel><TagAssetManagerPanel /></LazyPanel>
     case "settings":
       return <ScrollablePanel><QuickSettingsPanel variant="embedded" /></ScrollablePanel>
     default:

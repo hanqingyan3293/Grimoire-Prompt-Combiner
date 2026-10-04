@@ -22,6 +22,7 @@ export type PanelType =
   | "comfyui"
   | "canvas"
   | "prompt-assets"
+  | "tag-asset-manager"
 
 export interface PanelDefinition {
   type: PanelType
