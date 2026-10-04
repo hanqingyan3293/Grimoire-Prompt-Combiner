@@ -4,6 +4,7 @@ import { getDatabase, saveDatabase } from "../database"
 import { getActiveGroupId } from "./tagGroups.ipc"
 import { IPC_CHANNELS } from "../../shared/types"
 import crypto from "crypto"
+import { syncTagIntelligenceForTag } from '../services/tag-intelligence.service'
 
 const genId = (prefix: string) => prefix + crypto.randomUUID().slice(0, 8)
 
@@ -29,12 +30,14 @@ export function registerTagsIPC(): void {
     const id = genId("t_")
     db.run("INSERT INTO tags (id,group_id,subcategory_id,en,zh,sort_order,source) VALUES (?,?,?,?,?,(SELECT COALESCE(MAX(sort_order),0)+1 FROM tags WHERE subcategory_id=?),'custom')",
       [id, gid, data.subcategory_id, data.en, data.zh, data.subcategory_id])
+    syncTagIntelligenceForTag(db, id, 'custom')
     saveDatabase()
     return { id, ...data, source: "custom" }
   })
 
   ipcMain.handle(IPC_CHANNELS.TAGS_UPDATE, async (_e, data: { id: string; en: string; zh: string }) => {
     getDatabase().run("UPDATE tags SET en=?, zh=? WHERE id=?", [data.en, data.zh, data.id])
+    syncTagIntelligenceForTag(getDatabase(), data.id, 'custom')
     saveDatabase()
     return true
   })
@@ -58,6 +61,7 @@ export function registerTagsIPC(): void {
         db.run("INSERT INTO tags (id,group_id,subcategory_id,en,zh,sort_order,source) VALUES (?,?,?,?,?,1,'imported')",
           [t.id, gid, t.subcategory_id, t.en, t.zh])
       }
+      syncTagIntelligenceForTag(db, t.id, 'imported')
     }
     saveDatabase()
     return true

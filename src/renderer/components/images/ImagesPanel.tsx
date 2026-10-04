@@ -7,6 +7,7 @@ import { Button, IconButton } from '../ui/Button'
 import { EmptyState, PanelHeader, StatusBadge } from '../ui/Feedback'
 import { Modal } from '../ui/Modal'
 import type { ImageRef } from '@shared/types'
+import { useTagsStore } from '../../stores/tags.store'
 import { ResourceCard, ResourceGroup } from '../ui/ResourceCards'
 import { FloatingPreview } from '../ui/FloatingPreview'
 
@@ -25,6 +26,8 @@ export function ImagesPanel() {
   const previewViewportRef = React.useRef<HTMLDivElement>(null)
   const previewImageRef = React.useRef<HTMLImageElement>(null)
   const [previewBaseSize, setPreviewBaseSize] = useState({ width: 0, height: 0 })
+  const [imageTags, setImageTags] = useState<Record<number, string[]>>({})
+  const tags = useTagsStore(state => state.tags)
   const fitPreviewImage = React.useCallback(() => {
     const viewport = previewViewportRef.current
     const image = previewImageRef.current
@@ -42,6 +45,13 @@ export function ImagesPanel() {
       setImages(list)
       const entries = await Promise.all(list.filter(item => item.available).map(async item => { try { return [item.id, await window.api.images.readData(item.id)] as const } catch { return null } }))
       setUrls(Object.fromEntries(entries.filter((entry): entry is readonly [number, string] => Boolean(entry))))
+      const linkEntries = await Promise.all(list.map(async item => {
+        try {
+          const links = await window.api.tags.assetLinks.list({ assetType: 'image', assetKey: 'image:' + item.id }) as Array<{ tagId: string }>
+          return [item.id, links.map(link => link.tagId)] as const
+        } catch { return [item.id, []] as const }
+      }))
+      setImageTags(Object.fromEntries(linkEntries))
       setError(null)
     } catch (cause) {
       console.error('Failed to load image library:', cause)
@@ -137,6 +147,7 @@ export function ImagesPanel() {
                   <div className='mt-2 flex flex-wrap gap-1.5'>
                     <Badge>{img.storage_mode === 'managed' ? '托管副本' : '外部链接'}</Badge>
                     <StatusBadge tone={img.available ? 'success' : 'danger'}>{img.available ? '可用' : '文件不可用'}</StatusBadge>
+                    {(imageTags[img.id] || []).slice(0, 5).map(tagId => <Badge key={tagId} tone='neutral'>{tags.find(tag => tag.id === tagId)?.zh || tagId}</Badge>)}
                   </div>
                 </div>
               </div>

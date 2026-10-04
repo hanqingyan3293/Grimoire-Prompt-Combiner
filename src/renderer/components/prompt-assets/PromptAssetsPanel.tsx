@@ -44,6 +44,7 @@ export function PromptAssetsPanel() {
   const [error, setError] = useState<string | null>(null)
   const [preview, setPreview] = useState<PromptAssetItem | null>(null)
   const [categories, setCategories] = useState<AssetCategory[]>([])
+  const [assetTags, setAssetTags] = useState<Record<string, string[]>>({})
   const requestId = useRef(0)
   const tags = useTagsStore(state => state.tags)
   const replaceFromPromptText = usePromptsStore(state => state.replaceFromPromptText)
@@ -77,6 +78,17 @@ export function PromptAssetsPanel() {
   }, [query, source, offset])
 
   useEffect(() => { void load() }, [load])
+  useEffect(() => {
+    let disposed = false
+    const assets = page.items.filter(item => item.source === 'asset')
+    void Promise.all(assets.map(async item => {
+      try {
+        const links = await window.api.tags.assetLinks.list({ assetType: 'prompt', assetKey: 'prompt:' + item.id }) as Array<{ tagId: string }>
+        return [item.id, links.map(link => link.tagId)] as const
+      } catch { return [item.id, []] as const }
+    })).then(entries => { if (!disposed) setAssetTags(Object.fromEntries(entries)) })
+    return () => { disposed = true }
+  }, [page.items])
   useEffect(() => { void window.api.promptAssets.categories.list().then(setCategories).catch(() => {}) }, [])
   useEffect(() => {
     const reload = window.api.db.onReload(() => void load())
@@ -174,7 +186,7 @@ export function PromptAssetsPanel() {
             }
             roots.forEach(category => collectIds(category.id))
             const uncategorized = items.filter(item => !item.categoryIds?.some(id => visibleCategoryIds.has(id)))
-            const renderCard = (item: PromptAssetItem) => <ResourceCard key={item.id}><AssetCard item={item} onPreview={() => setPreview(item)} onCopy={() => void copyPrompt(item)} onApply={() => apply(item)} onDragStart={event => { event.dataTransfer.setData('text/prompt-asset-id', item.id.replace(/^asset:/, '')); event.dataTransfer.effectAllowed = 'move' }} /></ResourceCard>
+            const renderCard = (item: PromptAssetItem) => <ResourceCard key={item.id}><AssetCard item={item} tagLabels={(assetTags[item.id] || []).map(id => tags.find(tag => tag.id === id)?.zh || id)} onPreview={() => setPreview(item)} onCopy={() => void copyPrompt(item)} onApply={() => apply(item)} onDragStart={event => { event.dataTransfer.setData('text/prompt-asset-id', item.id.replace(/^asset:/, '')); event.dataTransfer.effectAllowed = 'move' }} /></ResourceCard>
             return <ResourceGroup key={group} id={`prompt-assets:${group}`} title={title} count={items.length} empty={!items.length} forceOpen={Boolean(query)} contentClassName='col-span-full block'>
               <div className='col-span-full min-w-0 space-y-2'>
                 {roots.map(category => <PromptAssetCategoryBranch key={category.id} category={category} categoriesByParent={categoriesByParent} items={items} onAssign={async (categoryId, itemId) => { await window.api.promptAssets.categories.assign({ assetId: itemId, categoryId }); await refreshAfterCategoryChange() }} renderCard={renderCard} forceOpen={Boolean(query)} />)}
@@ -199,7 +211,7 @@ function SourceBadge({ item }: { item: PromptAssetItem }) {
   return <Badge tone={meta.tone}><Icon size={11} aria-hidden='true' />{meta.label}</Badge>
 }
 
-function AssetCard({ item, onPreview, onCopy, onApply, onDragStart }: { item: PromptAssetItem; onPreview: () => void; onCopy: () => void; onApply: () => void; onDragStart?: (event: React.DragEvent) => void }) {
+function AssetCard({ item, tagLabels = [], onPreview, onCopy, onApply, onDragStart }: { item: PromptAssetItem; tagLabels?: string[]; onPreview: () => void; onCopy: () => void; onApply: () => void; onDragStart?: (event: React.DragEvent) => void }) {
   return (
     <div className='min-w-0 p-3' draggable={Boolean(onDragStart)} onDragStart={onDragStart}>
       <div className='flex min-w-0 items-start justify-between gap-2'>
@@ -208,6 +220,7 @@ function AssetCard({ item, onPreview, onCopy, onApply, onDragStart }: { item: Pr
           <div className='mt-1 flex min-w-0 flex-wrap items-center gap-1.5'><SourceBadge item={item} />{item.nsfw && <Badge tone='danger'>NSFW</Badge>}</div>
           {item.detail && <div className='mt-1 truncate text-[11px] text-[var(--color-text-secondary)]' title={item.detail}>{item.detail}</div>}
           <p className='mt-2 line-clamp-3 break-words font-mono text-xs leading-5 text-[var(--color-text-primary)]'>{item.prompt || '无提示词文本'}</p>
+          {tagLabels.length > 0 && <div className='mt-2 flex flex-wrap gap-1'>{tagLabels.slice(0, 5).map(label => <Badge key={label} tone='neutral'>{label}</Badge>)}</div>}
         </div>
         <div className='flex shrink-0 gap-1'>
           <IconButton icon={Copy} label={`复制 ${item.name}`} onClick={onCopy} />

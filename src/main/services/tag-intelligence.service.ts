@@ -23,6 +23,17 @@ function ensureTag(db: LegacyDatabase, tagId: string): void { if (!tagById(db, t
 function ensureAssetType(value: unknown): string { return requireText(value, '资产类型', 80) }
 function ensureAssetKey(value: unknown): string { return requireText(value, '资产键', 500) }
 
+export function syncTagIntelligenceForTag(db: LegacyDatabase, tagId: string, source = 'builtin'): void {
+  const row = tagById(db, tagId)
+  if (!row) return
+  const en = String(row[2] || '').trim()
+  const zh = String(row[3] || '').trim()
+  const canonical = normalizeTagValue(en || zh)
+  db.run('INSERT INTO tag_metadata (tag_id,namespace,normalized_key,description,color,is_active,source) VALUES (?,?,?,?,?,?,?) ON CONFLICT(tag_id) DO UPDATE SET normalized_key=excluded.normalized_key,source=excluded.source', [tagId, '', canonical, '', '', 1, source])
+  if (en) db.run('INSERT OR IGNORE INTO tag_aliases (id,tag_id,alias,normalized_alias,language,source,is_builtin) VALUES (?,?,?,?,?,?,?)', ['alias_' + tagId + '_en', tagId, en, normalizeTagValue(en), 'en', 'canonical', 1])
+  if (zh) db.run('INSERT OR IGNORE INTO tag_aliases (id,tag_id,alias,normalized_alias,language,source,is_builtin) VALUES (?,?,?,?,?,?,?)', ['alias_' + tagId + '_zh', tagId, zh, normalizeTagValue(zh), 'zh', 'canonical', 1])
+}
+
 export function searchTags(db: LegacyDatabase, queryValue: unknown, limitValue = 50): TagSearchResult[] {
   const query = normalizeTagValue(queryValue); const limit = Math.min(200, Math.max(1, Math.floor(Number(limitValue) || 50))); const ids = activeTagIds(db); if (!ids.length) return []
   const placeholders = ids.map(() => '?').join(','); const pattern = '%' + query + '%'

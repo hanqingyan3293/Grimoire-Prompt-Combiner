@@ -48,6 +48,7 @@ export function WD14Panel() {
   const [historyImages, setHistoryImages] = useState<Record<string, string>>({})
   const [historyQuery, setHistoryQuery] = useState('')
   const [historyLoading, setHistoryLoading] = useState(false)
+  const [tagSuggestions, setTagSuggestions] = useState<Array<{ id: string; assetKey: string; rawValue: string; namespace: string; confidence: number }>>([])
   const allTags = useTagsStore(state => state.tags)
   const addPositive = usePromptsStore(state => state.addPositive)
 
@@ -91,6 +92,11 @@ export function WD14Panel() {
     finally { setHistoryLoading(false) }
   }, [historyQuery])
 
+  const loadTagSuggestions = useCallback(async () => {
+    try { setTagSuggestions(await window.api.tags.suggestions.list({ assetType: 'image', status: 'pending' }) as Array<{ id: string; assetKey: string; rawValue: string; namespace: string; confidence: number }>) }
+    catch { setTagSuggestions([]) }
+  }, [])
+
   useEffect(() => {
     void load().catch(error => {
       setLoading(false)
@@ -100,13 +106,17 @@ export function WD14Panel() {
   }, [load])
 
   useEffect(() => { void loadHistory() }, [loadHistory])
+  useEffect(() => { void loadTagSuggestions() }, [loadTagSuggestions])
 
   useEffect(() => {
     const cleanup = window.api.tasks.onUpdated(event => {
-      if (event.kind === 'wd14' && (event.status === 'succeeded' || event.status === 'failed')) void loadHistory()
+      if (event.kind === 'wd14' && (event.status === 'succeeded' || event.status === 'failed')) { void loadHistory(); void loadTagSuggestions() }
     })
     return cleanup
-  }, [loadHistory])
+  }, [loadHistory, loadTagSuggestions])
+
+  const acceptSuggestion = async (id: string) => { await window.api.tags.suggestions.accept(id); await loadTagSuggestions() }
+  const rejectSuggestion = async (id: string) => { await window.api.tags.suggestions.reject(id); await loadTagSuggestions() }
 
   const showMessage = (value: string, tone: 'info' | 'success' | 'danger' = 'info') => {
     setMessageTone(tone)
@@ -272,6 +282,11 @@ export function WD14Panel() {
           </div>
         )}
       </section>
+
+      {tagSuggestions.length > 0 && <section className='space-y-2 border-t border-[var(--color-border)] pt-3'>
+        <div className='flex items-center justify-between gap-2'><div className='text-sm font-medium text-[var(--color-text-primary)]'>待确认标签</div><span className='text-xs text-[var(--color-text-secondary)]'>{tagSuggestions.length} 条</span></div>
+        <div className='space-y-2'>{tagSuggestions.slice(0, 30).map(item => <article key={item.id} className='ui-list-card flex items-center gap-2 p-2'><div className='min-w-0 flex-1'><div className='truncate text-xs font-medium'>{item.rawValue}</div><div className='truncate text-[10px] text-[var(--color-text-secondary)]'>{item.assetKey} · {item.namespace || '未分类'}</div></div><Badge>{Math.round(item.confidence * 100)}%</Badge><IconButton icon={CheckCircle2} label='接受标签' onClick={() => void acceptSuggestion(item.id)} /><IconButton icon={Trash2} label='拒绝标签' onClick={() => void rejectSuggestion(item.id)} className='ui-icon-button-danger' /></article>)}</div>
+      </section>}
     </div>
   )
 }

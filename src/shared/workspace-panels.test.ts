@@ -5,6 +5,7 @@ describe('workspace popout panel allowlist', () => {
   it('keeps agent and mcp panels eligible for popout', () => {
     expect(isWorkspacePopoutType('agent-sessions')).toBe(true)
     expect(isWorkspacePopoutType('mcp')).toBe(true)
+    expect(isWorkspacePopoutType('tag-asset-manager')).toBe(true)
   })
 
   it('rejects unknown or malformed panel types', () => {

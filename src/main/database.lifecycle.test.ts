@@ -23,6 +23,9 @@ function createLegacyDatabase(filePath: string, settingValue = 'legacy') {
     CREATE TABLE tags (id TEXT PRIMARY KEY, subcategory_id TEXT NOT NULL, en TEXT NOT NULL, zh TEXT NOT NULL, sort_order INTEGER DEFAULT 0, source TEXT DEFAULT 'builtin');
   `)
   database.prepare('INSERT INTO settings (key, value) VALUES (?, ?)').run('test_marker', settingValue)
+  database.prepare('INSERT INTO categories (id,en,zh,sort_order) VALUES (?,?,?,?)').run('cat_legacy', 'Character', '人物', 1)
+  database.prepare('INSERT INTO subcategories (id,category_id,en,zh,sort_order) VALUES (?,?,?,?,?)').run('sub_legacy', 'cat_legacy', 'Face', '脸部', 1)
+  database.prepare('INSERT INTO tags (id,subcategory_id,en,zh,sort_order,source) VALUES (?,?,?,?,?,?)').run('tag_legacy', 'sub_legacy', '1girl', '单个女孩', 1, 'builtin')
   database.close()
 }
 
@@ -44,6 +47,8 @@ describe('database lifecycle', () => {
 
     const categoryColumns = getDatabase().exec('PRAGMA table_info(categories)')[0].values.map(row => row[1])
     expect(categoryColumns).toContain('group_id')
+    expect(getDatabase().exec("SELECT normalized_key FROM tag_metadata WHERE tag_id='tag_legacy'")[0].values[0][0]).toBe('1girl')
+    expect(getDatabase().exec("SELECT alias FROM tag_aliases WHERE tag_id='tag_legacy'")[0].values.map(row => row[0]).sort()).toEqual(['1girl', '单个女孩'].sort())
     expect(getDatabase().exec("SELECT value FROM schema_meta WHERE key='schema_version'")[0].values[0][0]).toBe('15')
     expect(fs.readdirSync(testRoot).some(name => name.startsWith('grimoire.db.pre-migration-'))).toBe(true)
   })
