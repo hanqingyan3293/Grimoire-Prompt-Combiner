@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { GitBranch, MessageSquare, Plus, RefreshCw, Trash2 } from 'lucide-react'
+import { GitBranch, MessageSquare, Plus, RefreshCw, Send, Trash2 } from 'lucide-react'
 import type { AgentRuntimeKind, AgentSessionRecord } from '@shared/agent-types'
 import { Button, IconButton } from '../ui/Button'
 import { EmptyState, PanelHeader, StatusBadge } from '../ui/Feedback'
@@ -18,6 +18,10 @@ export function AgentSessionsPanel() {
   const [model, setModel] = useState('')
   const [title, setTitle] = useState('')
   const [message, setMessage] = useState('')
+  const [activeId, setActiveId] = useState<string | null>(null)
+  const [eventText, setEventText] = useState('')
+  const [sending, setSending] = useState(false)
+  const [events, setEvents] = useState<Array<{ id: string; type: string; data: Record<string, unknown> }>>([])
 
   const load = async () => {
     setLoading(true)
@@ -35,6 +39,25 @@ export function AgentSessionsPanel() {
       setMessage('会话已创建')
       await load()
     } catch (error) { setMessage(error instanceof Error ? error.message : '创建会话失败') }
+  }
+
+  const selectSession = async (session: AgentSessionRecord) => {
+    setActiveId(session.id)
+    try { setEvents((await window.api.agent.sessions.get(session.id))?.events || []) }
+    catch (error) { setMessage(error instanceof Error ? error.message : '读取会话事件失败') }
+  }
+
+  const send = async () => {
+    if (!activeId || !eventText.trim() || sending) return
+    setSending(true)
+    try {
+      await window.api.agent.sessions.send({ sessionId: activeId, content: eventText.trim(), model: model || undefined })
+      setEventText('')
+      const current = await window.api.agent.sessions.get(activeId)
+      setEvents(current?.events || [])
+      await load()
+    } catch (error) { setMessage(error instanceof Error ? error.message : '发送 Agent 消息失败') }
+    finally { setSending(false) }
   }
 
   const branch = async (session: AgentSessionRecord) => {
@@ -65,7 +88,7 @@ export function AgentSessionsPanel() {
       </section>
       {loading && !sessions.length ? <div className='ui-empty-state text-sm'>正在读取会话</div> : sessions.length === 0 ? <EmptyState icon={MessageSquare} title='暂无 Agent 会话' description='创建会话后可以在这里查看、分支和恢复' /> : (
         <div className='space-y-2'>
-          {sessions.map(session => <article key={session.id} className='ui-list-card flex items-center gap-3 p-3'>
+          {sessions.map(session => <article key={session.id} className={'ui-list-card flex cursor-pointer items-center gap-3 p-3 ' + (activeId === session.id ? 'border-[var(--color-accent)] bg-[var(--color-accent)]/10' : '')} onClick={() => void selectSession(session)}>
             <div className='grid size-9 shrink-0 place-items-center rounded-lg bg-[var(--color-bg-tertiary)] text-[var(--color-accent-text)]'><MessageSquare size={17} /></div>
             <div className='min-w-0 flex-1'>
               <div className='truncate text-sm font-medium text-[var(--color-text-primary)]'>{session.title || '未命名会话'}</div>
@@ -79,6 +102,16 @@ export function AgentSessionsPanel() {
           </article>)}
         </div>
       )}
+      {activeId ? <section className='ui-list-card space-y-3 p-3'>
+        <div className='text-sm font-semibold'>会话消息</div>
+        <div className='max-h-64 space-y-2 overflow-auto rounded-md bg-[var(--color-bg-secondary)] p-2'>
+          {events.length ? events.filter(event => event.type === 'message').map(event => <div key={event.id} className='rounded-md border border-[var(--color-border)] p-2 text-xs leading-5'><span className='mr-2 font-semibold text-[var(--color-accent-text)]'>{String(event.data.role || 'message')}</span>{String(event.data.content || '')}</div>) : <div className='py-5 text-center text-xs text-[var(--color-text-secondary)]'>暂无消息</div>}
+        </div>
+        <div className='flex gap-2'>
+          <textarea className='ui-field min-h-16 min-w-0 flex-1 resize-y' value={eventText} onChange={event => setEventText(event.target.value)} placeholder='输入消息，发送到当前会话' onKeyDown={event => { if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) { event.preventDefault(); void send() } }} />
+          <Button size='sm' variant='primary' icon={Send} onClick={() => void send()} disabled={sending || !eventText.trim()}>{sending ? '发送中' : '发送'}</Button>
+        </div>
+      </section> : null}
     </div>
   )
 }

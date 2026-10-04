@@ -331,6 +331,7 @@ export const IPC_CHANNELS = {
   AGENT_SESSION_GET: "agent:session:get",
   AGENT_SESSION_CREATE: "agent:session:create",
   AGENT_SESSION_APPEND_EVENT: "agent:session:appendEvent",
+  AGENT_SESSION_SEND: "agent:session:send",
   AGENT_SESSION_BRANCH: "agent:session:branch",
   AGENT_SESSION_UPDATE: "agent:session:update",
   AGENT_SESSION_DELETE: "agent:session:delete",

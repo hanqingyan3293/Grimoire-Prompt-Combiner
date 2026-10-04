@@ -31,6 +31,14 @@ describe('agent session persistence', () => {
     expect(deleteAgentSession(session.id)).toBe(true)
     expect(getAgentSession(session.id)).toBeNull()
   })
+
+  it('keeps event sequence numbers ordered after multiple appends', async () => {
+    await initDatabase()
+    const session = createAgentSession({ runtime: 'openai-compatible' })
+    appendAgentSessionEvent({ sessionId: session.id, type: 'message', data: { content: 'one' } })
+    appendAgentSessionEvent({ sessionId: session.id, type: 'message', data: { content: 'two' } })
+    expect(getAgentSession(session.id)?.events.map(event => event.sequence)).toEqual([0, 1])
+  })
 })
 
 describe('MCP server persistence', () => {

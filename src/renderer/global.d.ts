@@ -157,6 +157,7 @@ interface GrimoireAPI {
       get: (id: string) => Promise<{ session: AgentSessionRecord; events: AgentSessionEventRecord[] } | null>
       create: (input: { runtime: string; providerId?: string; model?: string; title?: string; parentId?: string }) => Promise<AgentSessionRecord>
       appendEvent: (input: { sessionId: string; type: string; data: Record<string, unknown> }) => Promise<AgentSessionEventRecord>
+      send: (input: { sessionId: string; content: string; providerId?: string; model?: string }) => Promise<{ text: string; session: AgentSessionRecord }>
       branch: (input: { sessionId: string; title?: string }) => Promise<AgentSessionRecord>
       update: (input: { id: string; status?: string; title?: string; data?: Record<string, unknown> }) => Promise<AgentSessionRecord>
       delete: (id: string) => Promise<boolean>
