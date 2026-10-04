@@ -4,6 +4,7 @@ import type { TaskEvent, TaskRecord, TaskStatus } from '../shared/task-types'
 import type { CanvasDocument, CanvasProject } from '../shared/canvas-types'
 import type { PromptAssetPage, PromptAssetQuery } from '../shared/prompt-asset-types'
 import type { WD14HistoryRecord } from '../shared/wd14-types'
+import type { AgentSessionEventRecord, AgentSessionRecord, McpServerRecord } from '../shared/agent-types'
 
 // 预加载 API 类型
 interface GrimoireAPI {
@@ -149,6 +150,24 @@ interface GrimoireAPI {
     saveEditorState: (editorKey: string, expectedRevision: number, state: unknown) => Promise<{ saved: boolean; conflict?: boolean; value?: { editorKey: string; revision: number; state: unknown }; current?: { editorKey: string; revision: number; state: unknown } | null }>
     onEditorStateChanged: (callback: (value: { editorKey: string; revision: number; state: unknown }) => void) => () => void
     onPopoutClosed: (callback: (value: { popoutId: string }) => void) => () => void
+  }
+  agent: {
+    sessions: {
+      list: () => Promise<AgentSessionRecord[]>
+      get: (id: string) => Promise<{ session: AgentSessionRecord; events: AgentSessionEventRecord[] } | null>
+      create: (input: { runtime: string; providerId?: string; model?: string; title?: string; parentId?: string }) => Promise<AgentSessionRecord>
+      appendEvent: (input: { sessionId: string; type: string; data: Record<string, unknown> }) => Promise<AgentSessionEventRecord>
+      branch: (input: { sessionId: string; title?: string }) => Promise<AgentSessionRecord>
+      update: (input: { id: string; status?: string; title?: string; data?: Record<string, unknown> }) => Promise<AgentSessionRecord>
+      delete: (id: string) => Promise<boolean>
+    }
+    mcp: {
+      list: () => Promise<McpServerRecord[]>
+      save: (input: Partial<McpServerRecord>) => Promise<McpServerRecord>
+      delete: (id: string) => Promise<boolean>
+      connect: (id: string) => Promise<McpServerRecord>
+      disconnect: (id: string) => Promise<McpServerRecord>
+    }
   }
   error: {
     getAll: () => Promise<Array<{ id: number; message: string; stack: string; context: string; created_at: string }>>

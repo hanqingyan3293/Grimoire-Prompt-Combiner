@@ -1,0 +1,61 @@
+import { ipcMain } from 'electron'
+import { IPC_CHANNELS } from '../../shared/types'
+import type { AgentRuntimeKind, AgentSessionEventType, AgentSessionStatus } from '../../shared/agent-types'
+import { requireId } from '../services/input-validation'
+import { appendAgentSessionEvent, branchAgentSession, createAgentSession, deleteAgentSession, getAgentSession, listAgentSessions, updateAgentSession } from '../services/agent-session.service'
+import { deleteMcpServer, listMcpServers, saveMcpServer, updateMcpServerStatus } from '../services/mcp.service'
+
+export function registerAgentIPC(): void {
+  ipcMain.handle(IPC_CHANNELS.AGENT_SESSION_LIST, async () => listAgentSessions())
+  ipcMain.handle(IPC_CHANNELS.AGENT_SESSION_GET, async (_event, id: unknown) => getAgentSession(requireId(id, '会话 ID')))
+  ipcMain.handle(IPC_CHANNELS.AGENT_SESSION_CREATE, async (_event, value: unknown) => {
+    if (!value || typeof value !== 'object') throw new Error('会话参数无效')
+    const input = value as Record<string, unknown>
+    const runtime = String(input.runtime || 'openai-compatible') as AgentRuntimeKind
+    if (!['openai-compatible', 'codex', 'opencode', 'pi'].includes(runtime)) throw new Error('Runtime 类型无效')
+    return createAgentSession({ runtime, providerId: typeof input.providerId === 'string' ? input.providerId : undefined, model: typeof input.model === 'string' ? input.model : undefined, title: typeof input.title === 'string' ? input.title : undefined, parentId: typeof input.parentId === 'string' ? input.parentId : undefined })
+  })
+  ipcMain.handle(IPC_CHANNELS.AGENT_SESSION_APPEND_EVENT, async (_event, value: unknown) => {
+    if (!value || typeof value !== 'object') throw new Error('会话事件参数无效')
+    const input = value as Record<string, unknown>
+    const type = String(input.type || 'status') as AgentSessionEventType
+    if (!['message', 'tool-call', 'tool-result', 'permission', 'status', 'error'].includes(type)) throw new Error('会话事件类型无效')
+    return appendAgentSessionEvent({ sessionId: requireId(input.sessionId, '会话 ID'), type, data: input.data && typeof input.data === 'object' ? input.data as Record<string, unknown> : {} })
+  })
+  ipcMain.handle(IPC_CHANNELS.AGENT_SESSION_BRANCH, async (_event, value: unknown) => {
+    const input = value && typeof value === 'object' ? value as Record<string, unknown> : {}
+    return branchAgentSession({ sessionId: requireId(input.sessionId, '会话 ID'), title: typeof input.title === 'string' ? input.title : undefined })
+  })
+  ipcMain.handle(IPC_CHANNELS.AGENT_SESSION_UPDATE, async (_event, value: unknown) => {
+    if (!value || typeof value !== 'object') throw new Error('会话更新参数无效')
+    const input = value as Record<string, unknown>
+    const status = input.status as AgentSessionStatus | undefined
+    if (status && !['idle', 'running', 'completed', 'failed', 'interrupted'].includes(status)) throw new Error('会话状态无效')
+    return updateAgentSession({ id: requireId(input.id, '会话 ID'), status, title: typeof input.title === 'string' ? input.title : undefined, data: input.data && typeof input.data === 'object' ? input.data as Record<string, unknown> : undefined })
+  })
+  ipcMain.handle(IPC_CHANNELS.AGENT_SESSION_DELETE, async (_event, id: unknown) => deleteAgentSession(requireId(id, '会话 ID')))
+
+  ipcMain.handle(IPC_CHANNELS.MCP_SERVER_LIST, async () => listMcpServers())
+  ipcMain.handle(IPC_CHANNELS.MCP_SERVER_SAVE, async (_event, value: unknown) => {
+    if (!value || typeof value !== 'object') throw new Error('MCP 配置无效')
+    const input = value as Record<string, unknown>
+    if (input.transport !== undefined && input.transport !== 'http' && input.transport !== 'stdio') throw new Error('MCP 传输类型无效')
+    return saveMcpServer({ id: typeof input.id === 'string' ? input.id : undefined, name: typeof input.name === 'string' ? input.name : undefined, transport: input.transport as 'http' | 'stdio' | undefined, endpoint: typeof input.endpoint === 'string' ? input.endpoint : undefined, command: typeof input.command === 'string' ? input.command : undefined, args: Array.isArray(input.args) ? input.args.map(String) : undefined, env: input.env && typeof input.env === 'object' ? Object.fromEntries(Object.entries(input.env).map(([key, val]) => [key, String(val)])) : undefined, enabled: input.enabled !== false })
+  })
+  ipcMain.handle(IPC_CHANNELS.MCP_SERVER_DELETE, async (_event, id: unknown) => deleteMcpServer(requireId(id, 'MCP Server ID')))
+  ipcMain.handle(IPC_CHANNELS.MCP_SERVER_DISCONNECT, async (_event, id: unknown) => updateMcpServerStatus(requireId(id, 'MCP Server ID'), 'disconnected', null))
+  ipcMain.handle(IPC_CHANNELS.MCP_SERVER_CONNECT, async (_event, id: unknown) => {
+    const serverId = requireId(id, 'MCP Server ID')
+    const server = listMcpServers().find(item => item.id === serverId)
+    if (!server) throw new Error('MCP Server 不存在')
+    if (server.transport === 'stdio') return updateMcpServerStatus(serverId, 'failed', 'stdio MCP 需要通过 Agent Runtime 管理，当前未启动子进程')
+    if (!server.endpoint) return updateMcpServerStatus(serverId, 'failed', 'HTTP MCP 缺少 endpoint')
+    try {
+      const response = await fetch(server.endpoint, { method: 'GET', signal: AbortSignal.timeout(8000) })
+      if (!response.ok) throw new Error('HTTP ' + response.status)
+      return updateMcpServerStatus(serverId, 'connected', null)
+    } catch (error) {
+      return updateMcpServerStatus(serverId, 'failed', error instanceof Error ? error.message : String(error))
+    }
+  })
+}

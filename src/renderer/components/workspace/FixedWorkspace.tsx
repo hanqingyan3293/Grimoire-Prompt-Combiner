@@ -32,6 +32,7 @@ export function FixedWorkspace() {
   const setSplitRatio = useWorkspaceStore(s => s.setSplitRatio)
   const setMaximizedPanel = useWorkspaceStore(s => s.setMaximizedPanel)
   const setFloatingPanel = useWorkspaceStore(s => s.setFloatingPanel)
+  const setPopoutPanel = useWorkspaceStore(s => s.setPopoutPanel)
   const setFloatingPanelPosition = useWorkspaceStore(s => s.setFloatingPanelPosition)
   const focusFloatingPanel = useWorkspaceStore(s => s.focusFloatingPanel)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -184,7 +185,11 @@ export function FixedWorkspace() {
           onMaximize={() => setMaximizedPanel(workspace.id, maximizedPanelId === node.id ? null : node.id)}
           onFloat={() => setFloatingPanel(workspace.id, node.id, !(floatingPanels[workspace.id] || []).includes(node.id))}
           onFloatingDragStart={(event) => startFloatingDrag(node.id, event)}
-          onPopout={() => void window.api.workspace.openPopout({ popoutId: workspace.id + ':' + node.id, panelType: activeType, title: definition.title })}
+          onPopout={() => {
+            const popoutId = workspace.id + ':' + node.id
+            setPopoutPanel(workspace.id, node.id, true)
+            void window.api.workspace.openPopout({ popoutId, panelType: activeType, title: definition.title }).catch(() => setPopoutPanel(workspace.id, node.id, false))
+          }}
           floating={(floatingPanels[workspace.id] || []).includes(node.id)}
           onClose={() => closePanel(workspace.id, node.id)}
           maximized={maximizedPanelId === node.id}

@@ -20,6 +20,7 @@ import { registerComfyIPC } from "./ipc/comfy.ipc"
 import { registerCanvasIPC } from "./ipc/canvas.ipc"
 import { registerPromptAssetsIPC } from "./ipc/prompt-assets.ipc"
 import { registerWorkspaceIPC } from "./ipc/workspace.ipc"
+import { registerAgentIPC } from "./ipc/agent.ipc"
 import { importDefaultPromptAssets, seedDefaultPromptAssetCategories } from './services/default-prompt-assets.service'
 import { configureComfyUI } from './services/comfy-client'
 import { requireHttpUrl } from './services/input-validation'
@@ -373,6 +374,7 @@ async function registerAllIPC(): Promise<void> {
   registerCanvasIPC()
   registerPromptAssetsIPC()
   registerWorkspaceIPC()
+  registerAgentIPC()
   registerSystemIPC()
   applyPersistedIntegrationSettings()
   markInterruptedTasks()

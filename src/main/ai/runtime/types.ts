@@ -29,11 +29,17 @@ export type RuntimeSendInput = {
   tools?: unknown[]
 }
 
+export type RuntimeApprovalInput = { requestId: string; decision: 'accept' | 'acceptForSession' | 'decline' }
+
 export interface AgentRuntime {
   readonly kind: AgentRuntimeKind
   createSession(model: string, messages?: RuntimeMessage[]): RuntimeSession
+  loadSession?(session: RuntimeSession): void
   send(input: RuntimeSendInput): AsyncGenerator<RuntimeEvent, void, unknown>
   interrupt?(sessionId: string): Promise<void>
+  approve?(input: RuntimeApprovalInput): Promise<void>
+  reject?(input: RuntimeApprovalInput): Promise<void>
+  listTools?(): Promise<unknown[]>
   close?(): Promise<void>
 }
 

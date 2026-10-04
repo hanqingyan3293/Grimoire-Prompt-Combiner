@@ -8,7 +8,7 @@ import { createLegacyDatabase, type LegacyDatabase } from './services/sqlite.com
 
 // v9 adds prompt asset category tables/indexes. Keep this bumped so existing
 // v8 databases run the additive migration instead of being treated as current.
-const CURRENT_SCHEMA_VERSION = 12
+const CURRENT_SCHEMA_VERSION = 13
 let nativeDb: DatabaseSync | null = null
 let db: LegacyDatabase | null = null
 let dbPath = ''
@@ -240,6 +240,46 @@ CREATE TABLE IF NOT EXISTS workspace_editor_states (
   updated_at TEXT NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS agent_sessions (
+  id TEXT PRIMARY KEY,
+  runtime TEXT NOT NULL,
+  provider_id TEXT NOT NULL DEFAULT '',
+  model TEXT NOT NULL DEFAULT '',
+  title TEXT NOT NULL DEFAULT '',
+  status TEXT NOT NULL DEFAULT 'idle',
+  parent_id TEXT,
+  data_json TEXT NOT NULL DEFAULT '{}',
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS agent_session_events (
+  id TEXT PRIMARY KEY,
+  session_id TEXT NOT NULL,
+  sequence INTEGER NOT NULL,
+  type TEXT NOT NULL,
+  data_json TEXT NOT NULL DEFAULT '{}',
+  created_at TEXT NOT NULL,
+  UNIQUE(session_id, sequence),
+  FOREIGN KEY (session_id) REFERENCES agent_sessions(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS mcp_servers (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  transport TEXT NOT NULL,
+  endpoint TEXT NOT NULL DEFAULT '',
+  command TEXT NOT NULL DEFAULT '',
+  args_json TEXT NOT NULL DEFAULT '[]',
+  env_json TEXT NOT NULL DEFAULT '{}',
+  enabled INTEGER NOT NULL DEFAULT 1,
+  status TEXT NOT NULL DEFAULT 'disconnected',
+  error_message TEXT,
+  tools_json TEXT NOT NULL DEFAULT '[]',
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS chat_groups (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
@@ -319,6 +359,9 @@ CREATE INDEX IF NOT EXISTS idx_prompt_assets_source ON prompt_assets(source);
 CREATE INDEX IF NOT EXISTS idx_prompt_asset_categories_parent ON prompt_asset_categories(parent_id, sort_order);
 CREATE INDEX IF NOT EXISTS idx_prompt_asset_category_links_category ON prompt_asset_category_links(category_id);
 CREATE INDEX IF NOT EXISTS idx_task_jobs_status ON task_jobs(status, created_at);
+CREATE INDEX IF NOT EXISTS idx_agent_sessions_updated ON agent_sessions(updated_at DESC);
+CREATE INDEX IF NOT EXISTS idx_agent_session_events_session ON agent_session_events(session_id, sequence);
+CREATE INDEX IF NOT EXISTS idx_mcp_servers_enabled ON mcp_servers(enabled, updated_at DESC);
 CREATE INDEX IF NOT EXISTS idx_wd14_history_created ON wd14_history(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_wd14_history_image ON wd14_history(image_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_comfy_workflows_name ON comfy_workflows(name);

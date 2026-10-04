@@ -4,6 +4,7 @@ import type { Category, Tag, Preset, HistoryItem, ImageRef, ChatMessage, AppSett
 import type { TaskCreateInput, TaskEvent, TaskRecord, TaskStatus } from "../shared/task-types"
 import type { CanvasDocument, CanvasProject } from "../shared/canvas-types"
 import type { PromptAssetPage, PromptAssetQuery } from "../shared/prompt-asset-types"
+import type { AgentSessionEventRecord, AgentSessionRecord, McpServerRecord } from "../shared/agent-types"
 
 // Keep the sandboxed preload self-contained at runtime. TypeScript type imports
 // disappear from the bundle, but a runtime import would be unavailable to a
@@ -23,7 +24,7 @@ const IPC_CHANNELS = {
   FAV_TAG_LIST: 'fav:tagList', FAV_TAG_ADD: 'fav:tagAdd', FAV_TAG_REMOVE: 'fav:tagRemove', FAV_TAG_CHECK: 'fav:tagCheck', FAV_SUB_LIST: 'fav:subList', FAV_SUB_ADD: 'fav:subAdd', FAV_SUB_REMOVE: 'fav:subRemove', FAV_SUB_CHECK: 'fav:subCheck',
   MIGRATION_SELECT_FRIEND_PROMPTS: 'migration:selectFriendPrompts', MIGRATION_IMPORT_FRIEND_PROMPTS: 'migration:importFriendPrompts',
   TASKS_CREATE: 'tasks:create', TASKS_LIST: 'tasks:list', TASKS_GET: 'tasks:get', TASKS_CANCEL: 'tasks:cancel', TASKS_RETRY: 'tasks:retry', TASKS_SUBSCRIBE: 'tasks:subscribe',
-  WD14_STATUS: 'wd14:status', WD14_MODELS: 'wd14:models', WD14_SWITCH_MODEL: 'wd14:switchModel', WD14_CREATE_TASK: 'wd14:createTask', WD14_DIAGNOSTICS: 'wd14:diagnostics', WD14_SELECT_MODEL_DIRECTORY: 'wd14:selectModelDirectory', WD14_SELECT_PYTHON_PATH: 'wd14:selectPythonPath', WD14_HISTORY_LIST: 'wd14:history:list', WD14_HISTORY_GET: 'wd14:history:get', WD14_HISTORY_DELETE: 'wd14:history:delete', WD14_HISTORY_CLEAR: 'wd14:history:clear',
+  WD14_STATUS: 'wd14:status', WD14_MODELS: 'wd14:models', WD14_SWITCH_MODEL: 'wd14:switchModel', WD14_CREATE_TASK: 'wd14:createTask', WD14_DIAGNOSTICS: 'wd14:diagnostics', WD14_SELECT_MODEL_DIRECTORY: 'wd14:selectModelDirectory', WD14_SELECT_PYTHON_PATH: 'wd14:selectPythonPath', WD14_HISTORY_LIST: 'wd14:history:list', WD14_HISTORY_GET: 'wd14:history:get', WD14_HISTORY_DELETE: 'wd14:history:delete', WD14_HISTORY_CLEAR: 'wd14:history:clear', AGENT_SESSION_LIST: 'agent:session:list', AGENT_SESSION_GET: 'agent:session:get', AGENT_SESSION_CREATE: 'agent:session:create', AGENT_SESSION_APPEND_EVENT: 'agent:session:appendEvent', AGENT_SESSION_BRANCH: 'agent:session:branch', AGENT_SESSION_UPDATE: 'agent:session:update', AGENT_SESSION_DELETE: 'agent:session:delete', MCP_SERVER_LIST: 'mcp:server:list', MCP_SERVER_SAVE: 'mcp:server:save', MCP_SERVER_DELETE: 'mcp:server:delete', MCP_SERVER_CONNECT: 'mcp:server:connect', MCP_SERVER_DISCONNECT: 'mcp:server:disconnect',
   COMFY_STATUS: 'comfy:status', COMFY_MODELS: 'comfy:models', COMFY_WORKFLOWS_LIST: 'comfy:workflows:list', COMFY_WORKFLOW_IMPORT: 'comfy:workflows:import', COMFY_WORKFLOW_DELETE: 'comfy:workflows:delete', COMFY_CREATE_TASK: 'comfy:createTask', COMFY_QUICK_GENERATE: 'comfy:quickGenerate',
   CANVAS_LIST: 'canvas:list', CANVAS_GET: 'canvas:get', CANVAS_CREATE: 'canvas:create', CANVAS_SAVE: 'canvas:save', CANVAS_DELETE: 'canvas:delete', CANVAS_EXPORT_PACKAGE: 'canvas:exportPackage', CANVAS_IMPORT_PACKAGE: 'canvas:importPackage',
   CANVAS_VENDOR_LIST: 'canvasVendor:list', CANVAS_VENDOR_GET: 'canvasVendor:get', CANVAS_VENDOR_CREATE: 'canvasVendor:create', CANVAS_VENDOR_SAVE: 'canvasVendor:save', CANVAS_VENDOR_DELETE: 'canvasVendor:delete', WORKSPACE_OPEN_POPOUT: 'workspace:openPopout', WORKSPACE_CLOSE_POPOUT: 'workspace:closePopout', WORKSPACE_FOCUS_POPOUT: 'workspace:focusPopout', WORKSPACE_LOAD_DOCUMENT: 'workspace:loadDocument', WORKSPACE_SAVE_DOCUMENT: 'workspace:saveDocument', WORKSPACE_DOCUMENT_CHANGED: 'workspace:documentChanged', WORKSPACE_LOAD_EDITOR_STATE: 'workspace:loadEditorState', WORKSPACE_SAVE_EDITOR_STATE: 'workspace:saveEditorState', WORKSPACE_EDITOR_STATE_CHANGED: 'workspace:editorStateChanged', WORKSPACE_POPOUT_CLOSED: 'workspace:popoutClosed',
@@ -264,6 +265,24 @@ const api = {
       const handler = (_event: unknown, value: { popoutId: string }) => callback(value)
       ipcRenderer.on(IPC_CHANNELS.WORKSPACE_POPOUT_CLOSED, handler)
       return () => ipcRenderer.removeListener(IPC_CHANNELS.WORKSPACE_POPOUT_CLOSED, handler)
+    },
+  },
+  agent: {
+    sessions: {
+      list: () => ipcRenderer.invoke(IPC_CHANNELS.AGENT_SESSION_LIST) as Promise<AgentSessionRecord[]>,
+      get: (id: string) => ipcRenderer.invoke(IPC_CHANNELS.AGENT_SESSION_GET, id) as Promise<{ session: AgentSessionRecord; events: AgentSessionEventRecord[] } | null>,
+      create: (input: { runtime: string; providerId?: string; model?: string; title?: string; parentId?: string }) => ipcRenderer.invoke(IPC_CHANNELS.AGENT_SESSION_CREATE, input) as Promise<AgentSessionRecord>,
+      appendEvent: (input: { sessionId: string; type: string; data: Record<string, unknown> }) => ipcRenderer.invoke(IPC_CHANNELS.AGENT_SESSION_APPEND_EVENT, input) as Promise<AgentSessionEventRecord>,
+      branch: (input: { sessionId: string; title?: string }) => ipcRenderer.invoke(IPC_CHANNELS.AGENT_SESSION_BRANCH, input) as Promise<AgentSessionRecord>,
+      update: (input: { id: string; status?: string; title?: string; data?: Record<string, unknown> }) => ipcRenderer.invoke(IPC_CHANNELS.AGENT_SESSION_UPDATE, input) as Promise<AgentSessionRecord>,
+      delete: (id: string) => ipcRenderer.invoke(IPC_CHANNELS.AGENT_SESSION_DELETE, id) as Promise<boolean>,
+    },
+    mcp: {
+      list: () => ipcRenderer.invoke(IPC_CHANNELS.MCP_SERVER_LIST) as Promise<McpServerRecord[]>,
+      save: (input: Partial<McpServerRecord>) => ipcRenderer.invoke(IPC_CHANNELS.MCP_SERVER_SAVE, input) as Promise<McpServerRecord>,
+      delete: (id: string) => ipcRenderer.invoke(IPC_CHANNELS.MCP_SERVER_DELETE, id) as Promise<boolean>,
+      connect: (id: string) => ipcRenderer.invoke(IPC_CHANNELS.MCP_SERVER_CONNECT, id) as Promise<McpServerRecord>,
+      disconnect: (id: string) => ipcRenderer.invoke(IPC_CHANNELS.MCP_SERVER_DISCONNECT, id) as Promise<McpServerRecord>,
     },
   },
   comfy: {

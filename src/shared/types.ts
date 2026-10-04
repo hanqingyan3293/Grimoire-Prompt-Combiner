@@ -326,6 +326,20 @@ export const IPC_CHANNELS = {
   WORKSPACE_EDITOR_STATE_CHANGED: "workspace:editorStateChanged",
   WORKSPACE_POPOUT_CLOSED: "workspace:popoutClosed",
 
+  // Agent sessions and MCP
+  AGENT_SESSION_LIST: "agent:session:list",
+  AGENT_SESSION_GET: "agent:session:get",
+  AGENT_SESSION_CREATE: "agent:session:create",
+  AGENT_SESSION_APPEND_EVENT: "agent:session:appendEvent",
+  AGENT_SESSION_BRANCH: "agent:session:branch",
+  AGENT_SESSION_UPDATE: "agent:session:update",
+  AGENT_SESSION_DELETE: "agent:session:delete",
+  MCP_SERVER_LIST: "mcp:server:list",
+  MCP_SERVER_SAVE: "mcp:server:save",
+  MCP_SERVER_DELETE: "mcp:server:delete",
+  MCP_SERVER_CONNECT: "mcp:server:connect",
+  MCP_SERVER_DISCONNECT: "mcp:server:disconnect",
+
   // ComfyUI
   COMFY_STATUS: "comfy:status",
   COMFY_MODELS: "comfy:models",
