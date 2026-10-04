@@ -3,7 +3,7 @@ import { IPC_CHANNELS } from '../../shared/types'
 import type { AgentRuntimeKind, AgentSessionEventType, AgentSessionStatus } from '../../shared/agent-types'
 import { requireId } from '../services/input-validation'
 import { appendAgentSessionEvent, branchAgentSession, createAgentSession, deleteAgentSession, getAgentSession, listAgentSessions, updateAgentSession } from '../services/agent-session.service'
-import { deleteMcpServer, listMcpServers, saveMcpServer, updateMcpServerStatus } from '../services/mcp.service'
+import { connectMcpServer, deleteMcpServer, disconnectMcpServer, listMcpServers, saveMcpServer } from '../services/mcp.service'
 
 export function registerAgentIPC(): void {
   ipcMain.handle(IPC_CHANNELS.AGENT_SESSION_LIST, async () => listAgentSessions())
@@ -43,19 +43,6 @@ export function registerAgentIPC(): void {
     return saveMcpServer({ id: typeof input.id === 'string' ? input.id : undefined, name: typeof input.name === 'string' ? input.name : undefined, transport: input.transport as 'http' | 'stdio' | undefined, endpoint: typeof input.endpoint === 'string' ? input.endpoint : undefined, command: typeof input.command === 'string' ? input.command : undefined, args: Array.isArray(input.args) ? input.args.map(String) : undefined, env: input.env && typeof input.env === 'object' ? Object.fromEntries(Object.entries(input.env).map(([key, val]) => [key, String(val)])) : undefined, enabled: input.enabled !== false })
   })
   ipcMain.handle(IPC_CHANNELS.MCP_SERVER_DELETE, async (_event, id: unknown) => deleteMcpServer(requireId(id, 'MCP Server ID')))
-  ipcMain.handle(IPC_CHANNELS.MCP_SERVER_DISCONNECT, async (_event, id: unknown) => updateMcpServerStatus(requireId(id, 'MCP Server ID'), 'disconnected', null))
-  ipcMain.handle(IPC_CHANNELS.MCP_SERVER_CONNECT, async (_event, id: unknown) => {
-    const serverId = requireId(id, 'MCP Server ID')
-    const server = listMcpServers().find(item => item.id === serverId)
-    if (!server) throw new Error('MCP Server 不存在')
-    if (server.transport === 'stdio') return updateMcpServerStatus(serverId, 'failed', 'stdio MCP 需要通过 Agent Runtime 管理，当前未启动子进程')
-    if (!server.endpoint) return updateMcpServerStatus(serverId, 'failed', 'HTTP MCP 缺少 endpoint')
-    try {
-      const response = await fetch(server.endpoint, { method: 'GET', signal: AbortSignal.timeout(8000) })
-      if (!response.ok) throw new Error('HTTP ' + response.status)
-      return updateMcpServerStatus(serverId, 'connected', null)
-    } catch (error) {
-      return updateMcpServerStatus(serverId, 'failed', error instanceof Error ? error.message : String(error))
-    }
-  })
+  ipcMain.handle(IPC_CHANNELS.MCP_SERVER_DISCONNECT, async (_event, id: unknown) => disconnectMcpServer(requireId(id, 'MCP Server ID')))
+  ipcMain.handle(IPC_CHANNELS.MCP_SERVER_CONNECT, async (_event, id: unknown) => connectMcpServer(requireId(id, 'MCP Server ID')))
 }

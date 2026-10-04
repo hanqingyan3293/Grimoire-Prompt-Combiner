@@ -1,4 +1,6 @@
 import crypto from 'crypto'
+import { spawn, type ChildProcessWithoutNullStreams } from 'child_process'
+import readline from 'readline'
 import type { McpServerRecord, McpServerStatus, McpTransport } from '../../shared/agent-types'
 import { getDatabase, saveDatabase } from '../database'
 
@@ -16,3 +18,72 @@ export function saveMcpServer(input: Partial<McpServerRecord>): McpServerRecord 
 }
 export function deleteMcpServer(id: string) { const result = getDatabase().run('DELETE FROM mcp_servers WHERE id=?', [id]); saveDatabase(); return Number(result.changes || 0) > 0 }
 export function updateMcpServerStatus(id: string, status: McpServerStatus, errorMessage: string | null, tools: McpServerRecord['tools'] = []) { getDatabase().run('UPDATE mcp_servers SET status=?,error_message=?,tools_json=?,updated_at=? WHERE id=?', [status, errorMessage, JSON.stringify(tools), new Date().toISOString(), id]); saveDatabase(); return listMcpServers().find(server => server.id === id)! }
+
+type McpProcess = { child: ChildProcessWithoutNullStreams; nextId: number; pending: Map<number, { resolve: (value: any) => void; reject: (error: Error) => void }> }
+const processes = new Map<string, McpProcess>()
+
+function sendRequest(processState: McpProcess, method: string, params: unknown): Promise<any> {
+  const id = processState.nextId++
+  return new Promise((resolve, reject) => {
+    processState.pending.set(id, { resolve, reject })
+    processState.child.stdin.write(JSON.stringify({ jsonrpc: '2.0', id, method, params }) + String.fromCharCode(10))
+  })
+}
+
+async function connectStdio(server: McpServerRecord): Promise<McpServerRecord> {
+  if (!server.command) throw new Error('stdio MCP 缺少启动命令')
+  const child = spawn(server.command, server.args, { shell: false, windowsHide: true, stdio: 'pipe', env: { ...process.env, ...server.env } })
+  const processState: McpProcess = { child, nextId: 1, pending: new Map() }
+  processes.set(server.id, processState)
+  const reader = readline.createInterface({ input: child.stdout })
+  reader.on('line', line => {
+    try {
+      const value = JSON.parse(line) as { id?: number; result?: unknown; error?: { message?: string } }
+      if (typeof value.id !== 'number') return
+      const pending = processState.pending.get(value.id)
+      if (!pending) return
+      processState.pending.delete(value.id)
+      if (value.error) pending.reject(new Error(value.error.message || 'MCP 请求失败'))
+      else pending.resolve(value.result)
+    } catch {}
+  })
+  child.once('exit', () => {
+    for (const pending of processState.pending.values()) pending.reject(new Error('MCP stdio 进程已退出'))
+    processState.pending.clear()
+    if (processes.get(server.id) === processState) processes.delete(server.id)
+  })
+  try {
+    await sendRequest(processState, 'initialize', { protocolVersion: '2025-06-18', capabilities: {}, clientInfo: { name: 'Grimoire', version: '7.2.0' } })
+    child.stdin.write(JSON.stringify({ jsonrpc: '2.0', method: 'notifications/initialized', params: {} }) + String.fromCharCode(10))
+    const result = await sendRequest(processState, 'tools/list', {})
+    const tools = Array.isArray(result?.tools) ? result.tools.map((tool: any) => ({ name: String(tool.name || ''), description: typeof tool.description === 'string' ? tool.description : undefined, inputSchema: tool.inputSchema })) : []
+    return updateMcpServerStatus(server.id, 'connected', null, tools)
+  } catch (error) {
+    child.kill()
+    processes.delete(server.id)
+    throw error
+  } finally {
+    reader.close()
+  }
+}
+
+export async function connectMcpServer(id: string): Promise<McpServerRecord> {
+  const server = listMcpServers().find(item => item.id === id)
+  if (!server) throw new Error('MCP Server 不存在')
+  updateMcpServerStatus(id, 'connecting', null)
+  try {
+    if (server.transport === 'stdio') return await connectStdio(server)
+    if (!server.endpoint) throw new Error('HTTP MCP 缺少 endpoint')
+    const response = await fetch(server.endpoint, { method: 'GET', signal: AbortSignal.timeout(8000) })
+    if (!response.ok) throw new Error('HTTP ' + response.status)
+    return updateMcpServerStatus(id, 'connected', null)
+  } catch (error) {
+    return updateMcpServerStatus(id, 'failed', error instanceof Error ? error.message : String(error))
+  }
+}
+
+export function disconnectMcpServer(id: string): McpServerRecord {
+  const processState = processes.get(id)
+  if (processState) { processState.child.kill(); processes.delete(id) }
+  return updateMcpServerStatus(id, 'disconnected', null, [])
+}
