@@ -168,6 +168,7 @@ interface GrimoireAPI {
       delete: (id: string) => Promise<boolean>
       connect: (id: string) => Promise<McpServerRecord>
       disconnect: (id: string) => Promise<McpServerRecord>
+      callTool: (input: { serverId: string; name: string; arguments?: Record<string, unknown> }) => Promise<unknown>
     }
   }
   error: {

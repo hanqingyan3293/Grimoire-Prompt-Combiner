@@ -3,9 +3,9 @@ import { IPC_CHANNELS } from '../../shared/types'
 import type { AgentRuntimeKind, AgentSessionEventType, AgentSessionStatus } from '../../shared/agent-types'
 import { requireId } from '../services/input-validation'
 import { appendAgentSessionEvent, branchAgentSession, createAgentSession, deleteAgentSession, getAgentSession, listAgentSessions, updateAgentSession } from '../services/agent-session.service'
-import { connectMcpServer, deleteMcpServer, disconnectMcpServer, listMcpServers, saveMcpServer } from '../services/mcp.service'
+import { callMcpTool, connectMcpServer, deleteMcpServer, disconnectMcpServer, listMcpServers, saveMcpServer } from '../services/mcp.service'
 import { getActiveProvider } from './providers.ipc'
-import { OpenAICompatibleRuntime } from '../ai/runtime/openai-compatible.runtime'
+import { createAgentRuntime } from '../ai/runtime/registry'
 
 export function registerAgentIPC(): void {
   ipcMain.handle(IPC_CHANNELS.AGENT_SESSION_LIST, async () => listAgentSessions())
@@ -42,10 +42,17 @@ export function registerAgentIPC(): void {
       .map(event => ({ role: event.data.role as 'user' | 'assistant' | 'system', content: String(event.data.content) }))
     appendAgentSessionEvent({ sessionId, type: 'message', data: { role: 'user', content } })
     updateAgentSession({ id: sessionId, status: 'running', data: { ...(snapshot.session.data || {}), providerId: provider.id, model } })
-    const runtime = new OpenAICompatibleRuntime({ baseUrl: providerWithSecret.base_url || provider.base_url, apiKey: providerWithSecret.api_key || '' })
+    const sessionData = snapshot.session.data || {}
+    const runtimeConfig: Record<string, unknown> = snapshot.session.runtime === 'openai-compatible'
+      ? { baseUrl: providerWithSecret.base_url || provider.base_url, apiKey: providerWithSecret.api_key || '' }
+      : snapshot.session.runtime === 'pi'
+        ? { command: typeof sessionData.command === 'string' ? sessionData.command : 'pi', args: Array.isArray(sessionData.args) ? sessionData.args : [] }
+        : { endpoint: typeof sessionData.endpoint === 'string' ? sessionData.endpoint : snapshot.session.runtime === 'codex' ? 'http://127.0.0.1:17371' : 'http://127.0.0.1:4096', token: typeof sessionData.token === 'string' ? sessionData.token : '' }
+    const runtime = createAgentRuntime(snapshot.session.runtime, runtimeConfig)
     const runtimeSession = runtime.createSession(model, [...messages, { role: 'user', content }])
     let textValue = ''
-    for await (const event of runtime.send({ sessionId: runtimeSession.id, model, messages: runtimeSession.messages })) {
+    const mcpTools = listMcpServers().flatMap(server => server.status === 'connected' ? server.tools.map(tool => ({ type: 'function', name: server.id + ':' + tool.name, description: tool.description || '', inputSchema: tool.inputSchema })) : [])
+    for await (const event of runtime.send({ sessionId: runtimeSession.id, model, messages: runtimeSession.messages, tools: mcpTools })) {
       if (event.type === 'text-delta') textValue += event.text
       if (event.type === 'failed') { updateAgentSession({ id: sessionId, status: 'failed' }); throw new Error(event.error) }
     }
@@ -76,4 +83,11 @@ export function registerAgentIPC(): void {
   ipcMain.handle(IPC_CHANNELS.MCP_SERVER_DELETE, async (_event, id: unknown) => deleteMcpServer(requireId(id, 'MCP Server ID')))
   ipcMain.handle(IPC_CHANNELS.MCP_SERVER_DISCONNECT, async (_event, id: unknown) => disconnectMcpServer(requireId(id, 'MCP Server ID')))
   ipcMain.handle(IPC_CHANNELS.MCP_SERVER_CONNECT, async (_event, id: unknown) => connectMcpServer(requireId(id, 'MCP Server ID')))
+  ipcMain.handle(IPC_CHANNELS.MCP_SERVER_CALL_TOOL, async (_event, value: unknown) => {
+    if (!value || typeof value !== 'object') throw new Error('MCP 工具调用参数无效')
+    const input = value as Record<string, unknown>
+    const name = typeof input.name === 'string' ? input.name.trim() : ''
+    if (!name) throw new Error('MCP 工具名称不能为空')
+    return callMcpTool({ serverId: requireId(input.serverId, 'MCP Server ID'), name, arguments: input.arguments && typeof input.arguments === 'object' ? input.arguments as Record<string, unknown> : {} })
+  })
 }

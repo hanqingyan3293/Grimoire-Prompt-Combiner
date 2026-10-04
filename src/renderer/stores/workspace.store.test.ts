@@ -97,6 +97,31 @@ describe('workspace panel persistence', () => {
     const target = useWorkspaceStore.getState().findPanel('compose', 'right-sidebar')!
     expect(target.tabs?.some(tab => tab.id === tabId && tab.type === 'canvas')).toBe(true)
   })
+
+  it('keeps Agent and MCP panel types persistable', () => {
+    expect(isPersistablePanelType('agent-sessions')).toBe(true)
+    expect(isPersistablePanelType('mcp')).toBe(true)
+  })
+
+  it('preserves tab metadata during persistence sanitization', () => {
+    const state = useWorkspaceStore.getState()
+    const layout = state.getLayout('compose')
+    const document = {
+      version: 1,
+      activeWorkspaceId: 'compose',
+      workspaces: state.workspaces,
+      layouts: { compose: { kind: 'panel', id: 'agent-panel', type: 'agent-sessions', tabs: [{ id: 'agent-panel', type: 'agent-sessions' }, { id: 'mcp-tab', type: 'mcp' }], activeTabId: 'mcp-tab' }, ai: layout },
+      maximizedPanels: {},
+      floatingPanels: {},
+      floatingPositions: {},
+      popoutPanels: {},
+      layoutPresets: [],
+    }
+    useWorkspaceStore.getState().applyPersistenceDocument(1, document)
+    const panel = useWorkspaceStore.getState().findPanel('compose', 'agent-panel')!
+    expect(panel.type).toBe('mcp')
+    expect(panel.tabs?.map(tab => tab.type)).toEqual(['agent-sessions', 'mcp'])
+  })
 })
 
 function findPanelByType(node: ReturnType<typeof getDefaultLayout>, type: string): { id: string; type: string } | null {

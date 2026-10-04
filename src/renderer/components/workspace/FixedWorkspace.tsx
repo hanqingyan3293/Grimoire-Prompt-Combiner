@@ -20,6 +20,7 @@ export function FixedWorkspace() {
   const layouts = useWorkspaceStore(s => s.layouts)
   const maximizedPanels = useWorkspaceStore(s => s.maximizedPanels)
   const floatingPanels = useWorkspaceStore(s => s.floatingPanels)
+  const popoutPanels = useWorkspaceStore(s => s.popoutPanels)
   const floatingPositions = useWorkspaceStore(s => s.floatingPositions)
   const setPanelType = useWorkspaceStore(s => s.setPanelType)
   const addTab = useWorkspaceStore(s => s.addTab)
@@ -157,7 +158,7 @@ export function FixedWorkspace() {
 
   const renderNode = (node: WorkspaceLayoutNode, renderFloating = false): React.ReactNode => {
     if (node.kind === "panel") {
-      if (!renderFloating && (floatingPanels[workspace.id] || []).includes(node.id)) return <div className="h-full w-full" aria-hidden="true" />
+      if (!renderFloating && ((floatingPanels[workspace.id] || []).includes(node.id) || (popoutPanels[workspace.id] || []).includes(node.id))) return <div className="h-full w-full" aria-hidden="true" />
       const tabs = normalizePanelTabs(node)
       const activeTabId = node.activeTabId || tabs[0].id
       const activeType = tabs.find(tab => tab.id === activeTabId)?.type || node.type

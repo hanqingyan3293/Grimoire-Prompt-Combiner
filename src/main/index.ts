@@ -176,7 +176,7 @@ function createAIWindow(): void {
 
 const WORKSPACE_POPOUT_TYPES = new Set([
   'tag-sidebar', 'prompt-workbench', 'utility-sidebar', 'presets', 'history', 'images',
-  'ai-assistant', 'ai-chat', 'ai-vision', 'settings', 'tasks', 'wd14', 'comfyui', 'canvas', 'prompt-assets',
+  'ai-assistant', 'ai-chat', 'ai-vision', 'agent-sessions', 'mcp', 'settings', 'tasks', 'wd14', 'comfyui', 'canvas', 'prompt-assets',
 ])
 
 function createWorkspacePopout(popoutId: string, panelType: string, title: string, parent?: BrowserWindow | null): boolean {

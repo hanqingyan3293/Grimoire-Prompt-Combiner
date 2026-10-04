@@ -195,6 +195,8 @@ const VALID_PANEL_TYPES = new Set<PanelType>([
   "ai-assistant",
   "ai-chat",
   "ai-vision",
+  "agent-sessions",
+  "mcp",
   "settings",
   "tasks",
   "wd14",

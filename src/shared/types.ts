@@ -340,6 +340,7 @@ export const IPC_CHANNELS = {
   MCP_SERVER_DELETE: "mcp:server:delete",
   MCP_SERVER_CONNECT: "mcp:server:connect",
   MCP_SERVER_DISCONNECT: "mcp:server:disconnect",
+  MCP_SERVER_CALL_TOOL: "mcp:server:callTool",
 
   // ComfyUI
   COMFY_STATUS: "comfy:status",

@@ -19,7 +19,7 @@ export function saveMcpServer(input: Partial<McpServerRecord>): McpServerRecord 
 export function deleteMcpServer(id: string) { const result = getDatabase().run('DELETE FROM mcp_servers WHERE id=?', [id]); saveDatabase(); return Number(result.changes || 0) > 0 }
 export function updateMcpServerStatus(id: string, status: McpServerStatus, errorMessage: string | null, tools: McpServerRecord['tools'] = []) { getDatabase().run('UPDATE mcp_servers SET status=?,error_message=?,tools_json=?,updated_at=? WHERE id=?', [status, errorMessage, JSON.stringify(tools), new Date().toISOString(), id]); saveDatabase(); return listMcpServers().find(server => server.id === id)! }
 
-type McpProcess = { child: ChildProcessWithoutNullStreams; nextId: number; pending: Map<number, { resolve: (value: any) => void; reject: (error: Error) => void }> }
+type McpProcess = { child: ChildProcessWithoutNullStreams; reader: readline.Interface; nextId: number; pending: Map<number, { resolve: (value: any) => void; reject: (error: Error) => void }> }
 const processes = new Map<string, McpProcess>()
 
 function sendRequest(processState: McpProcess, method: string, params: unknown): Promise<any> {
@@ -33,9 +33,9 @@ function sendRequest(processState: McpProcess, method: string, params: unknown):
 async function connectStdio(server: McpServerRecord): Promise<McpServerRecord> {
   if (!server.command) throw new Error('stdio MCP 缺少启动命令')
   const child = spawn(server.command, server.args, { shell: false, windowsHide: true, stdio: 'pipe', env: { ...process.env, ...server.env } })
-  const processState: McpProcess = { child, nextId: 1, pending: new Map() }
-  processes.set(server.id, processState)
   const reader = readline.createInterface({ input: child.stdout })
+  const processState: McpProcess = { child, reader, nextId: 1, pending: new Map() }
+  processes.set(server.id, processState)
   reader.on('line', line => {
     try {
       const value = JSON.parse(line) as { id?: number; result?: unknown; error?: { message?: string } }
@@ -62,8 +62,6 @@ async function connectStdio(server: McpServerRecord): Promise<McpServerRecord> {
     child.kill()
     processes.delete(server.id)
     throw error
-  } finally {
-    reader.close()
   }
 }
 
@@ -84,6 +82,21 @@ export async function connectMcpServer(id: string): Promise<McpServerRecord> {
 
 export function disconnectMcpServer(id: string): McpServerRecord {
   const processState = processes.get(id)
-  if (processState) { processState.child.kill(); processes.delete(id) }
+  if (processState) { processState.reader.close(); processState.child.kill(); processes.delete(id) }
   return updateMcpServerStatus(id, 'disconnected', null, [])
+}
+
+export async function callMcpTool(input: { serverId: string; name: string; arguments?: Record<string, unknown> }) {
+  const server = listMcpServers().find(item => item.id === input.serverId)
+  if (!server) throw new Error('MCP Server 不存在')
+  if (server.status !== 'connected') throw new Error('MCP Server 未连接')
+  if (server.transport === 'stdio') {
+    const processState = processes.get(server.id)
+    if (!processState) throw new Error('MCP stdio 进程不存在')
+    return sendRequest(processState, 'tools/call', { name: input.name, arguments: input.arguments || {} })
+  }
+  const response = await fetch(server.endpoint, { method: 'POST', headers: { accept: 'application/json', 'content-type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: Date.now(), method: 'tools/call', params: { name: input.name, arguments: input.arguments || {} } }), signal: AbortSignal.timeout(30000) })
+  const data = await response.json().catch(() => ({})) as { result?: unknown; error?: { message?: string } }
+  if (!response.ok || data.error) throw new Error(data.error?.message || 'MCP 工具调用失败')
+  return data.result
 }
