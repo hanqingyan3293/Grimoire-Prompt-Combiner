@@ -9,6 +9,7 @@ export interface CanvasWD14Model { id: string; name: string; hasCsv: boolean }
 
 interface Props {
   node: CanvasNode
+  tags?: Array<{ id: string; en: string; zh: string }>
   images: ImageRef[]
   promptAssets: PromptAssetItem[]
   workflows: CanvasWorkflowDefinition[]
@@ -19,6 +20,7 @@ interface Props {
   onTextChange: (nodeId: string, content: string) => void
   onTextBlur: (nodeId: string) => void
   onPatch: (nodeId: string, patch: Partial<CanvasNode>) => void
+  onTagIdsChange?: (nodeId: string, tagIds: string[]) => void
   onApplyPrompt: (node: CanvasNode) => void
   onBindImage: (nodeId: string, value: string) => void
   onBindPromptAsset: (nodeId: string, value: string) => void
@@ -40,12 +42,18 @@ const stop = (event: React.PointerEvent) => event.stopPropagation()
 
 export function CanvasNodeContent(props: Props) {
   const { node } = props
-  if (node.kind === 'text' || node.kind === 'prompt') return <TextNodeContent {...props} />
-  if (node.kind === 'image') return <ImageNodeContent {...props} />
-  if (node.kind === 'prompt-asset') return <PromptAssetNodeContent {...props} />
-  if (node.kind === 'wd14') return <WD14NodeContent {...props} />
-  if (node.kind === 'comfyui') return <ComfyNodeContent {...props} />
-  return <TaskNodeContent {...props} />
+  const content = node.kind === 'text' || node.kind === 'prompt' ? <TextNodeContent {...props} /> : node.kind === 'image' ? <ImageNodeContent {...props} /> : node.kind === 'prompt-asset' ? <PromptAssetNodeContent {...props} /> : node.kind === 'wd14' ? <WD14NodeContent {...props} /> : node.kind === 'comfyui' ? <ComfyNodeContent {...props} /> : <TaskNodeContent {...props} />
+  return <div className='relative h-full min-h-0'>{content}<NodeTagBar {...props} /></div>
+}
+
+function NodeTagBar({ node, tags, onTagIdsChange }: Props) {
+  if (!tags?.length || !onTagIdsChange) return null
+  const tagIds = node.config?.tagIds || []
+  const available = tags.filter(tag => !tagIds.includes(tag.id))
+  return <div className='pointer-events-auto absolute bottom-1 left-1 right-1 z-30 flex min-w-0 items-center gap-1 rounded bg-[var(--color-bg-secondary)]/95 p-1 shadow-sm backdrop-blur'>
+    <div className='flex min-w-0 flex-1 flex-wrap gap-1'>{tagIds.slice(0, 4).map(id => { const tag = tags.find(item => item.id === id); return <button key={id} type='button' onPointerDown={stop} onClick={() => onTagIdsChange(node.id, tagIds.filter(value => value !== id))} className='max-w-[90px] truncate rounded bg-[var(--color-accent)]/15 px-1.5 py-0.5 text-[10px] text-[var(--color-accent-text)]' title='点击移除标签'>{tag?.zh || tag?.en || id}</button> })}</div>
+    {available.length > 0 && <select aria-label='添加节点标签' value='' onChange={event => { if (event.target.value) onTagIdsChange(node.id, [...tagIds, event.target.value]) }} onPointerDown={stop} className='max-w-[92px] rounded border border-[var(--color-border)] bg-[var(--color-bg-primary)] px-1 py-0.5 text-[10px] text-[var(--color-text-secondary)]'><option value=''>+ 标签</option>{available.map(tag => <option key={tag.id} value={tag.id}>{tag.zh || tag.en}</option>)}</select>}
+  </div>
 }
 
 function TextNodeContent({ node, onTextFocus, onTextChange, onTextBlur, onApplyPrompt }: Props) {

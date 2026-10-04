@@ -1,5 +1,5 @@
 // 魔导书 Grimoire v7 — 标签卡片网格
-import React, { useState } from "react"
+import React, { useEffect, useState } from "react"
 import { usePromptsStore } from "../../stores/prompts.store"
 import { useTagsStore } from "../../stores/tags.store"
 import { useSettingsStore } from "../../stores/settings.store"
@@ -31,6 +31,16 @@ export function TagCards() {
   const [addModal, setAddModal] = useState<{ subId: string; subName: string } | null>(null)
   const [addEn, setAddEn] = useState("")
   const [addZh, setAddZh] = useState("")
+  const [searchTagIds, setSearchTagIds] = useState<Set<string> | null>(null)
+
+  useEffect(() => {
+    let disposed = false
+    if (!searchQuery.trim()) { setSearchTagIds(null); return () => { disposed = true } }
+    void window.api.tags.search({ query: searchQuery, limit: 200 }).then((items: any[]) => {
+      if (!disposed) setSearchTagIds(new Set(items.map(item => String(item?.tag?.id || '')).filter(Boolean)))
+    }).catch(() => { if (!disposed) setSearchTagIds(new Set()) })
+    return () => { disposed = true }
+  }, [searchQuery])
 
   const selectedSubs: Array<{ sub: Subcategory; cat: Category }> = []
   for (const cat of categories) {
@@ -100,7 +110,7 @@ export function TagCards() {
         <div className="space-y-6 p-[2px]">
           {selectedSubs.map(({ sub, cat }) => {
             const filtered = searchQuery
-              ? sub.tags.filter(t => t.en.toLowerCase().includes(searchQuery.toLowerCase()) || t.zh.includes(searchQuery))
+              ? sub.tags.filter(t => t.en.toLowerCase().includes(searchQuery.toLowerCase()) || t.zh.includes(searchQuery) || Boolean(searchTagIds?.has(t.id)))
               : sub.tags
             return (
               <div key={sub.id} className="ui-list-card ui-list-card-no-hover p-3">
