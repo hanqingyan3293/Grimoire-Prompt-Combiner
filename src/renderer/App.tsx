@@ -11,7 +11,8 @@ import { ErrorBoundary } from './components/ui/ErrorBoundary'
 import { FixedWorkspace } from './components/workspace/FixedWorkspace'
 import { WorkspaceBar } from './components/workspace/WorkspaceBar'
 import { WorkspacePopoutWindow } from './components/workspace/WorkspacePopoutWindow'
-import { isPersistablePanelType } from './stores/workspace.store'
+import { isPersistablePanelType, useWorkspaceStore } from './stores/workspace.store'
+import { startWorkspacePersistence } from './stores/workspace-persistence'
 import './styles/themes.css'
 
 const SettingsWindow = lazy(() => import('./components/settings/SettingsWindow').then(module => ({ default: module.SettingsWindow })))
@@ -23,6 +24,8 @@ function AppInner() {
   const { lang, setLang } = useI18n()
   const loadTags = useTagsStore(s => s.loadTags)
   const { loadSettings, language } = useSettingsStore()
+  const workspaceHydrated = useWorkspaceStore(state => state.hydrated)
+  const workspacePersistenceError = useWorkspaceStore(state => state.persistenceError)
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null)
 
   useEffect(() => {
@@ -52,6 +55,11 @@ function AppInner() {
     } catch {}
     return () => { if (cleanup) cleanup() }
   }, [loadSettings])
+
+  useEffect(() => {
+    if (windowType !== 'main') return
+    return startWorkspacePersistence()
+  }, [windowType])
 
   const popoutParams = windowType.startsWith('workspace-popout?') ? new URLSearchParams(windowType.slice('workspace-popout?'.length)) : null
   const popoutId = popoutParams?.get('popoutId') || ''
@@ -93,10 +101,17 @@ function AppInner() {
   }
 
   return (
-    <div className="flex flex-col h-screen overflow-hidden">
-      <WorkspaceBar />
-      <FixedWorkspace />
-      <StatusBar />
+    <div className="flex h-screen flex-col overflow-hidden">
+      {!workspaceHydrated ? (
+        <div className="flex min-h-0 flex-1 items-center justify-center text-sm text-[var(--color-text-secondary)]">正在恢复工作区布局…</div>
+      ) : (
+        <>
+          <WorkspaceBar />
+          {workspacePersistenceError ? <div role="status" className="shrink-0 border-b border-amber-500/30 bg-amber-500/10 px-3 py-1 text-xs text-amber-700 dark:text-amber-300">工作区数据库同步不可用，当前暂用本机缓存：{workspacePersistenceError}</div> : null}
+          <FixedWorkspace />
+          <StatusBar />
+        </>
+      )}
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
     </div>
   )

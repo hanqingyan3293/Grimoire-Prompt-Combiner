@@ -26,7 +26,7 @@ const IPC_CHANNELS = {
   WD14_STATUS: 'wd14:status', WD14_MODELS: 'wd14:models', WD14_SWITCH_MODEL: 'wd14:switchModel', WD14_CREATE_TASK: 'wd14:createTask', WD14_DIAGNOSTICS: 'wd14:diagnostics', WD14_SELECT_MODEL_DIRECTORY: 'wd14:selectModelDirectory', WD14_SELECT_PYTHON_PATH: 'wd14:selectPythonPath', WD14_HISTORY_LIST: 'wd14:history:list', WD14_HISTORY_GET: 'wd14:history:get', WD14_HISTORY_DELETE: 'wd14:history:delete', WD14_HISTORY_CLEAR: 'wd14:history:clear',
   COMFY_STATUS: 'comfy:status', COMFY_MODELS: 'comfy:models', COMFY_WORKFLOWS_LIST: 'comfy:workflows:list', COMFY_WORKFLOW_IMPORT: 'comfy:workflows:import', COMFY_WORKFLOW_DELETE: 'comfy:workflows:delete', COMFY_CREATE_TASK: 'comfy:createTask', COMFY_QUICK_GENERATE: 'comfy:quickGenerate',
   CANVAS_LIST: 'canvas:list', CANVAS_GET: 'canvas:get', CANVAS_CREATE: 'canvas:create', CANVAS_SAVE: 'canvas:save', CANVAS_DELETE: 'canvas:delete', CANVAS_EXPORT_PACKAGE: 'canvas:exportPackage', CANVAS_IMPORT_PACKAGE: 'canvas:importPackage',
-  CANVAS_VENDOR_LIST: 'canvasVendor:list', CANVAS_VENDOR_GET: 'canvasVendor:get', CANVAS_VENDOR_CREATE: 'canvasVendor:create', CANVAS_VENDOR_SAVE: 'canvasVendor:save', CANVAS_VENDOR_DELETE: 'canvasVendor:delete', WORKSPACE_OPEN_POPOUT: 'workspace:openPopout', WORKSPACE_CLOSE_POPOUT: 'workspace:closePopout', WORKSPACE_FOCUS_POPOUT: 'workspace:focusPopout',
+  CANVAS_VENDOR_LIST: 'canvasVendor:list', CANVAS_VENDOR_GET: 'canvasVendor:get', CANVAS_VENDOR_CREATE: 'canvasVendor:create', CANVAS_VENDOR_SAVE: 'canvasVendor:save', CANVAS_VENDOR_DELETE: 'canvasVendor:delete', WORKSPACE_OPEN_POPOUT: 'workspace:openPopout', WORKSPACE_CLOSE_POPOUT: 'workspace:closePopout', WORKSPACE_FOCUS_POPOUT: 'workspace:focusPopout', WORKSPACE_LOAD_DOCUMENT: 'workspace:loadDocument', WORKSPACE_SAVE_DOCUMENT: 'workspace:saveDocument', WORKSPACE_DOCUMENT_CHANGED: 'workspace:documentChanged', WORKSPACE_LOAD_EDITOR_STATE: 'workspace:loadEditorState', WORKSPACE_SAVE_EDITOR_STATE: 'workspace:saveEditorState', WORKSPACE_EDITOR_STATE_CHANGED: 'workspace:editorStateChanged', WORKSPACE_POPOUT_CLOSED: 'workspace:popoutClosed',
 } as const
 
 const api = {
@@ -246,6 +246,25 @@ const api = {
     openPopout: (input: { popoutId: string; panelType: string; title: string }) => ipcRenderer.invoke(IPC_CHANNELS.WORKSPACE_OPEN_POPOUT, input),
     closePopout: (popoutId: string) => ipcRenderer.invoke(IPC_CHANNELS.WORKSPACE_CLOSE_POPOUT, popoutId),
     focusPopout: (popoutId: string) => ipcRenderer.invoke(IPC_CHANNELS.WORKSPACE_FOCUS_POPOUT, popoutId),
+    loadDocument: (workspaceId: string) => ipcRenderer.invoke(IPC_CHANNELS.WORKSPACE_LOAD_DOCUMENT, workspaceId),
+    saveDocument: (workspaceId: string, expectedRevision: number, document: unknown) => ipcRenderer.invoke(IPC_CHANNELS.WORKSPACE_SAVE_DOCUMENT, { workspaceId, expectedRevision, document }),
+    onDocumentChanged: (callback: (value: { workspaceId: string; revision: number; document: unknown }) => void) => {
+      const handler = (_event: unknown, value: { workspaceId: string; revision: number; document: unknown }) => callback(value)
+      ipcRenderer.on(IPC_CHANNELS.WORKSPACE_DOCUMENT_CHANGED, handler)
+      return () => ipcRenderer.removeListener(IPC_CHANNELS.WORKSPACE_DOCUMENT_CHANGED, handler)
+    },
+    loadEditorState: (editorKey: string) => ipcRenderer.invoke(IPC_CHANNELS.WORKSPACE_LOAD_EDITOR_STATE, editorKey),
+    saveEditorState: (editorKey: string, expectedRevision: number, state: unknown) => ipcRenderer.invoke(IPC_CHANNELS.WORKSPACE_SAVE_EDITOR_STATE, { editorKey, expectedRevision, state }),
+    onEditorStateChanged: (callback: (value: { editorKey: string; revision: number; state: unknown }) => void) => {
+      const handler = (_event: unknown, value: { editorKey: string; revision: number; state: unknown }) => callback(value)
+      ipcRenderer.on(IPC_CHANNELS.WORKSPACE_EDITOR_STATE_CHANGED, handler)
+      return () => ipcRenderer.removeListener(IPC_CHANNELS.WORKSPACE_EDITOR_STATE_CHANGED, handler)
+    },
+    onPopoutClosed: (callback: (value: { popoutId: string }) => void) => {
+      const handler = (_event: unknown, value: { popoutId: string }) => callback(value)
+      ipcRenderer.on(IPC_CHANNELS.WORKSPACE_POPOUT_CLOSED, handler)
+      return () => ipcRenderer.removeListener(IPC_CHANNELS.WORKSPACE_POPOUT_CLOSED, handler)
+    },
   },
   comfy: {
     status: () => ipcRenderer.invoke(IPC_CHANNELS.COMFY_STATUS),

@@ -318,6 +318,13 @@ export const IPC_CHANNELS = {
   WORKSPACE_OPEN_POPOUT: "workspace:openPopout",
   WORKSPACE_CLOSE_POPOUT: "workspace:closePopout",
   WORKSPACE_FOCUS_POPOUT: "workspace:focusPopout",
+  WORKSPACE_LOAD_DOCUMENT: "workspace:loadDocument",
+  WORKSPACE_SAVE_DOCUMENT: "workspace:saveDocument",
+  WORKSPACE_DOCUMENT_CHANGED: "workspace:documentChanged",
+  WORKSPACE_LOAD_EDITOR_STATE: "workspace:loadEditorState",
+  WORKSPACE_SAVE_EDITOR_STATE: "workspace:saveEditorState",
+  WORKSPACE_EDITOR_STATE_CHANGED: "workspace:editorStateChanged",
+  WORKSPACE_POPOUT_CLOSED: "workspace:popoutClosed",
 
   // ComfyUI
   COMFY_STATUS: "comfy:status",

@@ -8,7 +8,7 @@ import { createLegacyDatabase, type LegacyDatabase } from './services/sqlite.com
 
 // v9 adds prompt asset category tables/indexes. Keep this bumped so existing
 // v8 databases run the additive migration instead of being treated as current.
-const CURRENT_SCHEMA_VERSION = 10
+const CURRENT_SCHEMA_VERSION = 12
 let nativeDb: DatabaseSync | null = null
 let db: LegacyDatabase | null = null
 let dbPath = ''
@@ -226,6 +226,20 @@ CREATE TABLE IF NOT EXISTS canvas_vendor_projects (
   revision INTEGER NOT NULL DEFAULT 0
 );
 
+CREATE TABLE IF NOT EXISTS workspace_documents (
+  workspace_id TEXT PRIMARY KEY,
+  revision INTEGER NOT NULL DEFAULT 0,
+  data_json TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS workspace_editor_states (
+  editor_key TEXT PRIMARY KEY,
+  revision INTEGER NOT NULL DEFAULT 0,
+  data_json TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS chat_groups (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
@@ -400,7 +414,12 @@ function readSchemaVersion(filePath: string): number | null {
 function backupBeforeMigration(filePath: string): void {
   if (!fs.existsSync(filePath) || readSchemaVersion(filePath) === CURRENT_SCHEMA_VERSION) return
   const backupPath = filePath + '.pre-migration-' + new Date().toISOString().replace(/[:.]/g, '-') + '.bak'
-  fs.copyFileSync(filePath, backupPath)
+  try {
+    fs.copyFileSync(filePath, backupPath)
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : String(error)
+    throw new Error('数据库迁移前备份失败。数据库：' + filePath + '；备份目标：' + backupPath + '；原因：' + reason + '。请关闭其他 Grimoire 实例并确认目录可写后重试。')
+  }
 }
 
 export async function initDatabase(): Promise<LegacyDatabase> {

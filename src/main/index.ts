@@ -19,6 +19,7 @@ import { registerWD14IPC } from "./ipc/wd14.ipc"
 import { registerComfyIPC } from "./ipc/comfy.ipc"
 import { registerCanvasIPC } from "./ipc/canvas.ipc"
 import { registerPromptAssetsIPC } from "./ipc/prompt-assets.ipc"
+import { registerWorkspaceIPC } from "./ipc/workspace.ipc"
 import { importDefaultPromptAssets, seedDefaultPromptAssetCategories } from './services/default-prompt-assets.service'
 import { configureComfyUI } from './services/comfy-client'
 import { requireHttpUrl } from './services/input-validation'
@@ -205,7 +206,12 @@ function createWorkspacePopout(popoutId: string, panelType: string, title: strin
   configureWindowSecurity(popout)
   const hash = 'workspace-popout?popoutId=' + encodeURIComponent(popoutId) + '&panelType=' + encodeURIComponent(panelType) + '&title=' + encodeURIComponent(title || panelType)
   popout.loadURL(getRendererURL(hash))
-  popout.on('closed', () => workspacePopouts.delete(popoutId))
+  popout.on('closed', () => {
+    workspacePopouts.delete(popoutId)
+    for (const window of BrowserWindow.getAllWindows()) {
+      if (!window.isDestroyed()) window.webContents.send(IPC_CHANNELS.WORKSPACE_POPOUT_CLOSED, { popoutId })
+    }
+  })
   return true
 }
 
@@ -366,6 +372,7 @@ async function registerAllIPC(): Promise<void> {
   registerComfyIPC()
   registerCanvasIPC()
   registerPromptAssetsIPC()
+  registerWorkspaceIPC()
   registerSystemIPC()
   applyPersistedIntegrationSettings()
   markInterruptedTasks()

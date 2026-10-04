@@ -142,6 +142,13 @@ interface GrimoireAPI {
     openPopout: (input: { popoutId: string; panelType: string; title: string }) => Promise<boolean>
     closePopout: (popoutId: string) => Promise<boolean>
     focusPopout: (popoutId: string) => Promise<boolean>
+    loadDocument: (workspaceId: string) => Promise<{ workspaceId: string; revision: number; document: unknown } | null>
+    saveDocument: (workspaceId: string, expectedRevision: number, document: unknown) => Promise<{ saved: boolean; conflict?: boolean; value?: { workspaceId: string; revision: number; document: unknown }; current?: { workspaceId: string; revision: number; document: unknown } | null }>
+    onDocumentChanged: (callback: (value: { workspaceId: string; revision: number; document: unknown }) => void) => () => void
+    loadEditorState: (editorKey: string) => Promise<{ editorKey: string; revision: number; state: unknown } | null>
+    saveEditorState: (editorKey: string, expectedRevision: number, state: unknown) => Promise<{ saved: boolean; conflict?: boolean; value?: { editorKey: string; revision: number; state: unknown }; current?: { editorKey: string; revision: number; state: unknown } | null }>
+    onEditorStateChanged: (callback: (value: { editorKey: string; revision: number; state: unknown }) => void) => () => void
+    onPopoutClosed: (callback: (value: { popoutId: string }) => void) => () => void
   }
   error: {
     getAll: () => Promise<Array<{ id: number; message: string; stack: string; context: string; created_at: string }>>

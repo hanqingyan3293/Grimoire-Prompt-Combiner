@@ -22,6 +22,13 @@ export function CanvasVendorPanel() {
     const onMessage = (event: MessageEvent) => {
       if (event.source !== iframeRef.current?.contentWindow) return
       if (event.data?.type === 'grimoire:canvas-ready') {
+        if (event.data?.detail?.apiReady !== true || event.data?.detail?.hydrated !== true) {
+          if (timer) clearTimeout(timer)
+          timer = null
+          setStatus('error')
+          setError('无限画布发送了不完整的就绪状态，API 桥接或项目数据尚未确认完成。')
+          return
+        }
         if (timer) clearTimeout(timer)
         timer = null
         setStatus('ready')

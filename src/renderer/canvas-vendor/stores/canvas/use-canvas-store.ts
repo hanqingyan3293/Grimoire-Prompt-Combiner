@@ -8,7 +8,7 @@ export type CanvasProject = {
   id: string; title: string; createdAt: string; updatedAt: string; revision: number; nodes: CanvasNodeData[]; connections: CanvasConnection[]; chatSessions: CanvasAssistantSession[]; activeChatId: string | null; backgroundMode: CanvasBackgroundMode; showImageInfo: boolean; viewport: ViewportTransform
 }
 export type CanvasDeletedProject = { id: string; deletedAt: string }
-type CanvasStore = { hydrated: boolean; projects: CanvasProject[]; deletedProjects: CanvasDeletedProject[]; saveError: string | null; createProject: (title?: string) => Promise<string>; importProject: (project: Partial<CanvasProject>) => Promise<string>; openProject: (id: string) => CanvasProject | null; renameProject: (id: string, title: string) => void; deleteProjects: (ids: string[]) => void; replaceProjects: (projects: CanvasProject[], deletedProjects?: CanvasDeletedProject[]) => void; updateProject: (id: string, patch: Partial<Pick<CanvasProject, 'nodes' | 'connections' | 'chatSessions' | 'activeChatId' | 'backgroundMode' | 'showImageInfo' | 'viewport'>>) => void; retrySaves: () => Promise<void> }
+type CanvasStore = { hydrated: boolean; hydrationError: string | null; projects: CanvasProject[]; deletedProjects: CanvasDeletedProject[]; saveError: string | null; createProject: (title?: string) => Promise<string>; importProject: (project: Partial<CanvasProject>) => Promise<string>; openProject: (id: string) => CanvasProject | null; renameProject: (id: string, title: string) => void; deleteProjects: (ids: string[]) => void; replaceProjects: (projects: CanvasProject[], deletedProjects?: CanvasDeletedProject[]) => void; updateProject: (id: string, patch: Partial<Pick<CanvasProject, 'nodes' | 'connections' | 'chatSessions' | 'activeChatId' | 'backgroundMode' | 'showImageInfo' | 'viewport'>>) => void; retrySaves: () => Promise<void>; retryHydration: () => Promise<void> }
 const initialViewport: ViewportTransform = { x: 0, y: 0, k: 1 }
 const pending = new Map<string, CanvasProject>()
 const SNAPSHOT_PREFIX = 'grimoire.canvas.vendor.snapshot.'
@@ -68,11 +68,16 @@ function mergeLoadedProjects(loaded: CanvasProject[]) {
     return !incoming || Boolean(pendingProject) || project.revision > incoming.revision
   })
   const merged = [...preserved, ...loaded.filter(project => !preserved.some(item => item.id === project.id))]
-  useCanvasStore.setState({ projects: merged, hydrated: true })
+  useCanvasStore.setState({ projects: merged, hydrated: true, hydrationError: null })
 }
 export const useCanvasStore = create<CanvasStore>((set, get) => ({
-  hydrated: false, projects: [], deletedProjects: [], saveError: null,
+  hydrated: false, hydrationError: null, projects: [], deletedProjects: [], saveError: null,
   retrySaves: async () => { set({ saveError: null }); await flushPendingSaves() },
+  retryHydration: async () => {
+    set({ hydrated: false, hydrationError: null })
+    try { await loadProjects().then(mergeLoadedProjects) }
+    catch (error) { set({ hydrated: true, hydrationError: error instanceof Error ? error.message : String(error) }) }
+  },
   createProject: async (title = i18n.t('canvas.project.untitled')) => {
     const now = new Date().toISOString(); const id = nanoid(); const project: CanvasProject = { id, title, createdAt: now, updatedAt: now, revision: 0, nodes: [], connections: [], chatSessions: [], activeChatId: null, backgroundMode: 'lines', showImageInfo: false, viewport: initialViewport };
     await window.api.canvas.vendor.create(title, id); set(state => ({ projects: [project, ...state.projects], saveError: null })); return id
@@ -94,7 +99,11 @@ export const useCanvasStore = create<CanvasStore>((set, get) => ({
     }
   },
 }))
-void loadProjects().then(mergeLoadedProjects).catch(error => { console.error('canvas vendor load failed', error); useCanvasStore.setState({ hydrated: true }) })
+void loadProjects().then(mergeLoadedProjects).catch(error => {
+  const message = error instanceof Error ? error.message : String(error)
+  console.error('canvas vendor load failed', error)
+  useCanvasStore.setState({ hydrated: true, hydrationError: message })
+})
 if (typeof window !== 'undefined') window.addEventListener('grimoire:refresh', () => { void flushPendingSaves().then(loadProjects).then(mergeLoadedProjects).catch(console.error) })
 if (typeof window !== 'undefined') {
   window.addEventListener('pagehide', () => { void flushPendingSaves() })
