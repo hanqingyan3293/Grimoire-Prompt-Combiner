@@ -166,6 +166,7 @@ export function CanvasPanel() {
     if (!project) return
     const center = { x: (500 - project.document.viewport.x) / project.document.viewport.scale, y: (260 - project.document.viewport.y) / project.document.viewport.scale }
     const node = { ...newNode(kind, center), ...initial }
+    node.config = { ...node.config, assetKey: 'canvas-node:' + project.id + ':' + node.id }
     commit({ ...project.document, nodes: [...project.document.nodes, node] })
   }
 
@@ -197,12 +198,13 @@ export function CanvasPanel() {
 
   const updateNode = (id: string, patch: Partial<CanvasNode>) => {
     if (!project) return
-    commit(patchCanvasNode(project.document, id, patch))
+    const current = project.document.nodes.find(node => node.id === id)
+    commit(patchCanvasNode(project.document, id, { ...patch, config: { ...current?.config, ...patch.config, assetKey: 'canvas-node:' + project.id + ':' + id } }))
   }
 
   const updateNodeWithoutHistory = (id: string, patch: Partial<CanvasNode>) => {
     if (!project) return
-    updateDocumentWithoutHistory({ ...project.document, nodes: project.document.nodes.map(node => node.id === id ? { ...node, ...patch } : node) })
+    updateDocumentWithoutHistory({ ...project.document, nodes: project.document.nodes.map(node => node.id === id ? { ...node, ...patch, config: { ...node.config, ...patch.config, assetKey: 'canvas-node:' + project.id + ':' + id } } : node) })
   }
 
   const finishTextEdit = (id: string) => {
