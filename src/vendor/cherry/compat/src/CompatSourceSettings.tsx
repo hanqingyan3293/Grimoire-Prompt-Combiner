@@ -3,6 +3,7 @@ import type { CompatRoute } from './route-registry'
 import { CompatRemainingSettings } from './CompatRemainingSettings'
 import { getSettingsDiagnostic } from './settings-route-descriptors'
 import { CompatDomainCapabilities } from './CompatDomainCapabilities'
+import { CompatPreferenceWiring } from './CompatPreferenceWiring'
 // The source helper reads `window.electron.process.platform`; the compat window has no such
 // global, so `isWin` was always false there and the selection page silently degraded to its
 // diagnostic on every OS (found by the route audit, 2026-10-27). Detect from the UA instead.
@@ -72,6 +73,7 @@ export function CompatSourceSettings({ route }: { route: CompatRoute }) {
         <p className="mt-2">下一步：{descriptor.nextAction}</p>
       </section>
       {route.id === 'settings-general' ? <CompatDomainCapabilities /> : null}
+      {route.id === 'settings-general' ? <CompatPreferenceWiring /> : null}
       <fieldset disabled aria-describedby={noteId} aria-label={descriptor.title + '（只读）'} className="m-0 min-w-0 border-0 p-0">
         <Suspense fallback={<p role="status" className="p-4 text-sm text-muted-foreground">加载源设置页面…</p>}>
           <Component />

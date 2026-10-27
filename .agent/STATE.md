@@ -366,3 +366,13 @@ resources/agent-runtimes/     opencode.exe 134M (1.18.34) / pi.exe 107M (1.0.1)
 | 渲染 | 整理后允许改变文本（与解析器的逐字保真是两件事），用规范分隔符 `, ` 重建 |
 
 测试 8 条：三类整理、入口分发、合法计划（对象与 JSON 串）、**8 种畸形计划各返回具体错误码**、顺序执行、无变化检测。
+### M3 第一批：设置接线登记（2026-10-27 第九轮）
+
+- 新增 `src/main/services/cherry-preference-consumers.ts`：通用设置每个键登记 `{wired, note}`，
+  由 `app.preferences.consumers` 路由暴露给兼容窗口。
+- 现状：**17 个键，13 已接线**（开机自启、防休眠、代理三键、上下文四键、重试四键、开发者模式）；
+  未接线 4 个并写明原因：`agent.language`（无系统提示词装配）、`agent.commit_attribution.enabled`
+  （Agent 不创建 git 提交）、`app.fetch.allow_private_network`（无网络工具私网判定）、`app.user.id`（无读取方）。
+- 开发者模式变成真开关：显式关闭时 `system.toggle_dev_tools` 返回 `DEVELOPER_MODE_DISABLED`；未设置时保持原有允许行为。
+- 兼容窗口的只读横幅新增接线报告（`compat.preference-wiring`）：显示已接线 N/M，并逐条列出未接线键与原因。
+- 测试 4 条：键唯一且覆盖、wired 必须写清消费者、JSON 与原始值读取、开发者模式默认与关闭。

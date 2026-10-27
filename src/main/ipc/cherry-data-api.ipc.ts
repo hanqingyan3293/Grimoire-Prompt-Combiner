@@ -20,6 +20,7 @@ import { createPromptAsset, deletePromptAsset, orderedPromptAssetIds, queryPromp
 import type { PromptOrderAnchor } from '../services/prompt-asset-browser'
 import { listAiUsage, listUsageTimeline, projectUsageEntry, projectUsageTotals, summarizeAiUsage } from '../services/usage.service'
 import { isPreventSleepActive, readLaunchOnBoot } from '../services/app-preferences.service'
+import { cherryPreferenceWiring, isCherryDeveloperModeEnabled } from '../services/cherry-preference-consumers'
 import type { PromptAssetItem } from '../../shared/prompt-asset-types'
 import type { AiAssistantRecord, AiTopicRecord } from '../../shared/ai-types'
 import { getActiveLogPath } from '../services/logger.service'
@@ -2327,7 +2328,11 @@ async function handleIpcApiRoute(route: string, input: unknown, sender: WebConte
       }
       return ipcOk(await hasWritePermission(value.path))
     }
+    if (route === 'app.preferences.consumers') return ipcOk(cherryPreferenceWiring())
     if (route === 'system.toggle_dev_tools') {
+      // `/settings/general` 的开发者模式开关只有关住 DevTools 才算真正生效：显式关闭时拒绝，
+      // 未设置时保持 Grimoire 一直以来的行为（允许）。
+      if (isCherryDeveloperModeEnabled() === false) return ipcError('DEVELOPER_MODE_DISABLED', '开发者模式已关闭：请先在通用设置中开启')
       // Source `system.toggle_dev_tools` toggles devtools on the CALLING window
       // (`WindowManager.getWindow(senderId)`). The sender is used rather than a focused
       // window so a settings page toggles its own devtools, matching upstream.
