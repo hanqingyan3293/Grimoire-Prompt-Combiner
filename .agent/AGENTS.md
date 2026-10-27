@@ -8,7 +8,7 @@
 4. `SPEC.md` — architecture contracts and forbidden dependency directions.
 5. `MIGRATION_MATRIX.md` — row-level capability status; `DECISIONS.md` — why.
 
-`history/` and `handoff/` are archives. Quote them as history, never as current status.
+`history/` and `handoff/` are archives. Quote them as history, never as current status. The decision trail for the 2026-10-27 takeover lives in `records/2026-10-27-takeover/`.
 
 ## Mission
 
