@@ -210,10 +210,14 @@ resources/agent-runtimes/     opencode.exe 134M (1.18.34) / pi.exe 107M (1.0.1)
 | M1.5.4 独立窗口 | 双击面板标题栏可弹出；弹出窗口 `show:false` + 主题底色 + `ready-to-show` 防白闪 |
 | M1.5.5 品牌 | Cherry 窗口标题改为「魔导书 · 智能工作区」 |
 
-### 未完成（明确留到下一批）
+### M1.5 已完成（2026-10-27 第二轮）
 
-- **分组卡片 + 折叠**：设置内容仍是「一次显示一个分区」。要变成 Cherry 那种「全部分区堆叠 + 每张卡片可折叠」，需要把 8 个分区的内联 JSX 逐个改造成可折叠卡片（约 8 处结构性改动，风险中等）。
-- **组件基线**（按钮/开关/标签/对话框/表格）：只做了令牌与三个共享类，组件级统一未做。
+- **分组卡片 + 折叠**：8 个分区在面板模式下堆叠为可折叠卡片（`data-ui="settings.section"`），侧栏变锚点滚动；折叠状态按分区独立，折叠后标题仍可见。测试：`SettingsWindow.embedded.test.tsx`（8 张卡片、单独折叠、搜索过滤）。
+- **组件基线**：`ui-field` / `ui-settings-nav-item` / `ui-segmented` / `ui-popover-surface` / `ui-panel-shell` 改用设计令牌（圆角与阴影），不改尺寸。
+
+### 未完成
+
+- 品牌全量替换（关于页、空状态插画、图标）仍待办；目前只改了窗口标题。
 - ~~M1.4 模型选择器真机重测~~ **已完成**：搜索按供应商名 → 选中 `settings-smoke-provider::gpt-4o` → 四项检查全绿（证据 `artifacts/visual/cherry-routes/settings-actions.json`）。
 ### D10（真实，低危）跨视图缓存不失效
 
@@ -221,3 +225,28 @@ resources/agent-runtimes/     opencode.exe 134M (1.18.34) / pi.exe 107M (1.0.1)
 - 触发条件：provider 由 DataApi（而非设置页表单）创建，或由另一个窗口创建。
 - 影响：M1.4 的选择器测试曾因此误判为「picker 不显示模型」；实际是缓存问题。
 - 处置：M3 里给 provider 的创建/更新/删除加广播，让渲染层重新拉取；在此之前审计脚本用一次 reload 规避并已注明。
+---
+
+## 4.2 M2 调查结论（2026-10-27，开工前）
+
+**目标**：让 Cherry 的聊天页 / Agent 页接到真实 runtime，含 open/attach/detach/abort、审批、recovery。
+
+### 已查明的事实
+
+| 事实 | 证据 |
+|---|---|
+| 源 AgentPage 的发送路径调用 `ipcApi.request('ai.stream.open', request)`（与聊天页同一条协议） | `pages/agents/useAgentChatRuntimeState.ts:232`、`hooks/useConversationTurnController.ts:68` |
+| 协议定义完整：`AiStreamOpenRequest/Response`、`StreamChunk/Done/ErrorPayload`、attach/detach/abort；chunk 负载是 AI SDK v6 的 `UIMessageChunk` | `shared/ai/transport/stream.ts` |
+| 事件名：`ai.stream.chunk` / `ai.stream.done` / `ai.stream.error`（定向发送，不广播） | `shared/ipc/schemas/ai.ts:485+` |
+| 主进程已有 agent 侧协调器（租约、重放游标、容量上限），但 **pump 是显式不可用**（`createCherryAgentRuntimePump` 直接抛 503） | `services/cherry-agent-stream.service.ts:160` |
+| `ai.stream.*` 路由**尚未在任何地方实现**；`ipcApi.request` 目前只转发了少数路由 | `preload/index.ts:392-410`、`cherry-data-api.ipc.ts:2396` |
+| 源 Page 允许注入 `openStream` 覆盖默认 IPC 路径 | `useConversationTurnController.ts:68` |
+
+### 两条可行路线
+
+| 路线 | 做法 | 代价 | 风险 |
+|---|---|---|---|
+| **A 渲染层桥**（推荐先做） | 在 compat 里实现 `openStream`：用现有 Host Bridge 发送 + 本地事件总线派发 chunk；用现有 IPC 建占位消息 | 中等；不动主进程协议 | 依赖占位消息能提前建行 |
+| B 主进程协议实现 | 在 main 实现完整 `ai.stream` 管理器（多模型、attempt 水位、topic 状态缓存、审批） | 大（多日） | 会与现有 turn runner 重复 |
+
+**决定**：先走 A，把「真流式 + 取消 + 占位消息 + 结束后落库」跑通；B 中真正需要的部分（多模型、审批）再按需补。审批沿用现有 agent permission broker，不另造。
