@@ -22,8 +22,12 @@ import {
   linkNovelaiVersionImage,
   listNovelaiBranchLine,
   listNovelaiVersionImages,
+  listNovelaiDeletedVersions,
   listNovelaiVersionsByImage,
+  purgeNovelaiVersion,
+  restoreNovelaiVersion,
   setNovelaiBranchName,
+  softDeleteNovelaiVersion,
 } from './novelai-version.service'
 
 beforeEach(async () => {
@@ -122,6 +126,61 @@ describe('NovelAI prompt version tree (M6.2)', () => {
   })
 
   it('ships schema v36 with the version tables', () => {
-    expect(CURRENT_SCHEMA_VERSION).toBe(36)
+    expect(CURRENT_SCHEMA_VERSION).toBeGreaterThanOrEqual(36)
+  })
+  describe('recycle bin (M6.3)', () => {
+    const build = () => {
+      const { work, root } = createNovelaiWork({ name: 'w', snapshot: 'a' })
+      const second = createNovelaiVersion({ workId: work.id, parentVersionId: root.id, snapshot: 'a, b', expectedRevision: 1 })
+      const third = createNovelaiVersion({ workId: work.id, parentVersionId: second.version.id, snapshot: 'a, b, c', expectedRevision: 2 })
+      return { work, root, second: second.version, third: third.version }
+    }
+
+    it('soft-deletes a leaf, hides it from the line and keeps it in the bin', () => {
+      const { work, root, second, third } = build()
+      const result = softDeleteNovelaiVersion({ workId: work.id, versionId: third.id, mode: 'single', expectedRevision: 3 })
+      expect(result.deleted).toEqual([third.id])
+      expect(listNovelaiBranchLine(work.id).map(version => version.snapshot)).toEqual(['a', 'a, b'])
+      expect(listNovelaiDeletedVersions(work.id).map(version => version.id)).toEqual([third.id])
+      expect(getNovelaiWork(work.id)?.lastVersionId).toBe(second.id)
+    })
+
+    it('refuses a single delete when the version still has children', () => {
+      const { work, second } = build()
+      expect(() => softDeleteNovelaiVersion({ workId: work.id, versionId: second.id, mode: 'single', expectedRevision: 3 })).toThrow(/children/i)
+    })
+
+    it('deletes a whole branch including descendants and its name', () => {
+      const { work, root, second, third } = build()
+      setNovelaiBranchName(work.id, root.branchId, '主线')
+      const result = softDeleteNovelaiVersion({ workId: work.id, versionId: root.id, mode: 'branch', expectedRevision: 3 })
+      expect(result.deleted.sort()).toEqual([root.id, second.id, third.id].sort())
+      expect(listNovelaiBranchLine(work.id)).toEqual([])
+      expect(getNovelaiBranchName(root.branchId)).toBeNull()
+      expect(getNovelaiWork(work.id)?.lastVersionId).toBeNull()
+    })
+
+    it('restores a version together with its deleted ancestors', () => {
+      const { work, root, second, third } = build()
+      softDeleteNovelaiVersion({ workId: work.id, versionId: root.id, mode: 'branch', expectedRevision: 3 })
+      restoreNovelaiVersion(third.id)
+      expect(listNovelaiBranchLine(work.id).map(version => version.snapshot)).toEqual(['a', 'a, b', 'a, b, c'])
+      expect(listNovelaiDeletedVersions(work.id)).toEqual([])
+    })
+
+    it('refuses permanent removal while live children exist, and allows it afterwards', () => {
+      const { work, second, third } = build()
+      expect(() => purgeNovelaiVersion(second.id)).toThrow(/children/i)
+      softDeleteNovelaiVersion({ workId: work.id, versionId: third.id, mode: 'single', expectedRevision: 3 })
+      purgeNovelaiVersion(third.id)
+      expect(getNovelaiVersion(third.id)).toBeNull()
+    })
+
+    it('will not extend a version that sits in the recycle bin', () => {
+      const { work, second, third } = build()
+      softDeleteNovelaiVersion({ workId: work.id, versionId: third.id, mode: 'single', expectedRevision: 3 })
+      expect(() => createNovelaiVersion({ workId: work.id, parentVersionId: third.id, snapshot: 'a, b, c, d', expectedRevision: 4 })).toThrow(/recycle/i)
+      expect(second.id).toBeTruthy()
+    })
   })
 })

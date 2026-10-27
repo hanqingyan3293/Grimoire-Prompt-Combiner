@@ -33,6 +33,7 @@ export interface NovelaiVersion {
   source: NovelaiVersionSource
   operation: string
   createdAt: string
+  deletedAt: string | null
 }
 
 export class NovelaiVersionError extends Error {
@@ -88,10 +89,11 @@ function rowToVersion(row: unknown[]): NovelaiVersion {
     source: String(row[7]) === 'agent' ? 'agent' : 'user',
     operation: String(row[8]),
     createdAt: String(row[9]),
+    deletedAt: row[10] === null || row[10] === undefined ? null : String(row[10]),
   }
 }
 
-const VERSION_COLUMNS = 'id,work_id,parent_id,number,branch_id,branch_number,snapshot,source,operation,created_at'
+const VERSION_COLUMNS = 'id,work_id,parent_id,number,branch_id,branch_number,snapshot,source,operation,created_at,deleted_at'
 
 export function getNovelaiVersion(versionId: string): NovelaiVersion | null {
   const row = getDatabase().exec('SELECT ' + VERSION_COLUMNS + ' FROM novelai_version WHERE id=?', [versionId])[0]?.values?.[0]
@@ -129,7 +131,7 @@ export function createNovelaiWork(input: { name: string; snapshot: string }): { 
 }
 
 function childCount(versionId: string): number {
-  return Number(getDatabase().exec('SELECT count(*) FROM novelai_version WHERE parent_id=?', [versionId])[0]?.values?.[0]?.[0] ?? 0)
+  return Number(getDatabase().exec('SELECT count(*) FROM novelai_version WHERE parent_id=? AND deleted_at IS NULL', [versionId])[0]?.values?.[0]?.[0] ?? 0)
 }
 
 export interface NewVersionInput {
@@ -150,6 +152,7 @@ export function createNovelaiVersion(input: NewVersionInput): { version: Novelai
   const parent = getNovelaiVersion(input.parentVersionId)
   if (!parent) throw new NovelaiVersionError('VERSION_NOT_FOUND', 'parent version not found')
   if (parent.workId !== work.id) throw new NovelaiVersionError('CROSS_WORK_PARENT', 'parent version belongs to another work')
+  if (parent.deletedAt) throw new NovelaiVersionError('VERSION_NOT_FOUND', 'parent version is in the recycle bin')
   const snapshot = text(input.snapshot, 'snapshot')
   if (snapshot === parent.snapshot) return { version: parent, branched: false, unchanged: true }
   const db = getDatabase()
@@ -182,7 +185,7 @@ export function listNovelaiBranchLine(workId: string, branchId?: string): Novela
   if (!work) throw new NovelaiVersionError('WORK_NOT_FOUND', 'work not found')
   const targetBranch = branchId || (work.lastVersionId ? getNovelaiVersion(work.lastVersionId)?.branchId : undefined)
   if (!targetBranch) return []
-  const newest = getDatabase().exec('SELECT ' + VERSION_COLUMNS + ' FROM novelai_version WHERE work_id=? AND branch_id=? ORDER BY number DESC LIMIT 1', [workId, targetBranch])[0]?.values?.[0]
+  const newest = getDatabase().exec('SELECT ' + VERSION_COLUMNS + ' FROM novelai_version WHERE work_id=? AND branch_id=? AND deleted_at IS NULL ORDER BY number DESC LIMIT 1', [workId, targetBranch])[0]?.values?.[0]
   if (!newest) return []
   const line: NovelaiVersion[] = []
   let cursor: NovelaiVersion | null = rowToVersion(newest)
@@ -231,5 +234,85 @@ export function listNovelaiVersionsByImage(imageId: string): NovelaiVersion[] {
     'SELECT v.' + VERSION_COLUMNS.replace(/,/g, ',v.') + ' FROM novelai_version v JOIN novelai_version_image i ON i.version_id=v.id WHERE i.image_id=? ORDER BY v.created_at DESC',
     [imageId],
   )[0]?.values ?? []
+  return rows.map(rowToVersion)
+}
+// ── Recycle bin and guarded deletion ────────────────────────────────────────
+// Three separable operations, because conflating them is how users lose work:
+//  * soft delete ONE version (only a leaf, so no orphaned children),
+//  * soft delete a whole branch INCLUDING descendants (E7),
+//  * permanent removal, refused while anything still references the row (F8).
+export type NovelaiDeleteMode = 'single' | 'branch'
+
+function descendantsOf(versionId: string): string[] {
+  const rows = getDatabase().exec(
+    'WITH RECURSIVE tree(id) AS (SELECT id FROM novelai_version WHERE parent_id=? UNION ALL SELECT v.id FROM novelai_version v JOIN tree t ON v.parent_id=t.id) SELECT id FROM tree',
+    [versionId],
+  )[0]?.values ?? []
+  return rows.map(row => String(row[0]))
+}
+
+export function softDeleteNovelaiVersion(input: { workId: string; versionId: string; mode: NovelaiDeleteMode; expectedRevision: number }): { deleted: string[] } {
+  const work = getNovelaiWork(input.workId)
+  if (!work) throw new NovelaiVersionError('WORK_NOT_FOUND', 'work not found')
+  if (input.expectedRevision !== work.revision) throw new NovelaiVersionError('REVISION_CONFLICT', 'work changed since revision ' + input.expectedRevision)
+  const version = getNovelaiVersion(input.versionId)
+  if (!version || version.workId !== work.id || version.deletedAt) throw new NovelaiVersionError('VERSION_NOT_FOUND', 'version not found')
+  const targets = input.mode === 'branch' ? [version.id, ...descendantsOf(version.id)] : [version.id]
+  // A single delete must leave no orphaned child: either the whole branch goes, or the user picks a leaf.
+  if (input.mode === 'single' && childCount(version.id) > 0) throw new NovelaiVersionError('INVALID_INPUT', 'version has children; delete the branch instead')
+  const stamp = now()
+  const db = getDatabase()
+  db.exec('BEGIN IMMEDIATE')
+  try {
+    for (const target of targets) db.run('UPDATE novelai_version SET deleted_at=? WHERE id=? AND deleted_at IS NULL', [stamp, target])
+    if (input.mode === 'branch') db.run('DELETE FROM novelai_branch_name WHERE branch_id=?', [version.id])
+    const remaining = getDatabase().exec('SELECT ' + VERSION_COLUMNS + ' FROM novelai_version WHERE work_id=? AND deleted_at IS NULL ORDER BY number DESC LIMIT 1', [work.id])[0]?.values?.[0]
+    const nextLast = remaining ? String(remaining[0]) : null
+    db.run('UPDATE novelai_work SET last_version_id=?, last_used_at=?, revision=revision+1 WHERE id=?', [nextLast, stamp, work.id])
+    db.exec('COMMIT')
+    saveDatabase()
+    return { deleted: targets }
+  } catch (error) {
+    try { db.exec('ROLLBACK') } catch {}
+    throw error
+  }
+}
+
+/** Restore a version and every deleted ancestor, so the line is never left with a hole. */
+export function restoreNovelaiVersion(versionId: string): NovelaiVersion {
+  const version = getNovelaiVersion(versionId)
+  if (!version) throw new NovelaiVersionError('VERSION_NOT_FOUND', 'version not found')
+  const db = getDatabase()
+  const restored: string[] = []
+  let cursor: NovelaiVersion | null = version
+  while (cursor) {
+    if (cursor.deletedAt) { db.run('UPDATE novelai_version SET deleted_at=NULL WHERE id=?', [cursor.id]); restored.push(cursor.id) }
+    cursor = cursor.parentId ? getNovelaiVersion(cursor.parentId) : null
+  }
+  db.run('UPDATE novelai_work SET last_version_id=?, last_used_at=?, revision=revision+1 WHERE id=?', [version.id, now(), version.workId])
+  saveDatabase()
+  return getNovelaiVersion(version.id)!
+}
+
+/** Permanent removal. Refused while the version still has live children or the work is not empty. */
+export function purgeNovelaiVersion(versionId: string): void {
+  const version = getNovelaiVersion(versionId)
+  if (!version) throw new NovelaiVersionError('VERSION_NOT_FOUND', 'version not found')
+  if (childCount(version.id) > 0) throw new NovelaiVersionError('INVALID_INPUT', 'version still has live children')
+  const db = getDatabase()
+  db.exec('BEGIN IMMEDIATE')
+  try {
+    db.run('DELETE FROM novelai_version_image WHERE version_id=?', [version.id])
+    db.run('DELETE FROM novelai_version WHERE id=?', [version.id])
+    db.exec('COMMIT')
+    saveDatabase()
+  } catch (error) {
+    try { db.exec('ROLLBACK') } catch {}
+    throw error
+  }
+}
+
+export function listNovelaiDeletedVersions(workId: string): NovelaiVersion[] {
+  const rows = getDatabase().exec('SELECT ' + VERSION_COLUMNS + ' FROM novelai_version WHERE work_id=? AND deleted_at IS NOT NULL ORDER BY deleted_at DESC, number DESC', [workId])[0]?.values ?? []
   return rows.map(rowToVersion)
 }

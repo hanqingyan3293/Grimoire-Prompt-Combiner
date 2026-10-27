@@ -23,7 +23,8 @@ import { createLegacyDatabase, type LegacyDatabase } from './services/sqlite.com
 // v35: opt-in one-to-one Agent session read model; no copied sessions/history or backfill.
 // v36: NovelAI work/version tree (work, version, branch_name, version_image). Empty on upgrade —
 // no inference from prompt assets or sessions.
-export const CURRENT_SCHEMA_VERSION = 36
+// v37: soft-delete (recycle bin) columns for NovelAI versions and works.
+export const CURRENT_SCHEMA_VERSION = 37
 let nativeDb: DatabaseSync | null = null
 let db: LegacyDatabase | null = null
 let dbPath = ''
@@ -1313,6 +1314,7 @@ export function initializeDatabaseConnection(connection: DatabaseSync, requireEx
   migrateAgentWorkspaces(legacy)
   migrateAgentSessionReadModel(legacy)
   migrateNovelaiPromptVersions(legacy)
+  migrateNovelaiVersionTrash(legacy)
 
   legacy.exec(INDEX_SQL)
   legacy.run("CREATE INDEX IF NOT EXISTS idx_history_task ON history(task_id)")
@@ -1368,6 +1370,14 @@ function migrateNovelaiPromptVersions(legacy: LegacyDatabase): void {
     CREATE INDEX IF NOT EXISTS idx_novelai_version_branch ON novelai_version(work_id, branch_id, number);
     CREATE INDEX IF NOT EXISTS idx_novelai_version_image_image ON novelai_version_image(image_id);
   `)
+}
+
+// v37 — recycle bin for the NovelAI version tree. Deleting a version is a soft delete so the
+// user can restore it; permanent removal is a separate, guarded operation.
+function migrateNovelaiVersionTrash(legacy: LegacyDatabase): void {
+  try { legacy.run('ALTER TABLE novelai_version ADD COLUMN deleted_at TEXT') } catch {}
+  try { legacy.run('ALTER TABLE novelai_work ADD COLUMN deleted_at TEXT') } catch {}
+  legacy.exec('CREATE INDEX IF NOT EXISTS idx_novelai_version_deleted ON novelai_version(work_id, deleted_at)')
 }
 function resolveDatabasePath(): string {
   // 便携模式：exe同目录有 portable 文件则数据存本地 data/ 文件夹
