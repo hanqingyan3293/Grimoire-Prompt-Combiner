@@ -14,7 +14,8 @@ import { handleCherryNavigationRequest, isRegisteredCherryNavigationSender } fro
 import { isTrustedCherryMainFrame } from '../services/cherry-ipc-admission'
 import { archiveAiAssistant, archiveAiTopic, getLatestAiTopic, listAiAssistants, listAiTopics, restoreAiAssistant, restoreAiTopic, saveAiAssistant, saveAiTopic } from '../services/cherry-assistant.service'
 import { deleteAiSession, getAiSession, listAiSessions, restoreAiSession } from '../services/ai-session.service'
-import { handleAiSessionInterrupt, handleAiSessionSend } from './ai-sessions.ipc'
+import { decideAiSessionPermission, handleAiSessionInterrupt, handleAiSessionSend } from './ai-sessions.ipc'
+import { decideAgentSessionPermission, handleAgentSessionSend } from './agent.ipc'
 import { createPromptAsset, deletePromptAsset, orderedPromptAssetIds, queryPromptAssets, reorderPromptAsset, updatePromptAsset } from '../services/prompt-asset-browser'
 import type { PromptOrderAnchor } from '../services/prompt-asset-browser'
 import { listAiUsage, listUsageTimeline, projectUsageEntry, projectUsageTotals, summarizeAiUsage } from '../services/usage.service'
@@ -1989,8 +1990,14 @@ type ChatStreamRecord = {
   anchorMessageId: string
   status: 'streaming' | 'success' | 'paused' | 'error'
   startedAt: number
+  // Bounded replay so a reloaded/re-attached window can re-render the live turn instead of
+  // staring at an empty message until the terminal row lands. Same shape the source expects
+  // in `AiStreamAttachResponse.bufferedChunks`.
+  chunks: Array<Record<string, unknown>>
+  replayBytes: number
 }
 const chatStreams = new Map<string, ChatStreamRecord>()
+const CHAT_STREAM_REPLAY_LIMIT = Object.freeze({ maxEvents: 512, maxBytes: 512 * 1024 })
 let chatStreamAttempt = 0
 
 function streamText(parts: unknown): string {
@@ -2006,15 +2013,28 @@ function activeExecution(record: ChatStreamRecord) {
   return { executionId: record.executionId, attemptId: record.attemptId, anchorMessageId: record.anchorMessageId }
 }
 
+function handleApprovalRespond(input: unknown, sender: WebContents | null): Record<string, unknown> {
+  if (!sender) return ipcError('OWNER_UNAVAILABLE', 'approval owner window is unavailable')
+  const value = input && typeof input === 'object' ? input as Record<string, unknown> : {}
+  const approvalId = typeof value.approvalId === 'string' ? value.approvalId : ''
+  if (!approvalId) return ipcError('VALIDATION_ERROR', 'approvalId is required')
+  const decision = value.approved === true ? 'allowOnce' as const : 'deny' as const
+  // Two brokers own two session kinds; only one can recognise the id.
+  const handled = decideAgentSessionPermission(sender, approvalId, decision) || decideAiSessionPermission(sender, approvalId, decision)
+  return ipcOk({ ok: handled })
+}
+
 async function handleChatStreamRoute(route: string, input: unknown, sender: WebContents | null): Promise<Record<string, unknown> | null> {
+  if (route === 'ai.tool.approval.respond') return handleApprovalRespond(input, sender)
   if (!route.startsWith('ai.stream.')) return null
   const value = input && typeof input === 'object' ? input as Record<string, unknown> : {}
   const topicId = typeof value.topicId === 'string' ? value.topicId : ''
   if (!topicId) return ipcError('VALIDATION_ERROR', 'topicId is required')
   if (route === 'ai.stream.attach') {
     const record = chatStreams.get(topicId)
-    if (!record) return ipcOk({ status: 'not-found' })
-    return ipcOk({ status: 'attached', bufferedChunks: [] })
+    // A finished turn is read from SQLite by the renderer, not replayed from memory.
+    if (!record || record.status !== 'streaming') return ipcOk({ status: 'not-found' })
+    return ipcOk({ status: 'attached', bufferedChunks: record.chunks.slice() })
   }
   if (route === 'ai.stream.detach') return ipcOk(undefined)
   if (route === 'ai.stream.abort') {
@@ -2032,8 +2052,12 @@ async function handleChatStreamRoute(route: string, input: unknown, sender: WebC
   if (!sender) return ipcError('OWNER_UNAVAILABLE', 'stream owner window is unavailable')
   const live = chatStreams.get(topicId)
   if (live && live.status === 'streaming') return ipcOk({ mode: 'injected', activeExecutions: [activeExecution(live)] })
-  const sessionId = existingTopicSessionId(topicId) || (getAiSession(topicId) ? topicId : '')
+  // Two session kinds share this route: Cherry chat topics map to `ai_sessions` via
+  // `ai_topics`, while the agent page passes its agent-session id.
+  const agentSession = getAgentSession(topicId)
+  const sessionId = existingTopicSessionId(topicId) || (getAiSession(topicId) ? topicId : '') || (agentSession ? topicId : '')
   if (!sessionId) return ipcError('SESSION_NOT_FOUND', 'no Grimoire session backs topic ' + topicId)
+  const isAgent = !!agentSession && sessionId === topicId && !getAiSession(topicId)
   const content = streamText(value.userMessageParts)
   if (!content) return ipcError('VALIDATION_ERROR', 'empty user message')
   const mentioned = Array.isArray(value.mentionedModelIds) ? value.mentionedModelIds.filter(item => typeof item === 'string') : []
@@ -2046,19 +2070,68 @@ async function handleChatStreamRoute(route: string, input: unknown, sender: WebC
     anchorMessageId: crypto.randomUUID(),
     status: 'streaming',
     startedAt: Date.now(),
+    chunks: [],
+    replayBytes: 0,
   }
   chatStreams.set(topicId, record)
-  // Fire-and-forget: the renderer consumes the turn through session events and closes on the
-  // terminal assistant message. The promise only updates this registry's status.
-  void handleAiSessionSend({ sender }, { sessionId, content, modelId: executionId === 'default' ? undefined : executionId })
+  // Real runtime output is forwarded to the requesting window as the source protocol's
+  // chunk sequence. Nothing is synthesized: a silent runtime produces no chunks.
+  const textId = 'text-' + record.attemptId
+  const reasoningId = 'reasoning-' + record.attemptId
+  const base = { topicId, executionId, attemptId: record.attemptId, anchorMessageId: record.anchorMessageId }
+  let textOpen = false
+  let reasoningOpen = false
+  const emit = (name: 'chunk' | 'done' | 'error', payload: Record<string, unknown>) => {
+    if (name === 'chunk') {
+      const size = Buffer.byteLength(JSON.stringify(payload), 'utf8')
+      if (size <= CHAT_STREAM_REPLAY_LIMIT.maxBytes) {
+        record.chunks.push(payload)
+        record.replayBytes += size
+        while (record.chunks.length > CHAT_STREAM_REPLAY_LIMIT.maxEvents || record.replayBytes > CHAT_STREAM_REPLAY_LIMIT.maxBytes) {
+          const removed = record.chunks.shift()
+          record.replayBytes -= removed ? Buffer.byteLength(JSON.stringify(removed), 'utf8') : 0
+        }
+      }
+    }
+    if (!sender.isDestroyed()) sender.send(IPC_CHANNELS.CHERRY_AI_STREAM_EVENT, { event: name, payload })
+  }
+  const hooks = {
+    onTextDelta: (text: string) => {
+      if (!text) return
+      if (!textOpen) { textOpen = true; emit('chunk', { ...base, chunk: { type: 'text-start', id: textId } }) }
+      emit('chunk', { ...base, chunk: { type: 'text-delta', id: textId, delta: text } })
+    },
+    onReasoningDelta: (text: string) => {
+      if (!text) return
+      if (!reasoningOpen) { reasoningOpen = true; emit('chunk', { ...base, chunk: { type: 'reasoning-start', id: reasoningId } }) }
+      emit('chunk', { ...base, chunk: { type: 'reasoning-delta', id: reasoningId, delta: text } })
+    }
+  }
+  const closeText = () => {
+    if (textOpen) emit('chunk', { ...base, chunk: { type: 'text-end', id: textId } })
+    if (reasoningOpen) emit('chunk', { ...base, chunk: { type: 'reasoning-end', id: reasoningId } })
+    textOpen = false
+    reasoningOpen = false
+  }
+  // Fire-and-forget: the turn runs in the shared executor; this promise only reports the
+  // terminal fact to the window and updates the registry.
+  const startSend = isAgent
+    ? () => handleAgentSessionSend({ sender }, { sessionId, content }, hooks)
+    : () => handleAiSessionSend({ sender }, { sessionId, content, modelId: executionId === 'default' ? undefined : executionId }, hooks)
+  void startSend()
     .then(result => {
-      const status = result && result.session && result.session.status === 'interrupted' ? 'paused' : 'success'
+      const interrupted = result && result.session && result.session.status === 'interrupted'
+      const status = interrupted ? 'paused' : 'success'
       const current = chatStreams.get(topicId)
       if (current && current.attemptId === record.attemptId) current.status = status
+      closeText()
+      emit('done', { ...base, status, isTopicDone: true })
     })
-    .catch(() => {
+    .catch(error => {
       const current = chatStreams.get(topicId)
       if (current && current.attemptId === record.attemptId) current.status = 'error'
+      closeText()
+      emit('error', { ...base, isTopicDone: true, error: { message: error instanceof Error ? error.message : String(error) } })
     })
   // `sessionId` is an additive field for the compat stream bridge (the source type does not
   // declare it and ignores it); it lets the renderer map session events back to a topic.

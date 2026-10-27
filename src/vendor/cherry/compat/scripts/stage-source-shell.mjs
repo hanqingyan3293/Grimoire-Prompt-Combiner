@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto'
-import { existsSync, readFileSync, mkdirSync, writeFileSync } from 'node:fs'
+import { existsSync, readFileSync, mkdirSync, renameSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -58,7 +58,12 @@ export function stageSourceShell(referenceRoot, { check = false } = {}) {
       }
     } else {
       mkdirSync(path.dirname(destination), { recursive: true })
-      writeFileSync(destination, bytes)
+      // Atomic replace: a killed build must never leave a zero-filled route file behind.
+      // That exact failure zeroed 50 generated routes once and made the next compat run
+      // fail with a confusing "do not silently change topology" mismatch.
+      const temporary = `${destination}.tmp-${process.pid}`
+      writeFileSync(temporary, bytes)
+      renameSync(temporary, destination)
     }
   }
   return files.size

@@ -8,19 +8,9 @@ import { initI18n } from '../../source/src/renderer/i18n/resolver'
 import './index.css'
 import './tailwind.css'
 import { startThemeBridge } from './theme-bridge'
-import { installStreamBridge } from './stream-bridge'
 
 // Follow the Grimoire theme (light/dark + accent) before the first paint of the shell.
 startThemeBridge()
-
-// Translate Grimoire's real session events into the source `ai.stream.*` protocol the chat
-// transport consumes. Installed once per window; HMR re-evaluates this module, so the guard
-// keeps a single wrapper around ipcApi.
-const bridgeWindow = window as unknown as { __grimoireStreamBridge?: boolean; api?: Parameters<typeof installStreamBridge>[0] }
-if (!bridgeWindow.__grimoireStreamBridge && bridgeWindow.api?.ipcApi) {
-  installStreamBridge(bridgeWindow.api)
-  bridgeWindow.__grimoireStreamBridge = true
-}
 
 // Source contract: every window entry awaits initI18n() before rendering because
 // translation packs load asynchronously. When the Grimoire preload has no

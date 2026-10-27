@@ -53,6 +53,15 @@ async function requestPermission(sender: Electron.WebContents, sessionId: string
   return decision === 'allowOnce' || decision === 'allowForSession'
 }
 
+// Source `ai.tool.approval.respond` lands here through the compat route: one approval id, one
+// boolean. The broker is the authority — an unknown or already-resolved id simply returns false.
+export function decideAiSessionPermission(sender: Electron.WebContents, requestId: string, decision: 'allowOnce' | 'allowForSession' | 'deny' | 'cancel'): boolean {
+  if (!requestId || !['allowOnce', 'allowForSession', 'deny', 'cancel'].includes(decision)) return false
+  if (!permissions.decide(sender, requestId, decision)) return false
+  resolveAiPermission({ requestId, decision })
+  return true
+}
+
 export function registerAiSessionsIPC(): void {
   ipcMain.handle(IPC_CHANNELS.AI_RUNTIME_STATUS, async () => inspectAgentRuntimes())
   ipcMain.handle(IPC_CHANNELS.AI_RUNTIME_CAPABILITIES, async (_event, kind: unknown) => getAgentRuntimeCapabilities(String(kind || '') as AiRuntimeKind))
@@ -244,7 +253,12 @@ function readContextSettingsFromSettings() {
   })
 }
 
-export async function handleAiSessionSend(_event: { sender: Electron.WebContents }, input: unknown) {
+export type AiStreamHooks = {
+  onTextDelta?: (text: string) => void
+  onReasoningDelta?: (text: string) => void
+}
+
+export async function handleAiSessionSend(_event: { sender: Electron.WebContents }, input: unknown, hooks?: AiStreamHooks) {
 
     const value = input && typeof input === "object" ? input as Record<string, unknown> : {}
     const sessionId = String(value.sessionId || "")
@@ -361,9 +375,11 @@ export async function handleAiSessionSend(_event: { sender: Electron.WebContents
             const record = appendAiEvent({ sessionId, eventType: "text-delta", payload: { text: event.text } })
             broadcast({ kind: "event", record })
             broadcast({ kind: "delta", sessionId, text: event.text })
+            hooks?.onTextDelta?.(event.text)
           } else if (event.type === "reasoning-delta") {
             const record = appendAiEvent({ sessionId, eventType: "reasoning-delta", payload: { text: event.text } })
             broadcast({ kind: "event", record })
+            hooks?.onReasoningDelta?.(event.text)
           } else if (event.type === "tool-started") {
             const record = appendAiEvent({ sessionId, eventType: "tool-started", payload: { callId: event.callId, name: event.name, input: event.input } })
             broadcast({ kind: "event", record })

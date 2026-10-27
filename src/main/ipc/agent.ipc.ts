@@ -84,6 +84,13 @@ export function toMcpSaveInput(
   }
 }
 
+// Same contract as the AI side: the source approval route carries one id and one boolean,
+// and the broker decides. Unknown/stale ids return false rather than pretending to apply.
+export function decideAgentSessionPermission(sender: Electron.WebContents, requestId: string, decision: 'allowOnce' | 'allowForSession' | 'deny' | 'cancel'): boolean {
+  if (!requestId || !['allowOnce', 'allowForSession', 'deny', 'cancel'].includes(decision)) return false
+  return permissions.decide(sender, requestId, decision)
+}
+
 export function registerAgentIPC(): void {
   // Explicit unavailable boundary, not source ai.stream integration. No leases,
   // pending messages, process launches or subscriptions are created here.
@@ -131,7 +138,70 @@ export function registerAgentIPC(): void {
     if (!['message', 'tool-call', 'tool-result', 'permission', 'status', 'error'].includes(type)) throw new Error('会话事件类型无效')
     return appendAgentSessionEvent({ sessionId: requireId(input.sessionId, '会话 ID'), type, data: input.data && typeof input.data === 'object' ? input.data as Record<string, unknown> : {} })
   })
-  ipcMain.handle(IPC_CHANNELS.AGENT_SESSION_SEND, async (_event, value: unknown) => {
+  ipcMain.handle(IPC_CHANNELS.AGENT_SESSION_SEND, handleAgentSessionSend)
+  ipcMain.handle(IPC_CHANNELS.AGENT_SESSION_BRANCH, async (_event, value: unknown) => {
+    const input = value && typeof value === 'object' ? value as Record<string, unknown> : {}
+    return branchAgentSession({ sessionId: requireId(input.sessionId, '会话 ID'), title: typeof input.title === 'string' ? input.title : undefined })
+  })
+  ipcMain.handle(IPC_CHANNELS.AGENT_SESSION_UPDATE, async (_event, value: unknown) => {
+    if (!value || typeof value !== 'object') throw new Error('会话更新参数无效')
+    const input = value as Record<string, unknown>
+    const status = input.status as AgentSessionStatus | undefined
+    if (status && !['idle', 'running', 'completed', 'failed', 'interrupted'].includes(status)) throw new Error('会话状态无效')
+    return updateAgentSession({ id: requireId(input.id, '会话 ID'), status, title: typeof input.title === 'string' ? input.title : undefined, data: input.data && typeof input.data === 'object' ? input.data as Record<string, unknown> : undefined })
+  })
+  ipcMain.handle(IPC_CHANNELS.AGENT_SESSION_ATTACH, async (_event, value: unknown) => {
+    if (!value || typeof value !== 'object') throw new Error('会话附件参数无效')
+    const input = value as Record<string, unknown>
+    return attachAgentSession({
+      id: requireId(input.id, '会话 ID'),
+      agentId: readAgentId(input),
+      workspace: input.workspace as AgentSessionWorkspace | undefined,
+      attachments: input.attachments as unknown[] | undefined,
+    })
+  })
+  ipcMain.handle(IPC_CHANNELS.AGENT_SESSION_SNAPSHOT, async (_event, value: unknown) => {
+    if (!value || typeof value !== 'object') throw new Error('会话快照参数无效')
+    const input = value as Record<string, unknown>
+    if (!input.snapshot || typeof input.snapshot !== 'object' || Array.isArray(input.snapshot)) throw new Error('会话快照参数无效')
+    return snapshotAgentSession({ id: requireId(input.id, '会话 ID'), snapshot: input.snapshot as AgentSessionSnapshot })
+  })
+  ipcMain.handle(IPC_CHANNELS.AGENT_SESSION_DELETE, async (_event, id: unknown) => {
+    const sessionId = requireId(id, '会话 ID')
+    const result = deleteAgentSession(sessionId)
+    permissions.clearScopes('agent:' + sessionId)
+    return result
+  })
+
+  ipcMain.handle(IPC_CHANNELS.MCP_SERVER_LIST, async () => listMcpServers())
+  ipcMain.handle(IPC_CHANNELS.MCP_SERVER_SAVE, async (_event, value: unknown) => {
+    if (!value || typeof value !== 'object') throw new Error('MCP 配置无效')
+    const input = value as Record<string, unknown>
+    if (input.transport !== undefined && input.transport !== 'http' && input.transport !== 'stdio') throw new Error('MCP 传输类型无效')
+    // `env`/`headers` values read back from the renderer are masked placeholders; a
+    // save that echoes one keeps the stored secret instead of persisting the mask.
+    const storedRecord = typeof input.id === 'string' ? listMcpServers(true).find(server => server.id === input.id) : undefined
+    return saveMcpServer(toMcpSaveInput(input, storedRecord))
+  })
+  ipcMain.handle(IPC_CHANNELS.MCP_SERVER_DELETE, async (_event, id: unknown) => deleteMcpServer(requireId(id, 'MCP Server ID')))
+  ipcMain.handle(IPC_CHANNELS.MCP_SERVER_DISCONNECT, async (_event, id: unknown) => disconnectMcpServer(requireId(id, 'MCP Server ID')))
+  ipcMain.handle(IPC_CHANNELS.MCP_SERVER_CONNECT, async (_event, id: unknown) => connectMcpServer(requireId(id, 'MCP Server ID')))
+  ipcMain.handle(IPC_CHANNELS.MCP_SERVER_CALL_TOOL, async (_event, value: unknown) => {
+    if (!value || typeof value !== 'object') throw new Error('MCP 工具调用参数无效')
+    const input = value as Record<string, unknown>
+    const name = typeof input.name === 'string' ? input.name.trim() : ''
+    if (!name) throw new Error('MCP 工具名称不能为空')
+    return callMcpTool({ serverId: requireId(input.serverId, 'MCP Server ID'), name, arguments: input.arguments && typeof input.arguments === 'object' ? input.arguments as Record<string, unknown> : {} })
+  })
+}
+
+export type AgentStreamHooks = {
+  onTextDelta?: (text: string) => void
+  onReasoningDelta?: (text: string) => void
+}
+
+export async function handleAgentSessionSend(_event: { sender: Electron.WebContents }, value: unknown, hooks?: AgentStreamHooks) {
+
     if (!value || typeof value !== 'object') throw new Error('Agent 消息参数无效')
     const input = value as Record<string, unknown>
     const sessionId = requireId(input.sessionId, '会话 ID')
@@ -214,6 +284,11 @@ export function registerAgentIPC(): void {
         isCancelled: () => admission.signal.aborted,
         onEvent: async event => {
           if (event.type === 'session-started') { /* native checkpoint is committed only after a settled turn */ }
+          // Live deltas for the compat agent page. They are NOT persisted per-delta: the
+          // assistant message written at the end carries the full text, and writing every
+          // chunk would multiply history size without adding information.
+          if (event.type === 'text-delta') { sender.send(IPC_CHANNELS.AGENT_SESSION_STREAM, { sessionId, phase: 'text', text: event.text }); hooks?.onTextDelta?.(event.text) }
+          if (event.type === 'reasoning-delta') { sender.send(IPC_CHANNELS.AGENT_SESSION_STREAM, { sessionId, phase: 'reasoning', text: event.text }); hooks?.onReasoningDelta?.(event.text) }
           // Native tool telemetry is persisted for presentation, never re-executed.
           if (event.type === 'tool-started') appendAgentSessionEvent({ sessionId, type: 'tool-call', data: { callId: event.callId, name: event.name, input: event.input, telemetry: true } })
           if (event.type === 'tool-progress' || event.type === 'tool-finished') appendAgentSessionEvent({ sessionId, type: event.type === 'tool-finished' ? 'tool-result' : 'status', data: { ...event, telemetry: true } })
@@ -253,12 +328,14 @@ export function registerAgentIPC(): void {
       cancelled = loopResult.cancelled
       textValue = loopResult.text
       appendAgentSessionEvent({ sessionId, type: 'message', data: { role: 'assistant', content: textValue } })
+      sender.send(IPC_CHANNELS.AGENT_SESSION_STREAM, { sessionId, phase: 'done', status: cancelled ? 'paused' : 'success' })
     } catch (error) {
       if (admission.signal.aborted) {
         updateAgentSession({ id: sessionId, status: 'interrupted' })
       } else {
         updateAgentSession({ id: sessionId, status: 'failed' })
         appendAgentSessionEvent({ sessionId, type: 'error', data: { message: safeRuntimeError(error, [providerWithSecret.api_key]) } })
+        sender.send(IPC_CHANNELS.AGENT_SESSION_STREAM, { sessionId, phase: 'error', message: safeRuntimeError(error, [providerWithSecret.api_key]) })
       }
       throw error
     } finally {
@@ -273,59 +350,5 @@ export function registerAgentIPC(): void {
     const session = updateAgentSession({ id: sessionId, status: cancelled ? 'interrupted' : 'completed', data: { ...(snapshot.session.data || {}), providerId: provider.id, model } })
     return { text: textValue, session }
     } finally { admission.release() }
-  })
-  ipcMain.handle(IPC_CHANNELS.AGENT_SESSION_BRANCH, async (_event, value: unknown) => {
-    const input = value && typeof value === 'object' ? value as Record<string, unknown> : {}
-    return branchAgentSession({ sessionId: requireId(input.sessionId, '会话 ID'), title: typeof input.title === 'string' ? input.title : undefined })
-  })
-  ipcMain.handle(IPC_CHANNELS.AGENT_SESSION_UPDATE, async (_event, value: unknown) => {
-    if (!value || typeof value !== 'object') throw new Error('会话更新参数无效')
-    const input = value as Record<string, unknown>
-    const status = input.status as AgentSessionStatus | undefined
-    if (status && !['idle', 'running', 'completed', 'failed', 'interrupted'].includes(status)) throw new Error('会话状态无效')
-    return updateAgentSession({ id: requireId(input.id, '会话 ID'), status, title: typeof input.title === 'string' ? input.title : undefined, data: input.data && typeof input.data === 'object' ? input.data as Record<string, unknown> : undefined })
-  })
-  ipcMain.handle(IPC_CHANNELS.AGENT_SESSION_ATTACH, async (_event, value: unknown) => {
-    if (!value || typeof value !== 'object') throw new Error('会话附件参数无效')
-    const input = value as Record<string, unknown>
-    return attachAgentSession({
-      id: requireId(input.id, '会话 ID'),
-      agentId: readAgentId(input),
-      workspace: input.workspace as AgentSessionWorkspace | undefined,
-      attachments: input.attachments as unknown[] | undefined,
-    })
-  })
-  ipcMain.handle(IPC_CHANNELS.AGENT_SESSION_SNAPSHOT, async (_event, value: unknown) => {
-    if (!value || typeof value !== 'object') throw new Error('会话快照参数无效')
-    const input = value as Record<string, unknown>
-    if (!input.snapshot || typeof input.snapshot !== 'object' || Array.isArray(input.snapshot)) throw new Error('会话快照参数无效')
-    return snapshotAgentSession({ id: requireId(input.id, '会话 ID'), snapshot: input.snapshot as AgentSessionSnapshot })
-  })
-  ipcMain.handle(IPC_CHANNELS.AGENT_SESSION_DELETE, async (_event, id: unknown) => {
-    const sessionId = requireId(id, '会话 ID')
-    const result = deleteAgentSession(sessionId)
-    permissions.clearScopes('agent:' + sessionId)
-    return result
-  })
 
-  ipcMain.handle(IPC_CHANNELS.MCP_SERVER_LIST, async () => listMcpServers())
-  ipcMain.handle(IPC_CHANNELS.MCP_SERVER_SAVE, async (_event, value: unknown) => {
-    if (!value || typeof value !== 'object') throw new Error('MCP 配置无效')
-    const input = value as Record<string, unknown>
-    if (input.transport !== undefined && input.transport !== 'http' && input.transport !== 'stdio') throw new Error('MCP 传输类型无效')
-    // `env`/`headers` values read back from the renderer are masked placeholders; a
-    // save that echoes one keeps the stored secret instead of persisting the mask.
-    const storedRecord = typeof input.id === 'string' ? listMcpServers(true).find(server => server.id === input.id) : undefined
-    return saveMcpServer(toMcpSaveInput(input, storedRecord))
-  })
-  ipcMain.handle(IPC_CHANNELS.MCP_SERVER_DELETE, async (_event, id: unknown) => deleteMcpServer(requireId(id, 'MCP Server ID')))
-  ipcMain.handle(IPC_CHANNELS.MCP_SERVER_DISCONNECT, async (_event, id: unknown) => disconnectMcpServer(requireId(id, 'MCP Server ID')))
-  ipcMain.handle(IPC_CHANNELS.MCP_SERVER_CONNECT, async (_event, id: unknown) => connectMcpServer(requireId(id, 'MCP Server ID')))
-  ipcMain.handle(IPC_CHANNELS.MCP_SERVER_CALL_TOOL, async (_event, value: unknown) => {
-    if (!value || typeof value !== 'object') throw new Error('MCP 工具调用参数无效')
-    const input = value as Record<string, unknown>
-    const name = typeof input.name === 'string' ? input.name.trim() : ''
-    if (!name) throw new Error('MCP 工具名称不能为空')
-    return callMcpTool({ serverId: requireId(input.serverId, 'MCP Server ID'), name, arguments: input.arguments && typeof input.arguments === 'object' ? input.arguments as Record<string, unknown> : {} })
-  })
 }

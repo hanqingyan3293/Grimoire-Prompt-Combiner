@@ -33,7 +33,8 @@
     "visual:record": "node scripts/visual-baseline.mjs && node scripts/visual-compare.mjs --record",
     "visual:check": "node scripts/visual-compare.mjs",
     "gates": "node scripts/gates.mjs",
-    "gates:fast": "node scripts/gates.mjs --fast"
+    "gates:fast": "node scripts/gates.mjs --fast",
+    "smoke:stream": "node scripts/chat-stream-smoke.mjs"
   },
   "keywords": [
     "grimoire",

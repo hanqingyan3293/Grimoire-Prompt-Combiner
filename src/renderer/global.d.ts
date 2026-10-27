@@ -346,6 +346,7 @@ export interface GrimoireAPI {
       create: (input: { runtime: string; providerId?: string; model?: string; title?: string; parentId?: string; agentId?: string | null; workspace?: AgentSessionWorkspace; attachments?: AgentSessionAttachment[]; snapshot?: AgentSessionSnapshot }) => Promise<AgentSessionRecord>
       appendEvent: (input: { sessionId: string; type: string; data: Record<string, unknown> }) => Promise<AgentSessionEventRecord>
       send: (input: { sessionId: string; content: string; providerId?: string; model?: string }) => Promise<{ text: string; session: AgentSessionRecord }>
+      onStream: (callback: (value: { sessionId: string; phase: 'text' | 'reasoning' | 'done' | 'error'; text?: string; status?: string; message?: string }) => void) => () => void
       branch: (input: { sessionId: string; title?: string }) => Promise<AgentSessionRecord>
       update: (input: { id: string; status?: string; title?: string; data?: Record<string, unknown> }) => Promise<AgentSessionRecord>
       attach: (input: { id: string; agentId?: string | null; workspace?: AgentSessionWorkspace; attachments?: AgentSessionAttachment[] }) => Promise<AgentSessionRecord>

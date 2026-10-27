@@ -261,3 +261,17 @@ resources/agent-runtimes/     opencode.exe 134M (1.18.34) / pi.exe 107M (1.0.1)
 | 门禁 | G5 已修（测试桩参数类型）；G3 出现 worker RPC 超时，正在定位 |
 
 **尚未完成**：Agent 会话路径（agent.ipc 的发送不广播增量，需要 pump）、审批接到 `ai.tool.approval.respond`、recovery、prewarm 收敛、三条端到端 smoke。
+### M2 第二批（2026-10-27 第四轮）—— 端到端跑通
+
+| 项 | 结果 |
+|---|---|
+| Agent 发送抽共享入口 | `handleAgentSessionSend` 从 `agent.ipc.ts` 抽出并导出；行为不变（21 个 IPC 用例通过） |
+| 审批路由 | `ai.tool.approval.respond` 落到真实 broker（agent/ai 两个 broker 依次尝试，未知名返回 ok:false） |
+| 增量改由主进程转发 | 发现 contextBridge 暴露的 `window.api.ipcApi` 是**只读对象**，渲染层无法包装（实测报 `Cannot assign to read only property 'request'`）。改为：两个发送函数接受 `hooks`，流路由把真实增量转成 `ai.stream.chunk`，经单一通道 `cherry:ai:stream:event` 发回窗口；preload 把该通道拆成 chunk/done/error 三个事件名 |
+| 渲染层桥删除 | `compat/src/stream-bridge.ts` 与其测试删除（方案作废，保留则是死代码） |
+| Agent 实时输出 | `agent.ipc` 现在推送 `agent:session:stream`（text/reasoning/done/error），preload 暴露 `agent.sessions.onStream` |
+| 端到端 smoke | 新增 `scripts/chat-stream-smoke.mjs`（`npm run smoke:stream`）：假 SSE provider + 真 Electron + 真协议，断言 5 段增量拼成 `你好，世界`、终态 success、且**落库**的 assistant 行内容一致 |
+
+**实测证据**（2026-10-27 18:53 UTC）：窗口 URL `#/app/chat`，chunk 序列 `text-start,text-delta×5,text-end`，terminal `status=success,isTopicDone=true`。
+
+**未完成**：M2.4 recovery（未实现，界面不展示）、M2.5 prewarm（仍是显式不可用）、Agent 页 smoke、审批的真实交互 smoke。

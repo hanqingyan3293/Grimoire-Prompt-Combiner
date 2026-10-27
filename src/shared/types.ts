@@ -403,6 +403,12 @@ export const IPC_CHANNELS = {
   AGENT_SESSION_CREATE: "agent:session:create",
   AGENT_SESSION_APPEND_EVENT: "agent:session:appendEvent",
   AGENT_SESSION_SEND: "agent:session:send",
+  // Live turn feed for the compat agent page: text/reasoning deltas plus a terminal fact.
+  // Separate from the persisted event log (which only carries the final assistant message).
+  AGENT_SESSION_STREAM: "agent:session:stream",
+  // Source `ai.stream.*` push events, translated in main from the real turn. One channel
+  // carries chunk/done/error with an `event` discriminator (see cherry-data-api stream route).
+  CHERRY_AI_STREAM_EVENT: "cherry:ai:stream:event",
   AGENT_SESSION_BRANCH: "agent:session:branch",
   AGENT_SESSION_UPDATE: "agent:session:update",
   AGENT_SESSION_ATTACH: "agent:session:attach",

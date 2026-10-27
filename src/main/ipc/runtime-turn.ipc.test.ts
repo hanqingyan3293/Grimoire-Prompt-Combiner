@@ -109,9 +109,13 @@ for (const kind of ['ai', 'agent'] as const) {
       }
       const id = kind === 'ai' ? createAiSession({ runtime: 'opencode', modelId: 'model' }).id : createAgentSession({ runtime: 'opencode', model: 'model' }).id
       const choices = ['allowForSession', 'deny']
+      const permissionChannel = kind === 'ai' ? IPC_CHANNELS.AI_PERMISSION_REQUEST : IPC_CHANNELS.AGENT_PERMISSION_REQUEST
       const sends = vi.fn((channel: string, value: { requestId: string }) => {
+        // The send path also pushes live stream events now; only a permission request owns a
+        // decision, and answering a stream event would consume the scripted choices.
+        if (channel !== permissionChannel) return
         const decision = choices.shift()
-        queueMicrotask(() => { void invokeAs(sender, channel === IPC_CHANNELS.AI_PERMISSION_REQUEST ? IPC_CHANNELS.AI_PERMISSION_DECISION : IPC_CHANNELS.AGENT_PERMISSION_DECISION, { requestId: value.requestId, decision }) })
+        queueMicrotask(() => { void invokeAs(sender, kind === 'ai' ? IPC_CHANNELS.AI_PERMISSION_DECISION : IPC_CHANNELS.AGENT_PERMISSION_DECISION, { requestId: value.requestId, decision }) })
       })
       const sender = Object.assign(new EventEmitter(), { isDestroyed: () => false, send: sends })
       const send = (content: string) => invokeAs(sender, kind === 'ai' ? IPC_CHANNELS.AI_SESSION_SEND : IPC_CHANNELS.AGENT_SESSION_SEND, { sessionId: id, content })
@@ -120,7 +124,7 @@ for (const kind of ['ai', 'agent'] as const) {
       await send('same exact native scope')
       await send('different native resource')
 
-      expect(sends).toHaveBeenCalledTimes(2)
+      expect(sends.mock.calls.filter(call => call[0] === permissionChannel)).toHaveLength(2)
       expect(mock.runtime!.approve).toHaveBeenCalledTimes(2)
       expect(mock.runtime!.reject).toHaveBeenCalledTimes(1)
       expect(mock.runtime!.approve).toHaveBeenNthCalledWith(1, expect.objectContaining({ decision: 'accept', action: 'bash' }))
@@ -180,7 +184,15 @@ it('Agent delete revokes its persistent native permission grant', async () => {
     approve: vi.fn(async () => {}), reject: vi.fn(async () => {}),
   }
   const id = createAgentSession({ runtime: 'opencode', model: 'model' }).id
-  const sender = Object.assign(new EventEmitter(), { isDestroyed: () => false, send: vi.fn((_channel: string, value: { requestId: string }) => { queueMicrotask(() => { void invokeAs(sender, IPC_CHANNELS.AGENT_PERMISSION_DECISION, { requestId: value.requestId, decision: 'allowForSession' }) }) }) })
+  // Only the permission channel carries a request id; the agent send path now also pushes
+  // live text/terminal events, and reacting to those would answer a request that never existed.
+  const sender = Object.assign(new EventEmitter(), {
+    isDestroyed: () => false,
+    send: vi.fn((channel: string, value: { requestId: string }) => {
+      if (channel !== IPC_CHANNELS.AGENT_PERMISSION_REQUEST) return
+      queueMicrotask(() => { void invokeAs(sender, IPC_CHANNELS.AGENT_PERMISSION_DECISION, { requestId: value.requestId, decision: 'allowForSession' }) })
+    })
+  })
   await invokeAs(sender, IPC_CHANNELS.AGENT_SESSION_SEND, { sessionId: id, content: 'hello' })
   expect(sender.listenerCount('destroyed')).toBe(1)
   await invokeAs(sender, IPC_CHANNELS.AGENT_SESSION_DELETE, id)
