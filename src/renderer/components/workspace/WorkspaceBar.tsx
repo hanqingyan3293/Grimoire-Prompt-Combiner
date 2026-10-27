@@ -97,6 +97,8 @@ export function WorkspaceBar() {
         ) : (
           <button
             key={workspace.id}
+            data-ui="workspace.tab"
+            data-workspace-id={workspace.id}
             onClick={() => setActiveWorkspace(workspace.id)}
             onDoubleClick={() => startRenameWorkspace(workspace.id, workspace.title)}
             className={

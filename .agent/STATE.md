@@ -297,3 +297,9 @@ resources/agent-runtimes/     opencode.exe 134M (1.18.34) / pi.exe 107M (1.0.1)
 `artifacts/stream-smoke-2026-10-27T19-31-56Z.json`：聊天 / Agent / 审批允许 / 审批拒绝 四条，含 chunk 序列、终态、落库内容。
 
 审批拒绝的语义记录：Grimoire runtime 把「工具被拒」当作整轮失败并上报原因（`Tool 权限被拒绝：…`），不是让模型带着拒绝结果继续。这是既有 runtime 行为，不在本轮改动范围。
+### M1.5.6 组件基线（2026-10-27 第二轮，进行中）
+
+- 控件几何令牌：`--gr-control-{radius,height-sm/md/lg,font-sm/md/lg,pad-*,gap}`，`--button-*` 已改为引用它们（一处改、全局生效）。
+- `.ui-button` 按源 Button 规格对齐：`font-normal`、13px、6px gap；新增 `.ui-button-lg`；`primary` 改为源默认的中性填充（前景色/背景色反转，深色下自动反向），accent 只用于 focus 环。
+- 测试钩子：`data-ui="panel.shell"` / `panel.header` / `workspace.tab`（带 `data-workspace-id`），供点击脚本稳定定位。
+- 新增 `scripts/ui-parity.mjs`（主窗口点击+截图），**当前不可用**：未打包时主窗口加载 Vite dev server，残留 Electron 实例的 CDP 端口对应 `about:blank`，脚本会驱动错窗口。已复现并记录，下一步要先做实例/端口隔离再启用。

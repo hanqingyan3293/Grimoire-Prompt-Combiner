@@ -237,11 +237,13 @@ export function PanelShell({
           if (payload.panelId && payload.tabId) onTabDrop?.(payload.panelId, payload.tabId)
         } catch {}
       }}
+      data-ui="panel.shell"
       className={"ui-panel-shell relative flex h-full w-full min-h-0 min-w-0 flex-col overflow-hidden border border-[var(--color-border-strong)] bg-[var(--color-bg-primary)] shadow-[0_1px_2px_var(--color-panel-shadow),inset_0_1px_0_rgba(255,255,255,0.035)] " + className}
       style={style}
     >
       {showHeader && (
         <div
+          data-ui="panel.header"
           className={
             "ui-panel-header relative shrink-0 flex min-w-0 items-center gap-1.5 px-3 border-b border-[var(--color-border)] bg-[var(--color-bg-secondary)] overflow-visible " +
             (addMenuOpen ? "z-[120]" : "z-40")

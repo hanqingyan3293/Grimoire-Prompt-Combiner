@@ -11,6 +11,22 @@
   --gr-radius-lg: 10px;
   --gr-radius-xl: 14px;
 
+  /* Control geometry — mirrors the vendored source Button spec (rounded-md base,
+   * 30/28/36px heights, 13/12/14px type, 6px gap) so a single token change moves
+   * every panel control instead of each page inventing its own size. */
+  --gr-control-radius: var(--gr-radius-md);
+  --gr-control-height-sm: 28px;
+  --gr-control-height-md: 30px;
+  --gr-control-height-lg: 36px;
+  --gr-control-font-sm: var(--gr-font-sm);
+  --gr-control-font-md: var(--gr-font-md);
+  --gr-control-font-lg: var(--gr-font-lg);
+  --gr-control-gap: 6px;
+  --gr-control-padding-sm: 10px;
+  --gr-control-padding-md: 10px;
+  --gr-control-padding-lg: 16px;
+  --gr-focus-ring: 0 0 0 1px var(--color-accent);
+
   --gr-space-1: 4px;
   --gr-space-2: 8px;
   --gr-space-3: 12px;

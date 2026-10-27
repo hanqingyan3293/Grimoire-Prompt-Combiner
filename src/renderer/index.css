@@ -1,4 +1,4 @@
-﻿@import "tailwindcss";
+@import "tailwindcss";
 
 /* 魔导书 Grimoire v7 — 全局样式 */
 /* CSS variables now managed by themes.css */
@@ -52,9 +52,10 @@
   --color-info-surface: color-mix(in srgb, var(--color-info) 12%, transparent);
 
   /* Component tokens */
-  --button-radius: var(--radius-md);
-  --button-height-sm: 28px;
-  --button-height-md: 34px;
+  --button-radius: var(--gr-control-radius);
+  --button-height-sm: var(--gr-control-height-sm);
+  --button-height-md: var(--gr-control-height-md);
+  --button-height-lg: var(--gr-control-height-lg);
   --input-radius: var(--radius-md);
   --card-radius: var(--radius-lg);
   --dialog-radius: var(--radius-lg);
@@ -458,19 +459,26 @@ button:disabled {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
+  gap: var(--gr-control-gap);
   border: 1px solid transparent;
   border-radius: var(--button-radius);
-  font-size: var(--font-size-body-sm);
-  font-weight: var(--font-weight-medium);
+  font-size: var(--gr-control-font-md);
+  /* The source button is font-normal, not medium: heavier text made our controls read
+   * as a different design language next to the vendored pages. */
+  font-weight: 400;
   line-height: 1;
   transition: color var(--motion-fast) ease, background-color var(--motion-fast) ease, border-color var(--motion-fast) ease, box-shadow var(--motion-fast) ease;
 }
 
-.ui-button-sm { height: var(--button-height-sm); padding: 0 10px; }
-.ui-button-md { height: var(--button-height-md); padding: 0 14px; }
-.ui-button-primary { background: var(--color-accent-fill); color: var(--color-accent-foreground); }
-.ui-button-primary:not(:disabled):hover { background: var(--color-accent-fill-hover); }
+.ui-button-sm { height: var(--button-height-sm); padding: 0 var(--gr-control-padding-sm); font-size: var(--gr-control-font-sm); }
+.ui-button-md { height: var(--button-height-md); padding: 0 var(--gr-control-padding-md); }
+.ui-button-lg { height: var(--button-height-lg); padding: 0 var(--gr-control-padding-lg); font-size: var(--gr-control-font-lg); }
+/* Cherry's default action is a neutral fill that inverts in dark mode; the accent is a
+ * focus/selection colour, not the button surface. Matching that is what makes the two
+ * windows look like one product. */
+.ui-button-primary { background: var(--color-foreground); color: var(--color-bg-primary); }
+.ui-button-primary:not(:disabled):hover { background: color-mix(in srgb, var(--color-foreground) 88%, var(--color-bg-primary)); }
+.ui-button-primary:focus-visible { box-shadow: var(--gr-focus-ring); outline: none; }
 .ui-button-secondary { border-color: var(--color-border); background: var(--color-surface-subtle); color: var(--color-foreground); }
 .ui-button-secondary:not(:disabled):hover { border-color: color-mix(in srgb, var(--color-accent) 42%, var(--color-border)); background: color-mix(in srgb, var(--color-accent) 9%, var(--color-surface-subtle)); color: var(--color-accent-text); }
 .ui-button-ghost { background: transparent; color: var(--color-muted-foreground); }
