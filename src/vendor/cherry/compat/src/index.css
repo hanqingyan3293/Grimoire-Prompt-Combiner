@@ -1,0 +1,31 @@
+/*
+ * Compat stylesheet entry — the source application stylesheet.
+ *
+ * The source renderer entry (`windows/main/entryPoint.tsx`) loads exactly two
+ * stylesheets, in this order, and they are the whole styling contract:
+ *
+ *   index.css    cascade-layer order, element resets, and the `layer(app)` product
+ *                stylesheets (fonts, markdown, scrollbar, container, animation, …)
+ *   tailwind.css Tailwind itself, `tw-animate-css`, the UI package theme, the
+ *                `@source` content roots, and the `dark`/`no-hover` custom variants
+ *
+ * They are imported here as two modules, not concatenated into one. Merging them
+ * produces `@import` statements after rule blocks, which is invalid CSS — the build
+ * fails with `Missed semicolon` at the concatenation seam.
+ *
+ * This pairing replaced a hand-rolled subset (`tailwindcss` + tokens + theme +
+ * product) that caused a measured utility-coverage collapse: Tailwind v4 detects
+ * content relative to the project base — for the Vite plugin, the Vite root, which
+ * here is `compat/` — so the sibling `../source` tree this surface actually renders
+ * was never scanned. 112 / 1494 (7.5%) of the utility tokens the source tree uses
+ * existed in the built CSS.
+ *
+ * The first symptom was the source `Dialog` painting in normal flow at the bottom of
+ * the page instead of centred over an overlay — `.fixed`, `.top-[50%]`, `.left-[50%]`,
+ * `.translate-x-[-50%]`, `.rounded-3xl`, `.p-6` and `.animate-in` were all absent — so
+ * an open, `opacity: 1` confirm dialog was invisible on screen.
+ *
+ * The content roots that close that gap live in `compat-css-roots.css`, imported from
+ * `main.tsx` directly after this file and its `tailwind.css` sibling.
+ */
+@import '../../source/src/renderer/assets/styles/index.css';

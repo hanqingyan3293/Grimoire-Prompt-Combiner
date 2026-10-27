@@ -4,6 +4,9 @@ import { getDatabase, saveDatabase } from "../database"
 import { IPC_CHANNELS } from "../../shared/types"
 import { configureComfyUI } from "../services/comfy-client"
 import { requireHttpUrl } from "../services/input-validation"
+import { applyLaunchOnBoot, applyPreventSleep, applyProxy } from "../services/app-preferences.service"
+import { logEvent } from "../services/logger.service"
+import { isProtectedCherrySetting, redactCherrySetting } from '../../shared/cherry-settings-privacy'
 
 export function registerSettingsIPC(): void {
   // Default settings
@@ -22,6 +25,8 @@ export function registerSettingsIPC(): void {
     comfyui_base_url: "http://127.0.0.1:8188",
     wd14_model_directory: "",
     wd14_python_path: "",
+    clip_model_directory: "",
+    clip_python_path: "",
   }
 
   ipcMain.handle(IPC_CHANNELS.SETTINGS_GET_ALL, async () => {
@@ -32,7 +37,7 @@ export function registerSettingsIPC(): void {
     for (const row of result[0]?.values || []) {
       const key = row[0] as string
       const value = row[1] as string
-      if (key !== "api_key") settings[key] = value
+      if (key !== "api_key") settings[key] = redactCherrySetting(key, value)
     }
     try { configureComfyUI(requireHttpUrl(settings.comfyui_base_url, 'ComfyUI 地址')) } catch { configureComfyUI(defaults.comfyui_base_url) }
     
@@ -40,6 +45,9 @@ export function registerSettingsIPC(): void {
   })
 
   ipcMain.handle(IPC_CHANNELS.SETTINGS_SET, async (_event, key: string, value: string) => {
+    if (isProtectedCherrySetting(key)) {
+      throw new Error('Cherry credential settings require a dedicated main-process credential adapter; generic writes are unavailable')
+    }
     if (key === 'comfyui_base_url') value = requireHttpUrl(value, 'ComfyUI 地址')
     const db = getDatabase()
     let storedValue = value
@@ -53,10 +61,59 @@ export function registerSettingsIPC(): void {
       [key, storedValue, storedValue]
     )
     if (key === 'comfyui_base_url') configureComfyUI(value)
+    // `/settings/general` preference consumers. The compat shim persists its preferences as
+    // `cherry_pref.<source key>`, so this is where a switch on that page becomes real
+    // behaviour. Keys with no consumer are deliberately absent here rather than silently
+    // accepted — the page stays BLOCKED until each one lands.
+    applyCherryPreferenceSideEffect(key, storedValue)
     saveDatabase()
     for (const win of BrowserWindow.getAllWindows()) {
       if (!win.isDestroyed()) win.webContents.send("data:refresh")
     }
     return true
   })
+}
+
+/**
+ * Turns a stored compat preference into the behaviour it promises.
+ *
+ * The values arrive JSON-encoded through the shim (`cherry_pref.app.proxy.mode` holds
+ * `"custom"`, not `custom`), so each is parsed rather than used raw — reading
+ * `'"custom"'` as a mode would fall through to the default branch and apply the wrong config
+ * while reporting success.
+ *
+ * Every branch logs its outcome, including the platform-unsupported case: a preference that
+ * could not be applied must be distinguishable from one that was, and a silent no-op is
+ * exactly the fake-success shape this file exists to remove.
+ */
+function applyCherryPreferenceSideEffect(key: string, rawValue: string): void {
+  const parse = (): unknown => {
+    try { return JSON.parse(rawValue) } catch { return rawValue }
+  }
+  if (key === 'cherry_pref.app.launch_on_boot') {
+    const result = applyLaunchOnBoot(parse() === true)
+    logEvent(result.applied ? 'info' : 'warn', 'app-preferences', '开机自启偏好已应用', { context: JSON.stringify(result) })
+    return
+  }
+  if (key === 'cherry_pref.app.power.prevent_sleep_when_busy') {
+    const active = applyPreventSleep(parse() === true)
+    logEvent('info', 'app-preferences', '防休眠偏好已应用', { context: JSON.stringify(active) })
+    return
+  }
+  // Proxy needs the other two keys, so it is applied from any of the three rather than only
+  // the last one the user touched — otherwise changing 仅代理地址 would never take effect.
+  if (key === 'cherry_pref.app.proxy.mode' || key === 'cherry_pref.app.proxy.url' || key === 'cherry_pref.app.proxy.bypass_rules') {
+    const read = (name: string): unknown => {
+      const row = getDatabase().exec('SELECT value FROM settings WHERE key=?', ['cherry_pref.' + name])[0]?.values?.[0]?.[0]
+      if (typeof row !== 'string') return undefined
+      try { return JSON.parse(row) } catch { return row }
+    }
+    const mode = (read('app.proxy.mode') ?? 'system') as 'system' | 'custom' | 'none'
+    const url = String(read('app.proxy.url') ?? '')
+    const bypass = String(read('app.proxy.bypass_rules') ?? '')
+    void applyProxy(mode, url, bypass).then(
+      config => logEvent('info', 'app-preferences', '代理偏好已应用', { context: JSON.stringify(config) }),
+      error => logEvent('error', 'app-preferences', '代理应用失败', { context: String(error), retryable: true })
+    )
+  }
 }

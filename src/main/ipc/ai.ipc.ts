@@ -5,6 +5,11 @@ import { decryptKey } from './providers.ipc'
 import { createClient, vision, generateImage, fetchModels } from '../ai/client'
 import { OpenAICompatibleRuntime } from '../ai/runtime/openai-compatible.runtime'
 import { registerBuiltInAgentRuntimes } from '../ai/runtime/registry'
+import fs from 'fs'
+import os from 'os'
+import path from 'path'
+import { registerManagedImage } from '../services/image-asset.service'
+import { createImageDerivatives, createMediaRelation, ensureMediaAsset, saveImageGenerationMetadata } from '../services/media.service'
 
 // 从 DB 读取完整 Provider 配置（含解密后的 API Key）
 function getProvider(providerId: string) {
@@ -27,7 +32,7 @@ function getProvider(providerId: string) {
     config_toml: (row[11] as string) || '',
     auth_json: (row[12] as string) || '',
   } as {
-    id: string; name: string; access_mode: string; protocol: string;
+    id: string; name: string; access_mode: string; protocol: 'chat_completions' | 'responses';
     base_url: string; api_key: string; default_model: string; test_model: string;
     context_size: number | null; models: string[]; is_active: boolean;
     config_toml: string; auth_json: string;
@@ -49,7 +54,7 @@ export function registerAIIPC(): void {
     const win = BrowserWindow.fromWebContents(event.sender)
     if (!win || win.isDestroyed()) return { error: '窗口已关闭' }
 
-    const runtime = new OpenAICompatibleRuntime({ baseUrl: provider.base_url, apiKey: provider.api_key })
+    const runtime = new OpenAICompatibleRuntime({ baseUrl: provider.base_url, apiKey: provider.api_key, protocol: provider.protocol === 'responses' ? 'responses' : 'chat_completions' })
     const session = runtime.createSession(args.model, args.messages as Array<{ role: 'system' | 'user' | 'assistant' | 'tool'; content: string | unknown[] }>)
     let seq = 0
     let fullText = ''
@@ -87,7 +92,7 @@ export function registerAIIPC(): void {
     if (!provider) return { error: '供应商不存在' }
     try {
       const client = createClient(provider)
-      const result = await vision(client, args.model, args.imageBase64, args.prompt)
+      const result = await vision(client, args.model, args.imageBase64, args.prompt, provider.protocol === 'responses' ? 'responses' : 'chat_completions')
       return { success: true, text: result }
     } catch (e: any) {
       console.error('ai:vision error:', e)
@@ -100,13 +105,31 @@ export function registerAIIPC(): void {
     providerId: string
     model: string
     prompt: string
+    negative?: string
   }) => {
     const provider = getProvider(args.providerId)
     if (!provider) return { error: '供应商不存在' }
     try {
       const client = createClient(provider)
       const url = await generateImage(client, args.model, args.prompt)
-      return { success: true, url }
+      let media: { id: number; mediaId?: string } | null = null
+      if (url && /^https?:\/\//i.test(url)) {
+        const tempRoot = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'grimoire-api-image-'))
+        try {
+          const response = await fetch(url, { signal: AbortSignal.timeout(120_000) })
+          if (response.ok) {
+            const buffer = Buffer.from(await response.arrayBuffer())
+            const tempPath = path.join(tempRoot, 'generated-image')
+            await fs.promises.writeFile(tempPath, buffer)
+            const registered = await registerManagedImage(tempPath, 'AI-' + args.model + '-' + Date.now() + '.png')
+            const asset = ensureMediaAsset(registered.id, 'generated-api', registered.original_name)
+            void createImageDerivatives(registered.id)
+            saveImageGenerationMetadata({ media_asset_id: asset.id, prompt: args.prompt, negative_prompt: args.negative || '', provider: provider.name, model: args.model, checkpoint: '', loras: [], seed: null, sampler: '', scheduler: '', steps: null, cfg: null, width: null, height: null, raw: { url } })
+            media = { id: registered.id, mediaId: asset.id }
+          }
+        } finally { await fs.promises.rm(tempRoot, { recursive: true, force: true }) }
+      }
+      return { success: true, url, media }
     } catch (e: any) {
       console.error('ai:generateImage error:', e)
       return { error: e?.message || String(e) }

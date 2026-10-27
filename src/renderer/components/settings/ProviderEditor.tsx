@@ -79,7 +79,7 @@ export function ProviderEditor({ provider, onSave, onCancel }: Props) {
     setTesting(true)
     setTestResult(null)
     try {
-      const result = await window.api.providers.test(baseUrl, apiKey, testModel || defaultModel)
+      const result = await window.api.providers.test(baseUrl, apiKey, testModel || defaultModel, protocol)
       setTestResult({ ok: result.success, msg: result.success ? result.message || "连接成功" : result.error || "失败" })
     } catch (e: any) {
       setTestResult({ ok: false, msg: e.message })

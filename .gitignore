@@ -11,3 +11,8 @@ _check_*.py
 _verify*.py
 extract_tags_v2.py
 .npm-cache/
+
+# 2026-10-27 baseline: generated evidence stays out of git (see .agent/STATE.md §8)
+artifacts/
+src/vendor/cherry/compat/dist-source-shell/
+resources/agent-runtimes/*/

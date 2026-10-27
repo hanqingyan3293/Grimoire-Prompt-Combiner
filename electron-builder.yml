@@ -1,30 +1,20 @@
-﻿appId: com.grimoire.prompt-combiner
+# ⚠️ THIS FILE IS NOT USED BY THE BUILD. It is kept only as a pointer.
+#
+# electron-builder reads `build` from package.json FIRST and ignores this file when that key
+# exists — verified: a clean `npx electron-builder --dir` produced `resources/python/` (declared
+# in package.json) but NOT `agent-runtimes/` (declared only here, under the same
+# `extraResources` key). So everything written here was silently inert.
+#
+# This is not a style preference: it cost real debugging time. Adding entries here appeared to
+# succeed (valid YAML, files present on disk) while the packaged app shipped without them, and
+# the packaging step still exited 0.
+#
+# EDIT `package.json` -> `build` INSTEAD. Its `extraResources` and `files` are what ship, and
+# `build.extraResources` now carries the Cherry AGPL-3.0 license alongside the python worker.
+#
+# Nothing references this path (no script passes `--config`), so it can be deleted once the
+# duplication risk is no longer worth the pointer.
+
+appId: com.grimoire.prompt-combiner
 productName: Grimoire
 copyright: AGPL-3.0-only License — hanqingyan3293
-directories:
-  output: release
-  buildResources: resources
-files:
-  - dist/**/*
-  - data/**/*
-extraResources:
-  - from: python
-    to: python
-    filter:
-      - wd14_worker.py
-      - wd14_tagger.py
-      - requirements.txt
-win:
-  target:
-    - target: nsis
-      arch: [x64]
-    - target: portable
-      arch: [x64]
-  icon: resources/icons/icon.png
-nsis:
-  oneClick: false
-  allowToChangeInstallationDirectory: true
-  createDesktopShortcut: true
-  shortcutName: Grimoire
-extraMetadata:
-  main: dist/main/main/index.js

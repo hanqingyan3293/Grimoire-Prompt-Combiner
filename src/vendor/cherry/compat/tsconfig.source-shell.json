@@ -1,0 +1,30 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "paths": {
+      "@renderer/routeTree.gen": ["src/source-shell-generated/routeTree.gen.ts"],
+      "@renderer/services/sentry": ["src/source-shell-telemetry.ts"],
+      "@shared/cherry-host-types": ["../../../shared/cherry-host-types.ts"],
+      "@cherrystudio/ui/icons/providers": ["../source/packages/ui/src/components/icons/providers/index.ts"],
+      "@cherrystudio/ui/icons": ["../source/packages/ui/src/components/icons/index.ts"],
+      "@cherrystudio/extension-table-plus": ["node_modules/@cherrystudio/extension-table-plus/dist/index.d.mts"],
+      "@renderer/components/Preview/MermaidPreview": ["src/shims/mermaid-preview.tsx"],
+      "@renderer/components/ModelSelector/useModelSelectorData": ["src/shims/model-selector-data.ts"],
+      "@data/PreferenceService": ["src/shims/preference-service.ts"],
+      "@renderer/data/PreferenceService": ["src/shims/preference-service.ts"],
+      "@renderer/*": ["../source/src/renderer/*"],
+      "@shared/*": ["../source/src/shared/*"],
+      "@main/*": ["../source/src/main/*"],
+      "@data/*": ["../source/src/renderer/data/*"],
+      "@logger": ["./src/shims/logger.ts"],
+      "@cherrystudio/ui": ["../source/packages/ui/src/index.ts"],
+      "@cherrystudio/ui/*": ["../source/packages/ui/src/*"],
+      "@cherrystudio/provider-registry": ["../source/packages/provider-registry/src/index.ts"],
+      "@cherrystudio/provider-registry/*": ["../source/packages/provider-registry/src/*"],
+      "@cherrystudio/ai-core": ["../source/packages/aiCore/src/index.ts"],
+      "@cherrystudio/ai-core/*": ["../source/packages/aiCore/src/*"]
+    }
+  },
+  "include": ["src/source-shell-entry.tsx", "src/source-shell-telemetry.ts", "src/source-shell-generated/**/*.tsx", "src/source-shell-generated/routeTree.gen.ts", "src/build-env.d.ts", "src/lucide*.d.ts", "../../../renderer/global.d.ts"],
+  "exclude": []
+}

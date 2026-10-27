@@ -5,8 +5,10 @@ import { getDatabase, saveDatabase } from "../database"
 import { IPC_CHANNELS, Provider, type ProviderSaveInput } from "../../shared/types"
 import { requireId, validateProviderRequest, validateProviderSaveInput } from "../services/input-validation"
 import { toPublicProvider, type ProviderWithSecrets } from "../services/provider-contract"
+import { fetchProviderModels, resolveProviderConnection, testProviderConnection } from "../services/provider-connection.service"
 
-function encryptKey(key: string): string {
+/** Exported so the Cherry DataApi provider transport writes ciphertext identically. */
+export function encryptKey(key: string): string {
   if (!key || !safeStorage.isEncryptionAvailable()) return key
   return safeStorage.encryptString(key).toString("base64")
 }
@@ -21,6 +23,11 @@ export function decryptKey(encrypted: string): string {
 type InternalProvider = ProviderWithSecrets
 
 function rowToProvider(r: any[]): InternalProvider {
+  let models: string[] = []
+  try {
+    const parsed = JSON.parse(String(r[9] || '[]'))
+    if (Array.isArray(parsed)) models = parsed.filter((value): value is string => typeof value === 'string')
+  } catch { models = [] }
   return {
     id: r[0], name: r[1], access_mode: r[2] as "login"|"api",
     protocol: r[3] as "chat_completions"|"responses",
@@ -28,7 +35,7 @@ function rowToProvider(r: any[]): InternalProvider {
     api_key: decryptKey(r[5] || ""),
     default_model: r[6], test_model: r[7],
     context_size: r[8] ? Number(r[8]) : null,
-    models: JSON.parse(r[9] || "[]"),
+    models,
     is_active: r[10] === 1,
     config_toml: r[11] || "", auth_json: r[12] || "",
     created_at: r[13], updated_at: r[14],
@@ -50,6 +57,14 @@ export async function getActiveProvider(): Promise<Provider | null> {
     return null
   }
   return rowToProvider(result[0].values[0])
+}
+
+/** Main-process only: read one provider together with its decrypted secret for connection checks. */
+/** Main-only lookup for runtime adapters. Never expose this through preload or renderer DTOs. */
+export function getProviderWithSecrets(id: string): InternalProvider | null {
+  if (!id) return null
+  const row = getDatabase().exec("SELECT * FROM providers WHERE id=?", [id])[0]?.values?.[0]
+  return row ? rowToProvider(row) : null
 }
 
 export function registerProvidersIPC(): void {
@@ -123,27 +138,60 @@ export function registerProvidersIPC(): void {
   })
 
   // 测试连接
-  ipcMain.handle(IPC_CHANNELS.PROVIDERS_TEST, async (_e, baseUrl: string, apiKey: string, model: string) => {
+  ipcMain.handle(IPC_CHANNELS.PROVIDERS_TEST, async (_e, baseUrl: string, apiKey: string, model: string, protocol: 'chat_completions' | 'responses' = 'chat_completions') => {
     const input = validateProviderRequest(baseUrl, apiKey, model)
     try {
-      const url = input.baseUrl + "/chat/completions"
+      const url = input.baseUrl + (protocol === 'responses' ? "/responses" : "/chat/completions")
       const res = await fetch(url, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           "Authorization": `Bearer ${input.apiKey}`,
         },
-        body: JSON.stringify({
-          model: input.model,
-          messages: [{ role: "user", content: "hi" }],
-          max_tokens: 1,
-        }),
+        body: protocol === 'responses'
+          ? JSON.stringify({ model: input.model, input: [{ role: 'user', content: [{ type: 'input_text', text: 'hi' }] }], max_output_tokens: 1 })
+          : JSON.stringify({ model: input.model, messages: [{ role: "user", content: "hi" }], max_tokens: 1 }),
       })
       if (res.ok || res.status === 400) return { success: true, message: "连接成功" }
       if (res.status === 401) return { success: false, error: "API Key 无效" }
       return { success: false, error: `状态码 ${res.status}` }
     } catch (err: any) {
       return { success: false, error: err.message }
+    }
+  })
+
+  // 按已配置 Provider 拉取模型：密钥从主进程解密，renderer 不接触密钥。
+  ipcMain.handle(IPC_CHANNELS.PROVIDERS_FETCH_MODELS_FOR, async (_e, input?: unknown) => {
+    const value = input && typeof input === 'object' ? input as Record<string, unknown> : {}
+    try {
+      const provider = getProviderWithSecrets(String(value.providerId || ''))
+      if (!provider) return { success: false, error: 'Provider 不存在' }
+      const target = resolveProviderConnection({ providerId: provider.id, baseUrl: provider.base_url, apiKey: value.apiKey, storedApiKey: provider.api_key, protocol: provider.protocol, fallbackModel: provider.default_model })
+      return await fetchProviderModels(target)
+    } catch (error) {
+      return { success: false, error: error instanceof Error ? error.message : String(error) }
+    }
+  })
+
+  // 按已配置 Provider 测试连接。
+  ipcMain.handle(IPC_CHANNELS.PROVIDERS_TEST_FOR, async (_e, input?: unknown) => {
+    const value = input && typeof input === 'object' ? input as Record<string, unknown> : {}
+    try {
+      const provider = getProviderWithSecrets(String(value.providerId || ''))
+      if (!provider) return { success: false, error: 'Provider 不存在' }
+      const target = resolveProviderConnection({
+        providerId: provider.id,
+        baseUrl: provider.base_url,
+        apiKey: value.apiKey,
+        storedApiKey: provider.api_key,
+        protocol: value.protocol ?? provider.protocol,
+        model: value.model,
+        fallbackModel: provider.test_model || provider.default_model,
+      })
+      if (!target.model) return { success: false, error: '请先在供应商设置中配置测试模型' }
+      return await testProviderConnection(target)
+    } catch (error) {
+      return { success: false, error: error instanceof Error ? error.message : String(error) }
     }
   })
 }

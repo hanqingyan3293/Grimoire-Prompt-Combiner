@@ -63,10 +63,15 @@
 
 /* 主题变量覆盖在 themes.css 中 */
 
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
+/* Must live in @layer base: an unlayered reset outranks every Tailwind v4
+   utility (utilities sit in a cascade layer), which silently killed all
+   p-*/m-*/space-* classes across the app. */
+@layer base {
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
 }
 
 body {
@@ -706,26 +711,32 @@ button:disabled {
 .ui-tag-card-positive { border-color: color-mix(in srgb, var(--color-accent) 55%, var(--color-border)); background: color-mix(in srgb, var(--color-accent) 14%, var(--color-surface)); box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-accent) 18%, transparent); }
 .ui-tag-card-negative { border-color: color-mix(in srgb, var(--color-danger) 58%, var(--color-border)); background: var(--color-danger-surface); box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-danger) 18%, transparent); }
 .ui-tag-card-mixed-bar { background: var(--color-danger); }
+/* TagMaster-style indeterminate state: the tag is implied by the current selection. */
+.ui-tag-card-implied { border-style: dashed; border-color: color-mix(in srgb, var(--color-accent) 42%, var(--color-border)); background: color-mix(in srgb, var(--color-accent) 4%, var(--color-surface)); opacity: 0.85; }
 
-.ui-field {
-  width: 100%;
-  min-height: var(--control-height-sm);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  background: var(--color-bg-primary);
-  color: var(--color-text-primary);
-  padding: 6px 8px;
-  outline: none;
-  transition: border-color var(--motion-fast) ease, box-shadow var(--motion-fast) ease, background-color var(--motion-fast) ease;
-}
+/* Layered so Tailwind utilities (w-32, border-[…], …) can override the base
+   field styling; unlayered rules would silently win in the v4 cascade. */
+@layer components {
+  .ui-field {
+    width: 100%;
+    min-height: var(--control-height-sm);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    background: var(--color-bg-primary);
+    color: var(--color-text-primary);
+    padding: 6px 8px;
+    outline: none;
+    transition: border-color var(--motion-fast) ease, box-shadow var(--motion-fast) ease, background-color var(--motion-fast) ease;
+  }
 
-.ui-field:hover {
-  border-color: var(--color-border-strong);
-}
+  .ui-field:hover {
+    border-color: var(--color-border-strong);
+  }
 
-.ui-field:focus {
-  border-color: var(--color-accent);
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-accent) 20%, transparent);
+  .ui-field:focus {
+    border-color: var(--color-accent);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-accent) 20%, transparent);
+  }
 }
 
 .ui-list-card {

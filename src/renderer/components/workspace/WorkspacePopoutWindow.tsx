@@ -2,7 +2,8 @@ import { Suspense, useMemo } from 'react'
 import { LoaderCircle, X } from 'lucide-react'
 import { PANEL_DEFINITIONS, renderPanel } from './PanelRegistry'
 import type { PanelType } from './panelTypes'
-import { findPanelNode, normalizePanelTabs, useWorkspaceStore } from '../../stores/workspace.store'
+import { findPanelNode, normalizePanelTabs, useWorkspaceStore, type WorkspaceTab } from '../../stores/workspace.store'
+import { WorkspaceEditorHost } from './WorkspaceEditorHost'
 
 export function WorkspacePopoutWindow({ popoutId, panelType, title }: { popoutId: string; panelType: PanelType; title: string }) {
   const separator = popoutId.indexOf(':')
@@ -18,6 +19,13 @@ export function WorkspacePopoutWindow({ popoutId, panelType, title }: { popoutId
     const active = tabs.find(tab => tab.id === panel.activeTabId) || tabs[0]
     return active?.type || panelType
   }, [hydrated, layouts, panelId, panelType, workspaceId])
+  const resolvedTab = useMemo((): WorkspaceTab | undefined => {
+    if (!hydrated || !workspaceId || !panelId) return undefined
+    const panel = findPanelNode(layouts[workspaceId] || useWorkspaceStore.getState().getLayout(workspaceId), panelId)
+    if (!panel) return undefined
+    const tabs = normalizePanelTabs(panel)
+    return tabs.find(tab => tab.id === panel.activeTabId) || tabs[0]
+  }, [hydrated, layouts, panelId, workspaceId])
   const definition = PANEL_DEFINITIONS[resolvedType]
   return (
     <div className='flex h-screen min-h-0 flex-col overflow-hidden bg-[var(--color-bg-primary)] text-[var(--color-text-primary)]'>
@@ -29,7 +37,9 @@ export function WorkspacePopoutWindow({ popoutId, panelType, title }: { popoutId
       </header>
       <main className='min-h-0 flex-1 overflow-hidden'>
         <Suspense fallback={<div className='flex h-full items-center justify-center gap-2 text-sm text-[var(--color-text-secondary)]'><LoaderCircle size={17} className='animate-spin' />正在载入面板</div>}>
-          {renderPanel(resolvedType)}
+          <WorkspaceEditorHost workspaceId={workspaceId} editorId={resolvedTab?.id || panelId} type={resolvedType}>
+            {renderPanel(resolvedType, { agentMode: resolvedTab?.mode })}
+          </WorkspaceEditorHost>
         </Suspense>
       </main>
     </div>

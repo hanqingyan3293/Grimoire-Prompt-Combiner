@@ -6,6 +6,13 @@ export type AgentToolContext = {
   runtime: AgentRuntimeKind
   sessionId: string
   permission: (permission: ToolPermission, detail?: unknown) => Promise<boolean>
+  /**
+   * The model's tool-call id for this invocation. A tool that reports incremental
+   * progress needs it to attribute events to the right call — it is the same id the
+   * renderer uses as the join key for its tool block (source `MessageMcpTool`
+   * subscribes by tool id), and the same id persisted on `tool-finished`/tool messages.
+   */
+  toolCallId?: string
 }
 
 export type AgentTool = {
@@ -37,8 +44,33 @@ export class ToolRegistry {
   async execute(name: string, input: unknown, context: AgentToolContext) {
     const tool = this.tools.get(name)
     if (!tool) throw new Error("Tool 不存在：" + name)
-    if (!(await context.permission(tool.permission, { tool: name, input }))) throw new Error("Tool 权限被拒绝：" + name)
+    // The permission detail carries the tool-call id alongside the tool name: the source
+    // approval card correlates an approval to a specific call by `toolCallId`, and its
+    // "always allow" action persists a per-TOOL rule, so the decision path needs both
+    // the per-call identity and enough context to know which tool it was.
+    if (!(await context.permission(tool.permission, { tool: name, input, toolCallId: context.toolCallId }))) {
+      throw new Error("Tool 权限被拒绝：" + name)
+    }
     return tool.execute(input, context)
+  }
+}
+
+/**
+ * Map a runtime-native permission action onto Grimoire's coarser policy.
+ * Unknown native actions fail closed as execute; never downgrade them to a
+ * read that automatic mode could allow without a prompt.
+ */
+export function runtimePermissionForAction(action: string): ToolPermission {
+  const normalized = action.trim().toLowerCase()
+  switch (normalized) {
+    case "read": case "file.read": case "read_file": case "glob": case "grep": case "list": case "search":
+      return "read"
+    case "write": case "file.write": case "write_file": case "edit": case "apply_patch": case "delete": case "mkdir":
+      return "write"
+    case "network": case "http": case "webfetch": case "websearch":
+      return "network"
+    default:
+      return "execute"
   }
 }
 

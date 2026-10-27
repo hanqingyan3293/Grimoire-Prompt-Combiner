@@ -8,6 +8,7 @@ import { taskEvent, transitionTask } from './task-state'
 import { getPersistedTask, listPersistedTasks, updatePersistedTask } from './task-repository'
 import { logEvent } from './logger.service'
 import { wd14Worker } from './wd14-worker'
+import { mergeWd14Results } from './wd14-union.core'
 import { comfyUIClient } from './comfy-client'
 import { applyComfyBindings } from './comfy-workflow.core'
 import { getComfyWorkflow } from './comfy-workflow.service'
@@ -15,18 +16,26 @@ import { registerManagedImage } from './image-asset.service'
 import { buildQuickWorkflow, type ComfyQuickInput } from './comfy-quick-workflow'
 import { saveWD14History } from './wd14-history.service'
 import { createTagSuggestions } from './tag-intelligence.service'
+import { createImageDerivatives, createMediaRelation, ensureMediaAsset, saveImageGenerationMetadata } from './media.service'
 import crypto from 'crypto'
 
 interface WD14Input {
   imageId: number
   threshold?: number
   modelId?: string
+  /** Multi-model union (BDTM AutoTagger semantics): run each model, merge tags. */
+  modelIds?: string[]
+  /** Merge policy across models. 'union' keeps max confidence per tag name;
+   *  'intersection' keeps only tags every model agreed on. Default 'union'. */
+  unionMode?: 'union' | 'intersection'
 }
 
 interface ComfyInput extends ComfyQuickInput {
   workflowId?: string
   values?: Record<string, unknown>
   quick?: boolean
+
+
 }
 
 async function importComfyImages(taskId: string, images: NonNullable<Awaited<ReturnType<typeof comfyUIClient.history>>['images']>): Promise<{ imageIds: number[]; warnings: string[] }> {
@@ -41,6 +50,9 @@ async function importComfyImages(taskId: string, images: NonNullable<Awaited<Ret
         const tempPath = path.join(tempRoot, `${index}.image`)
         await fs.promises.writeFile(tempPath, data)
         const asset = await registerManagedImage(tempPath, image.filename)
+        ensureMediaAsset(asset.id, 'generated-comfy', image.filename)
+        void createImageDerivatives(asset.id)
+        createMediaRelation({ sourceType: 'image', sourceKey: 'image:' + asset.id, relationType: 'generated-from', targetType: 'task', targetKey: taskId })
         getDatabase().run('INSERT OR IGNORE INTO task_image_refs (task_id, image_id, source_filename) VALUES (?,?,?)', [taskId, asset.id, image.filename.slice(0, 500)])
         if (!seenImageIds.has(asset.id)) {
           seenImageIds.add(asset.id)
@@ -85,6 +97,22 @@ function getImagePath(imageId: number): string {
   const filePath = String(row[0])
   if (row[1] === 0 || !fs.existsSync(filePath)) throw new Error('图片文件不可用，请重新定位或导入图片')
   return filePath
+}
+
+/**
+ * 单模型或多模型反推。多模型（modelIds.length > 1）时逐模型串行调用并合并
+ * 结果（合并逻辑在 wd14-union.core，纯函数、可单测）。
+ */
+async function runWd14Tagging(image: Buffer, input: WD14Input): Promise<import('./wd14-worker').WD14TagResult> {
+  const modelIds = Array.isArray(input.modelIds) ? input.modelIds.filter(value => typeof value === 'string' && value) : []
+  if (modelIds.length <= 1) {
+    return wd14Worker.tag(image, input.threshold, modelIds[0] ?? input.modelId)
+  }
+  const results: import('./wd14-worker').WD14TagResult[] = []
+  for (const modelId of modelIds) {
+    results.push(await wd14Worker.tag(image, input.threshold, modelId))
+  }
+  return mergeWd14Results(results, input.unionMode === 'intersection' ? 'intersection' : 'union')
 }
 
 class TaskRunner {
@@ -161,6 +189,12 @@ class TaskRunner {
         }
         if (result.status === 'error') throw new Error(result.message || 'ComfyUI 任务失败')
         const imported = await importComfyImages(task.id, result.images || [])
+        const generationInput = input as ComfyInput & { prompt?: string; negative?: string; seed?: number; steps?: number; cfg?: number; width?: number; height?: number; sampler?: string; scheduler?: string; model?: string; loras?: unknown[] }
+        for (const imageId of imported.imageIds) {
+          const media = ensureMediaAsset(imageId, 'generated-comfy')
+          saveImageGenerationMetadata({ media_asset_id: media.id, prompt: String(generationInput.prompt || ''), negative_prompt: String(generationInput.negative || ''), provider: 'comfyui', model: String(generationInput.model || ''), checkpoint: String(generationInput.model || ''), loras: Array.isArray(generationInput.loras) ? generationInput.loras : [], seed: typeof generationInput.seed === 'number' ? generationInput.seed : null, sampler: String(generationInput.sampler || ''), scheduler: String(generationInput.scheduler || ''), steps: typeof generationInput.steps === 'number' ? generationInput.steps : null, cfg: typeof generationInput.cfg === 'number' ? generationInput.cfg : null, width: typeof generationInput.width === 'number' ? generationInput.width : null, height: typeof generationInput.height === 'number' ? generationInput.height : null, raw: { workflowId: input.workflowId || null } })
+          createMediaRelation({ sourceType: 'image', sourceKey: 'image:' + imageId, relationType: 'uses-prompt', targetType: 'task', targetKey: task.id })
+        }
         const historyId = addComfyHistory(task.id, input)
         const done = updatePersistedTask(task.id, transitionTask(running, 'succeeded', { output_json: JSON.stringify({ promptId: submitted.prompt_id, images: result.images || [], imageIds: imported.imageIds, historyId, importWarnings: imported.warnings }) }))
         broadcast(done)
@@ -171,7 +205,7 @@ class TaskRunner {
       if (!Number.isInteger(input.imageId) || input.imageId <= 0) throw new Error('WD14 任务缺少有效图片')
       const imagePath = getImagePath(input.imageId)
       const image = await fs.promises.readFile(imagePath)
-      const result = await wd14Worker.tag(image, input.threshold, input.modelId)
+      const result = await runWd14Tagging(image, input)
       const latest = getPersistedTask(task.id) || running
       if (latest.status === 'cancelling') {
         const done = updatePersistedTask(task.id, transitionTask(latest, 'cancelled', { error_code: 'TASK_CANCELLED', error_message: '任务已取消' }))

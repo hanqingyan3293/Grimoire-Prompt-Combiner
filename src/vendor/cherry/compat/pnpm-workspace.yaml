@@ -1,0 +1,36 @@
+packages:
+  - .
+allowBuilds:
+  esbuild: true
+onlyBuiltDependencies:
+  - esbuild
+patchedDependencies:
+  '@ai-sdk/react@3.0.187': patches/@ai-sdk__react@3.0.187.patch
+  'ai@6.0.185': patches/ai@6.0.185.patch
+  '@tiptap/extension-drag-handle@3.26.1': patches/@tiptap__extension-drag-handle@3.26.1.patch
+  '@tiptap/extension-list@3.26.1': patches/@tiptap__extension-list@3.26.1.patch
+  '@tiptap/markdown@3.26.1': patches/@tiptap__markdown@3.26.1.patch
+overrides:
+  '@mux/mux-player-react': 3.10.2
+  '@mux/mux-player': 3.10.2
+  '@mux/mux-video': 0.29.2
+  # Source starter-kit/react use caret children; keep the family with source core/pm.
+  '@tiptap/extension-blockquote': 3.26.1
+  '@tiptap/extension-bold': 3.26.1
+  '@tiptap/extension-bubble-menu': 3.26.1
+  '@tiptap/extension-bullet-list': 3.26.1
+  '@tiptap/extension-code': 3.26.1
+  '@tiptap/extension-document': 3.26.1
+  '@tiptap/extension-dropcursor': 3.26.1
+  '@tiptap/extension-floating-menu': 3.26.1
+  '@tiptap/extension-gapcursor': 3.26.1
+  '@tiptap/extension-hard-break': 3.26.1
+  '@tiptap/extension-horizontal-rule': 3.26.1
+  '@tiptap/extension-italic': 3.26.1
+  '@tiptap/extension-list-item': 3.26.1
+  '@tiptap/extension-list-keymap': 3.26.1
+  '@tiptap/extension-ordered-list': 3.26.1
+  '@tiptap/extension-paragraph': 3.26.1
+  '@tiptap/extension-strike': 3.26.1
+  '@tiptap/extension-text': 3.26.1
+  '@tiptap/extensions': 3.26.1

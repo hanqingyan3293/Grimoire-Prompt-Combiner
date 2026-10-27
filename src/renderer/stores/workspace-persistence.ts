@@ -1,4 +1,6 @@
 import { createWorkspacePersistenceDocument, useWorkspaceStore } from "./workspace.store"
+import { findPanelNode, normalizePanelTabs } from "./workspace.store"
+import { PANEL_DEFINITIONS } from "../components/workspace/PanelRegistry"
 
 const DOCUMENT_ID = "grimoire-main"
 const SAVE_DEBOUNCE_MS = 180
@@ -20,12 +22,13 @@ export function startWorkspacePersistence() {
     finally { applyingRemote = false }
   }
   const unsubscribeRemote = window.api.workspace.onDocumentChanged(applyRemote)
-  const unsubscribePopout = window.api.workspace.onPopoutClosed(({ popoutId }) => {
+  const unsubscribePopout = window.api.workspace.onPopoutClosed(({ popoutId, bounds }) => {
     const separator = popoutId.indexOf(':')
     if (separator <= 0) return
     const workspaceId = popoutId.slice(0, separator)
     const panelId = popoutId.slice(separator + 1)
     useWorkspaceStore.getState().setPopoutPanel(workspaceId, panelId, false)
+    if (bounds) useWorkspaceStore.getState().setPopoutBounds(workspaceId, panelId, bounds)
   })
 
   const persistLatest = async () => {
@@ -74,6 +77,7 @@ export function startWorkspacePersistence() {
       || state.floatingPanels !== previous.floatingPanels
       || state.floatingPositions !== previous.floatingPositions
       || state.popoutPanels !== previous.popoutPanels
+      || state.popoutBounds !== previous.popoutBounds
       || state.layoutPresets !== previous.layoutPresets
     if (changed) scheduleSave()
   })
@@ -112,6 +116,20 @@ export function startWorkspacePersistence() {
       }
       hydrated = true
       useWorkspaceStore.setState({ hydrated: true, persistenceError: null })
+      if (!window.location.hash.startsWith("#workspace-popout?")) {
+        const state = useWorkspaceStore.getState()
+        const activePopouts = state.popoutPanels
+        for (const workspace of state.workspaces) {
+          for (const panelId of activePopouts[workspace.id] || []) {
+            const panel = findPanelNode(state.getLayout(workspace.id), panelId)
+            const tab = panel ? (normalizePanelTabs(panel).find(item => item.id === panel.activeTabId) || normalizePanelTabs(panel)[0]) : null
+            if (!tab) continue
+            const definition = PANEL_DEFINITIONS[tab.type]
+            const bounds = state.popoutBounds[workspace.id]?.[panelId]
+            void window.api.workspace.openPopout({ popoutId: workspace.id + ":" + panelId, panelType: tab.type, title: definition.title, bounds }).catch(() => state.setPopoutPanel(workspace.id, panelId, false))
+          }
+        }
+      }
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error)
       hydrated = true

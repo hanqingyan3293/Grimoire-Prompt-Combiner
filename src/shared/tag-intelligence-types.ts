@@ -65,8 +65,10 @@ export interface TagSuggestion {
 
 export interface TagSearchResult {
   tag: { id: string; subcategory_id: string; en: string; zh: string; sort_order: number; source: string; created_at: string }
-  matchedBy: 'canonical' | 'alias' | 'relation'
+  matchedBy: 'canonical' | 'alias' | 'relation' | 'fuzzy'
   score: number
   relation?: TagRelation
   usageCount: number
+  /** 消歧义上下文（TagStudio 语义）：同名标签来自不同子类时的分类归属。 */
+  subcategory?: { subcategoryZh: string; subcategoryEn: string; categoryZh: string; categoryEn: string }
 }

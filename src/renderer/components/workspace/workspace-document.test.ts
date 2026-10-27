@@ -29,4 +29,19 @@ describe("workspace document migration", () => {
     const document = workspaceDocumentFromLegacy("compose", legacy)
     expect(workspaceDocumentToLegacy(document)).toMatchObject({ kind: "split", direction: "vertical", ratio: 0.7 })
   })
+
+  it("persists floating and popout bounds in the semantic document", () => {
+    const document = workspaceDocumentFromLegacy("compose", {
+      kind: "panel",
+      id: "canvas-panel",
+      type: "canvas",
+    }, {
+      floatingPanels: ["canvas-panel"],
+      floatingPositions: { "canvas-panel": { x: 12, y: 18, width: 640, height: 480, zIndex: 5 } },
+      popoutPanels: ["canvas-panel"],
+      popoutBounds: { "canvas-panel": { x: 20, y: 24, width: 900, height: 700 } },
+    })
+    expect(document.floatingGroups[0]).toMatchObject({ x: 12, y: 18, width: 640, height: 480, zIndex: 5 })
+    expect(document.popouts[0]).toMatchObject({ open: true, x: 20, y: 24, width: 900, height: 700 })
+  })
 })

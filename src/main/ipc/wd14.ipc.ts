@@ -38,9 +38,15 @@ export function registerWD14IPC(): void {
     if (!Number.isInteger(imageId) || imageId <= 0) throw new Error('图片 ID 无效')
     const threshold = optionalBoundedNumber(value.threshold, '阈值', 0.01, 0.99)
     if (value.modelId !== undefined && value.modelId !== null) requireId(value.modelId, '模型 ID')
+    // Multi-model union (BDTM AutoTagger semantics): modelIds runs each model
+    // and merges the tag sets; a single id stays the plain single-model path.
+    const modelIds = Array.isArray(value.modelIds)
+      ? value.modelIds.filter((item): item is string => typeof item === 'string' && item.length > 0).slice(0, 8).map(item => requireId(item, '模型 ID'))
+      : []
+    const unionMode = value.unionMode === 'intersection' ? 'intersection' as const : 'union' as const
     return createPersistedTask({
       kind: 'wd14',
-      input: { imageId, threshold: threshold ?? 0.35, modelId: value.modelId || undefined },
+      input: { imageId, threshold: threshold ?? 0.35, modelId: value.modelId || undefined, modelIds: modelIds.length > 1 ? modelIds : undefined, unionMode: modelIds.length > 1 ? unionMode : undefined },
     })
   })
   ipcMain.handle(IPC_CHANNELS.WD14_HISTORY_LIST, async (_event, input: unknown) => {

@@ -9,6 +9,15 @@ import { createDiagnosticEvent, redactSensitiveText, type DiagnosticEvent, type 
 const LOG_FILE_NAME = 'grimoire.log.jsonl'
 const MAX_LOG_BYTES = 5 * 1024 * 1024
 
+/**
+ * Path of the log file currently being appended to. Exported so the cache-cleanup
+ * `logs` group can exclude the ACTIVE file without re-deriving the directory: two
+ * separate derivations could disagree and delete the file in use.
+ */
+export function getActiveLogPath(): string {
+  return getLogPath()
+}
+
 function getLogPath(): string {
   const configuredDirectory = process.env.GRIMOIRE_LOG_DIR
   const directory = configuredDirectory || (app.isReady() ? app.getPath('userData') : path.join(os.tmpdir(), 'grimoire-logs'))

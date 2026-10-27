@@ -68,6 +68,7 @@ export function CanvasToolbar({
     const colorTheme = useThemeStore((state) => state.theme);
     const setTheme = useThemeStore((state) => state.setTheme);
     const setThemePreference = useSettingsStore((state) => state.setThemePreference);
+    const setSetting = useSettingsStore((state) => state.setSetting);
     const currentAppTheme = useSettingsStore((state) => state.theme);
     const theme = canvasThemes[colorTheme];
     const [hovered, setHovered] = useState<string | null>(null);

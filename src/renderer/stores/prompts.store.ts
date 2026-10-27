@@ -2,6 +2,7 @@
 import { create } from "zustand"
 import type { PanelTag, UndoRedoEntry, Tag } from "@shared/types"
 import { DEFAULT_WEIGHT, WEIGHT_MIN, WEIGHT_MAX, MAX_UNDO_STEPS } from "@shared/types"
+import { bracketStep, parsePromptText, serializePrompt, type PromptToken } from "@shared/tag-prompt-core"
 
 interface PromptsState {
   positive: PanelTag[]
@@ -9,12 +10,18 @@ interface PromptsState {
   undoStack: UndoRedoEntry[]
   redoStack: UndoRedoEntry[]
   maxUndo: number
-  
+  /** Tag ids whose implied (auto-derived) state was explicitly excluded by the user. */
+  impliedExcluded: string[]
+
   addPositive: (tag: Tag, category: string, subcategory: string) => void
   addNegative: (tag: Tag, category: string, subcategory: string) => void
   removePositive: (tagId: string) => void
   removeNegative: (tagId: string) => void
   updateWeight: (tagId: string, weight: number) => void
+  /** BDTM-style bracket stepping: one gesture = one bracket level (×1.1 / ÷1.1). */
+  stepWeight: (tagId: string, direction: 1 | -1) => void
+  excludeImplied: (tagId: string) => void
+  includeImplied: (tagId: string) => void
   toggleQualityWords: () => void
   
   clearPositive: () => void
@@ -50,12 +57,24 @@ function pushUndo(state: PromptsState): UndoRedoEntry[] {
   return stack
 }
 
+function panelTagsToTokens(items: PanelTag[], lang: "zh" | "en", negative: boolean): PromptToken[] {
+  return items.map(item => ({
+    text: lang === "zh" ? item.tag.zh : item.tag.en,
+    weight: item.weight,
+    depth: 0,
+    negative,
+    explicit: item.weight !== DEFAULT_WEIGHT,
+    breakBefore: item.breakBefore === true,
+  }))
+}
+
 export const usePromptsStore = create<PromptsState>((set, get) => ({
   positive: [],
   negative: [],
   undoStack: [],
   redoStack: [],
   maxUndo: MAX_UNDO_STEPS,
+  impliedExcluded: [],
   
   addPositive: (tag, category, subcategory) => {
     const state = get()
@@ -110,7 +129,25 @@ export const usePromptsStore = create<PromptsState>((set, get) => ({
       ),
     })
   },
-  
+
+  stepWeight: (tagId, direction) => {
+    const apply = (list: PanelTag[]) =>
+      list.map(p => (p.tag.id === tagId ? { ...p, weight: bracketStep(p.weight, direction) } : p))
+    set({ positive: apply(get().positive), negative: apply(get().negative) })
+  },
+
+  excludeImplied: (tagId) => {
+    const list = get().impliedExcluded
+    if (list.includes(tagId)) return
+    set({ impliedExcluded: [...list, tagId] })
+  },
+
+  includeImplied: (tagId) => {
+    const list = get().impliedExcluded
+    if (!list.includes(tagId)) return
+    set({ impliedExcluded: list.filter(id => id !== tagId) })
+  },
+
   toggleQualityWords: () => {
     // Placeholder for future quality word toggles
   },
@@ -211,42 +248,19 @@ export const usePromptsStore = create<PromptsState>((set, get) => ({
   getFormattedPrompt: (lang = "zh") => {
     const { positive } = get()
     if (positive.length === 0) return ""
-    return positive
-      .map(p => {
-        const name = lang === "zh" ? p.tag.zh : p.tag.en
-        if (p.weight === DEFAULT_WEIGHT) return name
-        return `(${name}:${p.weight})`
-      })
-      .join(", ")
+    return serializePrompt(panelTagsToTokens(positive, lang, false), token => token.text)
   },
-  
+
   getFullPrompt: (lang = "zh") => {
     const { positive, negative } = get()
-    let result = ""
-    
-    if (positive.length > 0) {
-      result += positive
-        .map(p => {
-          const name = lang === "zh" ? p.tag.zh : p.tag.en
-          if (p.weight === DEFAULT_WEIGHT) return name
-          return `(${name}:${p.weight})`
-        })
-        .join(", ")
-    }
-    
-    if (negative.length > 0) {
-      if (result) result += "\n"
-      result += "--neg "
-      result += negative
-        .map(p => {
-          const name = lang === "zh" ? p.tag.zh : p.tag.en
-          if (p.weight === DEFAULT_WEIGHT) return name
-          return `(${name}:${p.weight})`
-        })
-        .join(", ")
-    }
-    
-    return result
+    // Serialization delegates to the shared core; output stays byte-identical
+    // to the historical implementation (bare name at weight 1, (name:weight)
+    // otherwise, ", " joins, "--neg " prefix, "\n" between segments).
+    const tokens = [
+      ...panelTagsToTokens(positive, lang, false),
+      ...panelTagsToTokens(negative, lang, true),
+    ]
+    return serializePrompt(tokens, token => token.text)
   },
 
   replaceFromPromptText: (text, tags) => {
@@ -258,20 +272,21 @@ export const usePromptsStore = create<PromptsState>((set, get) => ({
       tagMap.set(tag.en.trim().toLowerCase(), tag)
       tagMap.set(tag.zh.trim(), tag)
     }
-    let negativeMode = false
-    for (const rawPart of text.replace(/\r/g, "").split(/[,\n]/)) {
-      let part = rawPart.trim()
-      if (!part) continue
-      if (part === "--neg") { negativeMode = true; continue }
-      if (part.startsWith("--neg ")) { negativeMode = true; part = part.slice(6).trim() }
-      if (!part) continue
-      const weighted = part.match(/^\((.*):([0-9]+(?:\.[0-9]+)?)\)$/)
-      const label = (weighted?.[1] || part).trim()
+    // Richer parsing via the shared core: bracket multipliers, explicit
+    // weights, BREAK and --neg segments; duplicates of one resolved tag merge
+    // their weight deltas (BDTM parity) instead of being silently skipped.
+    const { tokens } = parsePromptText(text)
+    for (const token of tokens) {
+      const label = token.text
       const tag = tagMap.get(label.toLowerCase()) || tagMap.get(label)
       if (!tag) { unknown.push(label); continue }
-      const target = negativeMode ? negative : positive
-      if (target.some(item => item.tag.id === tag.id)) continue
-      target.push({ tag, weight: weighted ? Math.min(2, Math.max(0.1, Number(weighted[2]))) : DEFAULT_WEIGHT, category: "", subcategory: "" })
+      const target = token.negative ? negative : positive
+      const existing = target.find(item => item.tag.id === tag.id)
+      if (existing) {
+        existing.weight = Math.min(WEIGHT_MAX, Math.max(WEIGHT_MIN, Math.round((existing.weight + token.weight - 1) * 100) / 100))
+        continue
+      }
+      target.push({ tag, weight: token.weight, category: "", subcategory: "", breakBefore: token.breakBefore })
     }
     const state = get()
     if (!positive.length && !negative.length) return { matched: 0, unknown }

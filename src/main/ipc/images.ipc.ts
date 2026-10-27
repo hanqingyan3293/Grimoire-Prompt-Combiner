@@ -6,8 +6,10 @@ import os from 'os'
 import { getDatabase, saveDatabase } from '../database'
 import { IPC_CHANNELS, type ImageRef } from '../../shared/types'
 import { inspectImageFile } from '../services/asset.core'
-import { registerManagedImage } from '../services/image-asset.service'
+import { deleteImageArtifacts, probeFileDimensions, registerManagedImage } from '../services/image-asset.service'
+import { parseMediaMetadata } from '../services/media-metadata.service'
 import { requireId } from '../services/input-validation'
+import { createImageDerivatives, ensureMediaAsset } from '../services/media.service'
 
 function rowToImage(r: unknown[]): ImageRef {
   return {
@@ -33,6 +35,21 @@ export function registerImagesIPC(): void {
     })
   })
 
+  // 分页变体：ImagesPanel 用它避免大库全量加载（旧接口保持原样给其他调用方）。
+  ipcMain.handle(IPC_CHANNELS.IMAGES_LIST_PAGED, async (_event, input: unknown) => {
+    const value = (input || {}) as { limit?: unknown; offset?: unknown }
+    const limit = Math.max(1, Math.min(500, Math.floor(Number(value.limit) || 60)))
+    const offset = Math.max(0, Math.floor(Number(value.offset) || 0))
+    const db = getDatabase()
+    const total = Number(db.exec('SELECT COUNT(*) FROM image_refs')[0]?.values?.[0]?.[0] || 0)
+    const result = db.exec('SELECT id, file_path, created_at, storage_mode, asset_hash, mime_type, file_size, original_name, available FROM image_refs ORDER BY created_at DESC LIMIT ? OFFSET ?', [limit, offset])
+    const items = (result[0]?.values || []).map(row => {
+      const image = rowToImage(row)
+      return { ...image, available: fs.existsSync(image.file_path) }
+    })
+    return { items, total, limit, offset }
+  })
+
   ipcMain.handle(IPC_CHANNELS.IMAGES_ADD, async (_event, requestedMode: 'managed' | 'external' = 'managed') => {
     const mode = requestedMode === 'external' ? 'external' : 'managed'
     const result = await dialog.showOpenDialog({
@@ -47,20 +64,30 @@ export function registerImagesIPC(): void {
     let filePath = sourcePath
 
     if (mode === 'managed') {
-      return registerManagedImage(sourcePath)
+      const registered = await registerManagedImage(sourcePath)
+      const media = ensureMediaAsset(registered.id, 'imported-reference', registered.original_name)
+      void createImageDerivatives(registered.id)
+      void parseMediaMetadata(media.id).catch(() => {})
+      return registered
     }
 
-    db.run('INSERT INTO image_refs (file_path, storage_mode, asset_hash, mime_type, file_size, original_name, available) VALUES (?,?,?,?,?,?,?)', [filePath, mode, inspection.hash, inspection.mimeType, inspection.size, inspection.originalName, 1])
+    const probe = await probeFileDimensions(filePath)
+    db.run('INSERT INTO image_refs (file_path, storage_mode, asset_hash, mime_type, file_size, original_name, available, width, height, file_mtime) VALUES (?,?,?,?,?,?,?,?,?,?)', [filePath, mode, inspection.hash, inspection.mimeType, inspection.size, inspection.originalName, 1, probe.width, probe.height, probe.mtimeMs])
     saveDatabase()
     
     const idResult = db.exec('SELECT last_insert_rowid()')
     const id = idResult[0]?.values?.[0]?.[0] as number
+    const externalMedia = ensureMediaAsset(id, 'external-link', inspection.originalName)
+    void createImageDerivatives(id)
+    void parseMediaMetadata(externalMedia.id).catch(() => {})
     return { id, file_path: filePath, storage_mode: mode }
   })
 
   ipcMain.handle(IPC_CHANNELS.IMAGES_DELETE, async (_event, id: number) => {
     requireId(String(id), '图片 ID')
     const db = getDatabase()
+    // 先清磁盘产物（托管副本/派生图；外链原文件绝不触碰），再删 DB 行。
+    await deleteImageArtifacts(Number(id)).catch(() => { /* 文件清理失败不阻塞删除 */ })
     db.run('DELETE FROM image_refs WHERE id=?', [id])
     saveDatabase()
     return true
@@ -72,7 +99,11 @@ export function registerImagesIPC(): void {
     const tempPath = path.join(tempRoot, 'input')
     try {
       await fs.promises.writeFile(tempPath, Buffer.from(dataBase64, 'base64'))
-      return await registerManagedImage(tempPath, typeof originalName === 'string' ? originalName : undefined)
+      const registered = await registerManagedImage(tempPath, typeof originalName === 'string' ? originalName : undefined)
+      const importedMedia = ensureMediaAsset(registered.id, 'imported-reference', registered.original_name)
+      void createImageDerivatives(registered.id)
+      void parseMediaMetadata(importedMedia.id).catch(() => {})
+      return registered
     } finally {
       await fs.promises.rm(tempRoot, { recursive: true, force: true })
     }

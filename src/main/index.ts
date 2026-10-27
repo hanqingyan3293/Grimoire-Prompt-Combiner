@@ -21,12 +21,21 @@ import { registerCanvasIPC } from "./ipc/canvas.ipc"
 import { registerPromptAssetsIPC } from "./ipc/prompt-assets.ipc"
 import { registerWorkspaceIPC } from "./ipc/workspace.ipc"
 import { registerAgentIPC } from "./ipc/agent.ipc"
+import { registerAiSessionsIPC, shutdownAiSessions } from "./ipc/ai-sessions.ipc"
 import { registerTagIntelligenceIPC } from './ipc/tag-intelligence.ipc'
+import { registerMediaIPC } from './ipc/media.ipc'
+import { registerAiAttachmentsIPC } from './ipc/ai-attachments.ipc'
+import { registerCherryAssistantIPC } from './ipc/cherry-assistant.ipc'
+import { registerFileBridgeIPC } from './ipc/file-bridge.ipc'
+import { registerCherryDataApiIPC } from './ipc/cherry-data-api.ipc'
+import { registerCherryNavigationWindow } from './services/cherry-navigation.service'
+import { registerMcpCacheBridgeIPC } from './services/mcp-cache-bridge.service'
 import { importDefaultPromptAssets, seedDefaultPromptAssetCategories } from './services/default-prompt-assets.service'
 import { configureComfyUI } from './services/comfy-client'
 import { requireHttpUrl } from './services/input-validation'
 import { taskRunner } from "./services/task-runner"
 import { clearWD14ModelDirectory, clearWD14PythonPath, configureWD14ModelDirectory, configureWD14PythonPath, wd14Worker } from "./services/wd14-worker"
+import { configureClipModelDirectory, configureClipPythonPath } from "./services/clip-worker"
 import { markInterruptedTasks } from "./services/task-repository"
 import { logError, logEvent, getErrorLogs } from "./services/logger.service"
 import { IPC_CHANNELS } from "../shared/types"
@@ -35,6 +44,7 @@ import { isWorkspacePopoutType } from '../shared/workspace-panels'
 let mainWindow: BrowserWindow | null = null
 let settingsWindow: BrowserWindow | null = null
 let aiWindow: BrowserWindow | null = null
+let cherryWindow: BrowserWindow | null = null
 const workspacePopouts = new Map<string, BrowserWindow>()
 const hasSingleInstanceLock = app.requestSingleInstanceLock()
 
@@ -48,26 +58,26 @@ function getPreloadPath(): string {
 }
 
 function getRendererURL(hash: string): string {
-  if (process.env.VITE_DEV_SERVER_URL) {
-    return process.env.VITE_DEV_SERVER_URL + "/#" + hash
+  const devServerUrl = process.env.VITE_DEV_SERVER_URL || (!app.isPackaged ? 'http://localhost:5173' : '')
+  if (devServerUrl) {
+    return devServerUrl.replace(/\/$/, '') + "/#" + hash
   }
   return "file://" + path.join(__dirname, "../../renderer/index.html") + "#" + hash
 }
 
 function configureWindowSecurity(window: BrowserWindow): void {
-  const developmentOrigin = process.env.VITE_DEV_SERVER_URL
-    ? new URL(process.env.VITE_DEV_SERVER_URL).origin
-    : null
+  const rendererDevUrl = process.env.VITE_DEV_SERVER_URL || (!app.isPackaged ? 'http://localhost:5173' : '')
+  const developmentOrigin = rendererDevUrl ? new URL(rendererDevUrl).origin : null
   const isAllowedRendererUrl = (url: string): boolean => {
     if (url.startsWith('file://')) return true
-    return developmentOrigin !== null && url.startsWith(developmentOrigin + '/')
+    return developmentOrigin !== null && (url === developmentOrigin || url.startsWith(developmentOrigin + '/'))
   }
 
   window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
   window.webContents.on('will-navigate', (event, url) => {
     if (!isAllowedRendererUrl(url)) {
       event.preventDefault()
-      void shell.openExternal(url).catch(() => {})
+      if (/^https?:\/\//i.test(url)) void shell.openExternal(url).catch(() => {})
     }
   })
 }
@@ -78,6 +88,13 @@ function registerSystemIPC(): void {
     const parsed = new URL(url)
     if (!['http:', 'https:'].includes(parsed.protocol)) throw new Error('仅允许打开 HTTP 或 HTTPS 地址')
     await shell.openExternal(parsed.toString())
+    return true
+  })
+  ipcMain.handle(IPC_CHANNELS.SHELL_SHOW_ITEM, async (_event, filePath: unknown) => {
+    if (typeof filePath !== 'string' || !filePath.trim()) throw new Error('文件路径无效')
+    const resolved = path.resolve(filePath)
+    if (!fs.existsSync(resolved)) throw new Error('文件不存在')
+    shell.showItemInFolder(resolved)
     return true
   })
 }
@@ -110,6 +127,17 @@ function applyPersistedIntegrationSettings(): void {
   const savedWD14PythonPath = wd14PythonSetting[0]?.values?.[0]?.[0]
   if (typeof savedWD14PythonPath === 'string' && savedWD14PythonPath.trim()) {
     try { configureWD14PythonPath(savedWD14PythonPath) } catch (error) { logEvent('warn', 'wd14', 'Saved WD14 Python path ignored', { context: error instanceof Error ? error.message : String(error), errorCode: 'WD14_PYTHON_CONFIG_INVALID', retryable: false }) }
+  }
+  // CLIP sidecar 配置沿用 wd14 的持久化模式（相似图语义检索用）。
+  const clipSetting = database.exec("SELECT value FROM settings WHERE key='clip_model_directory'")
+  const savedClipDirectory = clipSetting[0]?.values?.[0]?.[0]
+  if (typeof savedClipDirectory === 'string' && savedClipDirectory.trim()) {
+    try { configureClipModelDirectory(savedClipDirectory) } catch (error) { logEvent('warn', 'clip', 'Saved CLIP model directory ignored', { context: error instanceof Error ? error.message : String(error), errorCode: 'CLIP_CONFIG_INVALID', retryable: false }) }
+  }
+  const clipPythonSetting = database.exec("SELECT value FROM settings WHERE key='clip_python_path'")
+  const savedClipPythonPath = clipPythonSetting[0]?.values?.[0]?.[0]
+  if (typeof savedClipPythonPath === 'string' && savedClipPythonPath.trim()) {
+    try { configureClipPythonPath(savedClipPythonPath) } catch (error) { logEvent('warn', 'clip', 'Saved CLIP Python path ignored', { context: error instanceof Error ? error.message : String(error), errorCode: 'CLIP_PYTHON_CONFIG_INVALID', retryable: false }) }
   }
 }
 
@@ -176,7 +204,84 @@ function createAIWindow(): void {
   })
 }
 
-function createWorkspacePopout(popoutId: string, panelType: string, title: string, parent?: BrowserWindow | null): boolean {
+function getCherryCompatPath(): string {
+  if (app.isPackaged) return path.join(__dirname, '../../cherry-compat/index.html')
+  if (process.env.GRIMOIRE_CHERRY_ENTRY === 'source-shell') {
+    return path.join(process.cwd(), 'src/vendor/cherry/compat/dist-source-shell/source-shell.html')
+  }
+  return path.join(process.cwd(), 'src/vendor/cherry/compat/dist/index.html')
+}
+
+// Filled by the visual-capture seeding block; read by `runVisualCapture` so its state frames
+// can navigate to the seeded sessions. Declared here because the seeding happens inside the
+// boot routine while the capture runs later, from the window's load completion.
+let visualStateSessionIds: Record<string, string> | undefined
+let visualStateSessionTitles: Record<string, string> | undefined
+
+function createCherryWindow(): void {
+  if (cherryWindow && !cherryWindow.isDestroyed()) {
+    cherryWindow.focus()
+    return
+  }
+  cherryWindow = new BrowserWindow({
+    width: 1280, height: 800, minWidth: 960, minHeight: 640,
+    title: 'Cherry Studio UI · Grimoire',
+    parent: mainWindow || undefined,
+    autoHideMenuBar: true,
+    webPreferences: {
+      preload: getPreloadPath(),
+      contextIsolation: true,
+      nodeIntegration: false,
+      sandbox: true,
+    },
+  })
+  configureWindowSecurity(cherryWindow)
+  // Register the authentic source-shell sender before loadFile so navigation readiness
+  // and open-route requests are scoped to this exact BrowserWindow/WebContents pair.
+  registerCherryNavigationWindow(cherryWindow)
+  cherryWindow.webContents.on('console-message', (_event, level, message, line, sourceId) => {
+    logEvent('debug', 'cherry-renderer', message, { context: 'level=' + level + ' line=' + line + ' source=' + sourceId })
+  })
+  cherryWindow.webContents.on('did-fail-load', (_event, errorCode, errorDescription, validatedURL) => {
+    logEvent('error', 'cherry-renderer', 'Cherry page failed to load', { context: validatedURL, errorCode: String(errorCode) + ':' + errorDescription, retryable: true })
+  })
+  cherryWindow.webContents.on('render-process-gone', (_event, details) => {
+    logEvent('error', 'cherry-renderer', 'Cherry renderer process exited', { context: details.reason, errorCode: String(details.exitCode), retryable: true })
+  })
+  void cherryWindow.loadFile(getCherryCompatPath()).catch(error => {
+    logEvent('error', 'cherry-renderer', 'Cherry page load rejected', { context: error instanceof Error ? error.message : String(error), errorCode: 'CHERRY_LOAD_REJECTED', retryable: true })
+  })
+  if (process.env.GRIMOIRE_VISUAL_CAPTURE === '1') {
+    // Visual-baseline run: the fixture was seeded before the window loaded (see
+    // `GRIMOIRE_VISUAL_CAPTURE_EMPTY` below); capture the matrix, then quit.
+    void import('./visual-capture').then(async ({ runVisualCapture }) => {
+      try {
+        const files = await runVisualCapture(cherryWindow!, { empty: process.env.GRIMOIRE_VISUAL_CAPTURE_EMPTY === '1', stateSessionIds: visualStateSessionIds, stateSessionTitles: visualStateSessionTitles })
+        logEvent('info', 'cherry-visual', 'Visual capture finished', { context: files.length + ' files' })
+        setTimeout(() => app.quit(), 300)
+      } catch (error) {
+        // A failed capture must FAIL THE PROCESS, not just write a log line.
+        //
+        // This previously logged and quit with code 0, so a blank page — a route that
+        // threw into an error boundary, or rendered nothing at all — reached the driver
+        // script as a successful run. The error is still logged (the log is the detailed
+        // record); the exit code is what makes it actionable, because the driver and CI
+        // only observe that.
+        logEvent('error', 'cherry-visual', 'Visual capture failed', { context: String(error), retryable: false })
+        setTimeout(() => app.exit(1), 300)
+      }
+    }).catch(error => {
+      logEvent('error', 'cherry-visual', 'Visual capture module rejected', { context: String(error), retryable: false })
+      app.exit(1)
+    })
+  }
+  cherryWindow.on('closed', () => { cherryWindow = null })
+  cherryWindow.on('focus', () => {
+    cherryWindow?.webContents.send('window:focused')
+  })
+}
+
+function createWorkspacePopout(popoutId: string, panelType: string, title: string, parent?: BrowserWindow | null, requestedBounds?: { x?: number; y?: number; width?: number; height?: number }): boolean {
   if (!isWorkspacePopoutType(panelType)) throw new Error('不支持的 Workspace 面板类型')
   const existing = workspacePopouts.get(popoutId)
   if (existing && !existing.isDestroyed()) {
@@ -185,9 +290,13 @@ function createWorkspacePopout(popoutId: string, panelType: string, title: strin
     existing.focus()
     return true
   }
+  const width = Math.max(560, Math.round(requestedBounds?.width || 1100))
+  const height = Math.max(360, Math.round(requestedBounds?.height || 760))
   const popout = new BrowserWindow({
-    width: 1100,
-    height: 760,
+    x: typeof requestedBounds?.x === 'number' ? Math.round(requestedBounds.x) : undefined,
+    y: typeof requestedBounds?.y === 'number' ? Math.round(requestedBounds.y) : undefined,
+    width,
+    height,
     minWidth: 560,
     minHeight: 360,
     title: title || 'Grimoire Workspace',
@@ -204,10 +313,14 @@ function createWorkspacePopout(popoutId: string, panelType: string, title: strin
   configureWindowSecurity(popout)
   const hash = 'workspace-popout?popoutId=' + encodeURIComponent(popoutId) + '&panelType=' + encodeURIComponent(panelType) + '&title=' + encodeURIComponent(title || panelType)
   popout.loadURL(getRendererURL(hash))
+  let lastBounds = popout.getBounds()
+  const rememberBounds = () => { if (!popout.isDestroyed()) lastBounds = popout.getBounds() }
+  popout.on('move', rememberBounds)
+  popout.on('resize', rememberBounds)
   popout.on('closed', () => {
     workspacePopouts.delete(popoutId)
     for (const window of BrowserWindow.getAllWindows()) {
-      if (!window.isDestroyed()) window.webContents.send(IPC_CHANNELS.WORKSPACE_POPOUT_CLOSED, { popoutId })
+      if (!window.isDestroyed()) window.webContents.send(IPC_CHANNELS.WORKSPACE_POPOUT_CLOSED, { popoutId, bounds: lastBounds })
     }
   })
   return true
@@ -245,8 +358,9 @@ function createWindow(): void {
   })
   configureWindowSecurity(mainWindow)
 
-  if (process.env.VITE_DEV_SERVER_URL) {
-    mainWindow.loadURL(process.env.VITE_DEV_SERVER_URL)
+  const devServerUrl = process.env.VITE_DEV_SERVER_URL || (!app.isPackaged ? 'http://localhost:5173' : '')
+  if (devServerUrl) {
+    mainWindow.loadURL(devServerUrl)
   } else {
     mainWindow.loadFile(path.join(__dirname, "../../renderer/index.html"))
   }
@@ -356,6 +470,15 @@ async function registerAllIPC(): Promise<void> {
   // tags.ipc.ts already registers all tag + category + subcategory handlers
   registerTagsIPC()
   registerTagIntelligenceIPC()
+  registerMediaIPC()
+  registerAiAttachmentsIPC()
+  registerCherryAssistantIPC()
+  registerFileBridgeIPC()
+  registerCherryDataApiIPC([
+    getCherryCompatPath(),
+    ...(app.isPackaged ? [] : [path.join(process.cwd(), 'src/vendor/cherry/compat/dist-source-shell/source-shell.html')])
+  ])
+  registerMcpCacheBridgeIPC()
   registerPresetsIPC()
   registerHistoryIPC()
   registerSettingsIPC()
@@ -373,6 +496,7 @@ async function registerAllIPC(): Promise<void> {
   registerPromptAssetsIPC()
   registerWorkspaceIPC()
   registerAgentIPC()
+  registerAiSessionsIPC()
   registerSystemIPC()
   applyPersistedIntegrationSettings()
   markInterruptedTasks()
@@ -385,14 +509,22 @@ async function registerAllIPC(): Promise<void> {
   // 窗口管理
   ipcMain.handle("window:openSettings", async () => { createSettingsWindow() })
   ipcMain.handle("window:openAI", async () => { createAIWindow() })
+  ipcMain.handle("window:openCherry", async () => { createCherryWindow() })
   ipcMain.handle(IPC_CHANNELS.WORKSPACE_OPEN_POPOUT, async (event, input: unknown) => {
     if (!input || typeof input !== 'object') throw new Error('Workspace 弹出窗口参数无效')
     const value = input as Record<string, unknown>
     const popoutId = typeof value.popoutId === 'string' ? value.popoutId.trim() : ''
     const panelType = typeof value.panelType === 'string' ? value.panelType.trim() : ''
     const title = typeof value.title === 'string' ? value.title.trim() : panelType
+    const rawBounds = value.bounds && typeof value.bounds === 'object' ? value.bounds as Record<string, unknown> : {}
+    const bounds = {
+      x: typeof rawBounds.x === 'number' ? rawBounds.x : undefined,
+      y: typeof rawBounds.y === 'number' ? rawBounds.y : undefined,
+      width: typeof rawBounds.width === 'number' ? rawBounds.width : undefined,
+      height: typeof rawBounds.height === 'number' ? rawBounds.height : undefined,
+    }
     if (!popoutId || !panelType) throw new Error('Workspace 弹出窗口参数缺失')
-    return createWorkspacePopout(popoutId, panelType, title, BrowserWindow.fromWebContents(event.sender))
+    return createWorkspacePopout(popoutId, panelType, title, BrowserWindow.fromWebContents(event.sender), bounds)
   })
   ipcMain.handle(IPC_CHANNELS.WORKSPACE_CLOSE_POPOUT, async (_event, popoutId: unknown) => closeWorkspacePopout(String(popoutId || '')))
   ipcMain.handle(IPC_CHANNELS.WORKSPACE_FOCUS_POPOUT, async (_event, popoutId: unknown) => focusWorkspacePopout(String(popoutId || '')))
@@ -437,6 +569,13 @@ async function registerAllIPC(): Promise<void> {
     if (r.canceled || r.filePaths.length === 0) return null
     return fs.readFileSync(r.filePaths[0], "utf-8")
   })
+
+  // 目录选择（文件夹扫描导入用）：返回绝对路径，取消返回 null。
+  ipcMain.handle(IPC_CHANNELS.DIALOG_OPEN_DIRECTORY, async () => {
+    const r = await dialog.showOpenDialog({ properties: ["openDirectory"] })
+    if (r.canceled || r.filePaths.length === 0) return null
+    return r.filePaths[0]
+  })
 }
 
 async function initDefaultTags(): Promise<void> {
@@ -458,6 +597,7 @@ process.on("uncaughtException", (err) => { logError("未捕获异常: " + err.me
 process.on("unhandledRejection", (reason) => { logError("未处理的 Promise: " + String(reason), reason instanceof Error ? reason.stack : "") })
 
 if (hasSingleInstanceLock) {
+let isQuitting = false
   app.on('second-instance', () => {
     if (!mainWindow || mainWindow.isDestroyed()) return
     if (mainWindow.isMinimized()) mainWindow.restore()
@@ -472,6 +612,28 @@ app.whenReady().then(async () => {
     await registerAllIPC()
     await initDefaultTags()
     createWindow()
+    if ((process.env.GRIMOIRE_VISUAL_CAPTURE === '1' || process.env.GRIMOIRE_UI_CATALOG_CAPTURE === '1') && process.env.GRIMOIRE_VISUAL_CAPTURE_EMPTY !== '1') {
+      // Seed before the Cherry window loads so the renderer's initial fetch sees the
+      // fixture. A non-empty database means this user-data-dir was already captured;
+      // re-seeding would duplicate rows, so the fixture is skipped then.
+      const { seedVisualFixture, findVisualStateSessionIds } = await import('./visual-capture')
+      const { listAiSessions } = await import('./services/ai-session.service')
+      if (listAiSessions({ includeArchived: true, limit: 1 }).length === 0) {
+        const seeded = seedVisualFixture()
+        visualStateSessionIds = seeded.stateSessionIds
+        visualStateSessionTitles = seeded.stateSessionTitles
+      } else {
+        // Re-capture against an existing fixture: the ids are recovered by TITLE rather than
+        // re-seeding (which would duplicate rows). Without this the state frames silently
+        // disappeared on every run after the first — the capture would still succeed and
+        // report 12 frames, so the loss would be invisible.
+        visualStateSessionIds = findVisualStateSessionIds()
+        visualStateSessionTitles = { failed: '失败的会话', running: '运行中的会话', tool: '长列表与消息块基线' }
+      }
+    }
+    if (process.env.GRIMOIRE_OPEN_CHERRY === '1' || process.env.GRIMOIRE_VISUAL_CAPTURE === '1' || process.env.GRIMOIRE_UI_CATALOG_CAPTURE === '1') {
+      setTimeout(() => createCherryWindow(), 700)
+    }
     const defaultPromptAssetDirectory = process.env.VITE_DEV_SERVER_URL
       ? path.join(__dirname, '../../../data/default-prompt-assets')
       : path.join(process.resourcesPath, 'data', 'default-prompt-assets')
@@ -493,6 +655,16 @@ app.whenReady().then(async () => {
   }
 })
 
-app.on("window-all-closed", () => { if (BrowserWindow.getAllWindows().length === 0) { taskRunner.stop(); void wd14Worker.stop(); closeDatabase(); app.quit() } })
+app.on("before-quit", (event) => {
+  if (isQuitting) return
+  isQuitting = true
+  event.preventDefault()
+  taskRunner.stop()
+  void Promise.allSettled([wd14Worker.stop(), shutdownAiSessions()]).finally(() => {
+    closeDatabase()
+    app.quit()
+  })
+})
+app.on("window-all-closed", () => { if (BrowserWindow.getAllWindows().length === 0) app.quit() })
 app.on("activate", () => { if (BrowserWindow.getAllWindows().length === 0) createWindow() })
 }

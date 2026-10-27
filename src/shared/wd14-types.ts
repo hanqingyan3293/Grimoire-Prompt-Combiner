@@ -18,5 +18,7 @@ export type WD14HistoryRecord = {
   status: "succeeded" | "failed"
   error_message: string | null
   image_snapshot_available?: boolean
+  /** Managed snapshot path; only exposed for the main-process-to-renderer reveal action. */
+  image_snapshot_path?: string | null
   created_at: string
 }

@@ -1,20 +1,19 @@
 // 魔导书 Grimoire v7 — 右侧面板（历史/预设/图片）
 import React, { Suspense, lazy, useEffect, useRef, useState } from 'react'
-import { Bot, Clock3, Folder, FolderOpen, Images, LoaderCircle, Settings } from 'lucide-react'
-import { PresetsPanel } from '../presets/PresetsPanel'
+import { Bot, Clock3, FolderOpen, Images, Settings } from 'lucide-react'
 import { HistoryPanel } from '../history/HistoryPanel'
 import { ImagesPanel } from '../images/ImagesPanel'
 import { QuickUtilityPopover, type UtilityPopoverKey } from './QuickUtilityPopover'
 import { Button } from '../ui/Button'
+import { AgentWorkspacePanel } from '../ai/AgentWorkspacePanel'
 
-const SimpleAIPanel = lazy(() => import('../ai/SimpleAIPanel').then(module => ({ default: module.SimpleAIPanel })))
 const PromptAssetsPanel = lazy(() => import('../prompt-assets/PromptAssetsPanel').then(module => ({ default: module.PromptAssetsPanel })))
 
-type TabKey = 'assets' | 'presets' | 'history' | 'images' | 'ai'
+type TabKey = 'assets' | 'history' | 'images' | 'ai'
 type PopoverKey = UtilityPopoverKey | null
 
 export function RightPanel() {
-  const [activeTab, setActiveTab] = useState<TabKey>('presets')
+  const [activeTab, setActiveTab] = useState<TabKey>('assets')
   const [popover, setPopover] = useState<PopoverKey>(null)
   const popoverRef = useRef<HTMLDivElement>(null)
 
@@ -47,7 +46,6 @@ export function RightPanel() {
 
   const tabs = [
     { key: 'assets' as const, icon: FolderOpen, label: '资产' },
-    { key: 'presets' as const, icon: Folder, label: '预设' },
     { key: 'history' as const, icon: Clock3, label: '历史' },
     { key: 'images' as const, icon: Images, label: '图片' },
     { key: 'ai' as const, icon: Bot, label: 'AI' },
@@ -68,10 +66,9 @@ export function RightPanel() {
       {/* Content */}
       <div className="min-h-0 flex-1 overflow-auto p-[3px]">
         {activeTab === 'assets' && <Suspense fallback={<div className='flex h-full items-center justify-center text-xs text-[var(--color-text-secondary)]'>正在载入资产</div>}><PromptAssetsPanel /></Suspense>}
-        {activeTab === 'presets' && <PresetsPanel />}
         {activeTab === 'history' && <HistoryPanel />}
         {activeTab === 'images' && <ImagesPanel />}
-        {activeTab === 'ai' && <Suspense fallback={<div className="flex h-full items-center justify-center gap-2 text-xs text-[var(--color-text-secondary)]"><LoaderCircle size={15} className="animate-spin" aria-hidden="true" />正在载入 AI</div>}><SimpleAIPanel /></Suspense>}
+        {activeTab === 'ai' && <AgentWorkspacePanel variant="compact" />}
       </div>
 
       {/* Bottom buttons for Settings & AI */}

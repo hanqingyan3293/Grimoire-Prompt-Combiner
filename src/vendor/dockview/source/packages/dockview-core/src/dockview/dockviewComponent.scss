@@ -1,0 +1,101 @@
+.dv-dockview {
+    position: relative;
+    background-color: var(--dv-group-view-background-color);
+    // Avoid `contain: layout` here: it creates a stacking context that traps
+    // inner sash z-index inside the dockview's SC, so render-overlays mounted
+    // at the shell level paint on top of the sashes (and separators).
+
+    .dv-watermark-container {
+        position: absolute;
+        top: 0px;
+        left: 0px;
+        height: 100%;
+        width: 100%;
+        z-index: 1;
+    }
+
+    .dv-overlay-render-container {
+        position: relative;
+    }
+}
+
+.dv-groupview {
+    &.dv-active-group {
+        > .dv-tabs-and-actions-container {
+            .dv-tabs-container > .dv-tab {
+                &.dv-active-tab {
+                    background-color: var(
+                        --dv-activegroup-visiblepanel-tab-background-color
+                    );
+                    color: var(--dv-activegroup-visiblepanel-tab-color);
+                }
+                &.dv-inactive-tab {
+                    background-color: var(
+                        --dv-activegroup-hiddenpanel-tab-background-color
+                    );
+                    color: var(--dv-activegroup-hiddenpanel-tab-color);
+                }
+            }
+        }
+    }
+    &.dv-inactive-group {
+        > .dv-tabs-and-actions-container {
+            .dv-tabs-container > .dv-tab {
+                &.dv-active-tab {
+                    background-color: var(
+                        --dv-inactivegroup-visiblepanel-tab-background-color
+                    );
+                    color: var(--dv-inactivegroup-visiblepanel-tab-color);
+                }
+                &.dv-inactive-tab {
+                    background-color: var(
+                        --dv-inactivegroup-hiddenpanel-tab-background-color
+                    );
+                    color: var(--dv-inactivegroup-hiddenpanel-tab-color);
+                }
+            }
+        }
+    }
+}
+
+/**
+ * when a tab is dragged we lose the above stylings because they are conditional on parent elements
+ * therefore we also set some stylings for the dragging event
+ **/
+.dv-tab {
+    &.dv-tab-dragging {
+        background-color: var(
+            --dv-activegroup-visiblepanel-tab-background-color
+        );
+        color: var(--dv-activegroup-visiblepanel-tab-color);
+    }
+}
+
+// Visible on-screen hint shown while a keyboard-docking move (Ctrl+M) is armed.
+// Mirrors the screen-reader narration so sighted keyboard users get the same
+// "arrows / Enter / Escape" guidance. Purely visual (the element is
+// aria-hidden; the LiveRegion speaks the same text). Restyle or hide via this
+// class.
+.dv-keyboard-docking-hint {
+    position: absolute;
+    left: 50%;
+    bottom: 8px;
+    transform: translateX(-50%);
+    z-index: 100;
+    max-width: 90%;
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-size: 12px;
+    line-height: 1.4;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    pointer-events: none;
+    background-color: var(
+        --dv-context-menu-background-color,
+        var(--dv-group-view-background-color)
+    );
+    color: var(--dv-activegroup-visiblepanel-tab-color);
+    border: 1px solid var(--dv-tab-divider-color);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+}

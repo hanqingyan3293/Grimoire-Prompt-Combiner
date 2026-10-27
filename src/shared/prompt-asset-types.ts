@@ -13,6 +13,8 @@ export interface PromptAssetItem {
   group?: string
   categoryIds?: string[]
   createdAt: string
+  /** Source `PromptVisibilitySchema`: a `restricted` prompt is visible only to its bound targets. */
+  visibility?: 'global' | 'restricted'
   nsfw: boolean
   variantCount: number
   presetData?: PresetData

@@ -17,7 +17,7 @@ afterEach(resetWorkspace)
 
 describe('workspace panel persistence', () => {
   it('accepts all enabled tool panel types used by saved layouts', () => {
-    for (const type of ['tasks', 'wd14', 'comfyui', 'canvas', 'prompt-assets']) {
+    for (const type of ['tasks', 'wd14', 'comfyui', 'canvas', 'prompt-assets', 'logs', 'provider-manager', 'model-manager', 'tag-asset-manager', 'tag-batch', 'gallery-search']) {
       expect(isPersistablePanelType(type)).toBe(true)
     }
   })
@@ -99,6 +99,7 @@ describe('workspace panel persistence', () => {
   })
 
   it('keeps Agent and MCP panel types persistable', () => {
+    expect(isPersistablePanelType('agent')).toBe(true)
     expect(isPersistablePanelType('agent-sessions')).toBe(true)
     expect(isPersistablePanelType('mcp')).toBe(true)
   })
@@ -119,8 +120,54 @@ describe('workspace panel persistence', () => {
     }
     useWorkspaceStore.getState().applyPersistenceDocument(1, document)
     const panel = useWorkspaceStore.getState().findPanel('compose', 'agent-panel')!
-    expect(panel.type).toBe('mcp')
-    expect(panel.tabs?.map(tab => tab.type)).toEqual(['agent-sessions', 'mcp'])
+    expect(panel.type).toBe('agent')
+    expect(panel.tabs?.map(tab => tab.type)).toEqual(['agent', 'agent'])
+    expect(panel.tabs?.map(tab => tab.mode)).toEqual(['sessions', 'mcp'])
+  })
+
+  it('applies a semantic document without losing floating and popout state', () => {
+    resetWorkspace()
+    const document = useWorkspaceStore.getState().getWorkspaceDocument('compose')
+    const floatingEditor = document.editors['main-workbench']
+    const semantic = {
+      ...document,
+      floatingGroups: [{ id: 'float_main', editorIds: [floatingEditor.id], activeEditorId: floatingEditor.id, x: 40, y: 50, width: 640, height: 480, zIndex: 4, maximized: false }],
+      popouts: [{ id: 'compose:main-workbench', editorIds: [floatingEditor.id], activeEditorId: floatingEditor.id, open: true, x: 60, y: 70, width: 900, height: 700, maximized: false }],
+    }
+    useWorkspaceStore.getState().applyWorkspaceDocument(semantic)
+    expect(useWorkspaceStore.getState().floatingPanels.compose).toContain('main-workbench')
+    expect(useWorkspaceStore.getState().popoutPanels.compose).toContain('main-workbench')
+    expect(useWorkspaceStore.getState().floatingPositions.compose['main-workbench']).toMatchObject({ width: 640, height: 480 })
+    expect(useWorkspaceStore.getState().popoutBounds.compose['main-workbench']).toMatchObject({ width: 900, height: 700 })
+  })
+
+  it('keeps valid custom workspace slots during sanitization', () => {
+    const state = useWorkspaceStore.getState()
+    useWorkspaceStore.getState().applyPersistenceDocument(2, {
+      version: 2,
+      activeWorkspaceId: 'workspace_custom',
+      workspaces: [{ id: 'workspace_custom', title: '自定义', slots: [{ id: 'only', type: 'canvas', className: 'flex-1' }] }],
+      layouts: { workspace_custom: { kind: 'panel', id: 'only', type: 'canvas' } },
+      maximizedPanels: {}, floatingPanels: {}, floatingPositions: {}, popoutPanels: {}, popoutBounds: {}, layoutPresets: [],
+    })
+    const custom = useWorkspaceStore.getState().workspaces.find(workspace => workspace.id === 'workspace_custom')
+    expect(custom?.slots).toEqual([{ id: 'only', type: 'canvas', className: 'flex-1' }])
+    expect(state.workspaces.some(workspace => workspace.id === 'compose')).toBe(true)
+  })
+
+  it('maps legacy AI panels to the unified Agent editor while preserving the mode', () => {
+    resetWorkspace()
+    const state = useWorkspaceStore.getState()
+    state.applyPersistenceDocument(3, {
+      version: 2,
+      activeWorkspaceId: 'compose',
+      workspaces: state.workspaces,
+      layouts: { compose: { kind: 'panel', id: 'legacy-ai', type: 'ai-vision' } },
+      maximizedPanels: {}, floatingPanels: {}, floatingPositions: {}, popoutPanels: {}, popoutBounds: {}, layoutPresets: [],
+    })
+    const panel = useWorkspaceStore.getState().findPanel('compose', 'legacy-ai')
+    expect(panel?.type).toBe('agent')
+    expect(panel?.tabs?.[0].mode).toBe('vision')
   })
 })
 

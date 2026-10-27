@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
+import { useUnifiedAgentStore } from '../../stores/unified-agent.store'
 
 function canvasEntryUrl() {
   if (window.location.protocol === 'file:') return new URL('../canvas.html', import.meta.url).toString()
@@ -13,6 +14,7 @@ export function CanvasVendorPanel() {
   const [status, setStatus] = useState<CanvasFrameStatus>('loading')
   const [error, setError] = useState('')
   const [reloadKey, setReloadKey] = useState(0)
+  const mirrorSessionRef = useRef<{ projectId: string; sessionId: string } | null>(null)
 
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout> | null = setTimeout(() => {
@@ -33,6 +35,9 @@ export function CanvasVendorPanel() {
         timer = null
         setStatus('ready')
         setError('')
+      }
+      if (event.data?.type === 'grimoire:canvas-agent-mirror') {
+        void mirrorCanvasAgentEvent(event.data, mirrorSessionRef)
       }
       if (event.data?.type === 'grimoire:canvas-error') {
         if (timer) clearTimeout(timer)
@@ -77,4 +82,30 @@ export function CanvasVendorPanel() {
       )}
     </div>
   )
+}
+
+async function mirrorCanvasAgentEvent(data: { projectId?: string; kind?: 'message' | 'event'; payload?: Record<string, unknown> }, sessionRef: React.MutableRefObject<{ projectId: string; sessionId: string } | null>) {
+  const projectId = String(data.projectId || 'unknown')
+  if (!data.kind || !data.payload) return
+  try {
+    if (!sessionRef.current || sessionRef.current.projectId !== projectId) {
+      const activeSessionId = useUnifiedAgentStore.getState().activeSessionId
+      const active = activeSessionId ? await window.api.ai.sessions.get(activeSessionId).catch(() => null) : null
+      const existing = await window.api.ai.sessions.list({ kind: 'canvas', limit: 100 })
+      const match = active?.session || existing.find(item => item.metadata?.projectId === projectId)
+      const session = match || await window.api.ai.sessions.create({ kind: 'canvas', runtime: 'codex', title: '画布 Agent · ' + projectId, metadata: { projectId, source: 'vendor-agent' } })
+      sessionRef.current = { projectId, sessionId: session.id }
+      useUnifiedAgentStore.getState().setActiveSessionId(session.id)
+    }
+    const sessionId = sessionRef.current.sessionId
+    if (data.kind === 'message') {
+      const payload = data.payload
+      const role = payload.role === 'user' || payload.role === 'tool' || payload.role === 'system' ? payload.role : 'assistant'
+      await window.api.ai.sessions.appendMessage({ sessionId, role, content: { text: String(payload.text || ''), title: payload.title }, attachments: Array.isArray(payload.attachments) ? payload.attachments : [] })
+    } else {
+      await window.api.ai.sessions.appendEvent({ sessionId, eventType: String(data.payload.eventType || 'canvas-agent-event'), payload: data.payload })
+    }
+  } catch {
+    // Mirroring must never interrupt the Vendor Agent's real-time canvas flow.
+  }
 }

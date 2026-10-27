@@ -25,7 +25,7 @@ function normalizeMessages(messages: AIMessage[]): Array<{ role: string; content
 /** 发送聊天请求（流式） */
 export async function chatStream(
   messages: AIMessage[],
-  provider: { api_key: string; api_endpoint: string; api_model: string },
+  provider: { api_key: string; api_endpoint: string; api_model: string; protocol?: 'chat_completions' | 'responses' },
   onChunk: (text: string) => void,
   onDone: (fullText: string) => void,
   onError: (error: string) => void,
@@ -38,7 +38,8 @@ export async function chatStream(
     return
   }
   
-  const endpoint = settings.api_endpoint.replace(/\/+$/, '') + '/chat/completions'
+  const protocol = provider.protocol || 'chat_completions'
+  const endpoint = settings.api_endpoint.replace(/\/+$/, '') + (protocol === 'responses' ? '/responses' : '/chat/completions')
   let fullText = ''
   
   try {
@@ -48,11 +49,9 @@ export async function chatStream(
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${settings.api_key}`,
       },
-      body: JSON.stringify({
-        model: settings.api_model,
-        messages: normalizeMessages(messages),
-        stream: true,
-      }),
+      body: JSON.stringify(protocol === 'responses'
+        ? { model: settings.api_model, input: normalizeMessages(messages).map(message => ({ role: message.role, content: [{ type: 'input_text', text: message.content }] })), stream: true }
+        : { model: settings.api_model, messages: normalizeMessages(messages), stream: true }),
       signal,
     })
     
@@ -91,7 +90,7 @@ export async function chatStream(
         
         try {
           const parsed = JSON.parse(data)
-          const content = parsed.choices?.[0]?.delta?.content
+          const content = protocol === 'responses' ? parsed.delta : parsed.choices?.[0]?.delta?.content
           if (content) {
             fullText += content
             onChunk(content)
@@ -116,7 +115,7 @@ export async function chatStream(
 export async function analyzeImage(
   imageBase64: string,
   prompt: string,
-  provider?: { api_key: string; api_endpoint: string; api_model: string }
+  provider?: { api_key: string; api_endpoint: string; api_model: string; protocol?: 'chat_completions' | 'responses' }
 ): Promise<string> {
   const settings = provider || { api_key: '', api_endpoint: 'https://api.openai.com/v1', api_model: 'gpt-4o' }
   
@@ -124,7 +123,8 @@ export async function analyzeImage(
     throw new Error('请先在设置中填入 API Key')
   }
   
-  const endpoint = settings.api_endpoint.replace(/\/+$/, '') + '/chat/completions'
+  const protocol = provider?.protocol || 'chat_completions'
+  const endpoint = settings.api_endpoint.replace(/\/+$/, '') + (protocol === 'responses' ? '/responses' : '/chat/completions')
   
   const response = await fetch(endpoint, {
     method: 'POST',
@@ -132,20 +132,9 @@ export async function analyzeImage(
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${settings.api_key}`,
     },
-    body: JSON.stringify({
-      model: settings.api_model,
-      messages: [{
-        role: 'user',
-        content: [
-          { type: 'text', text: prompt },
-          {
-            type: 'image_url',
-            image_url: { url: `data:image/png;base64,${imageBase64}` },
-          },
-        ],
-      }],
-      max_tokens: 2000,
-    }),
+    body: JSON.stringify(protocol === 'responses'
+      ? { model: settings.api_model, input: [{ role: 'user', content: [{ type: 'input_text', text: prompt }, { type: 'input_image', image_url: 'data:image/png;base64,' + imageBase64 }] }], max_output_tokens: 2000 }
+      : { model: settings.api_model, messages: [{ role: 'user', content: [{ type: 'text', text: prompt }, { type: 'image_url', image_url: { url: 'data:image/png;base64,' + imageBase64 } }] }], max_tokens: 2000 }),
   })
   
   if (!response.ok) {
@@ -157,7 +146,7 @@ export async function analyzeImage(
   }
   
   const data = await response.json()
-  return data.choices?.[0]?.message?.content || ''
+  return protocol === 'responses' ? data.output_text || '' : data.choices?.[0]?.message?.content || ''
 }
 
 /** 保存聊天消息 */

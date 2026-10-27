@@ -1,0 +1,28 @@
+.dv-tabs-overflow-dropdown-default {
+    height: 100%;
+    // Keep the padding inside the 100% header height. Without border-box the
+    // vertical padding is added on top of `height: 100%`, making the control
+    // taller than the header so its hover background spills below the tab strip.
+    box-sizing: border-box;
+    color: var(--dv-activegroup-hiddenpanel-tab-color);
+
+    margin: var(--dv-tab-margin);
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+    padding: 0.25rem 0.5rem;
+    cursor: pointer;
+
+    > span {
+        padding-left: 0.25rem;
+    }
+
+    > svg {
+        transform: rotate(90deg);
+    }
+
+    &:hover {
+        border-radius: 2px;
+        background-color: var(--dv-icon-hover-background-color);
+    }
+}

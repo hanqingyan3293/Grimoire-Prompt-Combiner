@@ -29,6 +29,7 @@ function rowToHistory(row: unknown[]): WD14HistoryRecord {
     status: row[7] === "failed" ? "failed" : "succeeded",
     error_message: row[8] == null ? null : String(row[8]),
     image_snapshot_available: typeof row[9] === 'string' && Boolean(row[9]) && fs.existsSync(String(row[9])),
+    image_snapshot_path: typeof row[9] === 'string' && row[9] ? String(row[9]) : null,
     created_at: String(row[11] || row[9]),
   }
 }

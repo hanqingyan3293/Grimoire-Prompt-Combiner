@@ -1,0 +1,318 @@
+{
+  "source": "Cherry Studio 2.1.4",
+  "method": "Unchanged authentic generated tree plus byte-identical route staging",
+  "license": "AGPL-3.0 (LICENSE preserved)",
+  "routeCount": 60,
+  "files": [
+    {
+      "input": "src/renderer/routeTree.gen.ts",
+      "output": "routeTree.gen.ts",
+      "sha256": "66318fce25d3f1b33b0401edeb4bfeff87ae0428a9fb8534146022992a2bc5d9"
+    },
+    {
+      "input": "src/renderer/routes/__root.tsx",
+      "output": "routes/__root.tsx",
+      "sha256": "1abda32c30c8c779bc702f292e88493f13baf2b922d25830a49e3eac283fc3ca"
+    },
+    {
+      "input": "src/renderer/routes/app.tsx",
+      "output": "routes/app.tsx",
+      "sha256": "a37bc4a31c84b82cfad3d1c609a95e2dbc434675bf489017f44d79dbe828f6f0"
+    },
+    {
+      "input": "src/renderer/routes/settings.tsx",
+      "output": "routes/settings.tsx",
+      "sha256": "8f319b553e3f0877044174b59c53b14f397a4c3dbba33ef3cff17869f279b69e"
+    },
+    {
+      "input": "src/renderer/routes/app/agents.tsx",
+      "output": "routes/app/agents.tsx",
+      "sha256": "da3c521f76890087daab89efdb60c0ba90ea0b78be3383d50735ae36ef98c5d6"
+    },
+    {
+      "input": "src/renderer/routes/app/browser.tsx",
+      "output": "routes/app/browser.tsx",
+      "sha256": "2a0f2cc7c47b9e00cecd5b331b743b03058a650825bf82535c0bf4bd68f5172d"
+    },
+    {
+      "input": "src/renderer/routes/app/chat.tsx",
+      "output": "routes/app/chat.tsx",
+      "sha256": "b3de9d65dcdcf3a8311a91a38ad1f9ff5ef8a9dec0a31eadceaf04e6ea190472"
+    },
+    {
+      "input": "src/renderer/routes/app/code.tsx",
+      "output": "routes/app/code.tsx",
+      "sha256": "45badd575b43fee59183a5f6a59fa84b38101270b5d07451aa8729a63a272192"
+    },
+    {
+      "input": "src/renderer/routes/app/file-preview.tsx",
+      "output": "routes/app/file-preview.tsx",
+      "sha256": "db818bc83e7ebf4473fdf83163f1b907b53674da602a02897eada504676b6729"
+    },
+    {
+      "input": "src/renderer/routes/app/files.tsx",
+      "output": "routes/app/files.tsx",
+      "sha256": "ccaac4e8b0d81f2eda57aa5aa262857841d26a062d2f15b044ddcac1512bf252"
+    },
+    {
+      "input": "src/renderer/routes/app/knowledge.tsx",
+      "output": "routes/app/knowledge.tsx",
+      "sha256": "4f2f39acd27270ba6b05706afc9b6f6d679bfb040ebb5596296ad163ecd5ba51"
+    },
+    {
+      "input": "src/renderer/routes/app/launchpad.tsx",
+      "output": "routes/app/launchpad.tsx",
+      "sha256": "12c15d53dd09bf777d7ac98bd3ac60dd5909079a0bea49cd2e759d55705cbab1"
+    },
+    {
+      "input": "src/renderer/routes/app/notes.tsx",
+      "output": "routes/app/notes.tsx",
+      "sha256": "7f96d546c04efe2c51448fa67e788bc33476c53f178a90af21ad2443d36b6df3"
+    },
+    {
+      "input": "src/renderer/routes/app/release-notes.tsx",
+      "output": "routes/app/release-notes.tsx",
+      "sha256": "2e205731b1379b9b00fee61d74533f7d9240c627c646524460e598d8c1087930"
+    },
+    {
+      "input": "src/renderer/routes/app/translate.tsx",
+      "output": "routes/app/translate.tsx",
+      "sha256": "ef4cced1001266cf454809b513a791484fea156ba1b01059de5b75980d088f97"
+    },
+    {
+      "input": "src/renderer/routes/settings.index.tsx",
+      "output": "routes/settings.index.tsx",
+      "sha256": "0caa3a3491ad4d0f5c975cbcb7afee0429e8b041c6712ec3a781cd1ea1cd0fb9"
+    },
+    {
+      "input": "src/renderer/routes/settings/about.tsx",
+      "output": "routes/settings/about.tsx",
+      "sha256": "375e56b73a6e3a6057ce1911fc9224936f13340778e0410ffc923627dc01a858"
+    },
+    {
+      "input": "src/renderer/routes/settings/api-gateway.tsx",
+      "output": "routes/settings/api-gateway.tsx",
+      "sha256": "1db52b22a2dc1f68904a086d3877e9c53339e69577f4f28abdf4997bd67645c6"
+    },
+    {
+      "input": "src/renderer/routes/settings/appearance.tsx",
+      "output": "routes/settings/appearance.tsx",
+      "sha256": "40e50128aa6f300848edbcb2546f0f6a3d31680e3656ac453643a4cc452cd3c6"
+    },
+    {
+      "input": "src/renderer/routes/settings/archive.tsx",
+      "output": "routes/settings/archive.tsx",
+      "sha256": "12519ba6da68a63f2428cdc7b9eaee58c9cd88105160734a051282629ba41ba3"
+    },
+    {
+      "input": "src/renderer/routes/settings/browser.tsx",
+      "output": "routes/settings/browser.tsx",
+      "sha256": "0a4b5bb3fff25c77dc5678037dea6b43c1616aa285b04e697ad96fb8ab469d1d"
+    },
+    {
+      "input": "src/renderer/routes/settings/channels.tsx",
+      "output": "routes/settings/channels.tsx",
+      "sha256": "47cec9944694b54e3fe61d25b6e0ab0c93879fc1a0eac4d88abecbe0b3a0cfcf"
+    },
+    {
+      "input": "src/renderer/routes/settings/code-execution.tsx",
+      "output": "routes/settings/code-execution.tsx",
+      "sha256": "9b2a6b77bf309bfadff01a80aa7bb1ad1c04618458d91336b27ff388c193ffd6"
+    },
+    {
+      "input": "src/renderer/routes/settings/data.tsx",
+      "output": "routes/settings/data.tsx",
+      "sha256": "6e7ae909956f0f34735fba0ceadcd674f6f496dd2020b930befe5c74281acd04"
+    },
+    {
+      "input": "src/renderer/routes/settings/dependencies.tsx",
+      "output": "routes/settings/dependencies.tsx",
+      "sha256": "30b3a994e6359873a51484d24a29715bbcfbfad69bfbcb379e0ad7755f33e3c4"
+    },
+    {
+      "input": "src/renderer/routes/settings/device-connections.tsx",
+      "output": "routes/settings/device-connections.tsx",
+      "sha256": "de89a98807f01576d345c3ac54cee34f4ee0bc25645ed398417e2d29fb25704d"
+    },
+    {
+      "input": "src/renderer/routes/settings/file-processing.tsx",
+      "output": "routes/settings/file-processing.tsx",
+      "sha256": "c9fa28f8b7e1505c9bc6822b06de44c5b0759b507da08131e0fe4e3f77dbd45c"
+    },
+    {
+      "input": "src/renderer/routes/settings/general.tsx",
+      "output": "routes/settings/general.tsx",
+      "sha256": "6a1f20687f13f59d21e28c4a1b8278bd11fbcd4d372ee5739fa192c4b5fb1970"
+    },
+    {
+      "input": "src/renderer/routes/settings/local-models.tsx",
+      "output": "routes/settings/local-models.tsx",
+      "sha256": "0ef7b71a46aa0a49f393fea2b703e465594f3d4f17e02fbbd87185269093dd1d"
+    },
+    {
+      "input": "src/renderer/routes/settings/mcp.tsx",
+      "output": "routes/settings/mcp.tsx",
+      "sha256": "9d8e4cfba0ab664be8f5e7fd1c3476fbfe9caf4c0800f1381f422e99af7103dd"
+    },
+    {
+      "input": "src/renderer/routes/settings/model.tsx",
+      "output": "routes/settings/model.tsx",
+      "sha256": "37331d9e8a924fd0a1be39c272764b1e1407394211070e24e01d56106e6c2430"
+    },
+    {
+      "input": "src/renderer/routes/settings/notifications.tsx",
+      "output": "routes/settings/notifications.tsx",
+      "sha256": "970cfff99bde8165dd3312471184201bc99f916216e70a3b73ce35996221f846"
+    },
+    {
+      "input": "src/renderer/routes/settings/ocr.tsx",
+      "output": "routes/settings/ocr.tsx",
+      "sha256": "98dd1c80e88343e252aaaa447ad8391f2dcefddebb7d226fa378f22373b3634c"
+    },
+    {
+      "input": "src/renderer/routes/settings/prompts.tsx",
+      "output": "routes/settings/prompts.tsx",
+      "sha256": "65db6f7a5b61985555615b2d96b284c9e8b08a9bb1aaa348c76d985bf7f3120b"
+    },
+    {
+      "input": "src/renderer/routes/settings/provider.tsx",
+      "output": "routes/settings/provider.tsx",
+      "sha256": "6b136dde277600bb377a822adfb0d90336566e546f7238eb180f9a1e29aa6459"
+    },
+    {
+      "input": "src/renderer/routes/settings/quick-assistant.tsx",
+      "output": "routes/settings/quick-assistant.tsx",
+      "sha256": "766c03f826b42b2c361abbc4160dc52239a55ed1e217975d126db81e690431d6"
+    },
+    {
+      "input": "src/renderer/routes/settings/scheduled-tasks.tsx",
+      "output": "routes/settings/scheduled-tasks.tsx",
+      "sha256": "170fbefbd601605ecd38612378f116102a745bce542ee990e026de7e3dc6f836"
+    },
+    {
+      "input": "src/renderer/routes/settings/screenshot.tsx",
+      "output": "routes/settings/screenshot.tsx",
+      "sha256": "0c59e2afa89c84bce1a90e312f0954c0623828c6d6e9186e889bf174badd2cd6"
+    },
+    {
+      "input": "src/renderer/routes/settings/search.tsx",
+      "output": "routes/settings/search.tsx",
+      "sha256": "f43a78fec7c90689946461c91876c7c41749b164fd9178382b9d3bec81357e8e"
+    },
+    {
+      "input": "src/renderer/routes/settings/selection-assistant.tsx",
+      "output": "routes/settings/selection-assistant.tsx",
+      "sha256": "2ab2bd061cfb1a798f124e129aab4fc042381c9fbd5ebdb665ecf4de8905b884"
+    },
+    {
+      "input": "src/renderer/routes/settings/shortcut.tsx",
+      "output": "routes/settings/shortcut.tsx",
+      "sha256": "c7e7262087d9824b071c71230d260edf8fc6a0db292e76a4065091b3018ad492"
+    },
+    {
+      "input": "src/renderer/routes/settings/skills.tsx",
+      "output": "routes/settings/skills.tsx",
+      "sha256": "44c99a8a21a154752ba7acf2f7b2500b3274da391c91e5f38fde626f752c4742"
+    },
+    {
+      "input": "src/renderer/routes/settings/system.tsx",
+      "output": "routes/settings/system.tsx",
+      "sha256": "6cf9e5888969b83b125894175ead77852fbdaebd04f914405b7de59d16fb256d"
+    },
+    {
+      "input": "src/renderer/routes/settings/usage.tsx",
+      "output": "routes/settings/usage.tsx",
+      "sha256": "39720af3f946d363a97f06775fd03bbd5c2b5fbbb665c7d1f356b60556cf28c4"
+    },
+    {
+      "input": "src/renderer/routes/settings/websearch.tsx",
+      "output": "routes/settings/websearch.tsx",
+      "sha256": "9ca97e2831bad8a2156b9610ac86e9fdbdf394da3d6cd20bc7e83280b561f20c"
+    },
+    {
+      "input": "src/renderer/routes/app/mini-app.index.tsx",
+      "output": "routes/app/mini-app.index.tsx",
+      "sha256": "89a8a54a498d6537f9534881f068918120031f5228dfd913f58d93cde9b413b9"
+    },
+    {
+      "input": "src/renderer/routes/app/mini-app/$appId.tsx",
+      "output": "routes/app/mini-app/$appId.tsx",
+      "sha256": "8a52d2df20721af337ce71b4720c47078f0f630090a403a0446db418247f1839"
+    },
+    {
+      "input": "src/renderer/routes/app/paintings.index.tsx",
+      "output": "routes/app/paintings.index.tsx",
+      "sha256": "640026590b9547e6bc71ab050cb2c5d9743a0ee38904ef48e27f414862865925"
+    },
+    {
+      "input": "src/renderer/routes/app/paintings/$.tsx",
+      "output": "routes/app/paintings/$.tsx",
+      "sha256": "f0ae1e8bf3db5d51d47914a263da92cf2d2a0d8b4ff17e80565ebbdf72f88ace"
+    },
+    {
+      "input": "src/renderer/routes/settings/mcp.index.tsx",
+      "output": "routes/settings/mcp.index.tsx",
+      "sha256": "4191cc3d8d26f4655fd9fbcd2ce02f6e94f688a7abf37e9c74ded372ce989a95"
+    },
+    {
+      "input": "src/renderer/routes/settings/mcp/$.tsx",
+      "output": "routes/settings/mcp/$.tsx",
+      "sha256": "1ade697c7bd2746f6c7410a3ff69bf981a14bfd32478b6b06dae9c0a01d43998"
+    },
+    {
+      "input": "src/renderer/routes/settings/mcp/builtin.tsx",
+      "output": "routes/settings/mcp/builtin.tsx",
+      "sha256": "ba612e5c0ed3da420c8ab4a6183a6bea3b87cd533782f53e463ca4a239f4dc39"
+    },
+    {
+      "input": "src/renderer/routes/settings/mcp/marketplaces.tsx",
+      "output": "routes/settings/mcp/marketplaces.tsx",
+      "sha256": "33b897ee2272ce24fbed3054774fcd253c0878718ba4004b452b97b3b71b12f7"
+    },
+    {
+      "input": "src/renderer/routes/settings/mcp/mcp-install.tsx",
+      "output": "routes/settings/mcp/mcp-install.tsx",
+      "sha256": "f691d9137816d8547347201c580c3e0323fa1a2cde1ae0831b39678f4a2c096a"
+    },
+    {
+      "input": "src/renderer/routes/settings/mcp/npx-search.tsx",
+      "output": "routes/settings/mcp/npx-search.tsx",
+      "sha256": "473e4b5489254a1017d7cb0ac06b64677798924f74175be3572629cdbec601f8"
+    },
+    {
+      "input": "src/renderer/routes/settings/mcp/servers.tsx",
+      "output": "routes/settings/mcp/servers.tsx",
+      "sha256": "8b1ad43ca3c4e0b90641e877a4463db5e7139f5336f1ccf5ce7e9eb8af398115"
+    },
+    {
+      "input": "src/renderer/routes/settings/scheduled-tasks.index.tsx",
+      "output": "routes/settings/scheduled-tasks.index.tsx",
+      "sha256": "c114f8ff61f9e4155cb19a63833a1f2cb5d609f05fc7398c78feeab450560b26"
+    },
+    {
+      "input": "src/renderer/routes/settings/scheduled-tasks.$taskId.tsx",
+      "output": "routes/settings/scheduled-tasks.$taskId.tsx",
+      "sha256": "689c82ba40301377560ccc5fb8db89f091804d67e214da929cbe61554aaf8f12"
+    },
+    {
+      "input": "src/renderer/routes/settings/skills.index.tsx",
+      "output": "routes/settings/skills.index.tsx",
+      "sha256": "27004392649ee9735c7d06f52e52148afa686e69cd1cbdaf4c3b4dffd0e03e69"
+    },
+    {
+      "input": "src/renderer/routes/settings/skills.$skillId.tsx",
+      "output": "routes/settings/skills.$skillId.tsx",
+      "sha256": "7a479c901ebf9a18e7ad24ed2e8dda3dfd2692c89266fe7b3895683ac6ec5b50"
+    },
+    {
+      "input": "src/renderer/routes/settings/mcp/settings.$serverId.tsx",
+      "output": "routes/settings/mcp/settings.$serverId.tsx",
+      "sha256": "48e3a409e7699d49f4b12847727c223b98b064c2f238b8d1f830a162d3c0d75d"
+    },
+    {
+      "input": "LICENSE",
+      "output": "LICENSE",
+      "sha256": "0d96a4ff68ad6d4b6f1f30f713b18d5184912ba8dd389f86aa7710db079abcb0"
+    }
+  ]
+}

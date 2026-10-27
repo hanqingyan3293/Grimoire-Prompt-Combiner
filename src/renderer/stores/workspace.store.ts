@@ -1,6 +1,6 @@
 import { create } from "zustand"
 import type { PanelType } from "../components/workspace/panelTypes"
-import { workspaceDocumentFromLegacy, type WorkspaceDocument } from "../components/workspace/workspace-document"
+import { normalizeWorkspaceDocument, workspaceDocumentFromLegacy, workspaceDocumentToLegacy, type WorkspaceDocument, type WorkspaceDocumentOptions } from "../components/workspace/workspace-document"
 
 export interface WorkspaceSlot {
   id: string
@@ -15,6 +15,7 @@ export type MergeSide = "left" | "right" | "up" | "down"
 export interface WorkspaceTab {
   id: string
   type: PanelType
+  mode?: "chat" | "vision" | "drawing" | "canvas" | "sessions" | "mcp" | "logs"
 }
 
 export interface WorkspacePanelRect {
@@ -46,8 +47,10 @@ export type WorkspaceLayoutNode =
 export type WorkspaceLayouts = Record<string, WorkspaceLayoutNode>
 export type MaximizedPanels = Record<string, string | null>
 export type FloatingPanels = Record<string, string[]>
-export type FloatingPositions = Record<string, Record<string, { x: number; y: number; zIndex: number }>>
+export type FloatingPosition = { x: number; y: number; zIndex: number; width?: number; height?: number }
+export type FloatingPositions = Record<string, Record<string, FloatingPosition>>
 export type PopoutPanels = Record<string, string[]>
+export type PopoutBounds = Record<string, Record<string, { x: number; y: number; width: number; height: number; maximized?: boolean }>>
 type VersionedLayoutsStorage = { version: number; layouts: WorkspaceLayouts }
 type VersionedWorkspacesStorage = { version: number; workspaces: WorkspaceDefinition[] }
 type VersionedLayoutPresetsStorage = { version: number; presets: WorkspaceLayoutPreset[] }
@@ -66,7 +69,7 @@ export interface WorkspaceDefinition {
 }
 
 export type WorkspacePersistenceDocument = {
-  version: 1
+  version: 1 | 2
   activeWorkspaceId: string
   workspaces: WorkspaceDefinition[]
   layouts: WorkspaceLayouts
@@ -74,7 +77,9 @@ export type WorkspacePersistenceDocument = {
   floatingPanels: FloatingPanels
   floatingPositions: FloatingPositions
   popoutPanels: PopoutPanels
+  popoutBounds: PopoutBounds
   layoutPresets: WorkspaceLayoutPreset[]
+  semanticDocuments?: Record<string, WorkspaceDocument>
 }
 
 export const WORKSPACES: WorkspaceDefinition[] = [
@@ -92,7 +97,7 @@ export const WORKSPACES: WorkspaceDefinition[] = [
     title: "AI",
     slots: [
       { id: "left-sidebar", type: "tag-sidebar", className: "w-[260px] min-w-[260px]" },
-      { id: "ai-chat", type: "ai-chat", className: "flex-1" },
+      { id: "agent-workspace", type: "agent", className: "flex-1" },
       { id: "right-sidebar", type: "utility-sidebar", className: "w-[320px] min-w-[320px]" },
     ],
   },
@@ -101,7 +106,7 @@ export const WORKSPACES: WorkspaceDefinition[] = [
     title: "识图",
     slots: [
       { id: "left-sidebar", type: "tag-sidebar", className: "w-[260px] min-w-[260px]" },
-      { id: "ai-vision", type: "ai-vision", className: "flex-1" },
+      { id: "agent-workspace", type: "agent", className: "flex-1" },
       { id: "right-sidebar", type: "utility-sidebar", className: "w-[320px] min-w-[320px]" },
     ],
   },
@@ -120,7 +125,7 @@ export const WORKSPACES: WorkspaceDefinition[] = [
     slots: [
       { id: "left-sidebar", type: "tag-sidebar", className: "w-[320px] min-w-[320px]" },
       { id: "main-workbench", type: "prompt-workbench", className: "flex-1" },
-      { id: "presets", type: "presets", className: "w-[320px] min-w-[320px]" },
+      { id: "prompt-assets", type: "prompt-assets", className: "w-[320px] min-w-[320px]" },
     ],
   },
   {
@@ -145,9 +150,12 @@ interface WorkspaceState {
   floatingPanels: FloatingPanels
   floatingPositions: FloatingPositions
   popoutPanels: PopoutPanels
+  popoutBounds: PopoutBounds
   layoutPresets: WorkspaceLayoutPreset[]
   setActiveWorkspace: (id: string) => void
   createWorkspace: () => void
+  duplicateWorkspace: (sourceWorkspaceId?: string) => void
+  deleteWorkspace: (workspaceId?: string) => void
   renameWorkspace: (id: string, title: string) => void
   setPanelType: (workspaceId: string, panelId: string, type: PanelType) => void
   addTab: (workspaceId: string, panelId: string, type: PanelType) => string | null
@@ -161,17 +169,22 @@ interface WorkspaceState {
   setMaximizedPanel: (workspaceId: string, panelId: string | null) => void
   setFloatingPanel: (workspaceId: string, panelId: string, floating: boolean) => void
   setFloatingPanelPosition: (workspaceId: string, panelId: string, position: { x: number; y: number }) => void
+  setFloatingPanelSize: (workspaceId: string, panelId: string, size: { width: number; height: number }) => void
   focusFloatingPanel: (workspaceId: string, panelId: string) => void
   setPopoutPanel: (workspaceId: string, panelId: string, open: boolean) => void
+  setPopoutBounds: (workspaceId: string, panelId: string, bounds: { x: number; y: number; width: number; height: number; maximized?: boolean }) => void
   resetWorkspace: () => void
   resetAllWorkspaces: () => void
   copyWorkspaceLayout: (sourceWorkspaceId: string, targetWorkspaceId: string) => void
   saveCurrentWorkspaceLayout: () => void
+  exportCurrentWorkspace: () => Promise<boolean>
+  importWorkspace: () => Promise<boolean>
   saveCurrentLayoutPreset: (name: string) => void
   applyLayoutPresetToCurrentWorkspace: (presetId: string) => void
   deleteLayoutPreset: (presetId: string) => void
   getLayout: (workspaceId: string) => WorkspaceLayoutNode
   getWorkspaceDocument: (workspaceId?: string) => WorkspaceDocument
+  applyWorkspaceDocument: (document: WorkspaceDocument) => void
   applyPersistenceDocument: (revision: number, document: unknown) => void
   setPersistenceRevision: (revision: number) => void
   setPersistenceError: (error: string | null) => void
@@ -186,6 +199,7 @@ const MAXIMIZED_STORAGE_KEY = "grimoire.workspaceMaximizedPanels"
 const FLOATING_STORAGE_KEY = "grimoire.workspaceFloatingPanels"
 const FLOATING_POSITIONS_STORAGE_KEY = "grimoire.workspaceFloatingPositions"
 const POPOUT_STORAGE_KEY = "grimoire.workspacePopoutPanels"
+const POPOUT_BOUNDS_STORAGE_KEY = "grimoire.workspacePopoutBounds"
 const LAYOUT_PRESETS_STORAGE_KEY = "grimoire.workspaceLayoutPresets"
 const WORKSPACES_STORAGE_VERSION = 1
 const LAYOUTS_STORAGE_VERSION = 2
@@ -204,19 +218,51 @@ const VALID_PANEL_TYPES = new Set<PanelType>([
   "ai-assistant",
   "ai-chat",
   "ai-vision",
+  "agent",
   "agent-sessions",
   "mcp",
   "settings",
+  "logs",
+  "provider-manager",
+  "model-manager",
   "tasks",
   "wd14",
   "comfyui",
   "canvas",
   "prompt-assets",
   "tag-asset-manager",
+  "tag-batch",
+  "gallery-search",
 ])
 
 export function isPersistablePanelType(value: unknown): value is PanelType {
   return typeof value === 'string' && VALID_PANEL_TYPES.has(value as PanelType)
+}
+
+const LEGACY_PANEL_ALIASES: Record<string, PanelType> = {
+  "ai-assistant": "agent",
+  "ai-chat": "agent",
+  "ai-vision": "agent",
+  "agent-sessions": "agent",
+  mcp: "agent",
+  presets: "prompt-assets",
+}
+
+export function legacyPanelMode(value: unknown): WorkspaceTab["mode"] {
+  switch (value) {
+    case "ai-vision": return "vision"
+    case "ai-chat": return "chat"
+    case "ai-assistant": return "chat"
+    case "agent-sessions": return "sessions"
+    case "mcp": return "mcp"
+    case "logs": return "logs"
+    default: return undefined
+  }
+}
+
+export function normalizePersistedPanelType(value: unknown): PanelType | null {
+  if (typeof value !== "string") return null
+  return LEGACY_PANEL_ALIASES[value] || (isPersistablePanelType(value) ? value : null)
 }
 
 const createId = (prefix: string) => prefix + Math.random().toString(36).slice(2, 10)
@@ -244,10 +290,23 @@ function sanitizeWorkspaceDefinition(workspace: unknown): WorkspaceDefinition | 
   if (!workspace || typeof workspace !== "object") return null
   const value = workspace as Partial<WorkspaceDefinition>
   if (typeof value.id !== "string" || !value.id) return null
+  const fallback = WORKSPACES.find(item => item.id === value.id)?.slots || WORKSPACES[0].slots
+  const slots = Array.isArray(value.slots)
+    ? value.slots.map(slot => {
+      if (!slot || typeof slot !== "object") return null
+      const candidate = slot as Partial<WorkspaceSlot>
+      if (typeof candidate.id !== "string" || typeof candidate.type !== "string" || !isPersistablePanelType(candidate.type)) return null
+      return {
+        id: candidate.id,
+        type: candidate.type,
+        className: typeof candidate.className === "string" && candidate.className ? candidate.className : "flex-1",
+      }
+    }).filter(Boolean) as WorkspaceSlot[]
+    : []
   return {
     id: value.id,
     title: typeof value.title === "string" && value.title.trim() ? value.title.trim() : "未命名布局",
-    slots: WORKSPACES[0].slots,
+    slots: slots.length > 0 ? slots : fallback,
   }
 }
 
@@ -358,13 +417,15 @@ function sanitizeLayoutNode(
   const value = node as Partial<WorkspaceLayoutNode>
   if (value.kind === "panel") {
     const panelId = sanitizeLayoutId(value.id, "panel_", usedIds)
-    const panelType = isPersistablePanelType(value.type) ? value.type : FALLBACK_PANEL_TYPE
-    const rawTabs = Array.isArray(value.tabs) ? value.tabs : []
+    const panelType = normalizePersistedPanelType(value.type) || FALLBACK_PANEL_TYPE
+    const rawTabs = Array.isArray(value.tabs) && value.tabs.length ? value.tabs : [{ id: panelId, type: value.type }]
     const tabs = rawTabs.map((rawTab, index) => {
       const tab = rawTab && typeof rawTab === "object" ? rawTab as Partial<WorkspaceTab> : {}
+      const originalType = typeof tab.type === "string" ? tab.type : panelType
       return {
         id: sanitizeLayoutId(tab.id, index === 0 ? panelId : "tab_", usedIds),
-        type: isPersistablePanelType(tab.type) ? tab.type : panelType,
+        type: normalizePersistedPanelType(originalType) || panelType,
+        ...(legacyPanelMode(originalType) ? { mode: legacyPanelMode(originalType) } : {}),
       }
     })
     return {
@@ -428,7 +489,7 @@ function getInitialFloatingPositions(): FloatingPositions {
   try {
     const raw = window.localStorage.getItem(FLOATING_POSITIONS_STORAGE_KEY)
     const parsed = raw ? JSON.parse(raw) as FloatingPositions : {}
-    return parsed && typeof parsed === "object" ? parsed : {}
+    return sanitizeFloatingPositions(parsed)
   } catch { return {} }
 }
 
@@ -449,6 +510,69 @@ function getInitialPopoutPanels(): PopoutPanels {
 function savePopoutPanels(popoutPanels: PopoutPanels) {
   if (typeof window === "undefined") return
   window.localStorage.setItem(POPOUT_STORAGE_KEY, JSON.stringify(popoutPanels))
+}
+
+function getInitialPopoutBounds(): PopoutBounds {
+  if (typeof window === "undefined") return {}
+  try {
+    const raw = window.localStorage.getItem(POPOUT_BOUNDS_STORAGE_KEY)
+    const parsed = raw ? JSON.parse(raw) as PopoutBounds : {}
+    return sanitizePopoutBounds(parsed)
+  } catch { return {} }
+}
+
+function savePopoutBounds(popoutBounds: PopoutBounds) {
+  if (typeof window === "undefined") return
+  window.localStorage.setItem(POPOUT_BOUNDS_STORAGE_KEY, JSON.stringify(popoutBounds))
+}
+
+function finiteOr(value: unknown, fallback: number) {
+  const number = Number(value)
+  return Number.isFinite(number) ? number : fallback
+}
+
+function sanitizeFloatingPositions(raw: unknown): FloatingPositions {
+  if (!raw || typeof raw !== "object") return {}
+  const result: FloatingPositions = {}
+  for (const [workspaceId, workspaceValue] of Object.entries(raw as Record<string, unknown>)) {
+    if (!workspaceValue || typeof workspaceValue !== "object") continue
+    const positions: Record<string, FloatingPosition> = {}
+    for (const [panelId, panelValue] of Object.entries(workspaceValue as Record<string, unknown>)) {
+      if (!panelValue || typeof panelValue !== "object") continue
+      const value = panelValue as Record<string, unknown>
+      positions[panelId] = {
+        x: Math.max(-2000, Math.min(20000, Math.round(finiteOr(value.x, 20)))),
+        y: Math.max(-2000, Math.min(20000, Math.round(finiteOr(value.y, 20)))),
+        zIndex: Math.max(1, Math.min(100000, Math.round(finiteOr(value.zIndex, 1)))),
+        width: Math.max(320, Math.min(2400, Math.round(finiteOr(value.width, 520)))),
+        height: Math.max(240, Math.min(1800, Math.round(finiteOr(value.height, 680)))),
+      }
+    }
+    result[workspaceId] = positions
+  }
+  return result
+}
+
+function sanitizePopoutBounds(raw: unknown): PopoutBounds {
+  if (!raw || typeof raw !== "object") return {}
+  const result: PopoutBounds = {}
+  for (const [workspaceId, workspaceValue] of Object.entries(raw as Record<string, unknown>)) {
+    if (!workspaceValue || typeof workspaceValue !== "object") continue
+    const bounds: PopoutBounds[string] = {}
+    for (const [panelId, panelValue] of Object.entries(workspaceValue as Record<string, unknown>)) {
+      if (!panelValue || typeof panelValue !== "object") continue
+      const value = panelValue as Record<string, unknown>
+      bounds[panelId] = {
+        x: Math.max(-2000, Math.min(20000, Math.round(finiteOr(value.x, 80)))),
+        y: Math.max(-2000, Math.min(20000, Math.round(finiteOr(value.y, 80)))),
+        width: Math.max(560, Math.min(3000, Math.round(finiteOr(value.width, 1100)))),
+        height: Math.max(360, Math.min(2200, Math.round(finiteOr(value.height, 760)))),
+        maximized: value.maximized === true,
+      }
+    }
+    result[workspaceId] = bounds
+  }
+  return result
 }
 
 function getInitialLayoutPresets(): WorkspaceLayoutPreset[] {
@@ -641,7 +765,8 @@ export function normalizePanelTabs(node: Extract<WorkspaceLayoutNode, { kind: "p
   const tabs = Array.isArray(node.tabs) && node.tabs.length ? node.tabs : [{ id: node.id, type: node.type }]
   return tabs.map(tab => ({
     id: typeof tab.id === "string" && tab.id ? tab.id : node.id,
-    type: isPersistablePanelType(tab.type) ? tab.type : node.type,
+    type: normalizePersistedPanelType(tab.type) || node.type,
+    ...(tab.mode ? { mode: tab.mode } : {}),
   }))
 }
 
@@ -674,8 +799,21 @@ function clampRatio(ratio: unknown, fallback = 0.5) {
 const INITIAL_WORKSPACES = getInitialWorkspaces()
 
 export function createWorkspacePersistenceDocument(state = useWorkspaceStore.getState()): WorkspacePersistenceDocument {
+  const semanticDocuments: Record<string, WorkspaceDocument> = {}
+  for (const workspace of state.workspaces) {
+    const positions = state.floatingPositions[workspace.id] || {}
+    const options: WorkspaceDocumentOptions = {
+      floatingPanels: state.floatingPanels[workspace.id] || [],
+      floatingPositions: positions,
+      popoutPanels: state.popoutPanels[workspace.id] || [],
+      popoutBounds: state.popoutBounds[workspace.id] || {},
+      maximizedPanelId: state.maximizedPanels[workspace.id] || null,
+      presets: state.layoutPresets.map(preset => ({ id: preset.id, name: preset.name, root: workspaceDocumentFromLegacy(workspace.id, preset.layout).root, createdAt: preset.createdAt })),
+    }
+    semanticDocuments[workspace.id] = workspaceDocumentFromLegacy(workspace.id, state.getLayout(workspace.id), options)
+  }
   return {
-    version: 1,
+    version: 2,
     activeWorkspaceId: state.activeWorkspaceId,
     workspaces: state.workspaces,
     layouts: state.layouts,
@@ -683,7 +821,9 @@ export function createWorkspacePersistenceDocument(state = useWorkspaceStore.get
     floatingPanels: state.floatingPanels,
     floatingPositions: state.floatingPositions,
     popoutPanels: state.popoutPanels,
+    popoutBounds: state.popoutBounds,
     layoutPresets: state.layoutPresets,
+    semanticDocuments,
   }
 }
 
@@ -693,15 +833,21 @@ function sanitizePersistenceDocument(raw: unknown): WorkspacePersistenceDocument
     .map(sanitizeWorkspaceDefinition).filter(Boolean) as WorkspaceDefinition[])
   const layouts: WorkspaceLayouts = {}
   const rawLayouts = value.layouts && typeof value.layouts === "object" ? value.layouts : {}
+  const semanticDocuments = value.semanticDocuments && typeof value.semanticDocuments === "object" ? value.semanticDocuments : {}
   for (const workspace of workspaces) {
-    const sanitized = sanitizeLayoutNode((rawLayouts as WorkspaceLayouts)[workspace.id])
+    let rawLayout = (rawLayouts as WorkspaceLayouts)[workspace.id]
+    if (!rawLayout && semanticDocuments[workspace.id] && typeof semanticDocuments[workspace.id] === "object") {
+      try { rawLayout = workspaceDocumentToLegacy(normalizeWorkspaceDocument(semanticDocuments[workspace.id] as WorkspaceDocument)) as WorkspaceLayoutNode } catch {}
+    }
+    const sanitized = sanitizeLayoutNode(rawLayout)
     if (sanitized) layouts[workspace.id] = normalizedLegacyNode(sanitized)
   }
   const activeWorkspaceId = workspaces.some(item => item.id === value.activeWorkspaceId) ? value.activeWorkspaceId! : workspaces[0].id
   const maximizedPanels = value.maximizedPanels && typeof value.maximizedPanels === "object" ? value.maximizedPanels : {}
   const floatingPanels = value.floatingPanels && typeof value.floatingPanels === "object" ? value.floatingPanels : {}
-  const floatingPositions = value.floatingPositions && typeof value.floatingPositions === "object" ? value.floatingPositions : {}
+  const floatingPositions = sanitizeFloatingPositions(value.floatingPositions)
   const popoutPanels = value.popoutPanels && typeof value.popoutPanels === "object" ? value.popoutPanels : {}
+  const popoutBounds = sanitizePopoutBounds(value.popoutBounds)
   const layoutPresets = Array.isArray(value.layoutPresets) ? value.layoutPresets.map(preset => {
     const layout = sanitizeLayoutNode(preset?.layout)
     if (!layout) return null
@@ -712,7 +858,7 @@ function sanitizePersistenceDocument(raw: unknown): WorkspacePersistenceDocument
       createdAt: typeof preset.createdAt === "string" ? preset.createdAt : new Date().toISOString(),
     }
   }).filter(Boolean) as WorkspaceLayoutPreset[] : []
-  return { version: 1, activeWorkspaceId, workspaces, layouts, maximizedPanels, floatingPanels, floatingPositions, popoutPanels, layoutPresets }
+  return { version: 2, activeWorkspaceId, workspaces, layouts, maximizedPanels, floatingPanels, floatingPositions, popoutPanels, popoutBounds, layoutPresets }
 }
 
 function normalizedLegacyNode(node: WorkspaceLayoutNode): WorkspaceLayoutNode {
@@ -730,6 +876,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   floatingPanels: getInitialFloatingPanels(),
   floatingPositions: getInitialFloatingPositions(),
   popoutPanels: getInitialPopoutPanels(),
+  popoutBounds: getInitialPopoutBounds(),
   layoutPresets: getInitialLayoutPresets(),
   setActiveWorkspace: (id) => {
     if (!get().workspaces.some(w => w.id === id)) return
@@ -753,6 +900,39 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
     saveLayouts(nextLayouts)
     if (typeof window !== "undefined") window.localStorage.setItem(STORAGE_KEY, workspaceId)
     set({ workspaces: nextWorkspaces, layouts: nextLayouts, activeWorkspaceId: workspaceId })
+  },
+  duplicateWorkspace: (sourceWorkspaceId) => {
+    const sourceId = sourceWorkspaceId || get().activeWorkspaceId
+    const source = get().workspaces.find(workspace => workspace.id === sourceId)
+    if (!source) return
+    const workspaceId = createId("workspace_")
+    const customCount = get().workspaces.filter(workspace => workspace.id.startsWith("workspace_")).length
+    const workspace: WorkspaceDefinition = { ...source, id: workspaceId, title: source.title + " 副本 " + (customCount + 1) }
+    const nextWorkspaces = [...get().workspaces, workspace]
+    const nextLayouts = { ...get().layouts, [workspaceId]: normalizeLayoutNode(JSON.parse(JSON.stringify(get().getLayout(sourceId))) as WorkspaceLayoutNode) }
+    const nextMaximized = { ...get().maximizedPanels, [workspaceId]: null }
+    const nextFloating = { ...get().floatingPanels, [workspaceId]: [] }
+    const nextPopouts = { ...get().popoutPanels, [workspaceId]: [] }
+    const nextBounds = { ...get().popoutBounds, [workspaceId]: {} }
+    saveWorkspaces(nextWorkspaces); saveLayouts(nextLayouts); saveMaximizedPanels(nextMaximized); saveFloatingPanels(nextFloating); savePopoutPanels(nextPopouts); savePopoutBounds(nextBounds)
+    if (typeof window !== "undefined") window.localStorage.setItem(STORAGE_KEY, workspaceId)
+    set({ workspaces: nextWorkspaces, layouts: nextLayouts, maximizedPanels: nextMaximized, floatingPanels: nextFloating, popoutPanels: nextPopouts, popoutBounds: nextBounds, activeWorkspaceId: workspaceId })
+  },
+  deleteWorkspace: (workspaceId) => {
+    const id = workspaceId || get().activeWorkspaceId
+    if (!id.startsWith("workspace_")) return
+    const nextWorkspaces = get().workspaces.filter(workspace => workspace.id !== id)
+    if (nextWorkspaces.length === 0) return
+    const nextLayouts = { ...get().layouts }; delete nextLayouts[id]
+    const nextMaximized = { ...get().maximizedPanels }; delete nextMaximized[id]
+    const nextFloating = { ...get().floatingPanels }; delete nextFloating[id]
+    const nextPositions = { ...get().floatingPositions }; delete nextPositions[id]
+    const nextPopouts = { ...get().popoutPanels }; delete nextPopouts[id]
+    const nextBounds = { ...get().popoutBounds }; delete nextBounds[id]
+    const activeWorkspaceId = id === get().activeWorkspaceId ? (nextWorkspaces.find(workspace => workspace.id === "compose")?.id || nextWorkspaces[0].id) : get().activeWorkspaceId
+    saveWorkspaces(nextWorkspaces); saveLayouts(nextLayouts); saveMaximizedPanels(nextMaximized); saveFloatingPanels(nextFloating); saveFloatingPositions(nextPositions); savePopoutPanels(nextPopouts); savePopoutBounds(nextBounds)
+    if (typeof window !== "undefined") window.localStorage.setItem(STORAGE_KEY, activeWorkspaceId)
+    set({ workspaces: nextWorkspaces, layouts: nextLayouts, maximizedPanels: nextMaximized, floatingPanels: nextFloating, floatingPositions: nextPositions, popoutPanels: nextPopouts, popoutBounds: nextBounds, activeWorkspaceId })
   },
   renameWorkspace: (id, title) => {
     const trimmedTitle = title.trim()
@@ -892,8 +1072,11 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
     const current = get().floatingPanels[workspaceId] || []
     const nextIds = floating ? Array.from(new Set([...current, panelId])) : current.filter(id => id !== panelId)
     const next = { ...get().floatingPanels, [workspaceId]: nextIds }
+    const currentPopouts = get().popoutPanels[workspaceId] || []
+    const nextPopouts = floating ? currentPopouts.filter(id => id !== panelId) : currentPopouts
     saveFloatingPanels(next)
-    set({ floatingPanels: next })
+    savePopoutPanels({ ...get().popoutPanels, [workspaceId]: nextPopouts })
+    set({ floatingPanels: next, popoutPanels: { ...get().popoutPanels, [workspaceId]: nextPopouts } })
   },
   setFloatingPanelPosition: (workspaceId, panelId, position) => {
     const current = get().floatingPositions[workspaceId] || {}
@@ -902,9 +1085,16 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
       ...get().floatingPositions,
       [workspaceId]: {
         ...current,
-        [panelId]: { x: position.x, y: position.y, zIndex: currentMax + 1 },
+        [panelId]: { ...current[panelId], x: Math.round(position.x), y: Math.round(position.y), zIndex: currentMax + 1 },
       },
     }
+    saveFloatingPositions(next)
+    set({ floatingPositions: next })
+  },
+  setFloatingPanelSize: (workspaceId, panelId, size) => {
+    const current = get().floatingPositions[workspaceId] || {}
+    const existing = current[panelId] || { x: 20, y: 20, zIndex: 1 }
+    const next = { ...get().floatingPositions, [workspaceId]: { ...current, [panelId]: { ...existing, width: Math.min(2400, Math.max(320, Math.round(size.width))), height: Math.min(1800, Math.max(240, Math.round(size.height))) } } }
     saveFloatingPositions(next)
     set({ floatingPositions: next })
   },
@@ -920,23 +1110,37 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
     const current = get().popoutPanels[workspaceId] || []
     const nextIds = open ? Array.from(new Set([...current, panelId])) : current.filter(id => id !== panelId)
     const next = { ...get().popoutPanels, [workspaceId]: nextIds }
+    const currentFloating = get().floatingPanels[workspaceId] || []
+    const nextFloating = open ? currentFloating.filter(id => id !== panelId) : currentFloating
     savePopoutPanels(next)
-    set({ popoutPanels: next })
+    saveFloatingPanels({ ...get().floatingPanels, [workspaceId]: nextFloating })
+    set({ popoutPanels: next, floatingPanels: { ...get().floatingPanels, [workspaceId]: nextFloating } })
+  },
+  setPopoutBounds: (workspaceId, panelId, bounds) => {
+    const next = { ...get().popoutBounds, [workspaceId]: { ...(get().popoutBounds[workspaceId] || {}), [panelId]: { ...bounds, x: Math.round(bounds.x), y: Math.round(bounds.y), width: Math.min(3000, Math.max(560, Math.round(bounds.width))), height: Math.min(2200, Math.max(360, Math.round(bounds.height))) } } }
+    savePopoutBounds(next)
+    set({ popoutBounds: next })
   },
   resetWorkspace: () => {
-    const { activeWorkspaceId, layouts, maximizedPanels } = get()
+    const { activeWorkspaceId, layouts, maximizedPanels, floatingPanels, floatingPositions, popoutPanels, popoutBounds } = get()
     const nextLayouts = { ...layouts }
     const nextMaximized = { ...maximizedPanels }
     delete nextLayouts[activeWorkspaceId]
     delete nextMaximized[activeWorkspaceId]
+    const nextFloating = { ...floatingPanels }; delete nextFloating[activeWorkspaceId]
+    const nextPositions = { ...floatingPositions }; delete nextPositions[activeWorkspaceId]
+    const nextPopouts = { ...popoutPanels }; delete nextPopouts[activeWorkspaceId]
+    const nextBounds = { ...popoutBounds }; delete nextBounds[activeWorkspaceId]
     saveLayouts(nextLayouts)
     saveMaximizedPanels(nextMaximized)
-    set({ layouts: nextLayouts, maximizedPanels: nextMaximized })
+    saveFloatingPanels(nextFloating); saveFloatingPositions(nextPositions); savePopoutPanels(nextPopouts); savePopoutBounds(nextBounds)
+    set({ layouts: nextLayouts, maximizedPanels: nextMaximized, floatingPanels: nextFloating, floatingPositions: nextPositions, popoutPanels: nextPopouts, popoutBounds: nextBounds })
   },
   resetAllWorkspaces: () => {
     saveLayouts({})
     saveMaximizedPanels({})
-    set({ layouts: {}, maximizedPanels: {} })
+    saveFloatingPanels({}); saveFloatingPositions({}); savePopoutPanels({}); savePopoutBounds({})
+    set({ layouts: {}, maximizedPanels: {}, floatingPanels: {}, floatingPositions: {}, popoutPanels: {}, popoutBounds: {} })
   },
   copyWorkspaceLayout: (sourceWorkspaceId, targetWorkspaceId) => {
     if (!get().workspaces.some(w => w.id === sourceWorkspaceId) || !get().workspaces.some(w => w.id === targetWorkspaceId)) return
@@ -956,6 +1160,48 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
     }
     saveLayouts(nextLayouts)
     set({ layouts: nextLayouts })
+  },
+  exportCurrentWorkspace: async () => {
+    if (typeof window === "undefined" || !window.api?.dialog) return false
+    const state = get()
+    const workspaceId = state.activeWorkspaceId
+    const payload = {
+      format: "grimoire-workspace-layout",
+      version: 1,
+      workspace: state.workspaces.find(workspace => workspace.id === workspaceId),
+      layout: state.getLayout(workspaceId),
+      floatingPanels: state.floatingPanels[workspaceId] || [],
+      floatingPositions: state.floatingPositions[workspaceId] || {},
+      popoutPanels: state.popoutPanels[workspaceId] || [],
+      popoutBounds: state.popoutBounds[workspaceId] || {},
+    }
+    return window.api.dialog.save(JSON.stringify(payload, null, 2), "grimoire-workspace-layout.json")
+  },
+  importWorkspace: async () => {
+    if (typeof window === "undefined" || !window.api?.dialog) return false
+    const text = await window.api.dialog.open()
+    if (!text) return false
+    try {
+      const value = JSON.parse(text) as { format?: string; workspace?: WorkspaceDefinition; layout?: unknown; floatingPanels?: string[]; floatingPositions?: FloatingPositions[string]; popoutPanels?: string[]; popoutBounds?: PopoutBounds[string] }
+      const layout = sanitizeLayoutNode(value.layout)
+      if (!layout) throw new Error("布局文件中没有有效的布局树")
+      const source = value.workspace
+      const workspaceId = createId("workspace_")
+      const workspace: WorkspaceDefinition = { id: workspaceId, title: source?.title?.trim() ? source.title.trim() + " 导入" : "导入布局", slots: WORKSPACES[0].slots }
+      const nextWorkspaces = [...get().workspaces, workspace]
+      const nextLayouts = { ...get().layouts, [workspaceId]: normalizeLayoutNode(layout) }
+      const nextFloating = { ...get().floatingPanels, [workspaceId]: Array.isArray(value.floatingPanels) ? value.floatingPanels : [] }
+      const nextPositions = { ...get().floatingPositions, [workspaceId]: value.floatingPositions && typeof value.floatingPositions === "object" ? value.floatingPositions : {} }
+      const nextPopouts = { ...get().popoutPanels, [workspaceId]: Array.isArray(value.popoutPanels) ? value.popoutPanels : [] }
+      const nextBounds = { ...get().popoutBounds, [workspaceId]: value.popoutBounds && typeof value.popoutBounds === "object" ? value.popoutBounds : {} }
+      saveWorkspaces(nextWorkspaces); saveLayouts(nextLayouts); saveFloatingPanels(nextFloating); saveFloatingPositions(nextPositions); savePopoutPanels(nextPopouts); savePopoutBounds(nextBounds)
+      if (typeof window !== "undefined") window.localStorage.setItem(STORAGE_KEY, workspaceId)
+      set({ workspaces: nextWorkspaces, layouts: nextLayouts, floatingPanels: nextFloating, floatingPositions: nextPositions, popoutPanels: nextPopouts, popoutBounds: nextBounds, activeWorkspaceId: workspaceId })
+      return true
+    } catch (error) {
+      window.dispatchEvent(new CustomEvent("grimoire:toast", { detail: { message: "布局导入失败：" + (error instanceof Error ? error.message : String(error)), type: "error" } }))
+      return false
+    }
   },
   saveCurrentLayoutPreset: (name) => {
     const trimmedName = name.trim()
@@ -996,7 +1242,57 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   },
   getWorkspaceDocument: (workspaceId) => {
     const id = workspaceId || get().activeWorkspaceId
-    return workspaceDocumentFromLegacy(id, get().getLayout(id))
+    const state = get()
+    return workspaceDocumentFromLegacy(id, state.getLayout(id), {
+      floatingPanels: state.floatingPanels[id] || [],
+      floatingPositions: state.floatingPositions[id] || {},
+      popoutPanels: state.popoutPanels[id] || [],
+      popoutBounds: state.popoutBounds[id] || {},
+      maximizedPanelId: state.maximizedPanels[id] || null,
+      presets: state.layoutPresets.map(preset => ({ id: preset.id, name: preset.name, root: workspaceDocumentFromLegacy(id, preset.layout).root, createdAt: preset.createdAt })),
+    })
+  },
+  applyWorkspaceDocument: (document) => {
+    const normalized = normalizeWorkspaceDocument(document)
+    const workspaceId = normalized.workspaceId
+    if (!get().workspaces.some(workspace => workspace.id === workspaceId)) return
+    const layout = normalizeLayoutNode(workspaceDocumentToLegacy(normalized) as WorkspaceLayoutNode)
+    const floatingIds = new Set<string>()
+    const floatingPositions: Record<string, FloatingPosition> = {}
+    for (const group of normalized.floatingGroups || []) {
+      const panelIds = new Set<string>()
+      for (const editorId of group.editorIds) {
+        const areaId = normalized.editors[editorId]?.areaId
+        const area = areaId ? normalized.areas[areaId] : undefined
+        if (area?.panelId) panelIds.add(area.panelId)
+      }
+      for (const panelId of panelIds) {
+        floatingIds.add(panelId)
+        floatingPositions[panelId] = { x: group.x, y: group.y, width: group.width, height: group.height, zIndex: group.zIndex }
+      }
+    }
+    const popoutIds = new Set<string>()
+    const popoutBounds: PopoutBounds[string] = {}
+    for (const popout of normalized.popouts || []) {
+      for (const editorId of popout.editorIds) {
+        const areaId = normalized.editors[editorId]?.areaId
+        const area = areaId ? normalized.areas[areaId] : undefined
+        if (area?.panelId) {
+          popoutIds.add(area.panelId)
+          popoutBounds[area.panelId] = { x: popout.x, y: popout.y, width: popout.width, height: popout.height, maximized: popout.maximized }
+        }
+      }
+    }
+    const maximizedEditor = Object.values(normalized.editors).find(editor => editor.maximized)
+    const maximizedArea = maximizedEditor?.areaId ? normalized.areas[maximizedEditor.areaId] : undefined
+    const nextLayouts = { ...get().layouts, [workspaceId]: layout }
+    const nextMaximized = { ...get().maximizedPanels, [workspaceId]: maximizedArea?.panelId || null }
+    const nextFloating = { ...get().floatingPanels, [workspaceId]: Array.from(floatingIds) }
+    const nextPositions = { ...get().floatingPositions, [workspaceId]: floatingPositions }
+    const nextPopouts = { ...get().popoutPanels, [workspaceId]: Array.from(popoutIds) }
+    const nextBounds = { ...get().popoutBounds, [workspaceId]: popoutBounds }
+    saveLayouts(nextLayouts); saveMaximizedPanels(nextMaximized); saveFloatingPanels(nextFloating); saveFloatingPositions(nextPositions); savePopoutPanels(nextPopouts); savePopoutBounds(nextBounds)
+    set({ layouts: nextLayouts, maximizedPanels: nextMaximized, floatingPanels: nextFloating, floatingPositions: nextPositions, popoutPanels: nextPopouts, popoutBounds: nextBounds, activeWorkspaceId: workspaceId })
   },
   applyPersistenceDocument: (revision, document) => {
     const value = sanitizePersistenceDocument(document)
@@ -1006,6 +1302,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
     saveFloatingPanels(value.floatingPanels)
     saveFloatingPositions(value.floatingPositions)
     savePopoutPanels(value.popoutPanels)
+    savePopoutBounds(value.popoutBounds)
     saveLayoutPresets(value.layoutPresets)
     if (typeof window !== "undefined") window.localStorage.setItem(STORAGE_KEY, value.activeWorkspaceId)
     set({ ...value, hydrated: true, persistenceRevision: revision, persistenceError: null })

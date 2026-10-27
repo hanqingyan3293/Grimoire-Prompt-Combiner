@@ -28,7 +28,11 @@ export const useProviderStore = create<ProviderState>((set, get) => ({
   loadProviders: async () => {
     set({ loading: true })
     try {
-      const list = await window.api.providers.list()
+      const rawList = await window.api.providers.list()
+      const list = (Array.isArray(rawList) ? rawList : []).filter(Boolean).map(provider => ({
+        ...provider,
+        models: Array.isArray(provider.models) ? provider.models.filter(model => typeof model === 'string') : [],
+      }))
       const active = list.find(p => p.is_active) || list[0] || null
       set({ providers: list, activeProvider: active, loading: false })
     } catch {

@@ -85,6 +85,7 @@ export function PanelShell({
   const [addMenuOpen, setAddMenuOpen] = useState(false)
   const [addMenuPosition, setAddMenuPosition] = useState({ left: 8, top: 8 })
   const [cornerDragPreview, setCornerDragPreview] = useState<CornerDragPreview>(null)
+  const [contextMenu, setContextMenu] = useState<{ left: number; top: number } | null>(null)
   const addMenuRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -102,6 +103,17 @@ export function PanelShell({
       document.removeEventListener("keydown", handleKeyDown)
     }
   }, [addMenuOpen])
+
+  useEffect(() => {
+    if (!contextMenu) return
+    const close = () => setContextMenu(null)
+    document.addEventListener("pointerdown", close)
+    document.addEventListener("keydown", close)
+    return () => {
+      document.removeEventListener("pointerdown", close)
+      document.removeEventListener("keydown", close)
+    }
+  }, [contextMenu])
 
   const handleAddPanel = (panelType: PanelType, addDirection: AddPanelDirection) => {
     const isHorizontal = addDirection === "left" || addDirection === "right"
@@ -237,12 +249,17 @@ export function PanelShell({
           onPointerDown={event => {
             if (floating && onFloatingDragStart && !(event.target as HTMLElement).closest("button,select,input,textarea")) onFloatingDragStart(event)
           }}
+          onContextMenu={event => {
+            event.preventDefault()
+            event.stopPropagation()
+            setContextMenu({ left: Math.min(event.clientX, window.innerWidth - 220), top: Math.min(event.clientY, window.innerHeight - 260) })
+          }}
           style={{ height: "var(--panel-header-height)" }}
         >
           <select
             value={type}
             onChange={e => onTypeChange?.(e.target.value as PanelType)}
-            className="ui-panel-select min-w-[72px] max-w-[180px] flex-1 bg-transparent text-xs font-medium outline-none hover:text-[var(--color-accent-text)]"
+            className="ui-panel-select min-w-0 max-w-[180px] flex-1 bg-transparent text-xs font-medium outline-none hover:text-[var(--color-accent-text)]"
             style={{ color: "var(--color-text-primary)", backgroundColor: "transparent" }}
             title={title}
           >
@@ -256,6 +273,7 @@ export function PanelShell({
               </option>
             ))}
           </select>
+          <div className="ml-auto flex min-w-0 shrink-0 items-center gap-1">
           <div ref={addMenuRef} className="relative shrink-0">
             <button
               onClick={toggleAddMenu}
@@ -307,6 +325,7 @@ export function PanelShell({
           >
             页
           </button>
+          <span className="mx-0.5 h-5 w-px shrink-0 bg-[var(--color-border)]" aria-hidden="true" />
           <button
             onClick={() => onSplit?.("horizontal")}
             className="shrink-0 rounded border border-transparent bg-[var(--color-bg-primary)]/60 text-[12px] text-[var(--color-text-secondary)] hover:border-[var(--color-accent)]/40 hover:text-[var(--color-accent-text)] hover:bg-[var(--color-accent)]/10"
@@ -347,6 +366,7 @@ export function PanelShell({
           >
             ↗□
           </button>
+          <div className="ml-1 shrink-0 border-l border-[var(--color-border)] pl-1">
           <button
             onClick={onClose}
             disabled={closeDisabled}
@@ -356,6 +376,8 @@ export function PanelShell({
           >
             ×
           </button>
+          </div>
+          </div>
         </div>
       )}
       {tabs.length > 1 && (
@@ -370,6 +392,17 @@ export function PanelShell({
               </div>
             )
           })}
+        </div>
+      )}
+      {contextMenu && (
+        <div className="ui-popover-surface fixed z-[180] w-52 p-1" style={{ left: contextMenu.left, top: contextMenu.top }} onPointerDown={event => event.stopPropagation()}>
+          <div className="px-2 py-1 text-[10px] text-[var(--color-text-secondary)]">{title}</div>
+          <button className="ui-menu-item w-full px-2 py-1.5 text-left text-xs" onClick={() => { onSplit?.("horizontal"); setContextMenu(null) }}>左右分割</button>
+          <button className="ui-menu-item w-full px-2 py-1.5 text-left text-xs" onClick={() => { onSplit?.("vertical"); setContextMenu(null) }}>上下分割</button>
+          <button className="ui-menu-item w-full px-2 py-1.5 text-left text-xs" onClick={() => { onMaximize?.(); setContextMenu(null) }}>{maximized ? "还原面板" : "最大化面板"}</button>
+          <button className="ui-menu-item w-full px-2 py-1.5 text-left text-xs" onClick={() => { onFloat?.(); setContextMenu(null) }}>{floating ? "嵌回面板" : "浮动面板"}</button>
+          <button className="ui-menu-item w-full px-2 py-1.5 text-left text-xs" onClick={() => { onPopout?.(); setContextMenu(null) }}>独立窗口</button>
+          <button disabled={closeDisabled} className="ui-menu-item w-full px-2 py-1.5 text-left text-xs text-red-400 disabled:opacity-40" onClick={() => { onClose?.(); setContextMenu(null) }}>关闭面板</button>
         </div>
       )}
       <div className="ui-panel-content flex-1 min-h-0 min-w-0 overflow-auto p-[3px]">

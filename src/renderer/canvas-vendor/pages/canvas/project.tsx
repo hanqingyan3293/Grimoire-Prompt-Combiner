@@ -170,8 +170,13 @@ function InfiniteCanvasPage() {
     const localAgentEnabled = useAgentStore((state) => state.enabled);
     const fragmentBootstrap = useAgentStore((state) => state.fragmentBootstrap);
     const agentPanelOpen = useAgentStore((state) => state.panelOpen);
-    const toggleAgentPanel = useAgentStore((state) => state.togglePanel);
+    const toggleAgentPanelState = useAgentStore((state) => state.togglePanel);
     const openAgentPanel = useAgentStore((state) => state.openPanel);
+    const toggleAgentPanel = useCallback(() => {
+        toggleAgentPanelState();
+        const targetOrigin = window.location.protocol === "file:" ? "*" : window.location.origin;
+        window.parent?.postMessage({ type: "grimoire:canvas-agent-toggle", projectId }, targetOrigin);
+    }, [projectId, toggleAgentPanelState]);
     const containerRef = useRef<HTMLDivElement>(null);
     const imageInputRef = useRef<HTMLInputElement>(null);
     const uploadTargetRef = useRef<{ nodeId?: string; position?: Position } | null>(null);

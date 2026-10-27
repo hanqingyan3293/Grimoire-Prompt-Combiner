@@ -436,13 +436,17 @@ export function LocalAgentPanel({ embedded, headless, autoConnect }: { embedded?
         source.addEventListener("tool_call", (event) => {
             if (!isCurrentConnection()) return;
             const data = parseEventData<AgentPendingToolCall>(event);
-            if (data) void handleToolCall(endpoint, token, data);
+            if (data) {
+                mirrorCanvasAgentEvent("event", { eventType: "tool-started", requestId: data.requestId, name: data.name, input: data.input, threadId: data.threadId, turnId: data.turnId });
+                void handleToolCall(endpoint, token, data);
+            }
         });
         source.addEventListener("codex_approval", (event) => {
             if (!isCurrentConnection()) return;
             const data = parseEventData<AgentPendingApproval>(event);
             if (!data || !isCurrentThreadEvent(data)) return;
             setAgentState({ pendingApprovals: [...useAgentStore.getState().pendingApprovals.filter((item) => item.requestId !== data.requestId), data], activity: rt("awaitingApproval") });
+            mirrorCanvasAgentEvent("event", { eventType: "permission-requested", requestId: data.requestId, reason: data.reason, method: data.method, params: data.params, threadId: data.threadId, turnId: data.turnId });
             addEventLog(rt("awaitingApproval"), data.reason || data.method, data);
         });
         source.addEventListener("codex_approval_resolved", (event) => {
@@ -454,6 +458,7 @@ export function LocalAgentPanel({ embedded, headless, autoConnect }: { embedded?
             const pendingApprovals = current.pendingApprovals.filter((item) => item.requestId !== data.requestId);
             setAgentState({ pendingApprovals, activity: approvalActivity(pendingApprovals, current.waiting, current.activity) });
             const decision = data.decision || approval?.deciding;
+            mirrorCanvasAgentEvent("event", { eventType: "permission-resolved", requestId: data.requestId, decision, threadId: approval?.threadId, turnId: approval?.turnId });
             if (approval && decision) addEventLog(rt(decision === "accept" || decision === "acceptForSession" ? "approvalGranted" : "approvalCanceled"), approval.reason || approval.method, approval);
         });
         source.addEventListener("agent_event", (event) => {
@@ -805,15 +810,18 @@ export function LocalAgentPanel({ embedded, headless, autoConnect }: { embedded?
     };
 
     const runToolCall = async (endpoint: string, token: string, payload: AgentPendingToolCall) => {
+        mirrorCanvasAgentEvent("event", { eventType: "tool-executing", requestId: payload.requestId, name: payload.name, input: payload.input });
         if (isSiteTool(payload.name)) {
             try {
                 addEventLog(toolName(payload.name), payload, payload);
                 const result = await runSiteTool(payload.name, payload.input || {}, navigate, { canvasSnapshot: canvasContextRef.current?.snapshot || null });
                 await postToolResult(endpoint, token, clientIdRef.current, { requestId: payload.requestId, result });
+                mirrorCanvasAgentEvent("event", { eventType: "tool-finished", requestId: payload.requestId, name: payload.name, output: result });
                 addEventLog(rt("toolCompleted", { tool: toolName(payload.name) }), result, result);
             } catch (error) {
                 const message = error instanceof Error ? error.message : rt("toolExecutionFailed");
                 await postToolResult(endpoint, token, clientIdRef.current, { requestId: payload.requestId, error: message });
+                mirrorCanvasAgentEvent("event", { eventType: "tool-failed", requestId: payload.requestId, name: payload.name, error: message });
             }
             return;
         }
@@ -843,10 +851,12 @@ export function LocalAgentPanel({ embedded, headless, autoConnect }: { embedded?
                 result = snapshot;
             }
             await postToolResult(endpoint, token, clientIdRef.current, { requestId: payload.requestId, result });
+            mirrorCanvasAgentEvent("event", { eventType: "tool-finished", requestId: payload.requestId, name: payload.name, output: result });
             addEventLog(rt("toolCompleted", { tool: toolName(payload.name) }), result, result);
         } catch (error) {
             const message = error instanceof Error ? error.message : rt("canvasOperationFailed");
             await postToolResult(endpoint, token, clientIdRef.current, { requestId: payload.requestId, error: message });
+            mirrorCanvasAgentEvent("event", { eventType: "tool-failed", requestId: payload.requestId, name: payload.name, error: message });
         }
     };
 
@@ -1098,13 +1108,20 @@ export function LocalAgentPanel({ embedded, headless, autoConnect }: { embedded?
         const itemId = item.itemId || item.id || createId();
         const next = scopeChatItem({ ...item, id: item.id || itemId, itemId, text } as AgentChatItem, item.threadId ?? current.activeThreadId, item.turnId ?? current.activeTurnId);
         setAgentState({ messages: upsertAgentMessage(current.messages, next) });
+        mirrorCanvasAgentEvent("message", { role: next.role, text: next.text, title: next.title, attachments: next.attachments, threadId: next.threadId, turnId: next.turnId });
     };
 
     const addEventLog = (title: string, text: unknown, raw?: unknown) => {
         const value = normalizeText(text) || title;
+        mirrorCanvasAgentEvent("event", { eventType: "canvas-agent-log", title, text: value, raw });
         const last = useAgentStore.getState().eventLogs.at(-1);
         if (last?.title === title && last.text === value) return;
         pushEventLog({ id: `${Date.now()}-${Math.random()}`, time: dayjs().format("YYYY-MM-DD HH:mm:ss"), title, text: value, raw });
+    };
+
+    const mirrorCanvasAgentEvent = (kind: "message" | "event", payload: Record<string, unknown>) => {
+        if (window.parent === window) return;
+        window.parent.postMessage({ type: "grimoire:canvas-agent-mirror", kind, projectId: canvasContextRef.current?.snapshot.projectId || "", payload }, "*");
     };
 
     const upsertActivityMessage = (item: AgentChatItem) => {

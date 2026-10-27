@@ -18,7 +18,7 @@ function tagCardScale(value: string) {
 
 export function TagCards() {
   const { categories, updateTag, deleteTag, searchQuery, selectedSubIds } = useTagsStore()
-  const { positive, negative, addPositive, addNegative, removePositive, removeNegative } = usePromptsStore()
+  const { positive, negative, addPositive, addNegative, removePositive, removeNegative, includeImplied, impliedExcluded } = usePromptsStore()
   const favStore = useFavoritesStore()
   const ui_scale = useSettingsStore(s => s.ui_scale)
   const scale = tagCardScale(ui_scale)
@@ -32,6 +32,13 @@ export function TagCards() {
   const [addEn, setAddEn] = useState("")
   const [addZh, setAddZh] = useState("")
   const [searchTagIds, setSearchTagIds] = useState<Set<string> | null>(null)
+  const [impliedIds, setImpliedIds] = useState<Set<string>>(new Set())
+  // TagMaster 风格分组浏览：按 tag_metadata.namespace 分组展示当前可见标签，
+  // 并可只用某一组过滤（未设置 namespace 的标签归入「未分组」）。
+  const [groupView, setGroupView] = useState(false)
+  const [namespaceFilter, setNamespaceFilter] = useState('')
+  const [namespaces, setNamespaces] = useState<Record<string, string>>({})
+  const positiveKey = positive.map(p => p.tag.id).join(',')
 
   useEffect(() => {
     let disposed = false
@@ -41,6 +48,28 @@ export function TagCards() {
     }).catch(() => { if (!disposed) setSearchTagIds(new Set()) })
     return () => { disposed = true }
   }, [searchQuery])
+
+  // TagMaster-style indeterminate display: tags implied by the current positive
+  // selection render dashed. The fetch is debounced and race-guarded; user
+  // exclusions are filtered at render time so toggling is instant.
+  useEffect(() => {
+    const selectedIds = positiveKey ? positiveKey.split(',') : []
+    if (selectedIds.length === 0) { setImpliedIds(new Set()); return }
+    let disposed = false
+    const timer = window.setTimeout(() => {
+      void window.api.tags.expandRelations({ tagIds: selectedIds }).then(value => {
+        if (disposed) return
+        const entries = value as Array<{ tag?: { id?: string } }>
+        const next = new Set<string>()
+        for (const entry of entries || []) {
+          const id = String(entry?.tag?.id || '')
+          if (id && !selectedIds.includes(id)) next.add(id)
+        }
+        setImpliedIds(next)
+      }).catch(() => { if (!disposed) setImpliedIds(new Set()) })
+    }, 120)
+    return () => { disposed = true; window.clearTimeout(timer) }
+  }, [positiveKey])
 
   const selectedSubs: Array<{ sub: Subcategory; cat: Category }> = []
   for (const cat of categories) {
@@ -52,9 +81,29 @@ export function TagCards() {
   const selectedIds = new Set(positive.map(p => p.tag.id))
   const negativeIds = new Set(negative.map(p => p.tag.id))
 
+  // 分组浏览开启时按 namespace 批量取元数据（只对当前可见子类的标签）。
+  useEffect(() => {
+    if (!groupView) return
+    const ids = [...new Set(selectedSubs.flatMap(({ sub }) => sub.tags.map(tag => tag.id)))]
+    if (!ids.length) { setNamespaces({}); return }
+    let disposed = false
+    void window.api.tags.metadata.list(ids).then(rows => {
+      if (disposed) return
+      const map: Record<string, string> = {}
+      ids.forEach((id, index) => { map[id] = rows[index]?.namespace || '' })
+      setNamespaces(map)
+    }).catch(() => { if (!disposed) setNamespaces({}) })
+    return () => { disposed = true }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [groupView, selectedSubIds, categories])
+
   const handleLeftClick = (tag: Tag, sub: Subcategory, cat: Category) => {
     if (selectedIds.has(tag.id)) removePositive(tag.id)
-    else addPositive(tag, cat.zh, sub.zh)
+    else {
+      // Promoting an implied tag clears any earlier "exclude implied" gesture.
+      includeImplied(tag.id)
+      addPositive(tag, cat.zh, sub.zh)
+    }
   }
 
   const handleRightClick = (e: React.MouseEvent, tag: Tag) => {
@@ -108,10 +157,29 @@ export function TagCards() {
         </div>
       ) : (
         <div className="space-y-6 p-[2px]">
+          {/* TagMaster 分组浏览开关 + namespace 过滤 */}
+          <div className="flex flex-wrap items-center gap-2 text-xs">
+            <label className="inline-flex items-center gap-1.5">
+              <input type="checkbox" checked={groupView} onChange={event => { setGroupView(event.target.checked); if (!event.target.checked) setNamespaceFilter('') }} />
+              分组浏览（按命名空间）
+            </label>
+            {groupView ? (
+              <select className="ui-field w-40" value={namespaceFilter} onChange={event => setNamespaceFilter(event.target.value)} aria-label="命名空间过滤">
+                <option value="">全部命名空间</option>
+                {[...new Set(Object.values(namespaces).filter(Boolean))].sort().map(value => <option key={value} value={value}>{value}</option>)}
+                {Object.values(namespaces).some(value => !value) ? <option value="__ungrouped__">未分组</option> : null}
+              </select>
+            ) : null}
+          </div>
           {selectedSubs.map(({ sub, cat }) => {
-            const filtered = searchQuery
+            const base = searchQuery
               ? sub.tags.filter(t => t.en.toLowerCase().includes(searchQuery.toLowerCase()) || t.zh.includes(searchQuery) || Boolean(searchTagIds?.has(t.id)))
               : sub.tags
+            // 分组视图下按所选 namespace 收窄（未分组项在「未分组」选项里）。
+            const filtered = groupView && namespaceFilter
+              ? base.filter(tag => (namespaces[tag.id] || '') === (namespaceFilter === '__ungrouped__' ? '' : namespaceFilter))
+              : base
+            if (groupView && namespaceFilter && filtered.length === 0) return null
             return (
               <div key={sub.id} className="ui-list-card ui-list-card-no-hover p-3">
                 <div className="flex items-center justify-between mb-2">
@@ -127,11 +195,13 @@ export function TagCards() {
                   {filtered.map(tag => {
                     const isPositive = selectedIds.has(tag.id)
                     const isNegative = negativeIds.has(tag.id)
+                    const isImplied = !isPositive && !isNegative && impliedIds.has(tag.id) && !impliedExcluded.includes(tag.id)
                     return (
                       <button key={tag.id}
                         onClick={() => handleLeftClick(tag, sub, cat)}
                         onContextMenu={(e) => handleRightClick(e, tag)}
-                        className={`ui-tag-card ${scale.card} flex flex-col items-center justify-center rounded border p-1 relative overflow-hidden ${isPositive ? "ui-tag-card-positive" : isNegative ? "ui-tag-card-negative" : ""}`}>
+                        title={isImplied ? "被所选标签隐含，点击转为显式" : undefined}
+                        className={`ui-tag-card ${scale.card} flex flex-col items-center justify-center rounded border p-1 relative overflow-hidden ${isPositive ? "ui-tag-card-positive" : isNegative ? "ui-tag-card-negative" : isImplied ? "ui-tag-card-implied" : ""}`}>
                         {isPositive && isNegative && (
                           <div className="ui-tag-card-mixed-bar absolute left-0 top-0 bottom-0 w-[3px]" />
                         )}

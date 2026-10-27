@@ -1,13 +1,38 @@
 // Vite 环境变量类型
 /// <reference types="vite/client" />
+import type { Provider, ProviderSaveInput } from '../shared/types'
 import type { TaskEvent, TaskRecord, TaskStatus } from '../shared/task-types'
 import type { CanvasDocument, CanvasProject } from '../shared/canvas-types'
 import type { PromptAssetPage, PromptAssetQuery } from '../shared/prompt-asset-types'
 import type { WD14HistoryRecord } from '../shared/wd14-types'
-import type { AgentSessionEventRecord, AgentSessionRecord, McpServerRecord } from '../shared/agent-types'
+import type { CherryCacheEntry, CherryCacheSyncMessage, CherryDataApiDataChangeEffect, CherryDataApiRequest, CherryDataApiResponse } from '../shared/cherry-preload-types'
+import type { AgentSessionAttachment, AgentSessionEventRecord, AgentSessionRecord, AgentSessionSnapshot, AgentSessionWorkspace, McpServerRecord } from '../shared/agent-types'
+import type { AiAssistantRecord, AiEventRecord, AiMessageRecord, AiResourceOrderAnchor, AiSessionRecord, AiTopicRecord } from '../shared/ai-types'
 
 // 预加载 API 类型
-interface GrimoireAPI {
+export interface GrimoireAPI {
+  // Existing MCP shared-cache preload surface; renderer-to-main broadcast is inert.
+  cache: {
+    getAllShared: () => Promise<Record<string, CherryCacheEntry>>
+    broadcastSync: (message: CherryCacheSyncMessage) => void
+    onSync: (callback: (message: CherryCacheSyncMessage) => void) => () => void
+  }
+  application: {
+    relaunch: () => Promise<boolean>
+  }
+  shortcut: {
+    onRegistrationConflict: (callback: (payload: { key: string; accelerator?: string; hasConflict: boolean }) => void) => () => void
+  }
+  meta: {
+    apiVersion: string
+    capabilities: {
+      unifiedSessions: boolean
+      attachments: boolean
+      catalog: boolean
+      runtimes: boolean
+      mcp: boolean
+    }
+  }
   tags: {
     getAll: () => Promise<{
       categories: Array<{ id: string; en: string; zh: string; sort_order: number; created_at: string }>
@@ -27,7 +52,7 @@ interface GrimoireAPI {
     createSubcategory: (data: { category_id: string; zh: string }) => Promise<{ id: string }>
     updateSubcategory: (data: { id: string; zh: string }) => Promise<boolean>
     deleteSubcategory: (id: string) => Promise<boolean>
-    search: (input: { query?: string; limit?: number }) => Promise<unknown[]>
+    search: (input: { query?: string; limit?: number; includeDisabled?: boolean }) => Promise<unknown[]>
     getIntelligence: (id: string) => Promise<unknown>
     aliases: {
       list: (tagId: string) => Promise<unknown[]>
@@ -46,6 +71,7 @@ interface GrimoireAPI {
       accept: (id: string) => Promise<unknown>
       reject: (id: string) => Promise<unknown>
       map: (input: { id: string; tagId: string }) => Promise<unknown>
+      batchResolve: (input: { ids: string[]; action: 'accept' | 'reject' | 'ignore'; tagId?: string }) => Promise<number>
     }
     assetLinks: {
       list: (input: { assetType: string; assetKey: string }) => Promise<unknown[]>
@@ -53,6 +79,22 @@ interface GrimoireAPI {
       remove: (input: { assetType: string; assetKey: string; tagId: string }) => Promise<boolean>
       batchAssign: (input: { assetType: string; assetKeys: string[]; tagIds: string[]; source?: string; confidence?: number; polarity?: string }) => Promise<number>
       batchRemove: (input: { assetType: string; assetKeys: string[]; tagIds: string[] }) => Promise<number>
+      listBatch: (input: { assetType: string; assetKeys: string[] }) => Promise<Array<{ assetKey: string; tagIds: string[]; links: Array<{ tagId: string; polarity: string; weight: number; confidence: number; source: string; status: string }> }>>
+    }
+    searchAdvanced: (input: { query?: string; limit?: number; mode?: 'substring' | 'prefix'; namespace?: string; sort?: 'score' | 'usage' | 'alpha' }) => Promise<unknown[]>
+    expandRelations: (input: { tagIds: string[]; maxDepth?: number; direction?: 'forward' | 'descendants' }) => Promise<unknown[]>
+    queryAssets: (input: { filter: { assetType: string; tagIds: string[]; logic?: 'any' | 'all' | 'none'; polarity?: string; includeImplied?: boolean }; page?: { limit?: number; offset?: number } }) => Promise<{ keys: Array<{ assetKey: string; matchedCount: number }>; total: number }>
+    batchPreview: (input: { filter: { assetType: string; tagIds: string[]; logic?: 'any' | 'all' | 'none'; polarity?: string; includeImplied?: boolean }; operation: { type: 'add' | 'remove' | 'replace'; tagIds?: string[]; fromTagId?: string; toTagId?: string }; onlyEmpty?: boolean; sampleLimit?: number }) => Promise<{ total: number; sample: string[]; operationCount: number }>
+    batchApply: (input: { filter: { assetType: string; tagIds: string[]; logic?: 'any' | 'all' | 'none'; polarity?: string; includeImplied?: boolean }; operation: { type: 'add' | 'remove' | 'replace'; tagIds?: string[]; fromTagId?: string; toTagId?: string }; onlyEmpty?: boolean; chunkSize?: number }) => Promise<{ total: number; applied: number; tagsTouched: string[] }>
+    savedSearches: {
+      list: () => Promise<Array<{ id: string; name: string; queryJson: string; sortJson: string; viewMode: string; pinned: boolean; createdAt: string; updatedAt: string }>>
+      save: (input: { name: string; queryJson?: string; sortJson?: string; viewMode?: string; pinned?: boolean; id?: string }) => Promise<{ id: string; name: string; queryJson: string; sortJson: string; viewMode: string; pinned: boolean; createdAt: string; updatedAt: string }>
+      delete: (id: string) => Promise<boolean>
+    }
+    metadata: {
+      get: (tagId: string) => Promise<{ tagId: string; namespace: string; description: string; color: string; isActive: boolean; source: string } | null>
+      save: (input: { tagId: string; namespace?: string; description?: string; color?: string; isActive?: boolean }) => Promise<{ tagId: string; namespace: string; description: string; color: string; isActive: boolean; source: string }>
+      list: (tagIds: string[]) => Promise<Array<{ tagId: string; namespace: string; description: string; color: string; isActive: boolean; source: string } | null>>
     }
   }
   presets: {
@@ -91,13 +133,47 @@ interface GrimoireAPI {
   }
   system: {
     openExternal: (url: string) => Promise<boolean>
+    showItemInFolder: (filePath: string) => Promise<boolean>
   }
   images: {
     list: () => Promise<Array<{ id: number; file_path: string; storage_mode: 'managed' | 'external'; asset_hash: string | null; mime_type: string | null; file_size: number | null; original_name: string | null; available: boolean; created_at: string }>>
+    listPaged: (input?: { limit?: number; offset?: number }) => Promise<{ items: Array<{ id: number; file_path: string; storage_mode: 'managed' | 'external'; asset_hash: string | null; mime_type: string | null; file_size: number | null; original_name: string | null; available: boolean; created_at: string }>; total: number; limit: number; offset: number }>
     add: (mode?: 'managed' | 'external') => Promise<{ id: number; file_path: string; storage_mode: 'managed' | 'external' } | null>
     delete: (id: number) => Promise<boolean>
     importData: (dataBase64: string, originalName: string) => Promise<unknown>
     readData: (id: number) => Promise<string>
+  }
+  media: {
+    list: (input?: Record<string, unknown>) => Promise<unknown[]>
+    get: (id: string) => Promise<unknown>
+    search: (input?: Record<string, unknown>) => Promise<unknown[]>
+    update: (input: Record<string, unknown>) => Promise<unknown>
+    delete: (id: string) => Promise<boolean>
+    relocate: (input: { id: string; filePath: string }) => Promise<unknown>
+    batchUpdate: (input: { ids: string[]; favorite?: boolean; rating?: number }) => Promise<number>
+    batchDelete: (input: { ids: string[] }) => Promise<number>
+    metadata: {
+      get: (id: string) => Promise<unknown>
+      save: (input: Record<string, unknown>) => Promise<unknown>
+      parse: (input: { mediaId: string; persist?: boolean }) => Promise<unknown>
+      scan: (input?: { batchSize?: number }) => Promise<{ scanned: number; parsed: number; skipped: number }>
+    }
+    relations: { list: (input: { type: string; key: string }) => Promise<unknown[]>; create: (input: Record<string, unknown>) => Promise<unknown>; delete: (id: string) => Promise<boolean> }
+    query: (input: { query?: Record<string, unknown>; page?: { limit?: number; offset?: number } }) => Promise<{ items: Array<{ mediaId: string; imageRefId: number; title: string; originalName: string; sourceKind: string; favorite: boolean; rating: number; available: boolean; width: number | null; height: number | null; createdAt: string; updatedAt: string }>; total: number }>
+    thumbs: (input: { ids: number[]; kind?: 'thumbnail' | 'preview' }) => Promise<Record<number, string | null>>
+    batchPreview: (input: { ids?: string[]; query?: Record<string, unknown> }) => Promise<{ assets: number }>
+    onScanProgress: (callback: (value: { done: number; total: number }) => void) => () => void
+    similarity: (input: { imageRefId: number; limit?: number; method?: 'auto' | 'hash' | 'clip'; maxDistance?: number }) => Promise<{ method: 'hash' | 'clip'; items: Array<{ imageRefId: number; distance: number; score: number }> }>
+    indexSimilarity: (input?: { batchSize?: number }) => Promise<{ indexed: number; skipped: number; failed: number; clip: { indexed: number; skipped: number; failed: number } | null }>
+    onSimilarityProgress: (callback: (value: { done: number; total: number }) => void) => () => void
+    duplicates: (input?: { maxDistance?: number; limit?: number; page?: number }) => Promise<{ groups: Array<{ hash: string; imageRefIds: number[] }>; total: number }>
+    folderScan: (input: { directory: string; recursive?: boolean }) => Promise<{ directory: string; entries: Array<{ filePath: string; fileName: string; size: number; alreadyImported: boolean }>; total: number }>
+    folderImport: (input: { filePaths: string[]; mode?: 'managed' | 'external' }) => Promise<{ imported: number; skipped: number; failed: number; imageIds: number[] }>
+    clip: {
+      diagnostics: () => Promise<{ pythonPath: string; modelDirectory: string; pythonAvailable: boolean; runtimeAvailable: boolean; runtimeVersion: string | null; modelCount: number }>
+      selectModelDirectory: () => Promise<string | null>
+      selectPythonPath: () => Promise<string | null>
+    }
   }
   chat: {
     listGroups: () => Promise<Array<{ id: string; name: string; sort_order: number; created_at: string }>>
@@ -125,23 +201,14 @@ interface GrimoireAPI {
     setActive: (id: string) => Promise<boolean>
   }
   providers: {
-    list: () => Promise<Array<{
-      id: string; name: string; access_mode: "login" | "api"
-      protocol: "chat_completions" | "responses"; base_url: string
-      has_api_key: boolean; has_auth_config: boolean; default_model: string
-      test_model: string; context_size: number | null; models: string[]
-      is_active: boolean; created_at: string; updated_at: string
-    }>>
-    save: (data: {
-      id?: string; name?: string; access_mode?: "login" | "api"
-      protocol?: "chat_completions" | "responses"; base_url?: string
-      api_key?: string; default_model?: string; test_model?: string
-      context_size?: number | null; models?: string[]; config_toml?: string; auth_json?: string
-    }) => Promise<{ id: string }>
+    list: () => Promise<Provider[]>
+    save: (data: ProviderSaveInput) => Promise<{ id: string }>
     delete: (id: string) => Promise<boolean>
     setActive: (id: string) => Promise<boolean>
     fetchModels: (baseUrl: string, apiKey: string) => Promise<{ success?: boolean; models?: string[]; error?: string }>
-    test: (baseUrl: string, apiKey: string, model: string) => Promise<{ success: boolean; message?: string; error?: string }>
+    test: (baseUrl: string, apiKey: string, model: string, protocol?: 'chat_completions' | 'responses') => Promise<{ success: boolean; message?: string; error?: string }>
+    fetchModelsForProvider: (input: { providerId: string; apiKey?: string }) => Promise<{ success?: boolean; models?: string[]; error?: string }>
+    testProvider: (input: { providerId: string; apiKey?: string; model?: string; protocol?: 'chat_completions' | 'responses' }) => Promise<{ success: boolean; message?: string; error?: string }>
   }
   favorites: {
     tagList: () => Promise<Array<any>>
@@ -154,6 +221,7 @@ interface GrimoireAPI {
   dialog: {
     save: (content: string, defaultName: string) => Promise<boolean>
     open: () => Promise<string | null>
+    openDirectory: () => Promise<string | null>
   }
   ai: {
     sendMessage: (args: { providerId: string; model: string; messages: Array<{ role: string; content: any }> }) => Promise<{ success?: boolean; text?: string; error?: string }>
@@ -161,13 +229,101 @@ interface GrimoireAPI {
     generateImage: (args: { providerId: string; model: string; prompt: string }) => Promise<{ success?: boolean; url?: string; error?: string }>
     fetchModels: (args: { baseUrl: string; apiKey: string }) => Promise<{ success?: boolean; models?: string[]; error?: string }>
     onChunk: (callback: (data: any) => void) => () => void
+    sessions: {
+      list: (input?: { query?: string; kind?: string; limit?: number; includeArchived?: boolean; manualOrder?: boolean }) => Promise<AiSessionRecord[]>
+      archive: (id: string) => Promise<AiSessionRecord>
+      restore: (id: string) => Promise<AiSessionRecord>
+      pin: (id: string, pinned: boolean) => Promise<AiSessionRecord>
+      reorder: (input: { id: string; overId: string; position: 'before' | 'after' | 'last' }) => Promise<AiSessionRecord>
+      latest: (input?: { kind?: string }) => Promise<AiSessionRecord | null>
+      get: (id: string) => Promise<{ session: AiSessionRecord; messages: AiMessageRecord[]; events: AiEventRecord[] } | null>
+      create: (input: Record<string, unknown>) => Promise<AiSessionRecord>
+      import: (input: unknown) => Promise<AiSessionRecord>
+      update: (input: Record<string, unknown>) => Promise<AiSessionRecord>
+      delete: (id: string) => Promise<boolean>
+      branch: (input: { sessionId: string; title?: string }) => Promise<AiSessionRecord>
+      send: (input: { sessionId: string; content: string; modelId?: string; attachments?: unknown[]; context?: unknown[] }) => Promise<{ text: string; session: AiSessionRecord }>
+      interrupt: (sessionId: string) => Promise<boolean>
+      retry: (input: string | { sessionId: string; messageId?: string }) => Promise<{ session: AiSessionRecord; content: string; attachments?: unknown[] } | null>
+      compact: (sessionId: string) => Promise<AiSessionRecord>
+      search: (input?: { query?: string; kind?: string; limit?: number }) => Promise<AiSessionRecord[]>
+      catalog: {
+        providers: (input?: { query?: string }) => Promise<unknown[]>
+        models: (input?: { query?: string; providerId?: string; capability?: string; limit?: number }) => Promise<unknown[]>
+      }
+      runtimes: {
+        list: () => Promise<Array<{ kind: string; available: boolean; source: string; executable: string | null; version: string | null; message: string; checkedAt: string }>>
+        capabilities: (kind: string) => Promise<Record<string, { state: 'supported' | 'unavailable' | 'blocked' | 'not-implemented'; reason: string; unblock?: string }>>
+        prepare: (kind: string) => Promise<{ kind: string; available: boolean; source: string; executable: string | null; version: string | null; message: string; checkedAt: string }>
+      }
+      appendMessage: (input: Record<string, unknown>) => Promise<AiMessageRecord>
+      updateMessage: (input: Record<string, unknown>) => Promise<AiMessageRecord>
+      deleteMessage: (id: string) => Promise<boolean>
+      appendEvent: (input: Record<string, unknown>) => Promise<AiEventRecord>
+      onEvent: (callback: (value: { kind: 'message' | 'message-deleted' | 'event' | 'delta' | 'resource'; sessionId?: string; messageId?: string; text?: string; record?: AiMessageRecord | AiEventRecord | import('@shared/ai-types').AiResourceRecord }) => void) => () => void
+      onPermissionRequest: (callback: (value: { requestId: string; sessionId: string; permission: 'read' | 'write' | 'execute' | 'network'; detail?: unknown }) => void) => () => void
+      decidePermission: (value: { requestId: string; decision: 'allowOnce' | 'allowForSession' | 'deny' | 'cancel' }) => Promise<boolean>
+      attachments: {
+        select: () => Promise<string | null>
+        list: (sessionId: string) => Promise<import('@shared/ai-types').AiAttachmentRecord[]>
+        import: (input: { sessionId: string; filePath: string; sourceType?: string; messageId?: string | null }) => Promise<import('@shared/ai-types').AiAttachmentRecord>
+        delete: (id: string) => Promise<boolean>
+        read: (id: string) => Promise<{ id: string; mimeType: string; originalName: string; status: 'available' | 'missing' | 'deleted'; dataUrl?: string; text?: string }>
+      }
+      assistants: {
+        list: (input?: { includeArchived?: boolean; manualOrder?: boolean }) => Promise<AiAssistantRecord[]>
+        save: (input: Partial<AiAssistantRecord> & { id?: string }) => Promise<AiAssistantRecord>
+        delete: (id: string) => Promise<boolean>
+        archive: (id: string) => Promise<AiAssistantRecord>
+        restore: (id: string) => Promise<AiAssistantRecord>
+        pin: (id: string, pinned: boolean) => Promise<AiAssistantRecord>
+        reorder: (input: { id: string; anchor: AiResourceOrderAnchor }) => Promise<AiAssistantRecord>
+      }
+      topics: {
+        list: (input: { sessionId: string; includeArchived?: boolean; manualOrder?: boolean }) => Promise<AiTopicRecord[]>
+        save: (input: Partial<AiTopicRecord> & { session_id: string; id?: string }) => Promise<AiTopicRecord>
+        delete: (id: string) => Promise<boolean>
+        archive: (id: string) => Promise<AiTopicRecord>
+        restore: (id: string) => Promise<AiTopicRecord>
+        pin: (id: string, pinned: boolean) => Promise<AiTopicRecord>
+        reorder: (input: { id: string; anchor: AiResourceOrderAnchor; ownerId?: string }) => Promise<AiTopicRecord>
+        latest: (input?: { sessionId?: string | null }) => Promise<AiTopicRecord | null>
+      }
+    }
   }
   window: {
     openSettings: () => Promise<void>
     openAI: () => Promise<void>
+    openCherry: () => Promise<void>
+  }
+  resolvePath: (filePath: string) => Promise<string | null>
+  isPathInside: (childPath: string, parentPath: string) => Promise<boolean>
+  hasWritePermission: (dirPath: string) => Promise<boolean>
+  /** File bridge consumed by the Cherry compat composer drop/paste path. */
+  file: {
+    selectFolder: (options?: { title?: string; properties?: string[] }) => Promise<string | null>
+    openPath: (filePath: string) => Promise<void>
+    save: (fileName: string, content: string | Uint8Array, options?: { title?: string; defaultPath?: string; filters?: { name: string; extensions: string[] }[] }) => Promise<string | null>
+    getPathForFile: (file: File) => string
+    get: (filePath: string) => Promise<{ id: string; name: string; origin_name: string; path: string; size: number; ext: string; type: string; mime: string } | null>
+    getMetadata: (filePath: string) => Promise<{ kind: 'file' | 'directory'; size: number; createdAt: number; modifiedAt: number; mime?: string; type?: string } | null>
+    createTempFile: (name: string) => Promise<string>
+    write: (filePath: string, data: string | Uint8Array) => Promise<boolean>
+  }
+  fs: {
+    readText: (filePath: string) => Promise<string>
+  }
+  ipcApi: {
+    request: (route: string, input?: unknown) => Promise<unknown>
+    on: (event: string, callback: (payload: unknown) => void) => () => void
+  }
+  /** Source DataApi transport consumed by the Cherry compat settings pages. */
+  dataApi: {
+    request: (request: CherryDataApiRequest) => Promise<CherryDataApiResponse>
+    onDataChanged: (callback: (effects: CherryDataApiDataChangeEffect[]) => void) => () => void
   }
   workspace: {
-    openPopout: (input: { popoutId: string; panelType: string; title: string }) => Promise<boolean>
+    openPopout: (input: { popoutId: string; panelType: string; title: string; bounds?: { x?: number; y?: number; width?: number; height?: number } }) => Promise<boolean>
     closePopout: (popoutId: string) => Promise<boolean>
     focusPopout: (popoutId: string) => Promise<boolean>
     loadDocument: (workspaceId: string) => Promise<{ workspaceId: string; revision: number; document: unknown } | null>
@@ -176,20 +332,29 @@ interface GrimoireAPI {
     loadEditorState: (editorKey: string) => Promise<{ editorKey: string; revision: number; state: unknown } | null>
     saveEditorState: (editorKey: string, expectedRevision: number, state: unknown) => Promise<{ saved: boolean; conflict?: boolean; value?: { editorKey: string; revision: number; state: unknown }; current?: { editorKey: string; revision: number; state: unknown } | null }>
     onEditorStateChanged: (callback: (value: { editorKey: string; revision: number; state: unknown }) => void) => () => void
-    onPopoutClosed: (callback: (value: { popoutId: string }) => void) => () => void
+    onPopoutClosed: (callback: (value: { popoutId: string; bounds?: { x: number; y: number; width: number; height: number } }) => void) => () => void
   }
   agent: {
     sessions: {
       list: () => Promise<AgentSessionRecord[]>
       get: (id: string) => Promise<{ session: AgentSessionRecord; events: AgentSessionEventRecord[] } | null>
-      create: (input: { runtime: string; providerId?: string; model?: string; title?: string; parentId?: string }) => Promise<AgentSessionRecord>
+      create: (input: { runtime: string; providerId?: string; model?: string; title?: string; parentId?: string; agentId?: string | null; workspace?: AgentSessionWorkspace; attachments?: AgentSessionAttachment[]; snapshot?: AgentSessionSnapshot }) => Promise<AgentSessionRecord>
       appendEvent: (input: { sessionId: string; type: string; data: Record<string, unknown> }) => Promise<AgentSessionEventRecord>
       send: (input: { sessionId: string; content: string; providerId?: string; model?: string }) => Promise<{ text: string; session: AgentSessionRecord }>
       branch: (input: { sessionId: string; title?: string }) => Promise<AgentSessionRecord>
       update: (input: { id: string; status?: string; title?: string; data?: Record<string, unknown> }) => Promise<AgentSessionRecord>
+      attach: (input: { id: string; agentId?: string | null; workspace?: AgentSessionWorkspace; attachments?: AgentSessionAttachment[] }) => Promise<AgentSessionRecord>
+      snapshot: (input: { id: string; snapshot: AgentSessionSnapshot }) => Promise<AgentSessionRecord>
       delete: (id: string) => Promise<boolean>
       onPermissionRequest: (callback: (value: { requestId: string; sessionId: string; permission: 'read' | 'write' | 'execute' | 'network'; detail?: unknown }) => void) => () => void
       decidePermission: (value: { requestId: string; decision: 'allowOnce' | 'allowForSession' | 'deny' | 'cancel' }) => Promise<boolean>
+    }
+    stream: {
+      open: (input: { sessionId: string; content: string }) => Promise<{ status: 'unavailable'; code: 'AGENT_RUNTIME_UNAVAILABLE'; dependency: string }>
+      attach: (input: { leaseId: string; afterOrdinal?: number }) => Promise<unknown>
+      abort: (input: { leaseId: string }) => Promise<unknown>
+      close: (input: { leaseId: string }) => Promise<unknown>
+      onEvent: (callback: (value: { leaseId: string; type: 'update' | 'terminal'; ordinal?: number; update?: unknown; status?: string; error?: string }) => void) => () => void
     }
     mcp: {
       list: () => Promise<McpServerRecord[]>
@@ -232,7 +397,7 @@ interface GrimoireAPI {
     status: () => Promise<Record<string, unknown>>
     models: () => Promise<{ models: Array<Record<string, unknown>> }>
     switchModel: (modelId: string) => Promise<Record<string, unknown>>
-    createTask: (input: { imageId: number; threshold?: number; modelId?: string }) => Promise<Record<string, unknown>>
+    createTask: (input: { imageId: number; threshold?: number; modelId?: string; modelIds?: string[]; unionMode?: 'union' | 'intersection' }) => Promise<Record<string, unknown>>
     history: {
       list: (input?: { query?: string; status?: 'succeeded' | 'failed'; limit?: number; offset?: number }) => Promise<WD14HistoryRecord[]>
       get: (id: string) => Promise<WD14HistoryRecord | null>

@@ -1,12 +1,13 @@
 // 魔导书 Grimoire v7 — 主内容区
-import React, { useState, useCallback, useRef, useEffect as useEff } from "react"
+import React, { useState, useRef, useEffect as useEff } from "react"
 import { useI18n } from "../../i18n/context"
 import { usePromptsStore } from "../../stores/prompts.store"
 import { useTagsStore } from "../../stores/tags.store"
 import { useSettingsStore } from "../../stores/settings.store"
 import { TagCards } from "../tags/TagCards"
+import { ImpliedTagStrip } from "../tags/ImpliedTagStrip"
 import type { PanelTag } from "../../../shared/types"
-import { Clipboard, Eraser, Dices, ListChecks, Redo2, RotateCcw, Search, Trash2, X } from 'lucide-react'
+import { Clipboard, Eraser, Dices, ListChecks, Minus, Plus, Redo2, RotateCcw, Search, Trash2, X } from 'lucide-react'
 import { Badge } from '../ui/Badge'
 import { Button, IconButton } from '../ui/Button'
 import { Modal } from '../ui/Modal'
@@ -22,7 +23,7 @@ function promptChipScale(value: string): string {
 export function MainContent() {
   const { t } = useI18n()
   const {
-    positive, negative, removePositive, removeNegative, updateWeight,
+    positive, negative, removePositive, removeNegative, updateWeight, stepWeight,
     clearPositive, clearNegative, clearAll,
     undo, redo, canUndo, canRedo,
     deduplicate, randomPick, getFullPrompt,
@@ -33,24 +34,6 @@ export function MainContent() {
   const scaleClass = promptChipScale(ui_scale)
   const [magnifierOpen, setMagnifierOpen] = useState(false)
 
-  const getPromptByLang = useCallback((lang: "zh" | "en"): string => {
-    const posParts: string[] = []
-    const negParts: string[] = []
-    for (const pt of positive) {
-      const text = lang === "zh" ? pt.tag.zh : pt.tag.en
-      posParts.push(pt.weight === 1 ? text : `(${text}:${pt.weight})`)
-    }
-    for (const pt of negative) {
-      const text = lang === "zh" ? pt.tag.zh : pt.tag.en
-      negParts.push(pt.weight === 1 ? text : `(${text}:${pt.weight})`)
-    }
-    let result = posParts.join(", ")
-    if (negParts.length > 0) {
-      result += "\n--neg " + negParts.join(", ")
-    }
-    return result
-  }, [positive, negative])
-
   const copyText = async (text: string) => {
     if (!text) return
     try { await navigator.clipboard.writeText(text); showToast("已复制", "success") }
@@ -58,7 +41,9 @@ export function MainContent() {
   }
 
   const handleCopy = async (lang?: "zh" | "en") => {
-    const text = lang ? getPromptByLang(lang) : getFullPrompt()
+    // Delegates to the store serializer (shared core) so BREAK markers and
+    // bracket-derived weights are preserved exactly like the output textarea.
+    const text = getFullPrompt(lang ?? "zh")
     if (!text) return
     await copyText(text)
     try { await window.api.history.add({ prompt: text, positive_count: positive.length, negative_count: negative.length }) } catch { /* ok */ }
@@ -114,13 +99,14 @@ export function MainContent() {
         </div>
 
         <div className="ui-prompt-section overflow-auto" style={{ maxHeight: "30%", minHeight: "100px" }}>
+          <ImpliedTagStrip className="border-b border-[var(--color-border)] px-3 py-1.5" />
           <div className="px-3 py-2.5">
             <div className="mb-2 flex items-center gap-2"><Badge tone="success">正面</Badge><span className="text-xs text-[var(--color-muted-foreground)]">{positive.length} 个标签</span></div>
-            <TagChipList tags={positive} onRemove={removePositive} onWeightChange={updateWeight} scaleClass={scaleClass} tone="positive" />
+            <TagChipList tags={positive} onRemove={removePositive} onWeightChange={updateWeight} onStep={stepWeight} scaleClass={scaleClass} tone="positive" />
           </div>
           <div className="border-t border-[var(--color-border)] px-3 py-2.5">
             <div className="mb-2 flex items-center gap-2"><Badge tone="danger">负面</Badge><span className="text-xs text-[var(--color-muted-foreground)]">{negative.length} 个标签</span></div>
-            <TagChipList tags={negative} onRemove={removeNegative} onWeightChange={updateWeight} scaleClass={scaleClass} tone="negative" />
+            <TagChipList tags={negative} onRemove={removeNegative} onWeightChange={updateWeight} onStep={stepWeight} scaleClass={scaleClass} tone="negative" />
           </div>
         </div>
 
@@ -143,17 +129,17 @@ export function MainContent() {
                 <div>
                   <div className="flex items-center justify-between mb-2">
                     <Badge tone="accent">中文</Badge>
-                    <Button size="sm" icon={Clipboard} onClick={() => copyText(getPromptByLang("zh"))}>复制中文</Button>
+                    <Button size="sm" icon={Clipboard} onClick={() => copyText(getFullPrompt("zh"))}>复制中文</Button>
                   </div>
-                  <textarea readOnly value={getPromptByLang("zh")}
+                  <textarea readOnly value={getFullPrompt("zh")}
                     className="w-full h-28 px-3 py-2 bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded text-sm text-[var(--color-text-primary)] font-mono resize-none" />
                 </div>
                 <div>
                   <div className="flex items-center justify-between mb-2">
                     <Badge tone="accent">English</Badge>
-                    <Button size="sm" icon={Clipboard} onClick={() => copyText(getPromptByLang("en"))}>复制英文</Button>
+                    <Button size="sm" icon={Clipboard} onClick={() => copyText(getFullPrompt("en"))}>复制英文</Button>
                   </div>
-                  <textarea readOnly value={getPromptByLang("en")}
+                  <textarea readOnly value={getFullPrompt("en")}
                     className="w-full h-28 px-3 py-2 bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded text-sm text-[var(--color-text-primary)] font-mono resize-none" />
                 </div>
               </div>
@@ -196,8 +182,8 @@ function WeightInput({ tagId, value, onChange }: { tagId: string; value: number;
   )
 }
 
-function TagChipList({ tags, onRemove, onWeightChange, scaleClass, tone }: {
-  tags: PanelTag[]; onRemove: (id: string) => void; onWeightChange: (id: string, w: number) => void; scaleClass: string; tone: 'positive' | 'negative'
+function TagChipList({ tags, onRemove, onWeightChange, onStep, scaleClass, tone }: {
+  tags: PanelTag[]; onRemove: (id: string) => void; onWeightChange: (id: string, w: number) => void; onStep: (id: string, direction: 1 | -1) => void; scaleClass: string; tone: 'positive' | 'negative'
 }) {
   if (tags.length === 0) return <div className="text-xs text-[var(--color-text-secondary)] py-1">暂无</div>
   return (
@@ -206,6 +192,17 @@ function TagChipList({ tags, onRemove, onWeightChange, scaleClass, tone }: {
         <div key={pt.tag.id} className={`ui-prompt-chip ui-prompt-chip-${tone} flex items-center ${scaleClass} group px-2`}>
           <span className="text-[var(--color-text-primary)] whitespace-nowrap">{pt.tag.zh}</span>
           <input type="range" min="0.1" max="2.0" step="0.1" value={pt.weight} onChange={e => onWeightChange(pt.tag.id, parseFloat(e.target.value))} className={`h-1 w-10 ${tone === 'negative' ? 'accent-[var(--color-danger)]' : 'accent-[var(--color-accent)]'}`} aria-label={`${pt.tag.zh}权重`} />
+          {/* BDTM-style bracket stepping: one click = one bracket level (×1.1 / ÷1.1). */}
+          <button type="button" title="权重 -1 层（÷1.1）" aria-label={`降低${pt.tag.zh}权重一层括号`}
+            onClick={() => onStep(pt.tag.id, -1)}
+            className="inline-flex size-4 items-center justify-center rounded-sm border border-[var(--color-border)] text-[var(--color-text-secondary)] transition-colors hover:text-[var(--color-text-primary)]">
+            <Minus size={9} />
+          </button>
+          <button type="button" title="权重 +1 层（×1.1）" aria-label={`提高${pt.tag.zh}权重一层括号`}
+            onClick={() => onStep(pt.tag.id, 1)}
+            className="inline-flex size-4 items-center justify-center rounded-sm border border-[var(--color-border)] text-[var(--color-text-secondary)] transition-colors hover:text-[var(--color-text-primary)]">
+            <Plus size={9} />
+          </button>
           <WeightInput tagId={pt.tag.id} value={pt.weight} onChange={(v) => onWeightChange(pt.tag.id, v)} />
           <IconButton icon={X} onClick={() => onRemove(pt.tag.id)} label={`移除${pt.tag.zh}`} className="h-6 w-6 min-w-6 opacity-0 group-hover:opacity-100" />
         </div>

@@ -5,7 +5,6 @@ import 'antd/dist/reset.css'
 import 'streamdown/styles.css'
 import './canvas-vendor/styles/globals.css'
 import { AppProviders } from './canvas-vendor/components/layout/app-providers'
-import { AgentPanel } from './canvas-vendor/components/agent/agent-panel'
 import CanvasPage from './canvas-vendor/pages/canvas'
 import CanvasProjectPage from './canvas-vendor/pages/canvas/project'
 import './canvas-vendor/i18n'
@@ -13,6 +12,8 @@ import { registerBuiltinNodes } from './canvas-vendor/components/canvas/nodes/bu
 import { registerBundledCanvasPlugins } from './canvas-vendor-plugins'
 import { useCanvasStore } from './canvas-vendor/stores/canvas/use-canvas-store'
 import { getCanvasBootstrapState } from '@shared/canvas-bootstrap'
+import { useAgentStore } from './canvas-vendor/stores/use-agent-store'
+import { AgentPanel } from './canvas-vendor/components/agent/agent-panel'
 
 if (!window.api && window.parent !== window && window.parent.api) {
   Object.defineProperty(window, 'api', { value: window.parent.api, configurable: false, writable: false })
@@ -40,6 +41,8 @@ function CanvasBootGate() {
   const retryHydration = useCanvasStore(state => state.retryHydration)
   const apiReady = Boolean(window.api?.canvas?.vendor)
   const bootstrapState = getCanvasBootstrapState({ apiReady, hydrated, hydrationError })
+  const agentPanelOpen = useAgentStore(state => state.panelOpen)
+  const activeProjectId = useAgentStore(state => state.canvasContext?.snapshot.projectId || '')
 
   useEffect(() => {
     const targetOrigin = window.location.protocol === 'file:' ? '*' : window.location.origin
@@ -57,6 +60,11 @@ function CanvasBootGate() {
     })
     return () => cancelAnimationFrame(frame)
   }, [bootstrapState, hydrationError])
+
+  useEffect(() => {
+    const targetOrigin = window.location.protocol === 'file:' ? '*' : window.location.origin
+    window.parent?.postMessage({ type: 'grimoire:canvas-agent-state', open: agentPanelOpen, projectId: activeProjectId }, targetOrigin)
+  }, [agentPanelOpen, activeProjectId])
 
   if (bootstrapState === 'api-error' || bootstrapState === 'hydration-error') {
     return (

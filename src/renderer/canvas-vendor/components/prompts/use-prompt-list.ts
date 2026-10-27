@@ -41,13 +41,14 @@ export function useGroupedPromptList({ keyword, enabled = true }: { keyword: str
         queryKey: ["grouped-prompts", debouncedKeyword],
         queryFn: () => fetchPrompts({ keyword: debouncedKeyword, pageSize: 500 }),
         initialPageParam: 1,
+        getNextPageParam: () => undefined,
         enabled,
     });
 
     const groups = useMemo<PromptGroupList>(() => {
         if (!query.data) return [];
         const map = new Map<string, Prompt[]>();
-        for (const prompt of query.data.items) {
+        for (const prompt of query.data.pages.flatMap((page) => page.items)) {
             const list = map.get(prompt.category) || [];
             list.push(prompt);
             map.set(prompt.category, list);

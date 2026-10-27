@@ -1,0 +1,40 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "types": ["vite/client", "node"],
+    "jsx": "react-jsx",
+    "strict": true,
+    "skipLibCheck": true,
+    "ignoreDeprecations": "6.0",
+    "baseUrl": ".",
+    "paths": {
+      "@shared/cherry-host-types": ["../../../shared/cherry-host-types.ts"],
+      "@cherrystudio/ui/icons/providers": ["../source/packages/ui/src/components/icons/providers/index.ts"],
+      "@cherrystudio/ui/icons": ["../source/packages/ui/src/components/icons/index.ts"],
+      "@cherrystudio/extension-table-plus": ["node_modules/@cherrystudio/extension-table-plus/dist/index.d.mts"],
+      "@renderer/components/Preview/MermaidPreview": ["src/shims/mermaid-preview.tsx"],
+      "@renderer/components/ModelSelector/useModelSelectorData": ["src/shims/model-selector-data.ts"],
+      "@renderer/hooks/useOpenReleaseNotes": ["src/shims/use-open-release-notes.ts"],
+      "@data/PreferenceService": ["src/shims/preference-service.ts"],
+      "@renderer/data/PreferenceService": ["src/shims/preference-service.ts"],
+      "@tanstack/react-router": ["src/shims/tanstack-router.ts"],
+      "@renderer/*": ["../source/src/renderer/*"],
+      "@shared/*": ["../source/src/shared/*"],
+      "@main/*": ["../source/src/main/*"],
+      "@data/*": ["../source/src/renderer/data/*"],
+      "@logger": ["./src/shims/logger.ts"],
+      "@cherrystudio/ui": ["../source/packages/ui/src/index.ts"],
+      "@cherrystudio/ui/*": ["../source/packages/ui/src/*"],
+      "@cherrystudio/provider-registry": ["../source/packages/provider-registry/src/index.ts"],
+      "@cherrystudio/provider-registry/*": ["../source/packages/provider-registry/src/*"],
+      "@cherrystudio/ai-core": ["../source/packages/aiCore/src/index.ts"],
+      "@cherrystudio/ai-core/*": ["../source/packages/aiCore/src/*"]
+    },
+    "noEmit": true
+  },
+  "include": ["src/**/*", "*.config.ts", "../../../renderer/global.d.ts"],
+  "exclude": ["src/source-shell-generated/**/*", "src/source-shell-entry.tsx", "src/source-shell-telemetry.ts"]
+}

@@ -1,10 +1,15 @@
 import { getDatabase } from '../../database'
 import { getCanvasVendorProject, listCanvasVendorProjects, saveCanvasVendorProject } from '../../services/canvas-vendor.service'
+import { getCanvasProject, listCanvasProjects, saveCanvasProject } from '../../services/canvas.service'
 import { createPromptAsset, listPromptAssetCategories, queryPromptAssets } from '../../services/prompt-asset-browser'
 import { listWD14History } from '../../services/wd14-history.service'
-import { createPersistedTask } from '../../services/task-repository'
+import { createPersistedTask, getPersistedTask, listPersistedTasks } from '../../services/task-repository'
+import { getComfyWorkflow, listComfyWorkflows } from '../../services/comfy-workflow.service'
+import { getMediaAsset, listMediaAssets, listMediaRelations, updateMediaAsset } from '../../services/media.service'
+import { exportProjectPackage, importProjectPackage } from '../../services/project-package.service'
 import { registerMcpTools } from '../../services/mcp.service'
 import { ToolRegistry } from './tools'
+import path from 'path'
 
 function objectInput(input: unknown): Record<string, unknown> {
   return input && typeof input === 'object' && !Array.isArray(input) ? input as Record<string, unknown> : {}
@@ -17,6 +22,12 @@ function textInput(input: Record<string, unknown>, key: string, fallback = ''): 
 function numberInput(input: Record<string, unknown>, key: string, fallback: number): number {
   const value = Number(input[key])
   return Number.isFinite(value) ? value : fallback
+}
+
+function absolutePath(input: Record<string, unknown>, key: string): string {
+  const value = textInput(input, key)
+  if (!value || !path.isAbsolute(value)) throw new Error('路径必须是绝对路径：' + key)
+  return path.normalize(value)
 }
 
 function register(registry: ToolRegistry, tool: Parameters<ToolRegistry['register']>[0]) {
@@ -72,11 +83,120 @@ export function registerGrimoireTools(registry: ToolRegistry): void {
   })
 
   register(registry, {
+    name: 'grimoire.media.search',
+    description: '搜索图片和媒体资产，可按来源、收藏、评分和可用状态筛选。',
+    permission: 'read',
+    inputSchema: { type: 'object', properties: { query: { type: 'string' }, source: { type: 'string' }, favorite: { type: 'boolean' }, rating: { type: 'integer', minimum: 0, maximum: 5 }, available: { type: 'boolean' }, limit: { type: 'integer' }, offset: { type: 'integer' } } },
+    execute: async (raw) => {
+      const input = objectInput(raw)
+      return listMediaAssets({
+        query: textInput(input, 'query'),
+        source: textInput(input, 'source') || undefined,
+        favorite: typeof input.favorite === 'boolean' ? input.favorite : undefined,
+        rating: input.rating === undefined ? undefined : numberInput(input, 'rating', 0),
+        available: typeof input.available === 'boolean' ? input.available : undefined,
+        limit: Math.min(500, Math.max(1, Math.floor(numberInput(input, 'limit', 100)))),
+        offset: Math.max(0, Math.floor(numberInput(input, 'offset', 0))),
+      })
+    },
+  })
+
+  register(registry, {
+    name: 'grimoire.media.get',
+    description: '读取单个媒体资产及其关联关系。',
+    permission: 'read',
+    inputSchema: { type: 'object', required: ['mediaAssetId'], properties: { mediaAssetId: { type: 'string' } } },
+    execute: async (raw) => {
+      const id = textInput(objectInput(raw), 'mediaAssetId')
+      const asset = getMediaAsset(id)
+      if (!asset) throw new Error('媒体资产不存在')
+      return { asset, relations: listMediaRelations('image', 'image:' + asset.image_ref_id) }
+    },
+  })
+
+  register(registry, {
+    name: 'grimoire.media.update',
+    description: '更新媒体资产标题、备注、收藏、评分或来源。',
+    permission: 'write',
+    inputSchema: { type: 'object', required: ['mediaAssetId'], properties: { mediaAssetId: { type: 'string' }, title: { type: 'string' }, description: { type: 'string' }, favorite: { type: 'boolean' }, rating: { type: 'integer', minimum: 0, maximum: 5 }, sourceKind: { type: 'string' } } },
+    execute: async (raw) => {
+      const input = objectInput(raw)
+      return updateMediaAsset({ id: textInput(input, 'mediaAssetId'), title: typeof input.title === 'string' ? input.title : undefined, description: typeof input.description === 'string' ? input.description : undefined, favorite: typeof input.favorite === 'boolean' ? input.favorite : undefined, rating: input.rating === undefined ? undefined : numberInput(input, 'rating', 0), sourceKind: typeof input.sourceKind === 'string' ? input.sourceKind as any : undefined })
+    },
+  })
+
+  register(registry, {
+    name: 'grimoire.tasks.list',
+    description: '查询后台任务和任务状态。',
+    permission: 'read',
+    inputSchema: { type: 'object', properties: { status: { type: 'string' } } },
+    execute: async (raw) => {
+      const status = textInput(objectInput(raw), 'status')
+      return listPersistedTasks(status ? status as any : undefined)
+    },
+  })
+
+  register(registry, {
+    name: 'grimoire.tasks.get',
+    description: '读取单个后台任务。',
+    permission: 'read',
+    inputSchema: { type: 'object', required: ['taskId'], properties: { taskId: { type: 'string' } } },
+    execute: async (raw) => {
+      const task = getPersistedTask(textInput(objectInput(raw), 'taskId'))
+      if (!task) throw new Error('任务不存在')
+      return task
+    },
+  })
+
+  register(registry, {
+    name: 'grimoire.comfy.workflows',
+    description: '列出已保存的 ComfyUI 工作流。',
+    permission: 'read',
+    inputSchema: { type: 'object', properties: {} },
+    execute: async () => listComfyWorkflows().map(item => ({ id: item.id, name: item.name, source: item.source, analysis: item.analysis_json, updatedAt: item.updated_at })),
+  })
+
+  register(registry, {
+    name: 'grimoire.comfy.create',
+    description: '使用已保存的 ComfyUI 工作流创建生成任务。',
+    permission: 'execute',
+    inputSchema: { type: 'object', required: ['workflowId'], properties: { workflowId: { type: 'string' }, values: { type: 'object' } } },
+    execute: async (raw) => {
+      const input = objectInput(raw)
+      const workflowId = textInput(input, 'workflowId')
+      if (!getComfyWorkflow(workflowId)) throw new Error('ComfyUI 工作流不存在')
+      return createPersistedTask({ kind: 'comfyui', input: { workflowId, values: input.values && typeof input.values === 'object' && !Array.isArray(input.values) ? input.values : {} } })
+    },
+  })
+
+  register(registry, {
+    name: 'grimoire.project.export',
+    description: '导出主画布项目为 JSON 或 ZIP 项目包。',
+    permission: 'write',
+    inputSchema: { type: 'object', required: ['projectId', 'outputPath'], properties: { projectId: { type: 'string' }, outputPath: { type: 'string' }, format: { type: 'string', enum: ['json', 'zip'] } } },
+    execute: async (raw) => {
+      const input = objectInput(raw)
+      const format = textInput(input, 'format', 'json') === 'zip' ? 'zip' : 'json'
+      const outputPath = absolutePath(input, 'outputPath')
+      await exportProjectPackage(textInput(input, 'projectId'), outputPath, format)
+      return { exported: true, outputPath, format }
+    },
+  })
+
+  register(registry, {
+    name: 'grimoire.project.import',
+    description: '导入 JSON 或 ZIP 主画布项目包。',
+    permission: 'write',
+    inputSchema: { type: 'object', required: ['inputPath'], properties: { inputPath: { type: 'string' } } },
+    execute: async (raw) => importProjectPackage(absolutePath(objectInput(raw), 'inputPath')),
+  })
+
+  register(registry, {
     name: 'grimoire.canvas.list',
     description: '列出无限画布项目。',
     permission: 'read',
     inputSchema: { type: 'object', properties: {} },
-    execute: async () => listCanvasVendorProjects(),
+    execute: async () => ({ primary: listCanvasProjects().map(project => ({ id: project.id, name: project.name, updated_at: project.updated_at })), vendor: listCanvasVendorProjects() }),
   })
 
   register(registry, {
@@ -84,7 +204,14 @@ export function registerGrimoireTools(registry: ToolRegistry): void {
     description: '读取指定无限画布项目的完整文档。',
     permission: 'read',
     inputSchema: { type: 'object', required: ['projectId'], properties: { projectId: { type: 'string' } } },
-    execute: async (raw) => getCanvasVendorProject(textInput(objectInput(raw), 'projectId')) || (() => { throw new Error('无限画布项目不存在') })(),
+    execute: async (raw) => {
+      const projectId = textInput(objectInput(raw), 'projectId')
+      const vendor = getCanvasVendorProject(projectId)
+      if (vendor) return { scope: 'vendor', project: vendor }
+      const primary = getCanvasProject(projectId)
+      if (primary) return { scope: 'primary', project: primary }
+      throw new Error('画布项目不存在')
+    },
   })
 
   register(registry, {
@@ -97,7 +224,11 @@ export function registerGrimoireTools(registry: ToolRegistry): void {
       const projectId = textInput(input, 'projectId')
       const document = input.document
       if (!projectId || !document || typeof document !== 'object' || Array.isArray(document)) throw new Error('画布更新参数无效')
-      return saveCanvasVendorProject(projectId, document)
+      const vendor = getCanvasVendorProject(projectId)
+      if (vendor) return saveCanvasVendorProject(projectId, document)
+      const primary = getCanvasProject(projectId)
+      if (primary) return saveCanvasProject(projectId, primary.name, document as any)
+      throw new Error('画布项目不存在')
     },
   })
 

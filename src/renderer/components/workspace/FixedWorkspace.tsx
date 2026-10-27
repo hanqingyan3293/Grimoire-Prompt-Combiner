@@ -1,8 +1,9 @@
-import React, { useMemo, useRef, useState } from "react"
+import React, { useEffect, useMemo, useRef, useState } from "react"
 import { PanelShell, type CornerMergeSide } from "./PanelShell"
 import { ENABLED_PANEL_OPTIONS, PANEL_DEFINITIONS, PANEL_OPTION_GROUPS, renderPanel } from "./PanelRegistry"
 import { findPanelNode, useWorkspaceStore } from "../../stores/workspace.store"
 import { normalizePanelTabs, type MergeSide, type WorkspaceLayoutNode, type WorkspacePanelRect } from "../../stores/workspace.store"
+import { WorkspaceEditorHost } from "./WorkspaceEditorHost"
 
 type MergePreview = {
   panelId: string
@@ -21,6 +22,7 @@ export function FixedWorkspace() {
   const maximizedPanels = useWorkspaceStore(s => s.maximizedPanels)
   const floatingPanels = useWorkspaceStore(s => s.floatingPanels)
   const popoutPanels = useWorkspaceStore(s => s.popoutPanels)
+  const popoutBounds = useWorkspaceStore(s => s.popoutBounds)
   const floatingPositions = useWorkspaceStore(s => s.floatingPositions)
   const setPanelType = useWorkspaceStore(s => s.setPanelType)
   const addTab = useWorkspaceStore(s => s.addTab)
@@ -33,6 +35,7 @@ export function FixedWorkspace() {
   const setSplitRatio = useWorkspaceStore(s => s.setSplitRatio)
   const setMaximizedPanel = useWorkspaceStore(s => s.setMaximizedPanel)
   const setFloatingPanel = useWorkspaceStore(s => s.setFloatingPanel)
+  const setFloatingPanelSize = useWorkspaceStore(s => s.setFloatingPanelSize)
   const setPopoutPanel = useWorkspaceStore(s => s.setPopoutPanel)
   const setFloatingPanelPosition = useWorkspaceStore(s => s.setFloatingPanelPosition)
   const focusFloatingPanel = useWorkspaceStore(s => s.focusFloatingPanel)
@@ -52,6 +55,33 @@ export function FixedWorkspace() {
     [layout, maximizedPanelId]
   )
   const panelCount = useMemo(() => layout ? countPanelNodes(layout) : 0, [layout])
+
+  useEffect(() => {
+    const handleShortcut = (event: KeyboardEvent) => {
+      if (!event.ctrlKey || !event.shiftKey) return
+      const panelElement = (document.activeElement as HTMLElement | null)?.closest<HTMLElement>("[data-panel-id]")
+      const panelId = panelElement?.dataset.panelId
+      if (!workspace || !panelId) return
+      if (event.key.toLowerCase() === "m") {
+        event.preventDefault()
+        setMaximizedPanel(workspace.id, maximizedPanelId === panelId ? null : panelId)
+      } else if (event.key.toLowerCase() === "f") {
+        event.preventDefault()
+        setFloatingPanel(workspace.id, panelId, !(floatingPanels[workspace.id] || []).includes(panelId))
+      } else if (event.key.toLowerCase() === "p") {
+        event.preventDefault()
+        const panel = findPanelNode(layout || useWorkspaceStore.getState().getLayout(workspace.id), panelId)
+        const active = panel ? normalizePanelTabs(panel).find(tab => tab.id === panel.activeTabId) || normalizePanelTabs(panel)[0] : null
+        if (active) {
+          const definition = PANEL_DEFINITIONS[active.type]
+          setPopoutPanel(workspace.id, panelId, true)
+          void window.api.workspace.openPopout({ popoutId: workspace.id + ":" + panelId, panelType: active.type, title: definition.title }).catch(() => setPopoutPanel(workspace.id, panelId, false))
+        }
+      }
+    }
+    window.addEventListener("keydown", handleShortcut)
+    return () => window.removeEventListener("keydown", handleShortcut)
+  }, [workspace, layout, maximizedPanelId, floatingPanels, setFloatingPanel, setMaximizedPanel, setPopoutPanel])
 
   const startResize = (node: Extract<WorkspaceLayoutNode, { kind: "split" }>, event: React.PointerEvent<HTMLDivElement>) => {
     event.preventDefault()
@@ -188,8 +218,9 @@ export function FixedWorkspace() {
           onFloatingDragStart={(event) => startFloatingDrag(node.id, event)}
           onPopout={() => {
             const popoutId = workspace.id + ':' + node.id
+            const bounds = popoutBounds[workspace.id]?.[node.id]
             setPopoutPanel(workspace.id, node.id, true)
-            void window.api.workspace.openPopout({ popoutId, panelType: activeType, title: definition.title }).catch(() => setPopoutPanel(workspace.id, node.id, false))
+            void window.api.workspace.openPopout({ popoutId, panelType: activeType, title: definition.title, bounds }).catch(() => setPopoutPanel(workspace.id, node.id, false))
           }}
           floating={(floatingPanels[workspace.id] || []).includes(node.id)}
           onClose={() => closePanel(workspace.id, node.id)}
@@ -198,7 +229,9 @@ export function FixedWorkspace() {
           mergeHighlighted={mergePreview?.panelId === node.id}
           mergePreviewRect={mergePreview?.panelId === node.id ? mergePreview.rect : null}
         >
-          {renderPanel(activeType)}
+          <WorkspaceEditorHost workspaceId={workspace.id} editorId={activeTabId} type={activeType}>
+          {renderPanel(activeType, { agentMode: tabs.find(tab => tab.id === activeTabId)?.mode })}
+          </WorkspaceEditorHost>
         </PanelShell>
       )
     }
@@ -240,10 +273,66 @@ export function FixedWorkspace() {
         const panel = layout ? findPanelNode(layout, panelId) : null
         if (!panel) return null
         const position = floatingPositions[workspace.id]?.[panelId]
-        return <div key={panelId} className="absolute z-[80] h-[min(680px,calc(100%-40px))] w-[min(520px,calc(100%-40px))] shadow-2xl" style={position ? { left: position.x, top: position.y, zIndex: position.zIndex } : { right: 20, top: 20, zIndex: 80 }} onPointerDown={() => focusFloatingPanel(workspace.id, panelId)}>
+        return <FloatingPanelFrame
+          key={panelId}
+          position={position}
+          onResize={(size) => setFloatingPanelSize(workspace.id, panelId, size)}
+          onPointerDown={() => focusFloatingPanel(workspace.id, panelId)}
+        >
           {renderNode(panel, true)}
-        </div>
+        </FloatingPanelFrame>
       })}
+    </div>
+  )
+}
+
+function FloatingPanelFrame({
+  position,
+  onResize,
+  onPointerDown,
+  children,
+}: {
+  position?: { x: number; y: number; zIndex: number; width?: number; height?: number }
+  onResize: (size: { width: number; height: number }) => void
+  onPointerDown: () => void
+  children: React.ReactNode
+}) {
+  const frameRef = useRef<HTMLDivElement>(null)
+
+  React.useEffect(() => {
+    const frame = frameRef.current
+    if (!frame || typeof ResizeObserver === "undefined") return
+    let lastWidth = frame.clientWidth
+    let lastHeight = frame.clientHeight
+    const observer = new ResizeObserver(() => {
+      const width = Math.round(frame.getBoundingClientRect().width)
+      const height = Math.round(frame.getBoundingClientRect().height)
+      if (width === lastWidth && height === lastHeight) return
+      lastWidth = width
+      lastHeight = height
+      onResize({ width, height })
+    })
+    observer.observe(frame)
+    return () => observer.disconnect()
+  }, [onResize])
+
+  return (
+    <div
+      ref={frameRef}
+      className="absolute min-h-0 min-w-0 max-h-[calc(100%-16px)] max-w-[calc(100%-16px)] overflow-hidden rounded-md shadow-2xl"
+      style={{
+        left: position?.x ?? 20,
+        top: position?.y ?? 20,
+        width: position?.width ?? 520,
+        height: position?.height ?? 680,
+        minWidth: 320,
+        minHeight: 240,
+        zIndex: position?.zIndex ?? 80,
+        resize: "both",
+      }}
+      onPointerDown={onPointerDown}
+    >
+      {children}
     </div>
   )
 }

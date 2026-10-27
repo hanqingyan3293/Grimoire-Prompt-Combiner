@@ -1,6 +1,6 @@
 // 魔导书 Grimoire v7 — 设置窗口（独立窗口版）
 import React, { useState, useEffect, useRef } from "react"
-import { AlertTriangle, CheckCircle2, Database, Download, Info, Keyboard, LoaderCircle, Palette, PanelsTopLeft, Pencil, Plug, Plus, RefreshCw, Save, Settings, Trash2, Upload, X } from "lucide-react"
+import { AlertTriangle, Bot, CheckCircle2, Database, Download, Info, Keyboard, LoaderCircle, Palette, PanelsTopLeft, Pencil, Plug, Plus, RefreshCw, Save, Settings, ShieldCheck, Trash2, Upload, X } from "lucide-react"
 import { App as AntApp } from "antd"
 import type { LucideIcon } from "lucide-react"
 import { useSettingsStore } from "../../stores/settings.store"
@@ -24,7 +24,7 @@ const THEMES = [
   { key: "sunset", zh: "日落", color: "#f97316" },
 ]
 
-type Section = "general" | "appearance" | "api" | "canvas" | "shortcuts" | "data" | "about"
+type Section = "general" | "appearance" | "api" | "ai" | "canvas" | "shortcuts" | "data" | "about"
 
 const DEFAULT_SHORTCUTS: Record<string, string> = {
   "chat.send": "Enter",
@@ -40,6 +40,7 @@ const SECTIONS: { key: Section; label: string; description: string; icon: Lucide
   { key: "general", label: "通用", description: "语言、字号和界面密度", icon: Settings },
   { key: "appearance", label: "外观", description: "深浅模式与主题色", icon: Palette },
   { key: "api", label: "API 配置", description: "模型供应商与认证", icon: Plug },
+  { key: "ai", label: "AI 工作台", description: "Runtime、权限、MCP 和会话", icon: Bot },
   { key: "canvas", label: "无限画布", description: "原版画布、Agent 和同步配置", icon: PanelsTopLeft },
   { key: "shortcuts", label: "快捷键", description: "键盘操作映射", icon: Keyboard },
   { key: "data", label: "数据", description: "备份、迁移与诊断", icon: Database },
@@ -385,7 +386,9 @@ export function SettingsWindow({ onClose }: { onClose: () => void }) {
                   <EmptyState icon={Plug} title='尚未配置 API 供应商' description='添加一个兼容 Chat Completions 或 Responses API 的供应商' action={<Button size='sm' variant='primary' icon={Plus} onClick={() => { setEditingProvider(null); setShowProviderEditor(true) }}>新增供应商</Button>} />
                 ) : (
                   <div className="grid gap-3 md:grid-cols-2">
-                    {providers.map(p => (
+                    {providers.filter(Boolean).map(p => {
+                      const providerModels = Array.isArray(p.models) ? p.models : []
+                      return (
                       <article key={p.id}
                         className={`ui-list-card flex min-h-52 flex-col justify-between gap-4 p-4 ${
                           p.is_active
@@ -402,16 +405,16 @@ export function SettingsWindow({ onClose }: { onClose: () => void }) {
                           <div className="mt-2 truncate text-xs text-[var(--color-text-secondary)]" title={p.base_url}>{p.base_url}</div>
                           <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
                             <div className="rounded-lg bg-[var(--color-bg-secondary)] p-2"><div className="text-[var(--color-text-secondary)]">协议</div><div className="mt-1 font-medium text-[var(--color-text-primary)]">{p.protocol === "chat_completions" ? "Chat Completions" : "Responses API"}</div></div>
-                            <div className="rounded-lg bg-[var(--color-bg-secondary)] p-2"><div className="text-[var(--color-text-secondary)]">模型</div><div className="mt-1 font-medium text-[var(--color-text-primary)]">{p.models.length} 个</div></div>
+                            <div className="rounded-lg bg-[var(--color-bg-secondary)] p-2"><div className="text-[var(--color-text-secondary)]">模型</div><div className="mt-1 font-medium text-[var(--color-text-primary)]">{providerModels.length} 个</div></div>
                             <div className="rounded-lg bg-[var(--color-bg-secondary)] p-2"><div className="text-[var(--color-text-secondary)]">默认模型</div><div className="mt-1 truncate font-medium text-[var(--color-text-primary)]">{p.default_model || "未设置"}</div></div>
                             <div className="rounded-lg bg-[var(--color-bg-secondary)] p-2"><div className="text-[var(--color-text-secondary)]">认证</div><div className="mt-1 font-medium text-[var(--color-text-primary)]">{p.has_api_key ? "已配置" : "未配置"}</div></div>
                           </div>
-                          {p.models.length > 0 && (
+                          {providerModels.length > 0 && (
                             <div className="flex gap-1.5 mt-2 flex-wrap">
-                              {p.models.slice(0, 5).map(m => (
+                              {providerModels.slice(0, 5).map(m => (
                                 <Badge key={m}>{m}</Badge>
                               ))}
-                              {p.models.length > 5 && <span className="text-xs text-[var(--color-text-secondary)] self-center">+{p.models.length - 5}</span>}
+                              {providerModels.length > 5 && <span className="text-xs text-[var(--color-text-secondary)] self-center">+{providerModels.length - 5}</span>}
                             </div>
                           )}
                         </div>
@@ -421,7 +424,8 @@ export function SettingsWindow({ onClose }: { onClose: () => void }) {
                           <IconButton icon={Trash2} label={`删除供应商 ${p.name}`} onClick={() => setProviderToDelete(p)} className='ui-icon-button-danger' />
                         </div>
                       </article>
-                    ))}
+                      )
+                    })}
                   </div>
                 )}
                 {activeProvider && !showProviderEditor && (
@@ -430,14 +434,17 @@ export function SettingsWindow({ onClose }: { onClose: () => void }) {
                       <div className="text-[var(--color-text-secondary)]">当前供应商</div><div className="text-[var(--color-accent-text)] font-medium text-right">{activeProvider.name}</div>
                       <div className="text-[var(--color-text-secondary)]">默认模型</div><div className="text-[var(--color-text-primary)] text-right">{activeProvider.default_model}</div>
                       <div className="text-[var(--color-text-secondary)]">协议</div><div className="text-[var(--color-text-primary)] text-right">{activeProvider.protocol === "chat_completions" ? "Chat Completions" : "Responses API"}</div>
-                      <div className="text-[var(--color-text-secondary)]">可用模型</div><div className="text-[var(--color-text-primary)] text-right">{activeProvider.models.length} 个</div>
+                      <div className="text-[var(--color-text-secondary)]">可用模型</div><div className="text-[var(--color-text-primary)] text-right">{Array.isArray(activeProvider.models) ? activeProvider.models.length : 0} 个</div>
                     </div>
                   </div>
                 )}
+                <AiCatalogPanel />
               </>
             )}
           </div>
         )}
+
+        {section === "ai" && <AiSettingsPanel />}
 
         {section === "canvas" && <CanvasSettingsSection />}
 
@@ -594,6 +601,80 @@ function CanvasSettingsSection() {
       </section>
     </div>
   )
+}
+
+function AiCatalogPanel() {
+  const [query, setQuery] = useState('')
+  const [providers, setProviders] = useState<Array<{ id: string; name?: string; description?: string }>>([])
+  const [models, setModels] = useState<Array<{ id: string; name?: string; ownedBy?: string; capabilities?: string[]; contextWindow?: number }>>([])
+  const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    let disposed = false
+    setLoading(true)
+    const catalog = window.api?.ai?.sessions?.catalog
+    if (!catalog || typeof catalog.providers !== 'function' || typeof catalog.models !== 'function') {
+      setProviders([])
+      setModels([])
+      setLoading(false)
+      return () => { disposed = true }
+    }
+    Promise.all([catalog.providers({ query }), catalog.models({ query, limit: 80 })]).then(([providerRows, modelRows]) => {
+      if (disposed) return
+      setProviders(providerRows as typeof providers)
+      setModels(modelRows as typeof models)
+    }).catch(() => {}).finally(() => { if (!disposed) setLoading(false) })
+    return () => { disposed = true }
+  }, [query])
+
+  return (
+    <section className='ui-list-card ui-list-card-no-hover mt-4 space-y-3 p-4'>
+      <div className='flex items-start justify-between gap-3'><div><div className='text-sm font-semibold text-[var(--color-text-primary)]'>Provider Catalog</div><div className='mt-1 text-xs text-[var(--color-text-secondary)]'>Cherry Provider Catalog 元数据，仅用于供应商和模型发现；认证仍使用本地供应商配置。</div></div><span className='text-xs text-[var(--color-text-secondary)]'>{loading ? '加载中' : providers.length + ' 个供应商 · ' + models.length + ' 个模型'}</span></div>
+      <input className='ui-field w-full' value={query} onChange={event => setQuery(event.target.value)} placeholder='搜索供应商或模型目录' aria-label='搜索 Provider Catalog' />
+      {(providers.length > 0 || models.length > 0) && <div className='grid gap-3 md:grid-cols-2'><div className='min-w-0'><div className='mb-2 text-xs font-medium text-[var(--color-text-secondary)]'>供应商</div><div className='max-h-40 space-y-1 overflow-auto'>{providers.slice(0, 20).map(item => <div key={item.id} className='rounded border border-[var(--color-border)] px-2 py-1.5 text-xs'><div className='font-medium text-[var(--color-text-primary)]'>{item.name || item.id}</div><div className='truncate text-[10px] text-[var(--color-text-secondary)]'>{item.description || item.id}</div></div>)}</div></div><div className='min-w-0'><div className='mb-2 text-xs font-medium text-[var(--color-text-secondary)]'>模型能力</div><div className='max-h-40 space-y-1 overflow-auto'>{models.slice(0, 20).map(item => <div key={item.id} className='rounded border border-[var(--color-border)] px-2 py-1.5 text-xs'><div className='truncate font-medium text-[var(--color-text-primary)]'>{item.name || item.id}</div><div className='mt-1 flex flex-wrap gap-1 text-[10px] text-[var(--color-text-secondary)]'><span>{item.ownedBy || '未知供应商'}</span>{item.contextWindow && <span>上下文 {item.contextWindow}</span>}{(item.capabilities || []).slice(0, 3).map(capability => <span key={capability} className='rounded bg-[var(--color-bg-tertiary)] px-1'>{capability}</span>)}</div></div>)}</div></div></div>}
+    </section>
+  )
+}
+
+function AiSettingsPanel() {
+  const [runtimes, setRuntimes] = useState<Array<{ kind: string; available: boolean; version: string | null; message: string }>>([])
+  const [mcpServers, setMcpServers] = useState<Array<{ id: string; name: string; status: string; tools: Array<{ name: string }> }>>([])
+  const [permissionMode, setPermissionMode] = useState('request')
+  const [legacyUi, setLegacyUi] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [loadError, setLoadError] = useState('')
+
+  const load = async () => {
+    setLoading(true)
+    setLoadError('')
+    try {
+      const runtimeApi = window.api?.ai?.sessions?.runtimes
+      const mcpApi = window.api?.agent?.mcp
+      const [settings, runtimeRows, servers] = await Promise.all([
+        window.api.settings.getAll(),
+        runtimeApi && typeof runtimeApi.list === 'function' ? runtimeApi.list() : Promise.resolve([]),
+        mcpApi && typeof mcpApi.list === 'function' ? mcpApi.list() : Promise.resolve([]),
+      ])
+      setPermissionMode(typeof settings.ai_permission_mode === 'string' ? settings.ai_permission_mode : 'request')
+      const legacyValue = settings['dev.aiLegacyUi'] ?? settings.dev_aiLegacyUi
+      setLegacyUi(legacyValue === 'true' || legacyValue === '1')
+      setRuntimes(runtimeRows)
+      setMcpServers(servers)
+      if (!runtimeApi || typeof runtimeApi.list !== 'function' || !mcpApi || typeof mcpApi.list !== 'function') setLoadError('当前窗口的部分 AI 能力未加载，请完全关闭 Grimoire 后使用启动脚本重新启动。')
+    } catch (error) {
+      setLoadError(error instanceof Error ? error.message : '读取 AI 设置失败')
+    } finally { setLoading(false) }
+  }
+
+  useEffect(() => { void load() }, [])
+
+  const saveSetting = async (key: string, value: string) => {
+    await window.api.settings.set(key, value)
+    if (key === 'ai_permission_mode') setPermissionMode(value)
+    if (key === 'dev.aiLegacyUi') setLegacyUi(value === 'true')
+  }
+
+  return <div className="space-y-4"><PanelHeader icon={Bot} title="AI 工作台" description="统一 Agent、Runtime、Provider、MCP 和权限配置" actions={<Button size="sm" variant="secondary" icon={RefreshCw} onClick={() => void load()} disabled={loading}>刷新状态</Button>} />{loadError && <div className="ui-inline-note ui-inline-note-warning text-xs" role="alert">{loadError}</div>}<section className="ui-list-card space-y-3 p-4"><div className="flex items-start gap-3"><ShieldCheck size={18} className="mt-0.5 text-[var(--color-accent-text)]" /><div><div className="text-sm font-semibold text-[var(--color-text-primary)]">权限模式</div><div className="mt-1 text-xs text-[var(--color-text-secondary)]">控制 Agent、内置工具和 MCP 工具执行危险操作前是否需要确认。</div></div></div><select className="ui-field w-full" value={permissionMode} onChange={event => void saveSetting('ai_permission_mode', event.target.value)} aria-label="AI 权限模式"><option value="request">请求确认：危险操作逐次确认</option><option value="automatic">自动：只自动允许安全读取</option><option value="full">完全允许：跳过工具确认</option></select></section><section className="ui-list-card space-y-3 p-4"><div className="flex items-center justify-between"><div><div className="text-sm font-semibold text-[var(--color-text-primary)]">Agent Runtime</div><div className="mt-1 text-xs text-[var(--color-text-secondary)]">Pi、OpenCode、Codex 和 Provider Runtime 的准备状态。</div></div><button type="button" className="text-xs text-[var(--color-accent-text)]" onClick={() => void load()}>重新检测</button></div><div className="grid gap-2 md:grid-cols-2">{runtimes.map(runtime => <div key={runtime.kind} className="rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-secondary)] p-3"><div className="flex items-center justify-between gap-2"><span className="text-xs font-medium text-[var(--color-text-primary)]">{runtime.kind}</span><span className={runtime.available ? 'text-xs text-emerald-500' : 'text-xs text-amber-500'}>{runtime.available ? '可用' : '不可用'}</span></div><div className="mt-1 text-[10px] text-[var(--color-text-secondary)]">{runtime.version || runtime.message}</div></div>)}</div></section><section className="ui-list-card space-y-3 p-4"><div className="flex items-center justify-between"><div><div className="text-sm font-semibold text-[var(--color-text-primary)]">MCP 服务</div><div className="mt-1 text-xs text-[var(--color-text-secondary)]">默认采用手动启用工具；具体工具选择在 Agent 工作台 MCP 模式中完成。</div></div><span className="text-xs text-[var(--color-text-secondary)]">{mcpServers.length} 个 Server</span></div><div className="space-y-1.5">{mcpServers.length ? mcpServers.map(server => <div key={server.id} className="flex items-center justify-between gap-3 rounded-lg border border-[var(--color-border)] px-3 py-2 text-xs"><span className="min-w-0 truncate text-[var(--color-text-primary)]">{server.name}</span><span className={server.status === 'connected' ? 'text-emerald-500' : 'text-[var(--color-text-secondary)]'}>{server.status} · {server.tools.length} 工具</span></div>) : <div className="text-xs text-[var(--color-text-secondary)]">尚未配置 MCP Server</div>}</div></section><section className="ui-list-card space-y-3 p-4"><div className="text-sm font-semibold text-[var(--color-text-primary)]">兼容与诊断</div><label className="flex items-center justify-between gap-3 rounded-lg border border-[var(--color-border)] px-3 py-2 text-xs"><span><span className="block font-medium text-[var(--color-text-primary)]">隐藏旧 AI UI 回滚开关</span><span className="mt-1 block text-[10px] text-[var(--color-text-secondary)]">默认关闭；仅在新工作台诊断异常时临时启用。</span></span><input type="checkbox" checked={legacyUi} onChange={event => void saveSetting('dev.aiLegacyUi', event.target.checked ? 'true' : 'false')} className="accent-[var(--color-accent)]" /></label><Button size="sm" variant="primary" icon={Bot} onClick={() => void window.api.window.openAI()}>打开统一 Agent 工作台</Button></section></div>
 }
 
 function Field({ label, desc, children }: { label: string; desc?: string; children: React.ReactNode }) {

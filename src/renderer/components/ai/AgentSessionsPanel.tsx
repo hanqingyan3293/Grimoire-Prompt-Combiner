@@ -26,15 +26,26 @@ export function AgentSessionsPanel() {
 
   const load = async () => {
     setLoading(true)
-    try { setSessions(await window.api.agent.sessions.list()) }
+    const api = window.api?.agent?.sessions
+    if (!api || typeof api.list !== 'function') {
+      setSessions([])
+      setMessage('当前 Electron 预加载脚本未提供旧 Agent 会话 API。请完全关闭 Grimoire 后使用启动脚本重新启动。')
+      setLoading(false)
+      return
+    }
+    try { setSessions(await api.list()) }
     catch (error) { setMessage(error instanceof Error ? error.message : '读取 Agent 会话失败') }
     finally { setLoading(false) }
   }
 
   useEffect(() => { void load() }, [])
-  useEffect(() => window.api.agent.sessions.onPermissionRequest(request => {
+  useEffect(() => {
+    const api = window.api?.agent?.sessions
+    if (!api || typeof api.onPermissionRequest !== 'function') return
+    return api.onPermissionRequest(request => {
     setPermissionRequests(current => current.some(item => item.requestId === request.requestId) ? current : [...current, request])
-  }), [])
+    })
+  }, [])
 
   const decidePermission = async (requestId: string, decision: 'allowOnce' | 'allowForSession' | 'deny' | 'cancel') => {
     try {

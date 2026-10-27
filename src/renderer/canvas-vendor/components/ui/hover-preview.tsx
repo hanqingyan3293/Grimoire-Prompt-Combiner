@@ -61,7 +61,7 @@ export function HoverPreview({
                     style={{ top: position.top, left: position.left }}
                 >
                     {previewContent}
-    </div>
+    </div>, document.body
             ) : null}
         </>
     );

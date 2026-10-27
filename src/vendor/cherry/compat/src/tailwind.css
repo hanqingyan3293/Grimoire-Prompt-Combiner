@@ -1,0 +1,24 @@
+/*
+ * Compat stylesheet entry №2 of 2 — Tailwind, the UI theme, and this project's content roots.
+ *
+ * Mirrors the source's second stylesheet (`assets/styles/tailwind.css`): `@import
+ * 'tailwindcss'`, `tw-animate-css`, the UI package theme, the `dark`/`no-hover` custom
+ * variants, and an `@source` root for the UI package.
+ *
+ * The `@source` directives below are the part upstream does not need. Tailwind v4
+ * detects content relative to the project base — for the Vite plugin, the Vite root,
+ * which for this project is `compat/`. Upstream, automatic detection rooted at the
+ * source checkout already reaches the renderer tree; here that tree is a *sibling*
+ * directory, so it has to be named explicitly. Without this the source-only utilities
+ * (`.left-1/2`, `.rounded-3xl`, `.p-6`, `.animate-in`, …) never get generated — see
+ * `index.css` in this directory for the measured impact and the visible symptom.
+ *
+ * `@source` is only honored in a sheet that also carries `@import 'tailwindcss'`, so it
+ * lives here rather than in the application stylesheet. Scoped to the renderer sources
+ * and the UI package rather than the whole 8k-file closure, so i18n packs, fixtures and
+ * prebuilt bundles do not feed the scanner.
+ */
+@import '../../source/src/renderer/assets/styles/tailwind.css';
+
+@source '../../source/src';
+@source '../../source/packages/ui/src';

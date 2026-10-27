@@ -1,0 +1,375 @@
+.dv-debug {
+    .dv-resize-container {
+        .dv-resize-handle-top {
+            background-color: red;
+        }
+
+        .dv-resize-handle-bottom {
+            background-color: green;
+        }
+
+        .dv-resize-handle-left {
+            background-color: yellow;
+        }
+
+        .dv-resize-handle-right {
+            background-color: blue;
+        }
+
+        .dv-resize-handle-topleft,
+        .dv-resize-handle-topright,
+        .dv-resize-handle-bottomleft,
+        .dv-resize-handle-bottomright {
+            background-color: cyan;
+        }
+    }
+}
+
+.dv-floating-overlay-host {
+    position: absolute;
+    pointer-events: none;
+
+    > .dv-resize-container {
+        pointer-events: auto;
+    }
+}
+
+// Auto-hide edge group "peek": the active panel slid out over the content. The
+// backdrop, the peeked content, and the Pin header are three separate sibling
+// overlays (the `always` render overlay can't be nested), layered by z-index.
+.dv-edge-peek {
+    background-color: var(--dv-group-view-background-color);
+    border: 1px solid var(--dv-separator-border);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
+
+    // the reparented content container fills the backdrop
+    > * {
+        width: 100%;
+        height: 100%;
+        overflow: auto;
+    }
+}
+
+// Drag-reveal edge indicator: a thin accent line hugging the content-area edge
+// in the direction a new edge group would dock. A line (not a fill) so it reads
+// differently from the split overlay; the colour is the theme's drag-over accent
+// so it matches the rest of the drop styling. Geometry (edge + extent) is set
+// inline by the auto-edge-group module.
+.dv-auto-edge-band {
+    position: absolute;
+    pointer-events: none;
+    z-index: var(--dv-overlay-z-index, 999);
+    background-color: var(--dv-edge-dock-indicator-color);
+    box-shadow: 0 0 6px var(--dv-edge-dock-indicator-color);
+}
+
+// The title bar is a sibling overlay so it can sit above an `always` panel's
+// render overlay. It occupies the top band of the peek (the content is inset
+// below it), with the panel title to the left and pin + close to the right.
+.dv-edge-peek-header {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 0 4px 0 8px;
+    box-sizing: border-box;
+    background-color: var(--dv-group-view-background-color);
+    border: 1px solid var(--dv-separator-border);
+    border-bottom: none;
+    color: var(--dv-activegroup-visiblepanel-tab-color);
+    font-size: 12px;
+
+    // Behave like the tab close icon: borderless, monotone, with a hover
+    // background highlight. Nesting keeps the two-class selector (specificity
+    // 0,2,0) winning over broad app `button {}` rules (e.g. `.app button`,
+    // 0,1,1) that would otherwise paint a border/outline on the chrome icons.
+    .dv-edge-peek-pin,
+    .dv-edge-peek-close {
+        flex: 0 0 auto;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        box-sizing: border-box;
+        cursor: pointer;
+        border: none;
+        padding: 4px;
+        color: inherit;
+        background: transparent;
+        outline: none;
+
+        &:hover {
+            border-radius: 2px;
+            background-color: var(--dv-icon-hover-background-color);
+        }
+
+        // Keyboard-only focus ring (suppressed on mouse click).
+        &:focus-visible {
+            border-radius: 2px;
+            outline: 1px solid var(--dv-tab-divider-color);
+            outline-offset: -1px;
+        }
+    }
+}
+
+.dv-edge-peek-title {
+    flex: 1 1 auto;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+// A floating window hosts its own gridview as the overlay content; it must
+// fill the resize container so its size tracks the overlay box.
+.dv-resize-container > .dv-grid-view {
+    width: 100%;
+    height: 100%;
+}
+
+// When a dedicated drag-handle title bar is present the overlay stacks the
+// handle above the nested gridview as a flex column so the layout shrinks to
+// fit beneath it. Resize handles are position:absolute and stay out of the
+// flex flow.
+.dv-resize-container-with-titlebar {
+    display: flex;
+    flex-direction: column;
+
+    > .dv-floating-titlebar {
+        flex: 0 0 auto;
+    }
+
+    > .dv-grid-view {
+        height: auto;
+        flex: 1 1 0;
+        min-height: 0;
+    }
+}
+
+.dv-floating-titlebar {
+    box-sizing: border-box;
+    flex-shrink: 0;
+    height: var(--dv-floating-titlebar-height, 22px);
+    background-color: var(--dv-floating-titlebar-background-color);
+    border-bottom: var(--dv-floating-titlebar-border-bottom, none);
+    user-select: none;
+    // Without touch-action: none, mobile browsers interpret a drag on the bar
+    // as a scroll/zoom and fire pointercancel, losing the move gesture.
+    touch-action: none;
+
+    &.dv-draggable {
+        cursor: grab;
+    }
+}
+
+.dv-resize-container {
+    --dv-overlay-z-index: var(--dv-overlay-z-index, 999);
+
+    position: absolute;
+    z-index: calc(var(--dv-overlay-z-index) - 2);
+
+    // The container is the backdrop behind its content. A single floating group
+    // hides it entirely, but a nested floating layout exposes the gaps/sashes
+    // between groups, and without a fill those gaps would be transparent. Mirror
+    // the docked backdrop (the dockview root uses --dv-group-view-background-color).
+    background-color: var(--dv-group-view-background-color);
+
+    border: var(--dv-floating-border);
+    box-shadow: var(--dv-floating-box-shadow);
+
+    /* GPU optimizations for floating group movement */
+    will-change: transform, opacity;
+    transform: translate3d(0, 0, 0);
+    backface-visibility: hidden;
+
+    &.dv-hidden {
+        display: none;
+    }
+
+    &.dv-resize-container-dragging {
+        opacity: var(--dv-floating-group-dragging-opacity);
+        /* Enhanced GPU acceleration during drag */
+        will-change: transform, opacity;
+    }
+
+    // Without touch-action: none, mobile browsers interpret a drag on the
+    // handle as a scroll/zoom and fire pointercancel, causing the resize
+    // gesture to lose the finger mid-drag.
+    .dv-resize-handle-top,
+    .dv-resize-handle-bottom,
+    .dv-resize-handle-left,
+    .dv-resize-handle-right,
+    .dv-resize-handle-topleft,
+    .dv-resize-handle-topright,
+    .dv-resize-handle-bottomleft,
+    .dv-resize-handle-bottomright {
+        touch-action: none;
+    }
+
+    .dv-resize-handle-top {
+        height: 4px;
+        width: calc(100% - 8px);
+        left: 4px;
+        top: -2px;
+        z-index: var(--dv-overlay-z-index);
+        position: absolute;
+        cursor: ns-resize;
+    }
+
+    .dv-resize-handle-bottom {
+        height: 4px;
+        width: calc(100% - 8px);
+        left: 4px;
+        bottom: -2px;
+        z-index: var(--dv-overlay-z-index);
+        position: absolute;
+        cursor: ns-resize;
+    }
+
+    .dv-resize-handle-left {
+        height: calc(100% - 8px);
+        width: 4px;
+        left: -2px;
+        top: 4px;
+        z-index: var(--dv-overlay-z-index);
+        position: absolute;
+        cursor: ew-resize;
+    }
+
+    .dv-resize-handle-right {
+        height: calc(100% - 8px);
+        width: 4px;
+        right: -2px;
+        top: 4px;
+        z-index: var(--dv-overlay-z-index);
+        position: absolute;
+        cursor: ew-resize;
+    }
+
+    .dv-resize-handle-topleft {
+        height: 4px;
+        width: 4px;
+        top: -2px;
+        left: -2px;
+        z-index: var(--dv-overlay-z-index);
+        position: absolute;
+        cursor: nw-resize;
+    }
+
+    .dv-resize-handle-topright {
+        height: 4px;
+        width: 4px;
+        right: -2px;
+        top: -2px;
+        z-index: var(--dv-overlay-z-index);
+        position: absolute;
+        cursor: ne-resize;
+    }
+
+    .dv-resize-handle-bottomleft {
+        height: 4px;
+        width: 4px;
+        left: -2px;
+        bottom: -2px;
+        z-index: var(--dv-overlay-z-index);
+        position: absolute;
+        cursor: sw-resize;
+    }
+
+    .dv-resize-handle-bottomright {
+        height: 4px;
+        width: 4px;
+        right: -2px;
+        bottom: -2px;
+        z-index: var(--dv-overlay-z-index);
+        position: absolute;
+        cursor: se-resize;
+    }
+
+    // Default 4px hit area is unusable with a fingertip (~36–44px target).
+    // Grow the invisible handles on coarse pointers and bias them outward
+    // so they don't steal taps from panel content. Corners take precedence
+    // over edges by reserving a 24px gap at each end.
+    @media (pointer: coarse) {
+        .dv-resize-handle-top,
+        .dv-resize-handle-bottom {
+            height: 16px;
+            width: calc(100% - 48px);
+            left: 24px;
+        }
+
+        .dv-resize-handle-top {
+            top: -10px;
+        }
+
+        .dv-resize-handle-bottom {
+            bottom: -10px;
+        }
+
+        .dv-resize-handle-left,
+        .dv-resize-handle-right {
+            width: 16px;
+            height: calc(100% - 48px);
+            top: 24px;
+        }
+
+        .dv-resize-handle-left {
+            left: -10px;
+        }
+
+        .dv-resize-handle-right {
+            right: -10px;
+        }
+
+        .dv-resize-handle-topleft,
+        .dv-resize-handle-topright,
+        .dv-resize-handle-bottomleft,
+        .dv-resize-handle-bottomright {
+            height: 24px;
+            width: 24px;
+        }
+
+        .dv-resize-handle-topleft {
+            top: -12px;
+            left: -12px;
+        }
+
+        .dv-resize-handle-topright {
+            top: -12px;
+            right: -12px;
+        }
+
+        .dv-resize-handle-bottomleft {
+            bottom: -12px;
+            left: -12px;
+        }
+
+        .dv-resize-handle-bottomright {
+            bottom: -12px;
+            right: -12px;
+        }
+    }
+}
+
+// Smart Guides: alignment lines + dock/merge drop-preview painted in the
+// floating container while a float is dragged. The module positions + sizes
+// these inline; only the theming lives here (override the CSS vars to restyle).
+.dv-smart-guides {
+    pointer-events: none;
+    // The guide layer mounts in `.dv-floating-overlay-host` (z-index: auto, no
+    // stacking context), so it competes directly with the shell-level render
+    // overlays. `always`/force-visible panel content carries an inline z-index
+    // (1000, or `--dv-overlay-z-index` + aria-level) and would otherwise paint
+    // over the alignment lines. Lift the guides clear of that whole band.
+    z-index: calc(var(--dv-overlay-z-index, 999) + 100);
+}
+
+.dv-smart-guide {
+    background-color: var(--dv-smart-guides-color, #1f9cf0);
+}
+
+.dv-smart-guide-preview {
+    box-sizing: border-box;
+    background-color: var(
+        --dv-smart-guides-preview-color,
+        rgba(31, 156, 240, 0.18)
+    );
+    border: 1px solid var(--dv-smart-guides-color, #1f9cf0);
+}

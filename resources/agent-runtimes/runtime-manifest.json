@@ -1,0 +1,47 @@
+{
+  "generatedAt": "2026-10-05",
+  "policy": "local-only-no-silent-download",
+  "buildTools": {
+    "bun": "1.3.14",
+    "path": "D:/File/Data/魔导书/项目工具/bun/bun.exe"
+  },
+  "runtimes": [
+    {
+      "id": "pi",
+      "status": "ready",
+      "source": "D:/File/Data/魔导书/项目参考/pi-main/packages/coding-agent",
+      "license": "MIT",
+      "artifact": "resources/agent-runtimes/pi/pi.exe",
+      "sha256": "2BE1BF2F42C519EA81925DA969E4C8C4F7B5EA1CD83923B50AAB8B25A9D8E745",
+      "version": "1.0.1",
+      "buildCommand": "npm --prefix packages/coding-agent run build:binary (with local Bun 1.3.14)",
+      "smokeTest": "--version and --mode rpc --no-session get_state passed"
+    },
+    {
+      "id": "opencode",
+      "status": "ready",
+      "source": "D:/File/Data/魔导书/项目参考/opencode-dev",
+      "license": "MIT",
+      "artifact": "resources/agent-runtimes/opencode/opencode.exe",
+      "sha256": "81E1308AC75B9BE366B9E9E4F9697D0AC0C48CFCF4D2D59FC334AC04367F379E",
+      "version": "1.18.34",
+      "buildCommand": "bun run --cwd packages/opencode build --single --skip-embed-web-ui --skip-install, then direct Bun compile with OPENCODE_VERSION=1.18.34",
+      "smokeTest": "--version and serve on 127.0.0.1 passed",
+      "desktopBaseline": {
+        "file": "D:/File/Data/魔导书/项目参考/参考安装包/opencode-desktop-win-x64-v1.18.34.exe",
+        "version": "1.18.34",
+        "sha256": "403D446D6CA9A9F2EDB694D0ECF64C2BE7468FACADE100B9D6E9E65430672BD2",
+        "signature": "Anomaly Innovations, Inc. / Microsoft ID Verified CS AOC CA 04"
+      }
+    },
+    {
+      "id": "codex",
+      "status": "system-detected",
+      "source": "system PATH / local Canvas Agent HTTP endpoint",
+      "license": "external-runtime",
+      "artifact": "system",
+      "sha256": null,
+      "reason": "Codex CLI 可被系统 PATH 检测；画布 Agent 仍通过配置的 HTTP/SSE 端点连接。"
+    }
+  ]
+}

@@ -38,7 +38,7 @@ export class HttpAgentRuntime implements AgentRuntime {
     yield { type: 'completed', text, ...(toolCalls?.length ? { toolCalls } : {}) }
   }
   async interrupt(sessionId: string) { await this.request(this.config.interruptPath || '/interrupt', { sessionId }) }
-  async approve(input: RuntimeApprovalInput) { await this.request(this.config.approvalPath || '/approval', { ...input, decision: input.decision === 'decline' ? 'accept' : input.decision }) }
+  async approve(input: RuntimeApprovalInput) { await this.request(this.config.approvalPath || '/approval', { ...input, decision: input.decision }) }
   async reject(input: RuntimeApprovalInput) { await this.request(this.config.approvalPath || '/approval', { ...input, decision: 'decline' }) }
   async listTools() { const response = await this.request(this.config.toolsPath || '/tools', undefined, 'GET'); return Array.isArray(response.tools) ? response.tools : [] }
   private async requestPrompt(path: string, body: unknown): Promise<{ response: Record<string, any>; events: unknown[] }> {

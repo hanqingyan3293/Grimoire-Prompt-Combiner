@@ -1,9 +1,8 @@
-import React, { Suspense, lazy } from "react"
-import { ExternalLink, LoaderCircle } from 'lucide-react'
+import React from "react"
+import { ExternalLink } from 'lucide-react'
 import { useSettingsStore } from "../../stores/settings.store"
+import { AgentWorkspacePanel } from "../ai/AgentWorkspacePanel"
 import { Button } from '../ui/Button'
-
-const SimpleAIPanel = lazy(() => import('../ai/SimpleAIPanel').then(module => ({ default: module.SimpleAIPanel })))
 
 export type UtilityPopoverKey = "ai" | "settings"
 
@@ -30,11 +29,12 @@ export function QuickAIPanel({ variant = "popover" }: { variant?: "popover" | "e
     <div className={`${containerClassName} ui-utility-panel`}>
       <div className="flex shrink-0 items-center justify-between gap-3 border-b border-[var(--color-border)] px-4 py-3">
         <span className="text-sm font-semibold text-[var(--color-text-primary)]">AI 助手</span>
-        <Button size="sm" icon={ExternalLink} onClick={() => window.api.window.openAI()}>独立窗口</Button>
+        <div className="flex items-center gap-2">
+          <Button size="sm" icon={ExternalLink} onClick={() => window.api.window.openCherry()}>Cherry 源 UI</Button>
+          <Button size="sm" icon={ExternalLink} onClick={() => window.api.window.openAI()}>旧工作台</Button>
+        </div>
       </div>
-      <div className="min-h-0 flex-1">
-        <Suspense fallback={<div className="flex h-full items-center justify-center gap-2 text-xs text-[var(--color-text-secondary)]"><LoaderCircle size={15} className="animate-spin" aria-hidden="true" />正在载入 AI</div>}><SimpleAIPanel /></Suspense>
-      </div>
+      <div className="min-h-0 flex-1"><AgentWorkspacePanel variant="compact" /></div>
     </div>
   )
 }

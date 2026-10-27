@@ -6,11 +6,15 @@ export function WorkspaceBar() {
   const workspaces = useWorkspaceStore(s => s.workspaces)
   const setActiveWorkspace = useWorkspaceStore(s => s.setActiveWorkspace)
   const createWorkspace = useWorkspaceStore(s => s.createWorkspace)
+  const duplicateWorkspace = useWorkspaceStore(s => s.duplicateWorkspace)
+  const deleteWorkspace = useWorkspaceStore(s => s.deleteWorkspace)
   const renameWorkspace = useWorkspaceStore(s => s.renameWorkspace)
   const resetWorkspace = useWorkspaceStore(s => s.resetWorkspace)
   const resetAllWorkspaces = useWorkspaceStore(s => s.resetAllWorkspaces)
   const copyWorkspaceLayout = useWorkspaceStore(s => s.copyWorkspaceLayout)
   const saveCurrentWorkspaceLayout = useWorkspaceStore(s => s.saveCurrentWorkspaceLayout)
+  const exportCurrentWorkspace = useWorkspaceStore(s => s.exportCurrentWorkspace)
+  const importWorkspace = useWorkspaceStore(s => s.importWorkspace)
   const layoutPresets = useWorkspaceStore(s => s.layoutPresets)
   const saveCurrentLayoutPreset = useWorkspaceStore(s => s.saveCurrentLayoutPreset)
   const applyLayoutPresetToCurrentWorkspace = useWorkspaceStore(s => s.applyLayoutPresetToCurrentWorkspace)
@@ -181,6 +185,34 @@ export function WorkspaceBar() {
             >
               覆盖当前工作区
             </button>
+            <button
+              onClick={() => runMenuAction(() => duplicateWorkspace(activeWorkspaceId))}
+              className="ui-menu-item px-3 py-1.5 text-xs"
+            >
+              复制当前工作区
+            </button>
+            <button
+              onClick={() => runMenuAction(() => void exportCurrentWorkspace())}
+              className="ui-menu-item px-3 py-1.5 text-xs"
+            >
+              导出当前工作区
+            </button>
+            <button
+              onClick={() => runMenuAction(() => void importWorkspace())}
+              className="ui-menu-item px-3 py-1.5 text-xs"
+            >
+              导入工作区
+            </button>
+            {activeWorkspace.id.startsWith("workspace_") && (
+              <button
+                onClick={() => runMenuAction(() => {
+                  if (window.confirm("确定删除工作区“" + activeWorkspace.title + "”吗？")) deleteWorkspace(activeWorkspace.id)
+                })}
+                className="ui-menu-item px-3 py-1.5 text-xs text-red-400"
+              >
+                删除当前工作区
+              </button>
+            )}
             <div className="ui-menu-divider" />
             <div className="ui-menu-muted px-3 py-1 text-[10px]">布局预设</div>
             {layoutPresets.length === 0 ? (

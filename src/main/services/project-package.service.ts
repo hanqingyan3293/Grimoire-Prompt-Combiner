@@ -4,6 +4,7 @@ import os from 'os'
 import path from 'path'
 import { getDatabase } from '../database'
 import { registerManagedImage } from './image-asset.service'
+import { createImageDerivatives, ensureMediaAsset } from './media.service'
 import { createCanvasProject, saveCanvasProject } from './canvas.service'
 import { validateCanvasDocument } from '../../shared/canvas-validation'
 import { isCanvasTaskNodeKind, type CanvasDocument, type CanvasProject } from '../../shared/canvas-types'
@@ -55,6 +56,8 @@ export async function importProjectPackage(inputPath: string): Promise<ProjectPa
         const tempPath = path.join(tempRoot, safeArchiveName(image.archivePath || `${image.sourceId}.bin`))
         await fs.promises.writeFile(tempPath, Buffer.from(image.dataBase64, 'base64'))
         const registered = await registerManagedImage(tempPath, image.originalName || undefined)
+        ensureMediaAsset(registered.id, 'project-package', registered.original_name)
+        void createImageDerivatives(registered.id)
         imageMap.set(image.sourceId, { id: registered.id, filePath: registered.file_path })
         importedImages++
       } catch (error) {
