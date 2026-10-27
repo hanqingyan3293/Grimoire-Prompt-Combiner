@@ -36,18 +36,18 @@ const DEFAULT_SHORTCUTS: Record<string, string> = {
   "global.close": "Escape",
 }
 
-const SECTIONS: { key: Section; label: string; description: string; icon: LucideIcon }[] = [
-  { key: "general", label: "通用", description: "语言、字号和界面密度", icon: Settings },
-  { key: "appearance", label: "外观", description: "深浅模式与主题色", icon: Palette },
-  { key: "api", label: "API 配置", description: "模型供应商与认证", icon: Plug },
-  { key: "ai", label: "AI 工作台", description: "Runtime、权限、MCP 和会话", icon: Bot },
-  { key: "canvas", label: "无限画布", description: "原版画布、Agent 和同步配置", icon: PanelsTopLeft },
-  { key: "shortcuts", label: "快捷键", description: "键盘操作映射", icon: Keyboard },
-  { key: "data", label: "数据", description: "备份、迁移与诊断", icon: Database },
-  { key: "about", label: "关于", description: "版本与技术信息", icon: Info },
+const SECTIONS: { key: Section; label: string; description: string; icon: LucideIcon; keywords: string }[] = [
+  { key: "general", label: "通用", description: "语言、字号和界面密度", icon: Settings, keywords: "语言 language 字号 字体大小 密度 紧凑 舒适 随机标签" },
+  { key: "appearance", label: "外观", description: "深浅模式与主题色", icon: Palette, keywords: "主题 颜色 色轮 深色 浅色 跟随系统 强调色 accent 背景 边框" },
+  { key: "api", label: "API 配置", description: "模型供应商与认证", icon: Plug, keywords: "供应商 provider 模型 密钥 key 接口 base url 连接测试" },
+  { key: "ai", label: "AI 工作台", description: "Runtime、权限、MCP 和会话", icon: Bot, keywords: "智能体 agent 运行时 runtime 权限 mcp 会话 session 工具" },
+  { key: "canvas", label: "无限画布", description: "原版画布、Agent 和同步配置", icon: PanelsTopLeft, keywords: "画布 canvas 节点 同步 代理" },
+  { key: "shortcuts", label: "快捷键", description: "键盘操作映射", icon: Keyboard, keywords: "快捷键 键盘 组合键 冲突" },
+  { key: "data", label: "数据", description: "备份、迁移与诊断", icon: Database, keywords: "数据 备份 导入 导出 迁移 诊断 日志 缓存" },
+  { key: "about", label: "关于", description: "版本与技术信息", icon: Info, keywords: "关于 版本 许可证 更新" },
 ]
 
-export function SettingsWindow({ onClose }: { onClose: () => void }) {
+export function SettingsWindow({ onClose, embedded = false }: { onClose?: () => void; embedded?: boolean }) {
   const {
     theme,
     appearance_mode,
@@ -66,6 +66,10 @@ export function SettingsWindow({ onClose }: { onClose: () => void }) {
   } = useSettingsStore()
   const { providers, activeProvider, loading: providersLoading, loadProviders, saveProvider, deleteProvider, setActive } = useProviderStore()
   const [section, setSection] = useState<Section>("general")
+  // The settings panel is a full page now, so a way to find a setting by name matters more
+  // than it did in a 900×680 window. Matches the section label, its description and its
+  // keywords — enough for the vocabulary people actually type (主题/颜色/密钥/快捷键).
+  const [settingsQuery, setSettingsQuery] = useState("")
   const [accentInput, setAccentInput] = useState(custom_accent)
   const [shortcuts, setShortcuts] = useState<Record<string, string>>({})
   const [editingShortcut, setEditingShortcut] = useState<string | null>(null)
@@ -204,16 +208,31 @@ export function SettingsWindow({ onClose }: { onClose: () => void }) {
     { key: "custom_border", label: "边框颜色", value: custom_border, fallback: appearanceDefaults.border },
   ]
 
+  const normalizedQuery = settingsQuery.trim().toLowerCase()
+  const filteredSections = normalizedQuery
+    ? SECTIONS.filter(entry => (entry.label + entry.description + entry.keywords).toLowerCase().includes(normalizedQuery))
+    : SECTIONS
+
   return (
-    <div className="flex h-screen overflow-hidden bg-[var(--color-bg-primary)]">
+    <div className={embedded ? "flex h-full min-h-0 overflow-hidden bg-[var(--color-bg-primary)]" : "flex h-screen overflow-hidden bg-[var(--color-bg-primary)]"}>
       {/* Left nav */}
       <aside className="ui-app-chrome flex w-[220px] min-w-[220px] flex-col border-r border-[var(--color-border)]">
         <div className="flex items-center justify-between border-b border-[var(--color-border)] px-5 py-4">
           <span className="flex items-center gap-2 text-base font-semibold text-[var(--color-text-primary)]"><Settings size={18} className='text-[var(--color-accent-text)]' aria-hidden='true' />设置</span>
-          <IconButton icon={X} label='关闭设置' onClick={onClose} />
+          {onClose ? <IconButton icon={X} label='关闭设置' onClick={onClose} /> : null}
         </div>
-        <nav className="flex-1 space-y-1 p-2" aria-label='设置分区'>
-          {SECTIONS.map(s => (
+        <div className="px-3 pt-3">
+          <input
+            value={settingsQuery}
+            onChange={e => setSettingsQuery(e.target.value)}
+            placeholder="搜索设置…"
+            aria-label="搜索设置"
+            className="ui-field w-full"
+          />
+        </div>
+        <nav className="flex-1 space-y-1 overflow-y-auto p-2" aria-label='设置分区'>
+          {filteredSections.length === 0 ? <p className="px-3 py-2 text-xs text-[var(--color-text-secondary)]">没有匹配的设置</p> : null}
+          {filteredSections.map(s => (
             <button key={s.key} onClick={() => setSection(s.key)}
               aria-current={section === s.key ? 'page' : undefined}
               className={`ui-settings-nav-item w-full px-3 py-2.5 text-left text-sm ${

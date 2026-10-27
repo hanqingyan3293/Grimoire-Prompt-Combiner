@@ -197,7 +197,16 @@ const pathsBlockEnd = registryText.indexOf('} as const', pathsBlockStart)
 const descriptorText = fs.readFileSync(path.join(root, 'src/vendor/cherry/compat/src/settings-route-descriptors.ts'), 'utf8')
 const descriptorBlock = descriptorText.slice(descriptorText.indexOf('REMAINING_SETTINGS_PATHS'), descriptorText.indexOf('} as const'))
 const DESCRIPTOR_PATHS = [...descriptorBlock.matchAll(/:\s*'([^']+)'/g)].map(match => match[1])
-const SOURCE_SETTINGS_PATHS = new Set(['/settings/model', '/settings/search', '/settings/browser', '/settings/screenshot', '/settings/file-processing', '/settings/ocr', '/settings/local-models'])
+// Derived from the wrapper that actually decides it. The previous literal list had gone
+// stale: general/api-gateway/websearch/selection-assistant were mounted as read-only source
+// pages, so the audit demanded the OLD diagnostic strings and reported four false failures.
+const sourceSettingsText = fs.readFileSync(path.join(root, 'src/vendor/cherry/compat/src/CompatSourceSettings.tsx'), 'utf8')
+const sourceSettingsBlock = sourceSettingsText.slice(sourceSettingsText.indexOf('const SOURCE_SETTINGS'), sourceSettingsText.indexOf('} as const', sourceSettingsText.indexOf('const SOURCE_SETTINGS')))
+// ids are `settings-api-gateway`, paths are `/settings/api-gateway` — converting one to the
+// other is what the first attempt got wrong (it produced `/settings-api-gateway`, matched
+// nothing, and the four pages kept their stale diagnostic signals).
+const MOUNTED_SOURCE_SETTINGS = new Set([...sourceSettingsBlock.matchAll(/'?(settings-[a-z-]+)'?:\s*\{/g)].map(match => '/settings/' + match[1].replace(/^settings-/, '')))
+const SOURCE_SETTINGS_PATHS = new Set([...MOUNTED_SOURCE_SETTINGS, '/settings/model', '/settings/search', '/settings/file-processing', '/settings/ocr', '/settings/local-models'])
 const DIAGNOSTIC_PATHS = DESCRIPTOR_PATHS.filter(route => !SOURCE_SETTINGS_PATHS.has(route))
 const REGISTRY_PATHS = [...DESCRIPTOR_PATHS, ...[...registryText.slice(pathsBlockStart, pathsBlockEnd).matchAll(/:\s*'([^']+)'/g)].map(m => m[1])]
 if (REGISTRY_PATHS.length === 0) {
@@ -300,6 +309,17 @@ const ROUTE_SIGNALS = {
   '/settings/archive': ['批量管理', '自动清理周期']
 }
 
+// Structural signals for the mounted read-only source pages. Text signals were the reason
+// four healthy pages failed after the wrapper changed: the assertions were the OLD page text.
+const ROUTE_SELECTORS = {}
+for (const mountedPath of MOUNTED_SOURCE_SETTINGS) {
+  const id = 'settings-' + mountedPath.slice('/settings/'.length)
+  ROUTE_SELECTORS[mountedPath] = ['[data-ui="compat.settings.source-readonly"][data-settings-route="' + id + '"]']
+}
+// General also hosts the domain capability report (moved out of the dead branch on 2026-10-27).
+ROUTE_SELECTORS['/settings/general'] = ['[data-ui="compat.settings.source-readonly"][data-settings-route="settings-general"]', '[data-ui="compat.domain-capabilities"]']
+delete ROUTE_SIGNALS['/settings/general']
+
 for (const route of [...DIAGNOSTIC_PATHS, '/settings/skills/fixture-skill', '/settings/scheduled-tasks/fixture-task']) {
   ROUTE_SIGNALS[route] = ['缺失的后端 / 集成合同', '源组件：', '（未挂载）', '本页仅报告阻塞']
 }
@@ -321,6 +341,9 @@ for (const route of ROUTES) {
   // a verdict — and this is exactly the route that turned out to be broken.
   await evaluate(`(window.location.hash = '#${route}', 'set')`)
   await sleep(1600)
+  const signalKey = ROUTE_REDIRECTS[route] ?? route
+  const gateSignals = ROUTE_SIGNALS[signalKey] ?? []
+  const gateSelectors = ROUTE_SELECTORS[signalKey] ?? []
   const verdict = await evaluate(`JSON.stringify((() => {
     const body = (document.body.innerText || '').trim()
     // The blocked-route fallback renders this heading; it is the honest placeholder for an
@@ -351,13 +374,15 @@ for (const route of ROUTES) {
     const observedPath = window.location.hash.slice(1).split('?')[0]
     const routeMatched = observedPath === ${JSON.stringify(ROUTE_REDIRECTS[route] ?? route)}
     // Settings signals must come from the routed content, not the always-present sidebar.
-    const missingSignals = ${JSON.stringify(ROUTE_SIGNALS[ROUTE_REDIRECTS[route] ?? route] ?? [])}.filter(s => !contentText.includes(s))
+    const missingSignals = ${JSON.stringify(gateSignals)}.filter(s => !contentText.includes(s))
+    const missingSelectors = ${JSON.stringify(gateSelectors)}.filter(sel => !document.querySelector(sel))
     return {
-      rendered: routeMatched && contentVisible && !unimplemented && !boundary && contentText.length > 0 && missingSignals.length === 0,
+      rendered: routeMatched && contentVisible && !unimplemented && !boundary && contentText.length > 0 && missingSignals.length === 0 && missingSelectors.length === 0,
       unimplemented,
       ...(errorText ? { errorText } : {}),
       boundary,
       ...(missingSignals.length ? { missingSignals } : {}),
+      ...(missingSelectors.length ? { missingSelectors } : {}),
       chars: body.length,
       contentChars: contentText.length,
       contentVisible,
@@ -461,16 +486,30 @@ if (process.argv.includes('--settings-actions')) {
     if (modelWrite?.status !== 200) throw new Error('Real settings fixture model registration failed')
     actionReport.fixtureReadback = await evaluate(`window.api.providers.list()`)
     actionReport.catalogReadback = await evaluate(`window.api.ai.sessions.catalog.models({ limit: 5000 })`)
+    // Reload after seeding. Creating a provider through the DataApi does NOT invalidate the
+    // renderer's provider caches (recorded as D10), so without a reload this journey would
+    // report a product failure that is really a cache-staleness bug in a different layer.
+    // The reload keeps the hash, so the focus URL still exercises the real route.
     await evaluate(`window.location.hash = '#/settings/model?focus=default'`)
+    await sleep(200)
+    await evaluate(`location.reload()`)
+    await sleep(2500)
     await waitExpression(`!!document.querySelector('#setting-model-default-assistant-model button')`)
     await mouseClick(`document.querySelector('#setting-model-default-assistant-model button')`)
+    await sleep(500)
+    // The picker is virtualized: only rows in view exist in the DOM, so an unfiltered list
+    // cannot be asserted by querying options. Type the model name first, then assert — that
+    // is also the interaction a user performs.
+    await mouseClick(`document.querySelector('[role="dialog"] input')`)
+    // Search by PROVIDER name, not the model id: the catalog also contains `openai::gpt-4o`,
+    // and a plain id search selects that one (verified 2026-10-27 — the persisted value came
+    // back as `openai::gpt-4o`, which is a passing picker and a failing assertion of intent).
+    await callWithTimeout('Input.insertText', { text: '设置验收供应商' }, 10000)
+    await sleep(600)
     const modelOption = `[...document.querySelectorAll('[role="option"]')].find(el => el.innerText.includes('gpt-4o') && el.getBoundingClientRect().width > 0 && el.getAttribute('aria-disabled') !== 'true')`
     await waitExpression(`!!(${modelOption})`)
+    await mouseClick(modelOption)
     await sleep(600)
-    await mouseClick(`document.querySelector('[role="dialog"] input')`)
-    await callWithTimeout('Input.insertText', { text: 'gpt-4o 设置验收供应商' }, 10000)
-    await sleep(500)
-    for (const type of ['keyDown', 'keyUp']) await callWithTimeout('Input.dispatchKeyEvent', { type, key: 'Enter', code: 'Enter', windowsVirtualKeyCode: 13 }, 10000)
     actionReport.selectionSettings = await evaluate(`window.api.settings.getAll()`)
     const preferences = await waitExpression(`(async () => {
       const settings = await window.api.settings.getAll();

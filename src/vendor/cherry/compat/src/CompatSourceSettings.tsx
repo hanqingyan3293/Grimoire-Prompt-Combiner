@@ -3,7 +3,10 @@ import type { CompatRoute } from './route-registry'
 import { CompatRemainingSettings } from './CompatRemainingSettings'
 import { getSettingsDiagnostic } from './settings-route-descriptors'
 import { CompatDomainCapabilities } from './CompatDomainCapabilities'
-import { isWin } from '../../source/src/renderer/utils/platform'
+// The source helper reads `window.electron.process.platform`; the compat window has no such
+// global, so `isWin` was always false there and the selection page silently degraded to its
+// diagnostic on every OS (found by the route audit, 2026-10-27). Detect from the UA instead.
+const isWindowsHost = typeof navigator !== 'undefined' && /Windows/i.test(navigator.userAgent)
 
 // Source views stay behind native read-only controls until their effect consumers exist.
 // Credential-bearing settings are redacted in main and again before preference caching;
@@ -50,7 +53,7 @@ export function CompatSourceSettings({ route }: { route: CompatRoute }) {
   if (route.id === 'settings-screenshot' && typeof window.api?.shortcut?.onRegistrationConflict !== 'function') {
     return <CompatRemainingSettings route={route} />
   }
-  if (route.id === 'settings-selection-assistant' && !isWin) return <CompatRemainingSettings route={route} />
+  if (route.id === 'settings-selection-assistant' && !isWindowsHost) return <CompatRemainingSettings route={route} />
   const { Component, limitation } = SOURCE_SETTINGS[route.id]
   const descriptor = route.id === 'settings-general' ? {
     title: '通用设置',

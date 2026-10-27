@@ -1,4 +1,4 @@
-﻿// 魔导书 Grimoire v7 — App 根组件
+// 魔导书 Grimoire v7 — App 根组件
 import React, { Suspense, lazy, useEffect, useState } from 'react'
 import { LoaderCircle } from 'lucide-react'
 import { I18nProvider } from './i18n/context'
@@ -12,6 +12,7 @@ import { FixedWorkspace } from './components/workspace/FixedWorkspace'
 import { WorkspaceBar } from './components/workspace/WorkspaceBar'
 import { WorkspacePopoutWindow } from './components/workspace/WorkspacePopoutWindow'
 import { isPersistablePanelType, useWorkspaceStore } from './stores/workspace.store'
+import { startThemePublishing } from './lib/theme-bridge'
 import { startWorkspacePersistence } from './stores/workspace-persistence'
 import './styles/themes.css'
 
@@ -34,6 +35,8 @@ function AppInner() {
     return () => window.removeEventListener("hashchange", onHashChange)
   }, [])
   useEffect(() => { loadSettings(); loadTags() }, [loadSettings, loadTags])
+  // Publish the resolved palette so the Cherry window and popouts match this one.
+  useEffect(() => startThemePublishing(), [])
   useEffect(() => { if (language !== lang) setLang(language as 'zh' | 'en') }, [language])
 
   useEffect(() => {

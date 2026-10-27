@@ -254,6 +254,12 @@ export function PanelShell({
             event.stopPropagation()
             setContextMenu({ left: Math.min(event.clientX, window.innerWidth - 220), top: Math.min(event.clientY, window.innerHeight - 260) })
           }}
+          // Double-click the panel title bar to detach it, the way a tab tears off into a new
+          // window. Ignored when the click lands on a control: those have their own meaning.
+          onDoubleClick={event => {
+            if (!onPopout || (event.target as HTMLElement).closest('button,select,input,textarea')) return
+            onPopout()
+          }}
           style={{ height: "var(--panel-header-height)" }}
         >
           <select

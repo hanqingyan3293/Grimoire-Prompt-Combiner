@@ -1,6 +1,9 @@
 import './index.css'
 import './tailwind.css'
 import { createRoot } from 'react-dom/client'
+import { startThemeBridge } from './theme-bridge'
+
+startThemeBridge()
 import { prepareWindow } from '@renderer/windows/prepareWindow'
 import MainApp from '@renderer/windows/main/MainApp'
 

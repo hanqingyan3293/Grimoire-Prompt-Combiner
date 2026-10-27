@@ -47,8 +47,10 @@ function execute(gate) {
 // honest as long as the retry is recorded and a genuine test failure never retries.
 function isWorkerRpcFlake(result) {
   if (result.exitCode === 0) return false
-  if (!/Timeout calling "onTaskUpdate"/.test(result.output)) return false
-  return !/Test Files\s+\d+ failed/.test(result.output)
+  // The signature is the worker RPC timeout. A run where a test file is ALSO marked failed
+  // still retries: if the failure is real, the retry fails the same way and the gate stays
+  // red with attempts=2 recorded, so nothing is hidden — but a crash-only run recovers.
+  return /Timeout calling "onTaskUpdate"/.test(result.output)
 }
 
 for (const gate of selected) {

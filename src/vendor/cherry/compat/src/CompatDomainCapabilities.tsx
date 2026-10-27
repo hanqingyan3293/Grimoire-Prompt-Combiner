@@ -77,7 +77,7 @@ export function CompatDomainCapabilities() {
   const blockedCount = ordered.filter(entry => entry.state !== 'available').length
 
   return (
-    <div className="m-4 space-y-3">
+    <div className="m-4 space-y-3" data-ui="compat.domain-capabilities">
       <div className="text-xs text-muted-foreground">
         共 {ordered.length} 个产品域，其中 {blockedCount} 个尚未接入。未接入的域不会渲染成可用界面。
       </div>

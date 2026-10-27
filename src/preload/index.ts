@@ -139,6 +139,16 @@ const api = {
     },
   },
 
+  theme: {
+    // The main renderer publishes its resolved palette; main broadcasts it to every window.
+    publish: (palette: { mode: 'light' | 'dark'; vars: Record<string, string> }) => ipcRenderer.invoke('theme:publish', palette),
+    get: (): Promise<{ mode: 'light' | 'dark'; vars: Record<string, string> } | null> => ipcRenderer.invoke('theme:get'),
+    onChanged: (callback: (palette: { mode: 'light' | 'dark'; vars: Record<string, string> }) => void) => {
+      const handler = (_event: unknown, palette: { mode: 'light' | 'dark'; vars: Record<string, string> }) => callback(palette)
+      ipcRenderer.on('theme:changed', handler)
+      return () => { ipcRenderer.removeListener('theme:changed', handler) }
+    },
+  },
   settings: {
     getAll: (): Promise<AppSettings> => ipcRenderer.invoke(IPC_CHANNELS.SETTINGS_GET_ALL),
     set: (key: string, value: string) => ipcRenderer.invoke(IPC_CHANNELS.SETTINGS_SET, key, value),

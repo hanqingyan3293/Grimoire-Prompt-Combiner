@@ -120,6 +120,11 @@ export interface GrimoireAPI {
       move: (input: { id: string; parentId: string | null }) => Promise<boolean>
     }
   }
+  theme: {
+    publish: (palette: { mode: 'light' | 'dark'; vars: Record<string, string> }) => Promise<boolean>
+    get: () => Promise<{ mode: 'light' | 'dark'; vars: Record<string, string> } | null>
+    onChanged: (callback: (palette: { mode: 'light' | 'dark'; vars: Record<string, string> }) => void) => () => void
+  }
   settings: {
     getAll: () => Promise<{
       api_endpoint: string; api_model: string;

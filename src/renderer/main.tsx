@@ -1,7 +1,8 @@
-﻿import React from 'react'
+import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App'
 import './index.css'
+import './styles/tokens.css'
 
 const ThemePreview = React.lazy(() => import('./components/dev/ThemePreview').then(module => ({ default: module.ThemePreview })))
 

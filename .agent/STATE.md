@@ -30,7 +30,7 @@
 | G6 全量构建 | `npm run build` | **exit 0，23.4s** 【实测】 |
 | G7 矩阵格式 | `npm run check:migration-matrix` | **115 rows，无坏行** 【实测】 |
 | G8 CSS 覆盖率 | `npm run check:cherry-css` | **PASS（≥90%）** 【实测】 |
-| G9 路由审计 | `node scripts/audit-cherry-routes.mjs` | 上次 51 routes / 3 failed（10-26，信号问题，待 M1.3 修）【继承】 |
+| G9 路由审计 | `env -u ELECTRON_RUN_AS_NODE node scripts/audit-cherry-routes.mjs` | **51/51 全部渲染** 【实测 2026-10-27】。注意：本机环境变量 `ELECTRON_RUN_AS_NODE=1` 会让 Electron 以 Node 模式启动，必须用 `env -u` 取消 |
 | G11 打包 | `npm run pack` | 未跑【未知】 |
 | 截图证据 | catalog evidence guard | 79 条里 18 条 captured、61 条 pending，`manualAcceptance=pending`【清单自带】 |
 
@@ -82,9 +82,10 @@ resources/agent-runtimes/     opencode.exe 134M (1.18.34) / pi.exe 107M (1.0.1)
 
 - 79 条：源组件已挂载 41 / 受阻诊断 27 / 不可用 9 / 非渲染器 2；**captured 18、pending 61**；`manualAcceptance=pending`。
 
-### D5（口径问题）路由审计的 3 个"失败"不是页面坏
+### D5（已修复 2026-10-27）路由审计的误报
 
-- `/settings/code-execution`、`/settings/appearance`、`/settings/notifications` 的 `missingSignals` 都是"中文标题缺失"——是审计信号定义过时，不是页面失败。
+- 原信号是「页面中文标题文本」，页面一改文案就误报。现改为**结构选择器**（源页面包装器 + 域能力面板标记），并从 `CompatSourceSettings` 实际导出推导「已挂载的源设置页」，不再硬编码。
+- 修完后 51/51 全部通过；同一次修复还暴露了 D9。
 
 ### D6（政策化 2026-10-27）根测试偶发
 
@@ -191,3 +192,32 @@ resources/agent-runtimes/     opencode.exe 134M (1.18.34) / pi.exe 107M (1.0.1)
 5. 只有 `toolOwnership === 'host'` 的 toolCalls 由 Grimoire 执行；native telemetry 不重放。
 6. 未验证能力必须显式 `blocked / unavailable / not-implemented`，不许写成 supported。
 7. 状态词汇只用 MIGRATION_MATRIX 的 10 个值。
+---
+
+## 4.1 M1 / M1.5 进展（2026-10-27）
+
+### 已完成
+
+| 项 | 结果 |
+|---|---|
+| M1.1 UI 台账 | `artifacts/cherry-ui-inventory.json` + `.agent/UI-INVENTORY.md`（79 条逐条：处置/动作/数据源/缺口） |
+| M1.2 挂载副作用审计 | 6 个只读页，**无一在挂载时读密钥**；全部是平台探测或状态查询 |
+| M1.3 路由审计信号 | 改为结构选择器；**51/51 通过** |
+| D9 真 bug | `isWin` 依赖不存在的 `window.electron` → 划词助手页在任何系统都降级；已改为 UA 判断 |
+| M1.5.1 设计令牌 | `src/renderer/styles/tokens.css`（圆角/间距/字号/阴影/动效/密度 + 三个共享类） |
+| M1.5.2 主题桥 | 主渲染层读实际计算样式 → `theme:publish` → 主进程广播 → Cherry 窗口写变量并切 `.dark`；含品牌色阶推导 |
+| M1.5.3 设置面板 | `settings` 面板现在渲染**完整设置页**（不再是快捷设置子集），加搜索框与分区过滤 |
+| M1.5.4 独立窗口 | 双击面板标题栏可弹出；弹出窗口 `show:false` + 主题底色 + `ready-to-show` 防白闪 |
+| M1.5.5 品牌 | Cherry 窗口标题改为「魔导书 · 智能工作区」 |
+
+### 未完成（明确留到下一批）
+
+- **分组卡片 + 折叠**：设置内容仍是「一次显示一个分区」。要变成 Cherry 那种「全部分区堆叠 + 每张卡片可折叠」，需要把 8 个分区的内联 JSX 逐个改造成可折叠卡片（约 8 处结构性改动，风险中等）。
+- **组件基线**（按钮/开关/标签/对话框/表格）：只做了令牌与三个共享类，组件级统一未做。
+- ~~M1.4 模型选择器真机重测~~ **已完成**：搜索按供应商名 → 选中 `settings-smoke-provider::gpt-4o` → 四项检查全绿（证据 `artifacts/visual/cherry-routes/settings-actions.json`）。
+### D10（真实，低危）跨视图缓存不失效
+
+- 通过 DataApi 新建供应商后，compat 窗口的供应商面板仍显示「已配置 0 / 0」，必须整页刷新才更新；数据本身已写入（`providers.list()` 能读到）。
+- 触发条件：provider 由 DataApi（而非设置页表单）创建，或由另一个窗口创建。
+- 影响：M1.4 的选择器测试曾因此误判为「picker 不显示模型」；实际是缓存问题。
+- 处置：M3 里给 provider 的创建/更新/删除加广播，让渲染层重新拉取；在此之前审计脚本用一次 reload 规避并已注明。

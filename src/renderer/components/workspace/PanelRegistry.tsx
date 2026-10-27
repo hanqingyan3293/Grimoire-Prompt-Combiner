@@ -20,6 +20,9 @@ const WD14Panel = lazy(() => import('../wd14/WD14Panel').then(module => ({ defau
 const ComfyUIPanel = lazy(() => import('../comfy/ComfyUIPanel').then(module => ({ default: module.ComfyUIPanel })))
 const CanvasPanel = lazy(() => import('../canvas/CanvasVendorPanel').then(module => ({ default: module.CanvasVendorPanel })))
 const PromptAssetsPanel = lazy(() => import('../prompt-assets/PromptAssetsPanel').then(module => ({ default: module.PromptAssetsPanel })))
+// The full settings surface as a panel (M1.5): same component the settings window uses,
+// in embedded mode, so there is one implementation instead of a "quick settings" subset.
+const SettingsPanel = lazy(() => import('../settings/SettingsWindow').then(module => ({ default: module.SettingsWindow })))
 
 export const PANEL_DEFINITIONS: Record<PanelType, PanelDefinition> = {
   "tag-sidebar": {
@@ -203,7 +206,7 @@ export function renderPanel(type: PanelType, options?: { agentMode?: "chat" | "v
     case "gallery-search":
       return <GallerySearchPanel />
     case "settings":
-      return <ScrollablePanel><QuickSettingsPanel variant="embedded" /></ScrollablePanel>
+      return <LazyPanel><SettingsPanel embedded /></LazyPanel>
     case "logs":
       return <WorkspaceLogsPanel />
     case "provider-manager":

@@ -1,5 +1,5 @@
-﻿// 魔导书 Grimoire v7 — Electron 主进程入口
-import { app, BrowserWindow, ipcMain, Menu, dialog, shell } from "electron"
+// 魔导书 Grimoire v7 — Electron 主进程入口
+import { app, BrowserWindow, ipcMain, Menu, dialog, shell, nativeTheme } from "electron"
 import path from "path"
 import fs from "fs"
 import { initDatabase, closeDatabase, getDatabase, importDefaultTags, saveDatabase, exportDatabase, importDatabase } from "./database"
@@ -7,6 +7,7 @@ import { registerTagsIPC } from "./ipc/tags.ipc"
 import { registerPresetsIPC } from "./ipc/presets.ipc"
 import { registerHistoryIPC } from "./ipc/history.ipc"
 import { registerSettingsIPC } from "./ipc/settings.ipc"
+import { registerThemeIPC } from "./ipc/theme.ipc"
 import { registerImagesIPC } from "./ipc/images.ipc"
 import { registerFavoritesIPC } from "./ipc/favorites.ipc"
 import { registerProvidersIPC } from "./ipc/providers.ipc"
@@ -225,7 +226,7 @@ function createCherryWindow(): void {
   }
   cherryWindow = new BrowserWindow({
     width: 1280, height: 800, minWidth: 960, minHeight: 640,
-    title: 'Cherry Studio UI · Grimoire',
+    title: '魔导书 · 智能工作区',
     parent: mainWindow || undefined,
     autoHideMenuBar: true,
     webPreferences: {
@@ -293,6 +294,11 @@ function createWorkspacePopout(popoutId: string, panelType: string, title: strin
   const width = Math.max(560, Math.round(requestedBounds?.width || 1100))
   const height = Math.max(360, Math.round(requestedBounds?.height || 760))
   const popout = new BrowserWindow({
+    // Anti-flash: the window stays hidden until its content is ready and its initial
+    // background matches the current appearance, so detaching a panel never shows a white
+    // rectangle first.
+    show: false,
+    backgroundColor: nativeTheme.shouldUseDarkColors ? '#0f1115' : '#f5f6f8',
     x: typeof requestedBounds?.x === 'number' ? Math.round(requestedBounds.x) : undefined,
     y: typeof requestedBounds?.y === 'number' ? Math.round(requestedBounds.y) : undefined,
     width,
@@ -310,6 +316,7 @@ function createWorkspacePopout(popoutId: string, panelType: string, title: strin
     },
   })
   workspacePopouts.set(popoutId, popout)
+  popout.once('ready-to-show', () => { if (!popout.isDestroyed()) popout.show() })
   configureWindowSecurity(popout)
   const hash = 'workspace-popout?popoutId=' + encodeURIComponent(popoutId) + '&panelType=' + encodeURIComponent(panelType) + '&title=' + encodeURIComponent(title || panelType)
   popout.loadURL(getRendererURL(hash))
@@ -482,6 +489,7 @@ async function registerAllIPC(): Promise<void> {
   registerPresetsIPC()
   registerHistoryIPC()
   registerSettingsIPC()
+  registerThemeIPC()
   registerImagesIPC()
   registerFavoritesIPC()
   registerProvidersIPC()
