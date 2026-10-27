@@ -428,4 +428,4 @@ resources/agent-runtimes/     opencode.exe 134M (1.18.34) / pi.exe 107M (1.0.1)
 
 | 编号 | 现象 | 证据 | 下一步 |
 |---|---|---|---|
-| D12 | 启动时内置提示词资产导入失败：`Built-in prompt asset import deferred: Error: column index out of range`（`sqlite.compat.run`） | 主窗口启动日志与 stderr 均打印 | 定位 `importDefaultPromptAssets` 的 INSERT 参数与占位符数量是否不匹配；修好后补迁移/导入测试 |
+| D12 | ~~启动时内置提示词资产导入失败：`column index out of range`~~ **已修（2026-10-27）** | 根因：INSERT 13 列却传了 14 个值（旧 schema 的 `tags` 位置留了一个空串），每行都抛错且被 `.catch` 吞成一行 warn | 修正参数顺序并补 3 条回归测试；实跑确认：正常启动后 profile 数据库 `prompt_assets` = **1742** 行（修复前为 0） |

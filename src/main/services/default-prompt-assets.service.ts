@@ -52,11 +52,23 @@ export async function importDefaultPromptAssets(assetDirectory: string): Promise
       const tags = Array.isArray(item.tags) ? item.tags.map(text).filter(Boolean) : []
       const now = new Date().toISOString()
       const fingerprint = crypto.createHash('sha256').update(sourceRef + ':' + name + ':' + prompt).digest('hex')
+      // Column order matters: an extra empty string here (left over from an older schema with a
+      // `tags` column) pushed every value one slot right and the import died with
+      // "column index out of range" on every startup — silently, because the caller only logs.
       const inserted = insert.run([
         'builtin_' + crypto.createHash('sha256').update(sourceRef).digest('hex').slice(0, 24),
-        sourceRef, 'asset', name, prompt, detail, result.sourceName, tags.join(' / '), '', 0,
+        sourceRef,
+        'asset',
+        name,
+        prompt,
+        detail,              // chapter
+        result.sourceName,   // section
+        tags.join(' / '),    // subsection
+        0,                   // nsfw
         Number.isInteger(item.variantCount) ? Math.max(0, Number(item.variantCount)) : 0,
-        fingerprint, now, now,
+        fingerprint,
+        now,
+        now,
       ])
       added += Number(inserted.changes || 0)
     }
