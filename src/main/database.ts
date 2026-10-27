@@ -24,7 +24,8 @@ import { createLegacyDatabase, type LegacyDatabase } from './services/sqlite.com
 // v36: NovelAI work/version tree (work, version, branch_name, version_image). Empty on upgrade —
 // no inference from prompt assets or sessions.
 // v37: soft-delete (recycle bin) columns for NovelAI versions and works.
-export const CURRENT_SCHEMA_VERSION = 37
+// v38: NovelAI asset library + asset_usage (which image used which asset).
+export const CURRENT_SCHEMA_VERSION = 38
 let nativeDb: DatabaseSync | null = null
 let db: LegacyDatabase | null = null
 let dbPath = ''
@@ -1315,6 +1316,7 @@ export function initializeDatabaseConnection(connection: DatabaseSync, requireEx
   migrateAgentSessionReadModel(legacy)
   migrateNovelaiPromptVersions(legacy)
   migrateNovelaiVersionTrash(legacy)
+  migrateNovelaiAssets(legacy)
 
   legacy.exec(INDEX_SQL)
   legacy.run("CREATE INDEX IF NOT EXISTS idx_history_task ON history(task_id)")
@@ -1378,6 +1380,31 @@ function migrateNovelaiVersionTrash(legacy: LegacyDatabase): void {
   try { legacy.run('ALTER TABLE novelai_version ADD COLUMN deleted_at TEXT') } catch {}
   try { legacy.run('ALTER TABLE novelai_work ADD COLUMN deleted_at TEXT') } catch {}
   legacy.exec('CREATE INDEX IF NOT EXISTS idx_novelai_version_deleted ON novelai_version(work_id, deleted_at)')
+}
+
+// v38 — NovelAI asset library. `novelai_asset_usage` is the reverse index the reference tool does
+// not have: it answers 「这块素材用在哪些图」 without scanning payloads.
+function migrateNovelaiAssets(legacy: LegacyDatabase): void {
+  legacy.exec(`
+    CREATE TABLE IF NOT EXISTS novelai_asset (
+      id TEXT PRIMARY KEY NOT NULL,
+      kind TEXT NOT NULL CHECK(kind IN ('character','style','scene','object','other')),
+      name TEXT NOT NULL CHECK(length(name) BETWEEN 1 AND 120),
+      payload TEXT NOT NULL DEFAULT '',
+      examples TEXT NOT NULL DEFAULT '[]',
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS novelai_asset_usage (
+      asset_id TEXT NOT NULL REFERENCES novelai_asset(id) ON DELETE CASCADE,
+      image_id TEXT NOT NULL,
+      via TEXT NOT NULL DEFAULT '',
+      used_at TEXT NOT NULL,
+      PRIMARY KEY(asset_id, image_id)
+    );
+    CREATE INDEX IF NOT EXISTS idx_novelai_asset_kind ON novelai_asset(kind, name);
+    CREATE INDEX IF NOT EXISTS idx_novelai_asset_usage_image ON novelai_asset_usage(image_id);
+  `)
 }
 function resolveDatabasePath(): string {
   // 便携模式：exe同目录有 portable 文件则数据存本地 data/ 文件夹

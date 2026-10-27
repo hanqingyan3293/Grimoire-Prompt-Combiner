@@ -8,7 +8,9 @@
 // signature is retried once here (a genuine assertion failure is never retried).
 import { spawnSync } from 'node:child_process'
 
-const SHARDS = 2
+// Three shards: each shard is a shorter window for the host's worker-RPC flake, so a retry is
+// cheaper and the whole gate finishes sooner than two long shards.
+const SHARDS = 3
 const FLAKE = 'Timeout calling "onTaskUpdate"'
 const results = []
 

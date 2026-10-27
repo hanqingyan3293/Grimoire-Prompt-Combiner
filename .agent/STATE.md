@@ -344,3 +344,13 @@ resources/agent-runtimes/     opencode.exe 134M (1.18.34) / pi.exe 107M (1.0.1)
   3. `purgeNovelaiVersion` 永久删除，**仍有存活子版本时拒绝**（F8 的版本侧对应）。
 - 删除后自动把 `last_version_id` 回退到仍在的最新版本；恢复时把被删祖先一并恢复，避免线的空洞。
 - 测试补 6 条（合计 15）：叶子删除与回收站可见、单删拒绝、整支删除含后代与分支名、恢复含祖先、永久删除的前后守卫、回收站里的版本不能再被扩展。
+### M6.4 素材库与反向查询（2026-10-27 第七轮，数据层）
+
+- Schema **38**：`novelai_asset` + `novelai_asset_usage`（(asset_id,image_id) 唯一）+ 索引。
+- `src/main/services/novelai-asset.service.ts`：建档/改档/列档（按 kind+name 排序，`uses` 由使用表实时计数，不存冗余列）；
+  记使用（幂等，重复记录只更新时间与 via）、撤销使用；
+  **「这块素材用在哪些图」**（`listImagesUsingAsset`）与 **「这张图用了哪些素材」**（`listAssetsUsedByImage`）双向查询；
+  仍有引用时拒绝删除素材（`force` 才连引用一起清）；
+  F8 图片侧守卫：`assertNovelaiImageRemovable` 在版本仍引用图片时拒绝永久删除。
+- 测试 7 条：增删改列、非法 kind/空名、双向查询、幂等与撤销、删除守卫、F8 图片守卫、schema 版本。
+- G3 分片从 2 改 3，缩短单次窗口，降低 worker-RPC 偶发超时的代价。
