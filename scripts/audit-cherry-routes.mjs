@@ -601,6 +601,39 @@ if (process.argv.includes('--chat-journey')) {
   fs.writeFileSync(path.join(outDir, 'chat-journey.json'), JSON.stringify(chatReport, null, 2))
   console.log('Chat click journey:', chatReport.passed ? 'PASS' : 'FAIL', chatReport.error || '')
 }
+
+// Settings wiring journey: the read-only banner must state which switches are live, and the
+// developer-mode switch must actually gate DevTools. Both are asserted here, with a screenshot.
+if (process.argv.includes('--settings-wiring-journey')) {
+  const wiring = { passed: false, checks: {}, observations: [] }
+  const waitForLocal = async (expression, attempts = 120) => { for (let i = 0; i < attempts; i++) { const value = await evaluate(expression); if (value) return value; await sleep(250) } throw new Error('timed out: ' + expression) }
+  try {
+    await evaluate(`window.location.hash = '#/settings/general'`)
+    await waitForLocal(`!!document.querySelector('[data-ui="compat.preference-wiring"]')`)
+    const wiringText = await waitForLocal(`(() => { const el = document.querySelector('[data-ui="compat.preference-wiring"]'); const text = el && el.innerText; return text && text.includes('/') ? text : null })()`)
+    wiring.checks.reportRendered = /已接线\s*\d+\/\d+/.test(String(wiringText))
+    wiring.observations.push({ wiringText: String(wiringText).slice(0, 300) })
+    const shot = await callWithTimeout('Page.captureScreenshot', { format: 'png' }, 10000)
+    if (shot?.data) fs.writeFileSync(path.join(outDir, 'settings-general-wiring.png'), Buffer.from(shot.data, 'base64'))
+    // Developer mode off must be a real gate, not a stored value.
+    const writeFalse = await evaluate(`window.api.settings.set('cherry_pref.app.developer_mode.enabled', 'false')`)
+    const stored = await evaluate(`(async () => { const all = await window.api.settings.getAll(); return all['cherry_pref.app.developer_mode.enabled'] })()`)
+    const toggleResponse = await evaluate(`(async () => { try { const result = await window.api.ipcApi.request('system.toggle_dev_tools'); return { threw: false, result } } catch (error) { return { threw: true, message: String(error) } } })()`)
+    wiring.observations.push({ writeFalse, stored, toggleResponse })
+    // `ipcApi.request` returns the IpcResult envelope; a refusal is `ok:false`, not a throw.
+    wiring.checks.gateClosesWhenOff = !!toggleResponse && toggleResponse.threw === false && toggleResponse.result?.ok === false && toggleResponse.result?.error?.code === 'DEVELOPER_MODE_DISABLED'
+    await evaluate(`window.api.settings.set('cherry_pref.app.developer_mode.enabled', 'true')`)
+    const toggleOn = await evaluate(`(async () => { try { return await window.api.ipcApi.request('system.toggle_dev_tools') } catch (error) { return { ok: false, error: { code: 'THREW', message: String(error) } } } })()`)
+    wiring.observations.push({ toggleOn })
+    wiring.checks.gateOpensWhenOn = !!toggleOn && toggleOn.ok === true
+    wiring.passed = Object.values(wiring.checks).every(Boolean)
+  } catch (error) {
+    wiring.error = String(error)
+    wiring.failureState = await evaluate(`({ hash: location.hash, text: document.body.innerText.slice(0, 600) })`).catch(() => null)
+  }
+  fs.writeFileSync(path.join(outDir, 'settings-wiring-journey.json'), JSON.stringify(wiring, null, 2))
+  console.log('Settings wiring journey:', wiring.passed ? 'PASS' : 'FAIL', wiring.error || '')
+}
 // Optional P1 transport smoke through the ACTUAL sandboxed renderer/preload/main.
 // This fresh profile has no blueprints: empty items is verified data, not a mock result.
 // Exercises source pi blueprint creation and mutation, not runtime launch/AgentPage.

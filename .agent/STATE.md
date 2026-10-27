@@ -386,3 +386,15 @@ resources/agent-runtimes/     opencode.exe 134M (1.18.34) / pi.exe 107M (1.0.1)
 - 通用设置接线现状 **14/17**；剩 3 个：`agent.commit_attribution.enabled`（无 git 提交可归因）、
   `app.fetch.allow_private_network`、`app.user.id`（无读取方）。
 - 测试 5 条（新增语言指令注入：未设置/设置/与既有系统提示词拼接/清除）。
+### 交叉矩阵：设置接线旅程（2026-10-27 第十一轮）
+
+`node scripts/audit-cherry-routes.mjs --settings-wiring-journey`：
+
+1. 打开 `#/settings/general`，等待 `[data-ui="compat.preference-wiring"]`；
+2. 断言报告文本匹配 `已接线 \d+/\d+`（当前 14/17），截图 `settings-general-wiring.png`；
+3. 写 `cherry_pref.app.developer_mode.enabled=false` → 断言 `system.toggle_dev_tools` 返回 `ok:false` 且 `error.code=DEVELOPER_MODE_DISABLED`；
+4. 写回 `true` → 断言 `ok:true`。
+
+实测三项全 true，PASS。过程中修正了两处**说错话**：横幅里「消费者仍未验收」的旧文案（14 个键其实已接）与 `missing` 列表（还写着托盘/代理/重试未接），现在改成只列真正未接的 3 个键及原因。
+
+另记：`ipcApi.request` 返回 `IpcResult` 信封，**拒绝是 `ok:false` 而不是抛异常**；第一版断言按抛异常写导致假失败，已修正。

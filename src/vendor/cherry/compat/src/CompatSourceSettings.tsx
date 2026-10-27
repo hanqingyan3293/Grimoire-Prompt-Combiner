@@ -15,7 +15,7 @@ const isWindowsHost = typeof navigator !== 'undefined' && /Windows/i.test(naviga
 const SOURCE_SETTINGS = {
   'settings-general': {
     Component: lazy(() => import('../../source/src/renderer/pages/settings/GeneralSettings/GeneralSettings')),
-    limitation: '源通用设置已挂载。托盘、启动、代理、防休眠、重试与上下文设置的完整消费者仍未验收，因此表单只读，不会写入偏好或重启应用。已有 Grimoire 行为不会被此页更改。'
+    limitation: '源通用设置已挂载。17 个键中 14 个已有真实消费者（开机自启、防休眠、代理三键、上下文四键、重试四键、开发者模式、Agent 语言），另 3 个仍无消费者；只要还有开关是死的，整页就保持只读，避免点下去只有心理安慰。'
   },
   'settings-api-gateway': {
     Component: lazy(() => import('../../source/src/renderer/pages/settings/ToolSettings/ApiGatewaySettings/ApiGatewaySettings')),
@@ -58,8 +58,12 @@ export function CompatSourceSettings({ route }: { route: CompatRoute }) {
   const { Component, limitation } = SOURCE_SETTINGS[route.id]
   const descriptor = route.id === 'settings-general' ? {
     title: '通用设置',
-    missing: ['托盘/关闭策略与启动行为', '通用偏好完整消费链、模型重试和上下文策略'],
-    nextAction: '逐组验证现有 main 消费者并接入缺失服务后，再开放对应源控件。'
+    missing: [
+      'agent.commit_attribution.enabled：Grimoire Agent 不创建 git 提交，没有可归因对象',
+      'app.fetch.allow_private_network：没有面向用户的抓取入口，私网判定无处生效',
+      'app.user.id：源用于匿名标识，Grimoire 没有读取方',
+    ],
+    nextAction: '要么为这三个键实现真实消费者，要么在源页面里隐去对应控件；两者都要能验证，之后整页才解除只读。'
   } : getSettingsDiagnostic(route.id)
   if (!descriptor) return <CompatRemainingSettings route={route} />
   const noteId = 'compat-source-settings-' + route.id
@@ -72,8 +76,8 @@ export function CompatSourceSettings({ route }: { route: CompatRoute }) {
         <ul className="mt-2 list-disc pl-5">{descriptor.missing.map(item => <li key={item}>{item}</li>)}</ul>
         <p className="mt-2">下一步：{descriptor.nextAction}</p>
       </section>
-      {route.id === 'settings-general' ? <CompatDomainCapabilities /> : null}
       {route.id === 'settings-general' ? <CompatPreferenceWiring /> : null}
+      {route.id === 'settings-general' ? <CompatDomainCapabilities /> : null}
       <fieldset disabled aria-describedby={noteId} aria-label={descriptor.title + '（只读）'} className="m-0 min-w-0 border-0 p-0">
         <Suspense fallback={<p role="status" className="p-4 text-sm text-muted-foreground">加载源设置页面…</p>}>
           <Component />
