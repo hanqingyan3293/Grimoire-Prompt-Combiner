@@ -407,3 +407,13 @@ resources/agent-runtimes/     opencode.exe 134M (1.18.34) / pi.exe 107M (1.0.1)
   已建模字段：prompt / negativePrompt / steps / cfg / seed / sampler / scheduler / width / height / model / checkpoint / loras；
   未知字段**原样保留**并随再次编码写回；非 PNG 返回 null，不假装成功。
 - 测试 9 条（4 PNG 块 + 5 参数往返）：像素块不变、替换语义、多键顺序、非 PNG 拒绝、全字段往返、未知键保留、畸形输入返回 null。
+### M6 UI 第一批：提示词工作台面板（2026-10-27 第十三轮）
+
+- 新增 IPC `src/main/ipc/novelai.ipc.ts`（9 个通道）与 preload `window.api.novelai.*`；
+  规则仍只在 service 层（分支、空版本、修订号、回收站），IPC 只做编解码。
+- 新增面板 `src/renderer/components/novelai/NovelAIPromptPanel.tsx`：
+  左侧作品列表（新建）、中间原文编辑 + **块视图**（类型徽章、权重百分比、来自真实解析器）、
+  右侧版本线（点选回看）、保存为新版本、删单版/删整支、分支命名、回收站恢复。
+- 注册 `novelai-workbench` 面板类型，归入「素材」分组。
+- 组件测试 2 条：块视图来自真实解析器（标签块/随机块/`{{}}` 两层 +10%）、
+  保存时带上服务器给的 `expectedRevision`（防覆盖）。

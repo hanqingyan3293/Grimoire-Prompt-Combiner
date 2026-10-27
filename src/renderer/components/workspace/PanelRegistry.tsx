@@ -23,6 +23,7 @@ const PromptAssetsPanel = lazy(() => import('../prompt-assets/PromptAssetsPanel'
 // The full settings surface as a panel (M1.5): same component the settings window uses,
 // in embedded mode, so there is one implementation instead of a "quick settings" subset.
 const SettingsPanel = lazy(() => import('../settings/SettingsWindow').then(module => ({ default: module.SettingsWindow })))
+const NovelAIPromptPanel = lazy(() => import('../novelai/NovelAIPromptPanel').then(module => ({ default: module.NovelAIPromptPanel })))
 
 export const PANEL_DEFINITIONS: Record<PanelType, PanelDefinition> = {
   "tag-sidebar": {
@@ -70,12 +71,13 @@ export const PANEL_DEFINITIONS: Record<PanelType, PanelDefinition> = {
   "tag-asset-manager": { type: "tag-asset-manager", title: "标签与资产", description: "标签关系、候选确认和资产标注", enabled: true },
   "tag-batch": { type: "tag-batch", title: "标签批量工具", description: "按筛选批量添加、删除、替换资产标签", enabled: true },
   "gallery-search": { type: "gallery-search", title: "图库搜索", description: "筛选轨、虚拟网格、检查器与保存搜索", enabled: true },
+  "novelai-workbench": { type: "novelai-workbench", title: "提示词工作台", description: "块解析、版本线与回收站", enabled: true },
 }
 
 export const ENABLED_PANEL_OPTIONS = Object.values(PANEL_DEFINITIONS).filter(panel => panel.enabled)
 export const PANEL_OPTION_GROUPS: { title: string; types: PanelType[] }[] = [
   { title: "核心", types: ["tag-sidebar", "prompt-workbench", "utility-sidebar"] },
-  { title: "素材", types: ["prompt-assets", "tag-asset-manager", "tag-batch", "gallery-search", "presets", "history", "images"] },
+  { title: "素材", types: ["prompt-assets", "novelai-workbench", "tag-asset-manager", "tag-batch", "gallery-search", "presets", "history", "images"] },
   { title: "AI", types: ["agent"] },
   { title: "创作工具", types: ["canvas", "wd14", "comfyui", "tasks"] },
   { title: "设置", types: ["settings"] },
@@ -205,6 +207,8 @@ export function renderPanel(type: PanelType, options?: { agentMode?: "chat" | "v
       return <TagBatchToolsPanel />
     case "gallery-search":
       return <GallerySearchPanel />
+    case "novelai-workbench":
+      return <LazyPanel><NovelAIPromptPanel /></LazyPanel>
     case "settings":
       return <LazyPanel><SettingsPanel embedded /></LazyPanel>
     case "logs":

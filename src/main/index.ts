@@ -22,6 +22,7 @@ import { registerCanvasIPC } from "./ipc/canvas.ipc"
 import { registerPromptAssetsIPC } from "./ipc/prompt-assets.ipc"
 import { registerWorkspaceIPC } from "./ipc/workspace.ipc"
 import { registerAgentIPC } from "./ipc/agent.ipc"
+import { registerNovelaiIPC } from "./ipc/novelai.ipc"
 import { registerAiSessionsIPC, shutdownAiSessions } from "./ipc/ai-sessions.ipc"
 import { registerTagIntelligenceIPC } from './ipc/tag-intelligence.ipc'
 import { registerMediaIPC } from './ipc/media.ipc'
@@ -504,6 +505,7 @@ async function registerAllIPC(): Promise<void> {
   registerPromptAssetsIPC()
   registerWorkspaceIPC()
   registerAgentIPC()
+  registerNovelaiIPC()
   registerAiSessionsIPC()
   registerSystemIPC()
   applyPersistedIntegrationSettings()

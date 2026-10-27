@@ -29,6 +29,7 @@ export type PanelType =
   | "tag-asset-manager"
   | "tag-batch"
   | "gallery-search"
+  | "novelai-workbench"
 
 export interface PanelDefinition {
   type: PanelType

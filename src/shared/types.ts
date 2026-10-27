@@ -450,6 +450,17 @@ export const IPC_CHANNELS = {
   CHERRY_NAVIGATION_OPEN_ROUTE: "cherry:navigation:openRouteRequested",
   CHERRY_FILE_TREE_MUTATION: "cherry:file:treeMutation",
   AI_SESSION_GET: "ai:session:get",
+  // NovelAI prompt workbench (M6 UI). Prefix `novelai:` keeps the prompt-version domain
+  // separable from AI sessions and prompt assets.
+  NOVELAI_WORK_LIST: "novelai:work:list",
+  NOVELAI_WORK_CREATE: "novelai:work:create",
+  NOVELAI_WORK_GET: "novelai:work:get",
+  NOVELAI_VERSION_LINE: "novelai:version:line",
+  NOVELAI_VERSION_CREATE: "novelai:version:create",
+  NOVELAI_VERSION_DELETE: "novelai:version:delete",
+  NOVELAI_VERSION_RESTORE: "novelai:version:restore",
+  NOVELAI_BRANCH_RENAME: "novelai:branch:rename",
+  NOVELAI_WORK_BUNDLE: "novelai:work:bundle",
   AI_SESSION_CREATE: "ai:session:create",
   AI_SESSION_UPDATE: "ai:session:update",
   AI_SESSION_DELETE: "ai:session:delete",
