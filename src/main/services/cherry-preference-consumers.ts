@@ -27,9 +27,9 @@ export const CHERRY_GENERAL_PREFRENCES: readonly CherryPreferenceConsumer[] = Ob
   { key: 'chat.retry.backoff_enabled', wired: true, note: 'ai/runtime/retry-policy 读取' },
   { key: 'chat.retry.fallback_model_ids', wired: true, note: 'ai/runtime/retry-policy 读取' },
   { key: 'app.developer_mode.enabled', wired: true, note: 'system.toggle_dev_tools 与 DevTools 快捷键受它控制' },
-  { key: 'agent.language', wired: false, note: '还没有 agent 系统提示词装配消费该键' },
+  { key: 'agent.language', wired: true, note: 'agent 轮次装配系统提示词时注入语言指令' },
   { key: 'agent.commit_attribution.enabled', wired: false, note: 'Grimoire Agent 目前不创建 git 提交，没有可归因的提交' },
-  { key: 'app.fetch.allow_private_network', wired: false, note: '网络工具尚未做私网地址判定，开关无法生效' },
+  { key: 'app.fetch.allow_private_network', wired: false, note: 'Grimoire 没有面向用户的抓取工具，只有供应商/ComfyUI/MCP 这些固定端点，私网判定无处生效' },
   { key: 'app.user.id', wired: false, note: '源用于匿名标识；Grimoire 没有读取方' },
 ])
 
@@ -47,4 +47,22 @@ export function readCherryPreference(name: string): unknown {
 
 export function isCherryDeveloperModeEnabled(): boolean {
   return readCherryPreference('app.developer_mode.enabled') === true
+}
+
+/**
+ * The source stores a human-readable label ("English", "中文") under `agent.language`, or null
+ * for "no constraint". The consumer is the agent system prompt: the label becomes one
+ * instruction line, and `null`/empty adds nothing rather than guessing a default.
+ */
+export function agentLanguageInstruction(): string | null {
+  const value = readCherryPreference('agent.language')
+  if (typeof value !== 'string') return null
+  const label = value.trim()
+  if (!label) return null
+  return '始终使用以下语言回复：' + label + '（Always reply in ' + label + ').'
+}
+
+export function composeAgentSystemPrompt(existing: string | undefined): string {
+  const instruction = agentLanguageInstruction()
+  return [existing ? existing.trim() : '', instruction || ''].filter(Boolean).join('\n\n')
 }

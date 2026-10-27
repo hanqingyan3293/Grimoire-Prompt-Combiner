@@ -8,7 +8,7 @@ let testRoot = ''
 vi.mock('electron', () => ({ app: { getPath: (name: string) => (name === 'exe' ? path.join(testRoot, 'Grimoire.exe') : testRoot) } }))
 
 import { closeDatabase, getDatabase, initDatabase } from '../database'
-import { CHERRY_GENERAL_PREFRENCES, cherryPreferenceWiring, isCherryDeveloperModeEnabled, readCherryPreference } from './cherry-preference-consumers'
+import { CHERRY_GENERAL_PREFRENCES, agentLanguageInstruction, cherryPreferenceWiring, composeAgentSystemPrompt, isCherryDeveloperModeEnabled, readCherryPreference } from './cherry-preference-consumers'
 
 beforeEach(async () => {
   testRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'grimoire-prefs-'))
@@ -43,6 +43,17 @@ describe('Cherry preference wiring registry (M3)', () => {
     expect(readCherryPreference('app.developer_mode.enabled')).toBe(true)
     getDatabase().run('INSERT OR REPLACE INTO settings (key,value) VALUES (?,?)', ['cherry_pref.app.developer_mode.enabled', 'plain-text'])
     expect(readCherryPreference('app.developer_mode.enabled')).toBe('plain-text')
+  })
+
+  it('injects the agent language label into the system prompt, and nothing when unset', () => {
+    expect(agentLanguageInstruction()).toBeNull()
+    expect(composeAgentSystemPrompt('base')).toBe('base')
+    getDatabase().run('INSERT INTO settings (key,value) VALUES (?,?)', ['cherry_pref.agent.language', JSON.stringify('English')])
+    expect(agentLanguageInstruction()).toContain('English')
+    expect(composeAgentSystemPrompt('base')).toBe('base\n\n始终使用以下语言回复：English（Always reply in English).')
+    expect(composeAgentSystemPrompt(undefined)).toBe('始终使用以下语言回复：English（Always reply in English).')
+    getDatabase().run('INSERT OR REPLACE INTO settings (key,value) VALUES (?,?)', ['cherry_pref.agent.language', JSON.stringify(null)])
+    expect(agentLanguageInstruction()).toBeNull()
   })
 
   it('treats developer mode as enabled until the user turns it off', () => {

@@ -376,3 +376,13 @@ resources/agent-runtimes/     opencode.exe 134M (1.18.34) / pi.exe 107M (1.0.1)
 - 开发者模式变成真开关：显式关闭时 `system.toggle_dev_tools` 返回 `DEVELOPER_MODE_DISABLED`；未设置时保持原有允许行为。
 - 兼容窗口的只读横幅新增接线报告（`compat.preference-wiring`）：显示已接线 N/M，并逐条列出未接线键与原因。
 - 测试 4 条：键唯一且覆盖、wired 必须写清消费者、JSON 与原始值读取、开发者模式默认与关闭。
+### M3 第二批：agent.language 接线（2026-10-27 第十轮）
+
+- `agent.language` 从「未接线」变为已接线：源里存的是人类可读标签（`"English"`、`"中文"`）或 null，
+  现在在 agent 轮次装配系统提示词时注入一行语言指令（`始终使用以下语言回复：…（Always reply in …）`）；
+  null/空串不注入，不猜默认值。
+- `app.fetch.allow_private_network` 的未接线原因改写为准确描述：Grimoire 没有面向用户的抓取工具，
+  只有供应商 / ComfyUI / MCP 这类固定端点，私网判定没有作用面。
+- 通用设置接线现状 **14/17**；剩 3 个：`agent.commit_attribution.enabled`（无 git 提交可归因）、
+  `app.fetch.allow_private_network`、`app.user.id`（无读取方）。
+- 测试 5 条（新增语言指令注入：未设置/设置/与既有系统提示词拼接/清除）。

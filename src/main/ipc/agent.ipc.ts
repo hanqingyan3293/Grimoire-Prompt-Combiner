@@ -18,6 +18,7 @@ import { prepareNativeRuntime } from '../services/agent-runtime-preparation.serv
 import { attachRuntimeExecutionReference, beginRuntimeExecutionReference, type RuntimeExecutionIdentity } from '../services/agent-runtime-reference.service'
 import { safeRuntimeError } from '../services/agent-runtime-safety.service'
 import { piSdkHostTools, piSdkPermission } from '../services/pi-sdk-tool-bridge.service'
+import { composeAgentSystemPrompt } from '../services/cherry-preference-consumers'
 import { CherryAgentRuntimeUnavailableError, createCherryAgentRuntimePump } from '../services/cherry-agent-stream.service'
 
 function readAgentId(input: Record<string, unknown>): string | null | undefined {
@@ -245,7 +246,7 @@ export async function handleAgentSessionSend(_event: { sender: Electron.WebConte
       runtimeConfig = { baseUrl: providerWithSecret.base_url || provider.base_url, apiKey: providerWithSecret.api_key || '' }
     } else if (snapshot.session.runtime === 'pi' || snapshot.session.runtime === 'opencode') {
       const prepared = await prepareNativeRuntime({ store: 'agent', sessionId, kind: snapshot.session.runtime, provider: providerWithSecret, model, metadata: sessionData, signal: admission.signal,
-        history: messages, systemPrompt: messages.filter(message => message.role === 'system').map(message => message.content).join('\n\n'), hostTools: piSdkHostTools(registry, sessionId) })
+        history: messages, systemPrompt: composeAgentSystemPrompt(messages.filter(message => message.role === 'system').map(message => message.content).join('\n\n')), hostTools: piSdkHostTools(registry, sessionId) })
       runtimeConfig = prepared.config
       nativeIdentity = prepared.identity
       restoreSession = prepared.restoreSession
