@@ -250,3 +250,14 @@ resources/agent-runtimes/     opencode.exe 134M (1.18.34) / pi.exe 107M (1.0.1)
 | B 主进程协议实现 | 在 main 实现完整 `ai.stream` 管理器（多模型、attempt 水位、topic 状态缓存、审批） | 大（多日） | 会与现有 turn runner 重复 |
 
 **决定**：先走 A，把「真流式 + 取消 + 占位消息 + 结束后落库」跑通；B 中真正需要的部分（多模型、审批）再按需补。审批沿用现有 agent permission broker，不另造。
+### M2 第一批（2026-10-27 第三轮）
+
+| 项 | 结果 |
+|---|---|
+| 共享 turn 入口 | `handleAiSessionSend` / `handleAiSessionInterrupt` 从 `ai-sessions.ipc.ts` 抽成导出函数，IPC 注册改为引用；行为不变（runtime-turn + agent.ipc 共 32 用例通过） |
+| `ai.stream.*` 路由 | 主进程实现 open/attach/detach/abort；维护 topic → 执行标识（executionId / attemptId / anchorMessageId）；只支持 submit-message，其余变体返回 `blocked` |
+| 渲染层桥 | compat `stream-bridge.ts`：把主进程真实的 session 事件（delta / reasoning / 失败 / 终态 assistant）翻译成 `ai.stream.chunk/done/error`；不伪造任何 chunk |
+| 桥测试 | 3 条：文本与推理顺序、失败事件、非流事件透传 |
+| 门禁 | G5 已修（测试桩参数类型）；G3 出现 worker RPC 超时，正在定位 |
+
+**尚未完成**：Agent 会话路径（agent.ipc 的发送不广播增量，需要 pump）、审批接到 `ai.tool.approval.respond`、recovery、prewarm 收敛、三条端到端 smoke。

@@ -125,7 +125,10 @@ export function summarizeAiUsage(): { calls: number; inputTokens: number | null;
 /** Most recent records, newest first. */
 export function listAiUsage(limit = 100): UsageRecord[] {
   const rows = getDatabase().exec(
-    'SELECT id,session_id,message_id,runtime,protocol,provider_id,model_id,input_tokens,output_tokens,cached_tokens,created_at FROM ai_usage_records ORDER BY created_at DESC, id DESC LIMIT ?',
+    // `created_at` is millisecond text; two records written in the same millisecond would
+    // otherwise fall back to a random UUID tiebreak and the list would not be newest-first.
+    // rowid is the insertion order, so it is the honest tiebreak.
+    'SELECT id,session_id,message_id,runtime,protocol,provider_id,model_id,input_tokens,output_tokens,cached_tokens,created_at FROM ai_usage_records ORDER BY created_at DESC, rowid DESC LIMIT ?',
     [Math.max(1, Math.min(1000, Math.trunc(limit)))]
   )[0]?.values || []
   return rows.map(row => ({

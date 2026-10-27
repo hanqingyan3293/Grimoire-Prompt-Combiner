@@ -13,7 +13,8 @@ import { handleCherryWindowRequest } from '../services/cherry-window.service'
 import { handleCherryNavigationRequest, isRegisteredCherryNavigationSender } from '../services/cherry-navigation.service'
 import { isTrustedCherryMainFrame } from '../services/cherry-ipc-admission'
 import { archiveAiAssistant, archiveAiTopic, getLatestAiTopic, listAiAssistants, listAiTopics, restoreAiAssistant, restoreAiTopic, saveAiAssistant, saveAiTopic } from '../services/cherry-assistant.service'
-import { deleteAiSession, listAiSessions, restoreAiSession } from '../services/ai-session.service'
+import { deleteAiSession, getAiSession, listAiSessions, restoreAiSession } from '../services/ai-session.service'
+import { handleAiSessionInterrupt, handleAiSessionSend } from './ai-sessions.ipc'
 import { createPromptAsset, deletePromptAsset, orderedPromptAssetIds, queryPromptAssets, reorderPromptAsset, updatePromptAsset } from '../services/prompt-asset-browser'
 import type { PromptOrderAnchor } from '../services/prompt-asset-browser'
 import { listAiUsage, listUsageTimeline, projectUsageEntry, projectUsageTotals, summarizeAiUsage } from '../services/usage.service'
@@ -1973,6 +1974,96 @@ function ipcError(code: string, message: string): Record<string, unknown> {
   return { ok: false, error: { code, message } }
 }
 
+// ── Chat stream link (source `ai.stream.*`) ──────────────────────────────────
+// The source chat and agent pages open a turn through `ai.stream.open` and then consume
+// `ai.stream.chunk|done|error`. Grimoire's turn already streams through AI_SESSION_EVENT
+// deltas, so this layer owns only what the renderer needs to filter on — the execution
+// identity — plus start/stop of the real turn. It deliberately fabricates no chunk events:
+// the renderer bridge maps real Host deltas onto the protocol, so a lie here would be a
+// lie the user sees.
+type ChatStreamRecord = {
+  topicId: string
+  sessionId: string
+  executionId: string
+  attemptId: number
+  anchorMessageId: string
+  status: 'streaming' | 'success' | 'paused' | 'error'
+  startedAt: number
+}
+const chatStreams = new Map<string, ChatStreamRecord>()
+let chatStreamAttempt = 0
+
+function streamText(parts: unknown): string {
+  if (!Array.isArray(parts)) return ''
+  return parts
+    .map(part => (part && typeof part === 'object' && typeof (part as Record<string, unknown>).text === 'string' ? String((part as Record<string, unknown>).text) : ''))
+    .filter(Boolean)
+    .join('\n')
+    .trim()
+}
+
+function activeExecution(record: ChatStreamRecord) {
+  return { executionId: record.executionId, attemptId: record.attemptId, anchorMessageId: record.anchorMessageId }
+}
+
+async function handleChatStreamRoute(route: string, input: unknown, sender: WebContents | null): Promise<Record<string, unknown> | null> {
+  if (!route.startsWith('ai.stream.')) return null
+  const value = input && typeof input === 'object' ? input as Record<string, unknown> : {}
+  const topicId = typeof value.topicId === 'string' ? value.topicId : ''
+  if (!topicId) return ipcError('VALIDATION_ERROR', 'topicId is required')
+  if (route === 'ai.stream.attach') {
+    const record = chatStreams.get(topicId)
+    if (!record) return ipcOk({ status: 'not-found' })
+    return ipcOk({ status: 'attached', bufferedChunks: [] })
+  }
+  if (route === 'ai.stream.detach') return ipcOk(undefined)
+  if (route === 'ai.stream.abort') {
+    const record = chatStreams.get(topicId)
+    if (!record || !sender) return ipcOk(undefined)
+    const interrupted = await handleAiSessionInterrupt({ sender }, record.sessionId)
+    if (interrupted) record.status = 'paused'
+    return ipcOk(undefined)
+  }
+  if (route !== 'ai.stream.open') return null
+  // Only a brand-new user turn is supported. Regenerate / steer / reserved-branch variants
+  // would need anchor and branch semantics this adapter does not own yet; answering blocked
+  // is honest and the source maps it to a user-visible reason instead of a silent no-op.
+  if (value.trigger !== 'submit-message') return ipcOk({ mode: 'blocked', reason: 'paused' })
+  if (!sender) return ipcError('OWNER_UNAVAILABLE', 'stream owner window is unavailable')
+  const live = chatStreams.get(topicId)
+  if (live && live.status === 'streaming') return ipcOk({ mode: 'injected', activeExecutions: [activeExecution(live)] })
+  const sessionId = existingTopicSessionId(topicId) || (getAiSession(topicId) ? topicId : '')
+  if (!sessionId) return ipcError('SESSION_NOT_FOUND', 'no Grimoire session backs topic ' + topicId)
+  const content = streamText(value.userMessageParts)
+  if (!content) return ipcError('VALIDATION_ERROR', 'empty user message')
+  const mentioned = Array.isArray(value.mentionedModelIds) ? value.mentionedModelIds.filter(item => typeof item === 'string') : []
+  const executionId = mentioned.length ? String(mentioned[0]) : 'default'
+  const record: ChatStreamRecord = {
+    topicId,
+    sessionId,
+    executionId,
+    attemptId: ++chatStreamAttempt,
+    anchorMessageId: crypto.randomUUID(),
+    status: 'streaming',
+    startedAt: Date.now(),
+  }
+  chatStreams.set(topicId, record)
+  // Fire-and-forget: the renderer consumes the turn through session events and closes on the
+  // terminal assistant message. The promise only updates this registry's status.
+  void handleAiSessionSend({ sender }, { sessionId, content, modelId: executionId === 'default' ? undefined : executionId })
+    .then(result => {
+      const status = result && result.session && result.session.status === 'interrupted' ? 'paused' : 'success'
+      const current = chatStreams.get(topicId)
+      if (current && current.attemptId === record.attemptId) current.status = status
+    })
+    .catch(() => {
+      const current = chatStreams.get(topicId)
+      if (current && current.attemptId === record.attemptId) current.status = 'error'
+    })
+  // `sessionId` is an additive field for the compat stream bridge (the source type does not
+  // declare it and ignores it); it lets the renderer map session events back to a topic.
+  return ipcOk({ mode: 'started', activeExecutions: [activeExecution(record)], reservedMessages: [], sessionId })
+}
 async function handleIpcApiRoute(route: string, input: unknown, sender: WebContents | null = null): Promise<Record<string, unknown>> {
   const value = input && typeof input === 'object' ? input as Record<string, unknown> : {}
   const id = typeof value.serverId === 'string' ? value.serverId : typeof value.id === 'string' ? value.id : ''
@@ -1982,6 +2073,8 @@ async function handleIpcApiRoute(route: string, input: unknown, sender: WebConte
     const navigationResult = handleCherryNavigationRequest(route, input, sender)
     if (navigationResult) return { ...(await navigationResult) }
     if (route.startsWith('file.tree.')) return handleCherryFileTreeRoute(route, input, sender)
+    const streamResult = await handleChatStreamRoute(route, input, sender)
+    if (streamResult) return streamResult
     if (route === 'ai.agent.session.prewarm' || route === 'ai.agent.session.close_warm') {
       if (!sender) return { ok: false, error: { code: 'AGENT_PREWARM_UNAVAILABLE', message: 'Agent session owner window is unavailable', data: { code: 'OWNER_UNAVAILABLE' } } }
       const sessionId = typeof value.sessionId === 'string' ? value.sessionId : ''

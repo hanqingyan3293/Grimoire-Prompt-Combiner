@@ -135,7 +135,117 @@ export function registerAiSessionsIPC(): void {
     const value = input && typeof input === "object" ? input as Record<string, unknown> : {}
     return branchAiSession({ sessionId: String(value.sessionId || ""), title: typeof value.title === "string" ? value.title : undefined })
   })
-  ipcMain.handle(IPC_CHANNELS.AI_SESSION_SEND, async (_event, input: unknown) => {
+  ipcMain.handle(IPC_CHANNELS.AI_SESSION_SEND, handleAiSessionSend)
+  ipcMain.handle(IPC_CHANNELS.AI_SESSION_INTERRUPT, handleAiSessionInterrupt)
+  ipcMain.handle(IPC_CHANNELS.AI_SESSION_COMPACT, async (_event, id: unknown) => {
+    const sessionId = String(id || "")
+    const snapshot = getAiSession(sessionId)
+    if (!snapshot) throw new Error("AI 会话不存在")
+    const metadata = { ...snapshot.session.metadata, compactedAt: new Date().toISOString(), compactedMessageCount: snapshot.messages.length }
+    appendAiEvent({ sessionId, eventType: "compaction-finished", payload: { messageCount: snapshot.messages.length } })
+    return updateAiSession({ id: sessionId, metadata })
+  })
+  ipcMain.handle(IPC_CHANNELS.AI_SESSION_RETRY, async (_event, input: unknown) => {
+    const value = input && typeof input === 'object' ? input as Record<string, unknown> : {}
+    const sessionId = typeof input === 'string' ? input : String(value.sessionId || '')
+    const messageId = typeof input === 'object' && input !== null ? String(value.messageId || '') : ''
+    const snapshot = getAiSession(sessionId)
+    if (!snapshot) return null
+    const lastUser = messageId ? snapshot.messages.find(message => message.id === messageId && message.role === 'user') : [...snapshot.messages].reverse().find(message => message.role === "user")
+    if (!lastUser) return { session: snapshot.session, content: "" }
+    const content = lastUser.content && typeof lastUser.content === "object" && "text" in (lastUser.content as Record<string, unknown>) ? String((lastUser.content as Record<string, unknown>).text || "") : String(lastUser.content || "")
+    return { session: snapshot.session, content, attachments: lastUser.attachments }
+  })
+  ipcMain.handle(IPC_CHANNELS.AI_SESSION_APPEND_MESSAGE, async (_event, input: unknown) => {
+    const value = input && typeof input === "object" ? input as Record<string, unknown> : {}
+    const result = appendAiMessage({ sessionId: String(value.sessionId || ""), role: String(value.role || "user") as AiMessageRole, content: value.content, attachments: Array.isArray(value.attachments) ? value.attachments : [], status: typeof value.status === "string" ? value.status as AiMessageStatus : undefined, id: typeof value.id === "string" ? value.id : undefined })
+    broadcast({ kind: "message", record: result })
+    return result
+  })
+  ipcMain.handle(IPC_CHANNELS.AI_MESSAGE_UPDATE, async (_event, input: unknown) => {
+    const value = input && typeof input === 'object' ? input as Record<string, unknown> : {}
+    const content = value.content
+    const result = updateAiMessage({ id: String(value.id || ''), content, attachments: Array.isArray(value.attachments) ? value.attachments : undefined, status: typeof value.status === 'string' ? value.status as AiMessageStatus : undefined })
+    broadcast({ kind: 'message', record: result })
+    return result
+  })
+  ipcMain.handle(IPC_CHANNELS.AI_MESSAGE_DELETE, async (_event, id: unknown) => {
+    const messageId = String(id || '')
+    const current = getAiMessage(messageId)
+    const deleted = deleteAiMessage(messageId)
+    if (deleted && current) broadcast({ kind: 'message-deleted', sessionId: current.session_id, messageId })
+    return deleted
+  })
+  ipcMain.handle(IPC_CHANNELS.AI_SESSION_APPEND_EVENT, async (_event, input: unknown) => {
+    const value = input && typeof input === "object" ? input as Record<string, unknown> : {}
+    const result = appendAiEvent({ sessionId: String(value.sessionId || ""), eventType: String(value.eventType || "status"), payload: value.payload && typeof value.payload === "object" ? value.payload as Record<string, unknown> : {}, id: typeof value.id === "string" ? value.id : undefined })
+    broadcast({ kind: "event", record: result })
+    return result
+  })
+}
+
+export async function shutdownAiSessions(): Promise<void> {
+  permissions.shutdown()
+  await shutdownRuntimeTurns()
+  const runtimes = Array.from(runningRuntimes.values())
+  runningRuntimes.clear()
+  await Promise.allSettled(runtimes.map(runtime => runtime.close ? runtime.close() : Promise.resolve()))
+  await shutdownAgentRuntimes()
+}
+
+
+/**
+ * Reads the `chat.retry.*` preferences the compat shim persisted.
+ *
+ * The shim stores them JSON-encoded under `cherry_pref.<source key>`, so each value is parsed
+ * before use — reading `"true"` as a boolean would leave retry permanently off while the UI
+ * showed the switch on.
+ *
+ * Missing rows are left `undefined` rather than defaulted here; `readRetryPolicy` owns the
+ * defaults, so this function cannot drift from it.
+ */
+function readRetryPolicyFromSettings() {
+  const read = (key: string): unknown => {
+    try {
+      const row = getDatabase().exec('SELECT value FROM settings WHERE key=?', ['cherry_pref.' + key])[0]?.values?.[0]?.[0]
+      if (typeof row !== 'string') return undefined
+      try { return JSON.parse(row) } catch { return row }
+    } catch {
+      return undefined
+    }
+  }
+  return readRetryPolicy({
+    enabled: read('chat.retry.enabled'),
+    maxAttempts: read('chat.retry.max_attempts'),
+    backoffEnabled: read('chat.retry.backoff_enabled')
+  })
+}
+
+/**
+ * Reads the `chat.context_settings.*` preferences the compat shim persisted.
+ *
+ * Same JSON-encoded `cherry_pref.<key>` storage as the retry keys; parsing is shared in
+ * shape so a stored `"true"` cannot read as enabled. Defaults live in `readContextSettings`
+ * alone, so this reader cannot drift from them.
+ */
+function readContextSettingsFromSettings() {
+  const read = (key: string): unknown => {
+    try {
+      const row = getDatabase().exec('SELECT value FROM settings WHERE key=?', ['cherry_pref.' + key])[0]?.values?.[0]?.[0]
+      if (typeof row !== 'string') return undefined
+      try { return JSON.parse(row) } catch { return row }
+    } catch {
+      return undefined
+    }
+  }
+  return readContextSettings({
+    enabled: read('chat.context_settings.enabled'),
+    maxMessages: read('chat.context_settings.max_messages')
+  })
+}
+
+export async function handleAiSessionSend(_event: { sender: Electron.WebContents }, input: unknown) {
+
     const value = input && typeof input === "object" ? input as Record<string, unknown> : {}
     const sessionId = String(value.sessionId || "")
     const content = typeof value.content === "string" ? value.content.trim() : ""
@@ -376,118 +486,16 @@ export function registerAiSessionsIPC(): void {
       }
     }
     } finally { admission.release() }
-  })
-  ipcMain.handle(IPC_CHANNELS.AI_SESSION_INTERRUPT, async (_event, id: unknown) => {
+
+}
+
+export async function handleAiSessionInterrupt(_event: { sender: Electron.WebContents }, id: unknown) {
+
     const sessionId = String(id || "")
     if (!(await cancelRuntimeTurn('ai:' + sessionId, _event.sender))) return false
     const record = appendAiEvent({ sessionId, eventType: 'interrupted', payload: { reason: 'user' } })
     broadcast({ kind: 'event', record })
     updateAiSession({ id: sessionId, status: "interrupted" })
     return true
-  })
-  ipcMain.handle(IPC_CHANNELS.AI_SESSION_COMPACT, async (_event, id: unknown) => {
-    const sessionId = String(id || "")
-    const snapshot = getAiSession(sessionId)
-    if (!snapshot) throw new Error("AI 会话不存在")
-    const metadata = { ...snapshot.session.metadata, compactedAt: new Date().toISOString(), compactedMessageCount: snapshot.messages.length }
-    appendAiEvent({ sessionId, eventType: "compaction-finished", payload: { messageCount: snapshot.messages.length } })
-    return updateAiSession({ id: sessionId, metadata })
-  })
-  ipcMain.handle(IPC_CHANNELS.AI_SESSION_RETRY, async (_event, input: unknown) => {
-    const value = input && typeof input === 'object' ? input as Record<string, unknown> : {}
-    const sessionId = typeof input === 'string' ? input : String(value.sessionId || '')
-    const messageId = typeof input === 'object' && input !== null ? String(value.messageId || '') : ''
-    const snapshot = getAiSession(sessionId)
-    if (!snapshot) return null
-    const lastUser = messageId ? snapshot.messages.find(message => message.id === messageId && message.role === 'user') : [...snapshot.messages].reverse().find(message => message.role === "user")
-    if (!lastUser) return { session: snapshot.session, content: "" }
-    const content = lastUser.content && typeof lastUser.content === "object" && "text" in (lastUser.content as Record<string, unknown>) ? String((lastUser.content as Record<string, unknown>).text || "") : String(lastUser.content || "")
-    return { session: snapshot.session, content, attachments: lastUser.attachments }
-  })
-  ipcMain.handle(IPC_CHANNELS.AI_SESSION_APPEND_MESSAGE, async (_event, input: unknown) => {
-    const value = input && typeof input === "object" ? input as Record<string, unknown> : {}
-    const result = appendAiMessage({ sessionId: String(value.sessionId || ""), role: String(value.role || "user") as AiMessageRole, content: value.content, attachments: Array.isArray(value.attachments) ? value.attachments : [], status: typeof value.status === "string" ? value.status as AiMessageStatus : undefined, id: typeof value.id === "string" ? value.id : undefined })
-    broadcast({ kind: "message", record: result })
-    return result
-  })
-  ipcMain.handle(IPC_CHANNELS.AI_MESSAGE_UPDATE, async (_event, input: unknown) => {
-    const value = input && typeof input === 'object' ? input as Record<string, unknown> : {}
-    const content = value.content
-    const result = updateAiMessage({ id: String(value.id || ''), content, attachments: Array.isArray(value.attachments) ? value.attachments : undefined, status: typeof value.status === 'string' ? value.status as AiMessageStatus : undefined })
-    broadcast({ kind: 'message', record: result })
-    return result
-  })
-  ipcMain.handle(IPC_CHANNELS.AI_MESSAGE_DELETE, async (_event, id: unknown) => {
-    const messageId = String(id || '')
-    const current = getAiMessage(messageId)
-    const deleted = deleteAiMessage(messageId)
-    if (deleted && current) broadcast({ kind: 'message-deleted', sessionId: current.session_id, messageId })
-    return deleted
-  })
-  ipcMain.handle(IPC_CHANNELS.AI_SESSION_APPEND_EVENT, async (_event, input: unknown) => {
-    const value = input && typeof input === "object" ? input as Record<string, unknown> : {}
-    const result = appendAiEvent({ sessionId: String(value.sessionId || ""), eventType: String(value.eventType || "status"), payload: value.payload && typeof value.payload === "object" ? value.payload as Record<string, unknown> : {}, id: typeof value.id === "string" ? value.id : undefined })
-    broadcast({ kind: "event", record: result })
-    return result
-  })
-}
 
-export async function shutdownAiSessions(): Promise<void> {
-  permissions.shutdown()
-  await shutdownRuntimeTurns()
-  const runtimes = Array.from(runningRuntimes.values())
-  runningRuntimes.clear()
-  await Promise.allSettled(runtimes.map(runtime => runtime.close ? runtime.close() : Promise.resolve()))
-  await shutdownAgentRuntimes()
-}
-
-
-/**
- * Reads the `chat.retry.*` preferences the compat shim persisted.
- *
- * The shim stores them JSON-encoded under `cherry_pref.<source key>`, so each value is parsed
- * before use — reading `"true"` as a boolean would leave retry permanently off while the UI
- * showed the switch on.
- *
- * Missing rows are left `undefined` rather than defaulted here; `readRetryPolicy` owns the
- * defaults, so this function cannot drift from it.
- */
-function readRetryPolicyFromSettings() {
-  const read = (key: string): unknown => {
-    try {
-      const row = getDatabase().exec('SELECT value FROM settings WHERE key=?', ['cherry_pref.' + key])[0]?.values?.[0]?.[0]
-      if (typeof row !== 'string') return undefined
-      try { return JSON.parse(row) } catch { return row }
-    } catch {
-      return undefined
-    }
-  }
-  return readRetryPolicy({
-    enabled: read('chat.retry.enabled'),
-    maxAttempts: read('chat.retry.max_attempts'),
-    backoffEnabled: read('chat.retry.backoff_enabled')
-  })
-}
-
-/**
- * Reads the `chat.context_settings.*` preferences the compat shim persisted.
- *
- * Same JSON-encoded `cherry_pref.<key>` storage as the retry keys; parsing is shared in
- * shape so a stored `"true"` cannot read as enabled. Defaults live in `readContextSettings`
- * alone, so this reader cannot drift from them.
- */
-function readContextSettingsFromSettings() {
-  const read = (key: string): unknown => {
-    try {
-      const row = getDatabase().exec('SELECT value FROM settings WHERE key=?', ['cherry_pref.' + key])[0]?.values?.[0]?.[0]
-      if (typeof row !== 'string') return undefined
-      try { return JSON.parse(row) } catch { return row }
-    } catch {
-      return undefined
-    }
-  }
-  return readContextSettings({
-    enabled: read('chat.context_settings.enabled'),
-    maxMessages: read('chat.context_settings.max_messages')
-  })
 }

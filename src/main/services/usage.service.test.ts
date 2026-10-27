@@ -81,9 +81,9 @@ describe('AI usage accounting', () => {
     }
     expect(listAiUsage(3)).toHaveLength(3)
     expect(listAiUsage()).toHaveLength(5)
-    // Newest first: the ids are inserted in order with distinct timestamps only at ms
-    // resolution, so assert the ordering contract through the id tiebreak instead of time.
-    const all = listAiUsage()
-    expect(all.map(record => record.modelId)).toEqual([...all.map(record => record.modelId)].slice().sort((a, b) => b.localeCompare(a)))
+    // Newest first. `created_at` only has millisecond resolution, so two inserts inside the
+    // same millisecond tie; the service breaks ties by rowid (insertion order) rather than by
+    // a random UUID, which is what makes this assertion deterministic.
+    expect(listAiUsage().map(record => record.modelId)).toEqual(['m4', 'm3', 'm2', 'm1', 'm0'])
   })
 })
