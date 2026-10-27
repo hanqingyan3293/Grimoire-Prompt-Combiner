@@ -25,6 +25,12 @@ const server = http.createServer((req, res) => {
       const payload = (() => { try { return JSON.parse(body) } catch { return {} } })()
       const messages = Array.isArray(payload.messages) ? payload.messages : []
       const sawToolResult = messages.some(message => message && message.role === 'tool')
+      // Vision/other one-shot calls are non-streaming; answer them as plain JSON.
+      if (payload.stream !== true) {
+        res.writeHead(200, { 'content-type': 'application/json' })
+        res.end(JSON.stringify({ id: 'smoke', object: 'chat.completion', created: 0, model: 'smoke-model', choices: [{ index: 0, message: { role: 'assistant', content: '看到图片' }, finish_reason: 'stop' }], usage: { prompt_tokens: 1, completion_tokens: 4, total_tokens: 5 } }))
+        return
+      }
       // Only the approval scenario asks for a tool; the plain turns must stream text.
       const lastUser = [...messages].reverse().find(message => message && message.role === 'user')
       const wantsTool = !!lastUser && JSON.stringify(lastUser.content || '').toLowerCase().includes('tool')
@@ -152,11 +158,13 @@ const pageScript = `(async () => {
   const toolTurn = await runTurn(toolSession.id, { decision: 'allow', content: 'please call tool' })
   const denySession = await api.ai.sessions.create({ runtime: 'openai-compatible', providerId, modelId: 'smoke-model', title: 'deny smoke' })
   const denyTurn = await runTurn(denySession.id, { decision: 'deny', content: 'please call tool' })
+  const vision = await api.ai.vision({ providerId, model: 'smoke-model', imageBase64: 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', prompt: 'describe' })
   return {
-    ack, terminal, text,
+    ack, terminal, text, vision,
     chunkTypes: chunks.map(chunk => chunk.type),
     persisted,
     agent: { ack: agentTurn.ack, terminal: agentTurn.terminal, text: agentTurn.text, chunkTypes: agentTurn.chunkTypes },
+    vision: vision,
     approval: { approvalIds: toolTurn.approvals, terminal: toolTurn.terminal, text: toolTurn.text },
     denial: { approvalIds: denyTurn.approvals, terminal: denyTurn.terminal, text: denyTurn.text },
     toolSession: toolSession.id,
@@ -178,8 +186,8 @@ const approvalOk = !!report && !!report.approval && report.approval.approvalIds.
 // A denial must settle the turn deterministically. Grimoire's runtime treats a refused tool as
 // a failed turn and surfaces the reason; the smoke asserts that terminal fact, not a hang.
 const denialOk = !!report && !!report.denial && report.denial.approvalIds.length > 0 && !!report.denial.terminal && !!report.denial.terminal.error && String(report.denial.terminal.error.message).includes('权限被拒绝')
-const ok = text === EXPECTED && !!report && !!report.terminal && report.terminal.status === 'success' && persistedText && agentOk && approvalOk && denialOk
-console.log(JSON.stringify({ ok, expected: EXPECTED, chat: { text, persisted: report?.persisted, ack: report?.ack, terminal: report?.terminal, chunkTypes: report?.chunkTypes }, agent: report?.agent, approval: report?.approval, denial: report?.denial, toolSession: report?.toolSession,  diagnostics: report?.diagnostics, error: report?.error }, null, 2))
+const ok = text === EXPECTED && !!report && !!report.terminal && report.terminal.status === 'success' && persistedText && agentOk && approvalOk && denialOk && !!report && !!report.vision && report.vision.success === true && report.vision.text === '看到图片'
+console.log(JSON.stringify({ ok, expected: EXPECTED, chat: { text, persisted: report?.persisted, ack: report?.ack, terminal: report?.terminal, chunkTypes: report?.chunkTypes }, agent: report?.agent, approval: report?.approval, denial: report?.denial, toolSession: report?.toolSession, vision: report?.vision,  diagnostics: report?.diagnostics, error: report?.error }, null, 2))
 socket.close()
 teardown()
 server.close()

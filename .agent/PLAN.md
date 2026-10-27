@@ -129,6 +129,8 @@
 | M2.5 | prewarm 收敛 | 无「假预热」 |
 | M2.6 | 三链路 smoke | chat/agent/vision 可重复跑 |
 
+> **2026-10-27 结果**：M2.1–M2.4、M2.6 完成（`npm run smoke:stream` 四条证据：聊天 / Agent / 审批允许 / 审批拒绝 + 识图）；M2.5 prewarm 保持显式不可用（源实现只在 `.catch` 里 `logger.warn`，用户不可见）。详见 STATE 的 M2 完成表。
+
 ### M3 — 设置面收尾（3–5 天）
 
 MCP 列表+详情、模型/供应商、数据/依赖、提示词/快捷键/搜索、通用页只读分组。

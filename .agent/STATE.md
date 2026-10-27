@@ -285,14 +285,12 @@ resources/agent-runtimes/     opencode.exe 134M (1.18.34) / pi.exe 107M (1.0.1)
 | M2.3 审批闭环 | 完成 | 权限请求 → `tool-approval-request` chunk → `ai.tool.approval.respond` → broker → 工具执行 → 续写「工具已完成」；smoke 断言 approvalIds 非空且终态 success |
 | M2.4 续流 / 恢复 | 完成（有界） | 源没有 recover 路由；等价能力是 attach 回放。终态后 attach 返回 not-found，历史从 SQLite 读 |
 | M2.5 prewarm 收敛 | 显式不可用 | `ai.agent.session.prewarm` 返回 NOT_IMPLEMENTED；源实现只在 `.catch` 里 `logger.warn`，用户不可见（见 AgentSessionMessages.tsx:164） |
-| M2.6 三条 smoke | 完成 | `npm run smoke:stream`：聊天 / Agent / 审批三条；真 Electron + 假 SSE provider |
+| M2.6 三条 smoke | 完成 | `npm run smoke:stream`：聊天 / Agent / 识图三条主线 + 审批允许/拒绝两条；真 Electron + 假 provider（流式 SSE 与非流式 JSON 两种形态） |
 
 **说明**：M2.2b 只证明协议层（Agent 会话通过同一条 `ai.stream` 路由收发），没有对 Agent 页做 DOM 级点击验证。
-### 缺陷（2026-10-27 新增）
+### D11 撤销（误报，2026-10-27）
 
-| 编号 | 现象 | 证据 | 下一步 |
-|---|---|---|---|
-| D11 | `api.ai.vision` 返回 `{error: "Cannot read properties of undefined (reading '0')"}`，识图不可用 | smoke 中调用即复现；错误由 `ai:vision` 处理器捕获后原样返回 | 定位 `createClient(provider)` / `vision()` 入参形状；修好后把识图加回 smoke |
+识图曾报 `Cannot read properties of undefined (reading '0')`。根因在 **smoke 的假 provider**：它对非流式请求（vision 走一次性 JSON）也返回了 SSE 帧，SDK 解析不到 `choices[0]`。假 provider 补上非流式 JSON 分支后，`api.ai.vision` 返回 `{success:true, text:'看到图片'}`，产品代码无缺陷。教训：假服务必须覆盖真实调用形态（stream 与非 stream）。
 
 ### M2 完成证据
 
