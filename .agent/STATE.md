@@ -398,3 +398,12 @@ resources/agent-runtimes/     opencode.exe 134M (1.18.34) / pi.exe 107M (1.0.1)
 实测三项全 true，PASS。过程中修正了两处**说错话**：横幅里「消费者仍未验收」的旧文案（14 个键其实已接）与 `missing` 列表（还写着托盘/代理/重试未接），现在改成只列真正未接的 3 个键及原因。
 
 另记：`ipcApi.request` 返回 `IpcResult` 信封，**拒绝是 `ok:false` 而不是抛异常**；第一版断言按抛异常写导致假失败，已修正。
+### M6.6 元数据写回/读回（2026-10-27 第十二轮）
+
+- `src/main/services/png-metadata.ts`：不引依赖的 PNG 文本块读写（`tEXt`/`iTXt`，iTXt 压缩用 `zlib`，
+  CRC 用 `zlib.crc32`）；写回时其余块逐字节复制、`IEND` 仍在最后，像素数据不会被碰。
+  同一 keyword 是**替换**而不是追加，避免文件里堆出重复注释。
+- `src/main/services/novelai-metadata.ts`：生成参数 ↔ PNG `Comment` JSON（version=1）。
+  已建模字段：prompt / negativePrompt / steps / cfg / seed / sampler / scheduler / width / height / model / checkpoint / loras；
+  未知字段**原样保留**并随再次编码写回；非 PNG 返回 null，不假装成功。
+- 测试 9 条（4 PNG 块 + 5 参数往返）：像素块不变、替换语义、多键顺序、非 PNG 拒绝、全字段往返、未知键保留、畸形输入返回 null。
