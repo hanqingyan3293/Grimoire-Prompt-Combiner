@@ -303,3 +303,15 @@ resources/agent-runtimes/     opencode.exe 134M (1.18.34) / pi.exe 107M (1.0.1)
 - `.ui-button` 按源 Button 规格对齐：`font-normal`、13px、6px gap；新增 `.ui-button-lg`；`primary` 改为源默认的中性填充（前景色/背景色反转，深色下自动反向），accent 只用于 focus 环。
 - 测试钩子：`data-ui="panel.shell"` / `panel.header` / `workspace.tab`（带 `data-workspace-id`），供点击脚本稳定定位。
 - 新增 `scripts/ui-parity.mjs`（主窗口点击+截图），**当前不可用**：未打包时主窗口加载 Vite dev server，残留 Electron 实例的 CDP 端口对应 `about:blank`，脚本会驱动错窗口。已复现并记录，下一步要先做实例/端口隔离再启用。
+### 交叉矩阵 · 点击与截图（2026-10-27 第三轮）
+
+`node scripts/audit-cherry-routes.mjs --chat-journey`（需 `env -u ELECTRON_RUN_AS_NODE`）会在临时 profile 里：
+
+1. 起一个假 SSE provider，通过 `providers.save` + `setActive` 注册；
+2. 打开 `#/app/chat`，**真实鼠标点击**输入框（`[data-ui=part:composer-input]` 内的 contenteditable）、`Input.insertText` 输入、真实 Enter 键发送；
+3. 等页面出现流式文本，截图 `chat-journey-streaming.png`，等完成态再截图 `chat-journey-final.png`；
+4. 读回 `ai.sessions.latest` 的 assistant 行，断言内容与页面一致。
+
+实测结果（2026-10-27 20:54 UTC）：`realTyping / realSendKey / streamedText / persisted` 四项全 true，PASS。
+
+顺带修掉两个真实视觉缺陷：改品牌后侧栏标题被挤成竖排（已改 nowrap + 标题独占一行、标签换行），以及输入框读取把 innerText/textContent 相加导致的「看起来重复输入」。

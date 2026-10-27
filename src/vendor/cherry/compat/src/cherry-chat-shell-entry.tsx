@@ -568,12 +568,13 @@ function CherryChatShellContent() {
 
   const pane = (
     <aside className="flex h-full w-full flex-col border-r border-border-subtle bg-card/70 p-3">
-      <div className="mb-3 flex items-center justify-between gap-2">
-        <div className="min-w-0">
-          <div className="text-sm font-semibold">魔导书</div>
-          <div className="text-[11px] text-muted-foreground">智能工作区 · {route.path}</div>
+      <div className="mb-3 flex flex-col items-stretch gap-1.5">
+        <div className="min-w-0 flex-1">
+          {/* The rail is narrow: without nowrap the title broke into one character per line. */}
+          <div className="truncate whitespace-nowrap text-sm font-semibold leading-tight">魔导书</div>
+          <div className="truncate whitespace-nowrap text-[11px] leading-tight text-muted-foreground">智能工作区 · {route.path}</div>
         </div>
-        <div className="flex shrink-0 rounded-md border border-border-subtle p-0.5 text-[10px]">
+        <div className="flex flex-wrap rounded-md border border-border-subtle p-0.5 text-[10px]">
           <button
             type="button"
             className={'rounded px-2 py-1 ' + (resourcePanel === 'sessions' ? 'bg-muted text-foreground' : 'text-muted-foreground')}

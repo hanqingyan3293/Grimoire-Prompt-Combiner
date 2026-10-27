@@ -255,7 +255,7 @@ const ROUTE_REDIRECTS = {
 }
 
 const ROUTE_SIGNALS = {
-  '/app/chat': ['Cherry 对话'],
+  '/app/chat': ['新对话'],
   '/app/agents': ['添加助手', '主题'],
   '/app/launchpad': ['应用'],
   // Distinctive PAGE strings, never the sidebar rail labels. The rail renders 会话/助手/主题/
@@ -530,6 +530,77 @@ if (process.argv.includes('--settings-actions')) {
   console.log('Source settings actions:', actionReport.passed ? 'PASS' : 'FAIL', actionReport.error || '')
 }
 
+
+// Chat click journey: real typing, a real Enter key, a real fake-provider SSE response,
+// screenshots of the streaming and settled states, plus a persistence read-back. This is the
+// click-level counterpart to `smoke:stream` (which drives the protocol, not the UI).
+if (process.argv.includes('--chat-journey')) {
+  const chatReport = { passed: false, checks: {}, observations: [] }
+  const http = await import('node:http')
+  const chatPort = 17000 + Math.floor(Math.random() * 800)
+  const answer = '你好，世界'
+  const waitFor = async (expression, attempts = 160) => { for (let i = 0; i < attempts; i++) { const value = await evaluate(expression); if (value) return value; await sleep(250) } throw new Error('timed out: ' + expression) }
+  const server = http.createServer((req, res) => {
+    if (req.method !== 'POST' || !req.url.startsWith('/v1/chat/completions')) { res.writeHead(404); res.end(); return }
+    let body = ''
+    req.on('data', chunk => { body += chunk })
+    req.on('end', () => {
+      res.writeHead(200, { 'content-type': 'text/event-stream', 'cache-control': 'no-cache', connection: 'keep-alive' })
+      const frame = delta => 'data: ' + JSON.stringify({ id: 'audit', object: 'chat.completion.chunk', created: 0, model: 'audit-model', choices: [{ index: 0, delta, finish_reason: null }] }) + '\n\n'
+      res.write(frame({ role: 'assistant', content: '' }))
+      for (const char of answer) res.write(frame({ content: char }))
+      res.write('data: ' + JSON.stringify({ id: 'audit', object: 'chat.completion.chunk', created: 0, model: 'audit-model', choices: [{ index: 0, delta: {}, finish_reason: 'stop' }] }) + '\n\n')
+      res.write('data: [DONE]\n\n')
+      res.end()
+    })
+  })
+  await new Promise(resolve => server.listen(chatPort, '127.0.0.1', resolve))
+  try {
+    const provider = await evaluate(`(async () => { try { const saved = await window.api.providers.save({ name: '点击验收供应商', access_mode: 'api', protocol: 'chat_completions', base_url: 'http://127.0.0.1:${chatPort}/v1', api_key: 'audit-key', default_model: 'audit-model', models: ['audit-model'] }); return { saved, apiKeys: Object.keys(window.api.providers) } } catch (error) { return { error: String(error) } } })()`)
+    if (!provider?.saved?.id) throw new Error('provider save failed: ' + JSON.stringify(provider))
+    await evaluate(`window.api.providers.setActive('` + provider.saved.id + `')`)
+    await evaluate(`window.location.hash = '#/app/chat'`)
+    await waitFor(`location.hash.includes('/app/chat')`)
+    await waitFor(`!!document.querySelector('[data-ui="part:composer-input"]')`)
+    const inputPoint = await evaluate(`(() => { const root = document.querySelector('[data-ui="part:composer-input"]'); const el = root.querySelector('[contenteditable="true"], textarea, input') || root; el.focus(); const r = el.getBoundingClientRect(); return { x: Math.round(r.x + Math.min(40, r.width / 2)), y: Math.round(r.y + r.height / 2), tag: el.tagName, editable: el.getAttribute('contenteditable'), focused: document.activeElement === el } })()`)
+    for (const type of ['mousePressed', 'mouseReleased']) await callWithTimeout('Input.dispatchMouseEvent', { type, x: inputPoint.x, y: inputPoint.y, button: 'left', clickCount: 1 }, 10000)
+    await callWithTimeout('Input.insertText', { text: '请回答' }, 10000)
+    // Read ONE field: for a contenteditable, innerText and textContent are the same text, and
+    // concatenating them made a single typed message look doubled in the report.
+    const readComposer = `(() => { const root = document.querySelector('[data-ui="part:composer-input"]'); const el = root.querySelector('[contenteditable="true"], textarea, input') || root; if ('value' in el && typeof el.value === 'string' && el.value) return el.value; return el.innerText || el.textContent || '' })()`
+    let typed = await evaluate(readComposer)
+    chatReport.observations.push({ typedAfterInsertText: String(typed) })
+    if (!String(typed).includes('请回答')) {
+      // Some contenteditable editors ignore CDP insertText; fall back to the editing command
+      // while the element is focused, which is what a keyboard paste does.
+      await evaluate(`(() => { const root = document.querySelector('[data-ui="part:composer-input"]'); const el = root.querySelector('[contenteditable="true"], textarea, input') || root; el.focus(); document.execCommand('insertText', false, '请回答'); return true })()`)
+      typed = await evaluate(readComposer)
+    }
+    chatReport.observations.push({ composer: inputPoint, typed: String(typed).slice(0, 40) })
+    chatReport.checks.realTyping = String(typed).includes('请回答')
+    for (const type of ['keyDown', 'char', 'keyUp']) await callWithTimeout('Input.dispatchKeyEvent', { type, key: 'Enter', text: type === 'char' ? '\r' : undefined, windowsVirtualKeyCode: 13 }, 10000)
+    const streamed = await waitFor(`document.body.innerText.includes('你好，世界') ? document.body.innerText.slice(-200) : null`)
+    chatReport.checks.realSendKey = true
+    const streamingShot = await callWithTimeout('Page.captureScreenshot', { format: 'png' }, 10000)
+    if (streamingShot?.data) fs.writeFileSync(path.join(outDir, 'chat-journey-streaming.png'), Buffer.from(streamingShot.data, 'base64'))
+    const settled = await waitFor(`(() => { const text = document.body.innerText; return text.includes('你好，世界') && text.includes('已完成') ? text.slice(-400) : null })()`)
+    chatReport.checks.streamedText = String(settled).includes(answer)
+    await sleep(1500)
+    const finalShot = await callWithTimeout('Page.captureScreenshot', { format: 'png' }, 10000)
+    if (finalShot?.data) fs.writeFileSync(path.join(outDir, 'chat-journey-final.png'), Buffer.from(finalShot.data, 'base64'))
+    chatReport.persisted = await evaluate(`(async () => { const latest = await window.api.ai.sessions.latest({ kind: 'chat' }); if (!latest) return null; const snapshot = await window.api.ai.sessions.get(latest.id); const assistant = (snapshot.messages || []).filter(message => message.role === 'assistant').pop(); return assistant ? { id: assistant.id, status: assistant.status, text: JSON.stringify(assistant.content) } : null })()`)
+    chatReport.checks.persisted = !!chatReport.persisted && String(chatReport.persisted.text).includes(answer)
+    chatReport.observations.push({ streamedFirstChars: String(streamed).slice(0, 80), settledTail: String(settled).slice(-80) })
+    chatReport.passed = Object.values(chatReport.checks).every(Boolean)
+  } catch (error) {
+    chatReport.error = String(error)
+    chatReport.failureState = await evaluate(`({ hash: location.hash, text: document.body.innerText.slice(0, 800) })`).catch(() => null)
+  } finally {
+    server.close()
+  }
+  fs.writeFileSync(path.join(outDir, 'chat-journey.json'), JSON.stringify(chatReport, null, 2))
+  console.log('Chat click journey:', chatReport.passed ? 'PASS' : 'FAIL', chatReport.error || '')
+}
 // Optional P1 transport smoke through the ACTUAL sandboxed renderer/preload/main.
 // This fresh profile has no blueprints: empty items is verified data, not a mock result.
 // Exercises source pi blueprint creation and mutation, not runtime launch/AgentPage.
