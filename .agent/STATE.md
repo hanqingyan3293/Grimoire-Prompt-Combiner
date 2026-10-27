@@ -328,3 +328,10 @@ resources/agent-runtimes/     opencode.exe 134M (1.18.34) / pi.exe 107M (1.0.1)
 | 分类 | 标签块 / 段落块 / 随机块；阈值与参考实现一致（20 项长标签列表、中文 16 字、虚词比例等） |
 
 测试 `src/shared/prompt-blocks.test.ts`：7 条，含 **300 例确定性生成的往返测试**（种子 20261027），以及引号逗号、权重组、偏移可编辑性。
+### M6.2 版本树 schema v36（2026-10-27 第五轮）
+
+- `CURRENT_SCHEMA_VERSION` 升到 **36**；新增 `migrateNovelaiPromptVersions`：`novelai_work` / `novelai_version` / `novelai_branch_name` / `novelai_version_image` 四表 + 三个索引，升级时为空，不做推断回填。
+- `src/main/services/novelai-version.service.ts`：建作品（含根版本）、加版本、分支出规则、按线取路径、分支命名、图↔版本多对多与「这张图出现在哪些版本」反查。
+- 不变量在服务层强制：父/分支必须同作品；`snapshot` 是唯一权威；每次写入带 `expectedRevision`；内容没变不产生空版本；父已有子版本时新版本自立分支（`branch_id=自己`、`branch_number+1`）。
+- 语义决定：`listNovelaiBranchLine` 返回**从根到该分支最新版本的路径**（不是只按 `branch_id` 过滤），否则版本栏会把共享历史藏起来。
+- 测试：9 条（分支规则、空版本、修订冲突、跨作品父版本、按线取路径、分支命名、图多对多与反查、schema 版本）。

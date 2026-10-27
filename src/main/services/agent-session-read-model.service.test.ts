@@ -23,7 +23,9 @@ function count(table: string) { return getDatabase().exec(`SELECT count(*) FROM 
 
 describe('main-owned Agent session read model', () => {
   it('adds v35 sidecar without adopting legacy sessions or history', () => {
-    expect(CURRENT_SCHEMA_VERSION).toBe(35)
+    // The table must exist and start empty — that is the contract. Pinning the exact schema
+    // number made every later migration fail this test for no behavioural reason.
+    expect(CURRENT_SCHEMA_VERSION).toBeGreaterThanOrEqual(35)
     expect(getDatabase().exec('SELECT count(*) FROM agent_session_read_model')[0].values[0][0]).toBe(0)
     getDatabase().run('INSERT INTO agent_sessions (id,runtime,title,data_json,created_at,updated_at) VALUES (?,?,?,?,?,?)', ['legacy', 'pi', 'old', '{"agentSession":{"version":1}}', '2020', '2020'])
     expect(listAgentSessionReadModels().items).toEqual([])

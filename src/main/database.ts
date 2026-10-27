@@ -1,4 +1,4 @@
-﻿// 魔导书 Grimoire v7 — SQLite 数据库管理
+// 魔导书 Grimoire v7 — SQLite 数据库管理
 import { DatabaseSync } from 'node:sqlite'
 import crypto from 'crypto'
 import path from 'path'
@@ -21,7 +21,9 @@ import { createLegacyDatabase, type LegacyDatabase } from './services/sqlite.com
 // v33: opt-in topic-owned message tree; no legacy message adoption/backfill.
 // v34: real Agent workspace repository only; empty on upgrade, no session inference.
 // v35: opt-in one-to-one Agent session read model; no copied sessions/history or backfill.
-export const CURRENT_SCHEMA_VERSION = 35
+// v36: NovelAI work/version tree (work, version, branch_name, version_image). Empty on upgrade —
+// no inference from prompt assets or sessions.
+export const CURRENT_SCHEMA_VERSION = 36
 let nativeDb: DatabaseSync | null = null
 let db: LegacyDatabase | null = null
 let dbPath = ''
@@ -1310,6 +1312,7 @@ export function initializeDatabaseConnection(connection: DatabaseSync, requireEx
   migrateTopicTrees(legacy)
   migrateAgentWorkspaces(legacy)
   migrateAgentSessionReadModel(legacy)
+  migrateNovelaiPromptVersions(legacy)
 
   legacy.exec(INDEX_SQL)
   legacy.run("CREATE INDEX IF NOT EXISTS idx_history_task ON history(task_id)")
@@ -1317,6 +1320,55 @@ export function initializeDatabaseConnection(connection: DatabaseSync, requireEx
   return legacy
 }
 
+
+// v36 — NovelAI prompt work/version tree. Shape mirrors the reference tool (work → version →
+// branch → images); none of its code or data is copied. `snapshot` holds the raw prompt text and
+// is authoritative; `branch_id`/`branch_number` describe which line a version belongs to.
+function migrateNovelaiPromptVersions(legacy: LegacyDatabase): void {
+  legacy.exec(`
+    CREATE TABLE IF NOT EXISTS novelai_work (
+      id TEXT PRIMARY KEY NOT NULL,
+      name TEXT NOT NULL CHECK(length(name) BETWEEN 1 AND 120),
+      origin_snapshot TEXT,
+      saved INTEGER NOT NULL DEFAULT 0 CHECK(saved IN (0,1)),
+      last_version_id TEXT,
+      revision INTEGER NOT NULL DEFAULT 1 CHECK(revision >= 1),
+      created_at TEXT NOT NULL,
+      last_used_at TEXT NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS novelai_version (
+      id TEXT PRIMARY KEY NOT NULL,
+      work_id TEXT NOT NULL REFERENCES novelai_work(id) ON DELETE CASCADE,
+      parent_id TEXT REFERENCES novelai_version(id) ON DELETE CASCADE,
+      number INTEGER NOT NULL CHECK(number >= 1),
+      branch_id TEXT NOT NULL,
+      branch_number INTEGER NOT NULL CHECK(branch_number >= 1),
+      snapshot TEXT NOT NULL,
+      source TEXT NOT NULL DEFAULT 'user' CHECK(source IN ('user','agent')),
+      operation TEXT NOT NULL DEFAULT '',
+      created_at TEXT NOT NULL,
+      UNIQUE(work_id, number)
+    );
+    CREATE TABLE IF NOT EXISTS novelai_branch_name (
+      branch_id TEXT PRIMARY KEY NOT NULL,
+      work_id TEXT NOT NULL REFERENCES novelai_work(id) ON DELETE CASCADE,
+      name TEXT NOT NULL CHECK(length(name) BETWEEN 1 AND 60),
+      created_at TEXT NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS novelai_version_image (
+      id TEXT PRIMARY KEY NOT NULL,
+      version_id TEXT NOT NULL REFERENCES novelai_version(id) ON DELETE CASCADE,
+      image_id TEXT NOT NULL,
+      seed INTEGER,
+      variant TEXT NOT NULL DEFAULT '',
+      sort INTEGER NOT NULL DEFAULT 0,
+      UNIQUE(version_id, image_id)
+    );
+    CREATE INDEX IF NOT EXISTS idx_novelai_version_parent ON novelai_version(parent_id);
+    CREATE INDEX IF NOT EXISTS idx_novelai_version_branch ON novelai_version(work_id, branch_id, number);
+    CREATE INDEX IF NOT EXISTS idx_novelai_version_image_image ON novelai_version_image(image_id);
+  `)
+}
 function resolveDatabasePath(): string {
   // 便携模式：exe同目录有 portable 文件则数据存本地 data/ 文件夹
   const exeDir = path.dirname(app.getPath('exe'))
