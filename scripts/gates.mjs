@@ -18,10 +18,10 @@ const compatDir = path.join(root, 'src', 'vendor', 'cherry', 'compat')
 const definitions = [
   { id: 'G1', title: '渲染层类型', cmd: 'npx', args: ['tsc', '--noEmit', '-p', 'tsconfig.json'] },
   { id: 'G2', title: '主进程类型', cmd: 'npx', args: ['tsc', '-p', 'tsconfig.node.json', '--noEmit'] },
-  // `--no-file-parallelism`: this host's vitest worker RPC intermittently times out
-  // ("onTaskUpdate") when many files run concurrently, even though every test passes.
-  // Sequential costs ~2m40 instead of ~40s and removes that class of red run.
-  { id: 'G3', title: '根测试', cmd: 'npx', args: ['vitest', 'run', '--reporter=dot', '--no-file-parallelism'], heavy: true },
+  // Root tests run through a sharded wrapper: this host's vitest worker RPC intermittently
+  // times out ("onTaskUpdate") even when every test passes, and one long sequential run is a
+  // long window for that. The wrapper retries a shard only when that exact signature appears.
+  { id: 'G3', title: '根测试', cmd: 'node', args: ['scripts/test-root-sharded.mjs'], heavy: true },
   { id: 'G4', title: 'Cherry 适配层测试', cmd: 'npx', args: ['vitest', 'run', '--reporter=dot'], cwd: compatDir, heavy: true },
   { id: 'G5', title: 'Cherry 类型（自有=0 / 源码棘轮）', cmd: 'node', args: ['scripts/check-compat-types.mjs'] },
   { id: 'G6', title: '全量构建', cmd: 'npm', args: ['run', 'build'], heavy: true },

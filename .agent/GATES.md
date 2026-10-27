@@ -33,10 +33,10 @@ npx tsc -p tsconfig.node.json --noEmit
 ## G3 根测试
 
 ```bash
-npx vitest run --no-file-parallelism
+node scripts/test-root-sharded.mjs
 ```
 - 判定：0 failed（skipped 可接受）
-- **为什么串行**：本机 vitest 3.2.7 在并发跑 145 个文件时会偶发 worker RPC 超时（`Timeout calling "onTaskUpdate"`），用例全过但进程非零退出。串行约 2m45，换来稳定的绿。
+- **为什么分片 + 串行**：本机 vitest 3.2.7 会偶发 worker RPC 超时（`Timeout calling "onTaskUpdate"`），用例全过但进程非零退出。分两片、片内 `--no-file-parallelism`，并且**只**在命中该签名时重试该片一次；真实断言失败不重试。
 - **当前：144 files / 1339 passed / 2 skipped；但 5 次运行里 1 次 2 用例失败、1 次 worker 超时**
 - **稳定性判定**：连续 3 次 exit 0 才算通过。任何一次失败必须抓到用例名，写进 STATE.md D6。
 - 已知可接受噪声：`INFO: Could not find files for the given pattern(s).`（Windows 字体枚举）。

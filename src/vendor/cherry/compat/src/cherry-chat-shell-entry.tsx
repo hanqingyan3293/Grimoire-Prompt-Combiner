@@ -498,7 +498,7 @@ function CherryChatShellContent() {
       ...toSourceMessage(message, sessionId),
       parts: readParts(message.content).map(part => toSourcePart(part))
     }))
-    const title = topic?.title || 'Cherry 对话'
+    const title = topic?.title || '新对话'
     const withReasoning = kind === 'markdown-reason'
     try {
       const markdown = await messagesToMarkdown(sourceMessages as never, withReasoning)
@@ -570,8 +570,8 @@ function CherryChatShellContent() {
     <aside className="flex h-full w-full flex-col border-r border-border-subtle bg-card/70 p-3">
       <div className="mb-3 flex items-center justify-between gap-2">
         <div className="min-w-0">
-          <div className="text-sm font-semibold">Cherry Studio</div>
-          <div className="text-[11px] text-muted-foreground">Grimoire Host Bridge · {route.path}</div>
+          <div className="text-sm font-semibold">魔导书</div>
+          <div className="text-[11px] text-muted-foreground">智能工作区 · {route.path}</div>
         </div>
         <div className="flex shrink-0 rounded-md border border-border-subtle p-0.5 text-[10px]">
           <button
@@ -835,7 +835,7 @@ function CherryChatShellContent() {
   const topBar = (
     <div className="flex h-12 shrink-0 items-center justify-between gap-3 border-b border-border-subtle bg-card px-4">
       <div className="min-w-0">
-        <div className="truncate text-sm font-semibold">{route.id === 'settings-provider' ? 'Provider 设置' : route.id === 'settings-mcp' ? 'MCP 设置' : route.id === 'settings-mcp-detail' ? 'MCP 服务详情' : route.id === 'settings-appearance' ? '外观设置' : route.id === 'settings-general' ? '常规设置' : route.id === 'settings-data' ? '数据设置' : route.id === 'settings-dependencies' ? '依赖' : route.id === 'settings-notifications' ? '通知设置' : route.id === 'settings-about' ? '关于' : route.id === 'settings-prompts' ? '提示词' : route.id === 'settings-usage' ? '用量' : route.id === 'settings-shortcut' ? '快捷键' : route.id === 'settings-archive' ? '回收站' : snapshot?.session?.title || 'Cherry 对话'}</div>
+        <div className="truncate text-sm font-semibold">{route.id === 'settings-provider' ? 'Provider 设置' : route.id === 'settings-mcp' ? 'MCP 设置' : route.id === 'settings-mcp-detail' ? 'MCP 服务详情' : route.id === 'settings-appearance' ? '外观设置' : route.id === 'settings-general' ? '常规设置' : route.id === 'settings-data' ? '数据设置' : route.id === 'settings-dependencies' ? '依赖' : route.id === 'settings-notifications' ? '通知设置' : route.id === 'settings-about' ? '关于' : route.id === 'settings-prompts' ? '提示词' : route.id === 'settings-usage' ? '用量' : route.id === 'settings-shortcut' ? '快捷键' : route.id === 'settings-archive' ? '回收站' : snapshot?.session?.title || '新对话'}</div>
         <div className="text-[10px] text-muted-foreground">真实 Cherry 源组件 · {loading ? '生成中' : '就绪'}</div>
       </div>
       {/* The model selector belongs to the chat surface; on the settings route it would
@@ -1002,7 +1002,7 @@ function CherryChatShellContent() {
           draftTokens={[]}
           managedTokenKinds={[]}
           onTokensChange={() => undefined}
-          placeholder="发送消息给 Cherry Studio"
+          placeholder="发送消息给魔导书"
           sendDisabled={loading || !composerText.trim()}
           isLoading={loading}
           onSendDraft={(draft: AnyRecord) => void sendDraft(draft)}
