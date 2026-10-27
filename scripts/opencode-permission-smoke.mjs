@@ -96,7 +96,6 @@ try {
   runtimes.push(runtime)
   const session = runtime.createSession('grimoire/gpt-smoke', [{ role: 'user', content: 'Write the local approval fixture once, then reply permission ok.' }])
   let approved = false
-  let permissionDetail
   if (debug) {
     const originalFetch = globalThis.fetch
     globalThis.fetch = async (input, init) => {
@@ -121,7 +120,6 @@ try {
       events.push(event)
       if (event.type === 'permission-requested') {
         assert.equal(event.action, 'bash')
-        permissionDetail = event.detail
         if (approvalDecision === 'deny') await runtime.reject({ requestId: event.requestId, decision: 'decline' })
         else await runtime.approve({ requestId: event.requestId, decision: 'accept' })
         approved = true

@@ -1,0 +1,22 @@
+{
+  "source": 270,
+  "recordedAt": "2026-10-27T17:03:09.070Z",
+  "byCode": {
+    "TS2339": 109,
+    "TS7006": 48,
+    "TS7053": 30,
+    "TS2551": 19,
+    "TS2307": 18,
+    "TS7016": 11,
+    "TS2345": 11,
+    "TS2322": 7,
+    "TS2503": 6,
+    "TS2305": 6,
+    "TS2314": 1,
+    "TS2353": 1,
+    "TS2554": 1,
+    "TS2558": 1,
+    "TS2739": 1
+  },
+  "note": "Read-only vendor diagnostics pulled in by the compat program. These may only decrease. Owned files (compat layer + shared) must be zero; see scripts/check-compat-types.mjs."
+}

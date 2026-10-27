@@ -21,19 +21,22 @@
 
 | 门禁 | 命令 | 结果 |
 |---|---|---|
-| 渲染层类型 | `npx tsc --noEmit -p tsconfig.json` | **0 错误** 【实测】 |
-| 主进程类型 | `npx tsc -p tsconfig.node.json --noEmit` | **0 错误** 【实测】 |
-| 根测试 | `npx vitest run` | 144 files / 1339 passed / 2 skipped。**5 次运行：3 次 exit 0；1 次 2 个用例失败；1 次 vitest worker `onTaskUpdate` 超时** 【实测】 |
-| compat 测试 | `cd src/vendor/cherry/compat && npx vitest run` | **35 files / 292 tests 全绿** 【实测】 |
-| compat 类型（strict） | `npm run typecheck:cherry-compat` | **272 条 error，exit 2** = 270 条在只读 `source`，2 条在我们自己的文件 【实测】 |
-| 全量构建 | `npm run build` | **exit 0**（cherry-compat → renderer → main → copy）【实测】 |
-| 打包 | `npm run pack` | 未跑（本次）【未知】 |
-| CSS 覆盖率 | `npm run check:cherry-css` | 未跑；上次记录 98.6%（阈值 90%）【继承】 |
-| 矩阵格式 | `npm run check:migration-matrix` | 未跑；上次 115 data rows 通过【继承】 |
-| 路由审计 | `node scripts/audit-cherry-routes.mjs` | 上次 51 routes / 3 failed（10-26，exit 1）【继承】 |
-| 截图证据 | catalog evidence guard | 79 条里 18 条 captured、61 条 pending`manualAcceptance=pending`【实测自带清单】 |
+| 跑法 | — | **`node scripts/gates.mjs`**（G1–G8 一条命令；`--fast` 跳过测试与构建） |
+| G1 渲染层类型 | `npx tsc --noEmit -p tsconfig.json` | **0 错误** 【实测 2026-10-27】 |
+| G2 主进程类型 | `npx tsc -p tsconfig.node.json --noEmit` | **0 错误** 【实测】 |
+| G3 根测试 | `npx vitest run` | **144 files / 1339 passed / 2 skipped，41.1s，exit 0** 【实测】 |
+| G4 compat 测试 | `cd src/vendor/cherry/compat && npx vitest run` | **35 files / 292 tests 全绿，25.8s** 【实测】 |
+| G5 compat 类型 | `node scripts/check-compat-types.mjs` | **自有 0 条 / 只读源码 270 条（冻结基线）** 【实测】 |
+| G6 全量构建 | `npm run build` | **exit 0，23.4s** 【实测】 |
+| G7 矩阵格式 | `npm run check:migration-matrix` | **115 rows，无坏行** 【实测】 |
+| G8 CSS 覆盖率 | `npm run check:cherry-css` | **PASS（≥90%）** 【实测】 |
+| G9 路由审计 | `node scripts/audit-cherry-routes.mjs` | 上次 51 routes / 3 failed（10-26，信号问题，待 M1.3 修）【继承】 |
+| G11 打包 | `npm run pack` | 未跑【未知】 |
+| 截图证据 | catalog evidence guard | 79 条里 18 条 captured、61 条 pending，`manualAcceptance=pending`【清单自带】 |
 
-**根测试不稳定是事实**：失败用例名未捕获（只 tail 了尾部）。在稳定之前，任何"全绿"声明都必须附运行次数。
+**一次全绿记录**：2026-10-27 17:11（UTC）`node scripts/gates.mjs` 八个门禁全过，快照 `artifacts/gates-2026-10-27T17-11-46-412Z.json`。
+
+**根测试 flaky 政策**：vitest 3.2.7 在本机会偶发 worker RPC 超时（`Timeout calling "onTaskUpdate"`）而所有用例通过。`scripts/gates.mjs` 对该签名**只重试一次且记录 attempts**；任何真实用例失败都不重试。
 
 ---
 
@@ -55,20 +58,25 @@ resources/agent-runtimes/     opencode.exe 134M (1.18.34) / pi.exe 107M (1.0.1)
 
 ## 4. 已确认的缺陷与过期记录
 
-### D1（真实缺陷）`/settings/general` 是死分支，域能力面板渲染不到
+### D1（已修复 2026-10-27）`/settings/general` 曾是死分支，域能力面板渲染不到
 
 - 证据：`src/vendor/cherry/compat/src/cherry-chat-shell-entry.tsx:1097` 的 `route.id === 'settings-general'` 被 TS 判为 **TS2367 永不成立**——因为 `settings-general` 已在 `SOURCE_SETTINGS` 里，第 1089 行的 `isCompatSourceSettingsRoute(route.id)` 先命中。
 - 后果：1097–1110 整块（"常规设置尚未接入（BLOCKED）" + `<CompatDomainCapabilities />`）**不可达**；`CompatDomainCapabilities` 全仓只有这一处引用 → 这个域能力面板**永远不会渲染**。
 - 连带后果：`artifacts/visual/cherry-routes/route-settings-general.png`（10-26 10:45）拍的是那个 BLOCKED 面板，而 `CompatSourceSettings.tsx` 在 **10-26 13:24** 才把 general 加进 `SOURCE_SETTINGS` → **该截图是过期证据**。
-- 现状：`/settings/general` 实际渲染 = 源 `GeneralSettings` 页面 + `<fieldset disabled>` + 琥珀色诊断横幅。
+### 修复记录
 
-### D2（半成品）`opencode-permission-smoke.mjs` 有死变量
+- 删除 `cherry-chat-shell-entry.tsx` 中不可达的 general 分支（原 1097–1110）与多余的 import。
+- 把 `<CompatDomainCapabilities />` 移进 `CompatSourceSettings.tsx`，仅当 `route.id === 'settings-general'` 时渲染，位置在诊断横幅之后、只读 fieldset 之前。
+- 回归测试：`CompatSourceSettings.test.tsx` 新增「general 可达且承载域能力报告」用例；`CompatRemainingSettings.test.tsx` 的排序断言改为「不得再出现 general 专用分支」。
+- 结果：G5 自有类型错误 272→**270 条（全部来自只读源码，自有 0 条）**；G4/G3 全绿。
 
-- `let permissionDetail`（:99）只被赋值（:124），从未读取，也不进 `result`/输出。
+### D2（已修复 2026-10-27）`opencode-permission-smoke.mjs` 的死变量
 
-### D3（过期数字）截图清单里的门禁快照
+- 已删除 `let permissionDetail` 与其赋值；脚本其余逻辑未动。
 
-- `artifacts/cherry-ui-catalog/截图清单.json:7` 记 `strictTypecheck: failed / 255 条`（10-14 证据），实测已是 272 条。
+### D3（已更新 2026-10-27）截图清单里的门禁快照
+
+- 原记 `failed / 255 条`（10-14 证据）；现更新为「自有 0 / 只读源码 270（冻结基线）」并注明证据文件。
 
 ### D4（验收缺口）截图目录
 
@@ -78,9 +86,11 @@ resources/agent-runtimes/     opencode.exe 134M (1.18.34) / pi.exe 107M (1.0.1)
 
 - `/settings/code-execution`、`/settings/appearance`、`/settings/notifications` 的 `missingSignals` 都是"中文标题缺失"——是审计信号定义过时，不是页面失败。
 
-### D6（不稳定）根测试偶发
+### D6（政策化 2026-10-27）根测试偶发
 
-- 5 次运行 1 次 2 用例失败、1 次 worker 超时；未定位到用例名。
+- 现象：vitest 3.2.7 在本机偶发 `Timeout calling "onTaskUpdate"`（worker RPC），此时所有用例仍通过，但进程 exit 1。
+- 政策：`scripts/gates.mjs` 只对该签名重试一次并记录 `attempts`；任何真实用例失败不重试。
+- 尚未抓到那 1 次「2 个用例失败」的名字；下次出现时按 G3 输出定位。
 
 ### D7（权威链）旧文档三套口径
 

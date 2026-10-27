@@ -31,7 +31,9 @@
     "build:cherry-compat": "node src/vendor/cherry/compat/node_modules/vite/bin/vite.js build --config src/vendor/cherry/compat/vite.config.ts",
     "test:watch": "vitest",
     "visual:record": "node scripts/visual-baseline.mjs && node scripts/visual-compare.mjs --record",
-    "visual:check": "node scripts/visual-compare.mjs"
+    "visual:check": "node scripts/visual-compare.mjs",
+    "gates": "node scripts/gates.mjs",
+    "gates:fast": "node scripts/gates.mjs --fast"
   },
   "keywords": [
     "grimoire",

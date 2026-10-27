@@ -33,7 +33,7 @@ const models = [
   { id: 'p::chat-b', providerId: 'p', name: 'Chat B', capabilities: [], endpointTypes: [] },
   { id: 'p::image', providerId: 'p', name: 'Image', capabilities: [MODEL_CAPABILITY.IMAGE_GENERATION], endpointTypes: [] },
   { id: 'p::embed', providerId: 'p', name: 'Embed', capabilities: [MODEL_CAPABILITY.EMBEDDING], endpointTypes: [] }
-] as Model[]
+] as unknown as Model[]
 const settings: Record<string, string> = {}
 const requests: string[] = []
 const write = vi.fn(async (key: string, value: string) => { settings[key] = value; return true })

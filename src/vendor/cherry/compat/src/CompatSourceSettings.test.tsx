@@ -133,6 +133,16 @@ describe('authentic source settings with disabled unavailable effects', () => {
     expect(isCompatSourceSettingsRoute('settings-quick-assistant')).toBe(false)
   })
 
+  it('keeps the general route reachable and hosts the domain capability report there', () => {
+    // 2026-10-27 regression guard: `settings-general` is a SOURCE_SETTINGS entry, so an
+    // `route.id === 'settings-general'` branch later in the shell chain is unreachable
+    // (TS2367 proved it). The report used to live in that dead branch and never rendered.
+    const shell = readFileSync(resolve(process.cwd(), 'src/cherry-chat-shell-entry.tsx'), 'utf8')
+    const wrapper = readFileSync(resolve(process.cwd(), 'src/CompatSourceSettings.tsx'), 'utf8')
+    expect(shell).not.toContain("route.id === 'settings-general' ? (")
+    expect(wrapper).toContain('<CompatDomainCapabilities />')
+    expect(isCompatSourceSettingsRoute('settings-general')).toBe(true)
+  })
   it('falls back to the precise diagnostic if ScreenshotSettings lacks the preload shortcut contract', () => {
     Object.defineProperty(window, 'api', { configurable: true, value: { ...window.api, shortcut: undefined } })
     mount('/settings/screenshot')

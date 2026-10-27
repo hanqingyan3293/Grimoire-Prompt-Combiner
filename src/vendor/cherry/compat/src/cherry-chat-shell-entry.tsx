@@ -27,7 +27,6 @@ import {
 } from '../../source/src/renderer/services/ExportService'
 import { saveMarkdownExport } from './markdown-save'
 import { CompatMessageListProvider } from './CompatMessageListProvider'
-import { CompatDomainCapabilities } from './CompatDomainCapabilities'
 import { CompatRemainingSettings } from './CompatRemainingSettings'
 import { CompatSourceSettings, isCompatSourceSettingsRoute } from './CompatSourceSettings'
 import { getSettingsDiagnostic } from './settings-route-descriptors'
@@ -1093,20 +1092,6 @@ function CherryChatShellContent() {
       ) : route.id === 'settings-root' || route.id === 'settings-system' || route.id === 'settings-code-execution' ? (
         <div role="status" className="m-4 rounded border border-border bg-muted/20 p-4 text-xs text-muted-foreground">
           正在打开源设置页面…
-        </div>
-      ) : route.id === 'settings-general' ? (
-        <div>
-          <div role="alert" className="m-4 rounded border border-amber-500/30 bg-amber-500/10 p-4 text-xs text-amber-700">
-            <div className="font-medium">常规设置尚未接入（BLOCKED）</div>
-            <div className="mt-2 space-y-1 text-[11px] leading-5">
-              <div>源页面 <code>GeneralSettings</code> 的每一个控件都承诺一项主进程行为，Grimoire 目前都没有对应服务，因此不挂载它——否则会出现“开关看似生效、实际无任何效果”的假成功状态。</div>
-              <div className="pt-1">缺失的服务：托盘与关闭/启动行为、开机自启、硬件加速开关、代理（system/custom/none）、任务期间阻止休眠、模型调用重试与回退、上下文压缩策略。</div>
-              <div className="pt-1">这些行为落地后即可直接挂载源页面（偏好键已由 compat 偏好 shim 支持持久化）。</div>
-            </div>
-          </div>
-          {/* Domain capability report, read from the Host Bridge rather than restated —
-              see `.agent/WINDOW_MATRIX.md` for the per-window blockers behind it. */}
-          <CompatDomainCapabilities />
         </div>
       ) : (
         <Suspense fallback={<div className="p-4 text-xs text-muted-foreground">加载设置…</div>}>

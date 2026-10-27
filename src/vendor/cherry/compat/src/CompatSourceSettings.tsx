@@ -2,6 +2,7 @@ import { lazy, Suspense } from 'react'
 import type { CompatRoute } from './route-registry'
 import { CompatRemainingSettings } from './CompatRemainingSettings'
 import { getSettingsDiagnostic } from './settings-route-descriptors'
+import { CompatDomainCapabilities } from './CompatDomainCapabilities'
 import { isWin } from '../../source/src/renderer/utils/platform'
 
 // Source views stay behind native read-only controls until their effect consumers exist.
@@ -67,6 +68,7 @@ export function CompatSourceSettings({ route }: { route: CompatRoute }) {
         <ul className="mt-2 list-disc pl-5">{descriptor.missing.map(item => <li key={item}>{item}</li>)}</ul>
         <p className="mt-2">下一步：{descriptor.nextAction}</p>
       </section>
+      {route.id === 'settings-general' ? <CompatDomainCapabilities /> : null}
       <fieldset disabled aria-describedby={noteId} aria-label={descriptor.title + '（只读）'} className="m-0 min-w-0 border-0 p-0">
         <Suspense fallback={<p role="status" className="p-4 text-sm text-muted-foreground">加载源设置页面…</p>}>
           <Component />

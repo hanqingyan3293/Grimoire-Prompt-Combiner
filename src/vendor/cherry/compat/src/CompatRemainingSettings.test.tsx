@@ -113,6 +113,10 @@ describe('remaining source settings URLs', () => {
     const shell = readFileSync(resolve(process.cwd(), 'src/cherry-chat-shell-entry.tsx'), 'utf8')
     expect(shell).toContain('const settingsRoute = isCompatSettingsRoute(route)')
     expect(shell).toContain('main={appRoute ? appSurface : settingsRoute ? settingsSurface : main}')
-    expect(shell.indexOf('<CompatRemainingSettings route={route} />')).toBeLessThan(shell.indexOf('route.id === \'settings-general\' ? ('))
+    // `settings-general` is a SOURCE_SETTINGS entry, so a dedicated branch for it can never
+    // be reached (TS2367 proved it in 2026-10-27); the report now lives inside the source
+    // wrapper. Diagnostics must still precede the preserved settings subtree.
+    expect(shell).not.toContain("route.id === 'settings-general' ? (")
+    expect(shell.indexOf('<CompatRemainingSettings route={route} />')).toBeLessThan(shell.indexOf("route.id === 'settings-appearance' ? <AppearanceSettings />"))
   })
 })
