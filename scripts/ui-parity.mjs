@@ -8,6 +8,8 @@
 //    a fixed/random port can belong to a leftover Electron from a previous run, whose page is
 //    `about:blank` — that is exactly how the first version drove the wrong window.
 //  * Before clicking, the page URL and body text are asserted, not assumed.
+//  * The main window is NOT ready when its target appears: startup (DB init + built-in asset
+//    import) takes ~17s here, and probing earlier sees `about:blank`. Wait for body text.
 import { spawn, spawnSync } from 'node:child_process'
 import fs from 'node:fs'
 import os from 'node:os'
@@ -111,14 +113,25 @@ async function clickAt(selector) {
 }
 
 let pageInfo = null
-for (let attempt = 0; attempt < 60; attempt += 1) {
+let forcedNavigation = false
+const report_forcing = () => console.log('FORCED_NAVIGATION')
+for (let attempt = 0; attempt < 120; attempt += 1) {
+  // The unpackaged window sometimes sits on `about:blank` even though its target URL is the dev
+  // server (observed on this host). One explicit Page.navigate gets it going; we record that it
+  // was needed instead of hiding it.
+  if (!forcedNavigation && attempt === 30 && pageInfo && !pageInfo.bodyChars) {
+    forcedNavigation = true
+    report_forcing?.()
+    await call('Page.navigate', { url: devUrl })
+    await sleep(1500)
+  }
   await sleep(500)
   try { pageInfo = await evaluate('({ href: location.href, title: document.title, bodyChars: document.body.innerText.length })') } catch { pageInfo = null }
   if (pageInfo && pageInfo.bodyChars > 20) break
 }
 if (!pageInfo || !pageInfo.bodyChars) { console.log(JSON.stringify({ ok: false, error: 'WINDOW_NOT_RENDERED', pageInfo, debugPort }, null, 2)); ws.close(); killTree(); process.exit(1) }
 
-const report = { ok: false, pageInfo, shots: [], tabs: [], panels: [], errors: [], consoleErrors: [] }
+const report = { ok: false, pageInfo, forcedNavigation, shots: [], tabs: [], panels: [], errors: [], consoleErrors: [] }
 report.shots.push(await screenshot('00-initial'))
 
 const tabs = await evaluate('Array.from(document.querySelectorAll(\'[data-ui="workspace.tab"]\')).map((el, index) => ({ index, id: el.getAttribute(\'data-workspace-id\'), label: (el.textContent || \'\').trim() }))')

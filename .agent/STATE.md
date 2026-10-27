@@ -417,3 +417,15 @@ resources/agent-runtimes/     opencode.exe 134M (1.18.34) / pi.exe 107M (1.0.1)
 - 注册 `novelai-workbench` 面板类型，归入「素材」分组。
 - 组件测试 2 条：块视图来自真实解析器（标签块/随机块/`{{}}` 两层 +10%）、
   保存时带上服务器给的 `expectedRevision`（防覆盖）。
+### 交叉矩阵：主窗口点击与截图跑通（2026-10-27 第十四轮）
+
+- 之前 `ui-parity.mjs` 一直报 `WINDOW_NEVER_NAVIGATED`。本轮定位：**应用的 `loadURL` 在本机启动路径下没有真正生效**，窗口 target 的 URL 是 dev server、文档却停在 `about:blank`（25 秒后依旧）。
+- 解法：连上 target 后若正文为空，显式 `Page.navigate(devUrl)` 一次；报告里用 `forcedNavigation: true` 标记，不假装是应用自己加载的。
+- 实测（临时 profile + vite）：`ok:true`，正文 1321 字符，标题「魔导书 Grimoire」；点击 6 个工作区标签、3 个面板标题，产出 10 张截图到 `artifacts/visual/ui-parity/`（`00-initial.png`、`tab-0N-*.png`、`panel-0N-*.png`）。
+- 截图确认主窗口真实结构：工作区标签（创作 / AI / 识图 / 图片参考 / 标签管理 / 标签与资产）、标签库、提示词工作区、提示词资产三栏、底部状态栏与「AI 助手 / 设置」入口。
+
+### 新缺陷 D12（2026-10-27）
+
+| 编号 | 现象 | 证据 | 下一步 |
+|---|---|---|---|
+| D12 | 启动时内置提示词资产导入失败：`Built-in prompt asset import deferred: Error: column index out of range`（`sqlite.compat.run`） | 主窗口启动日志与 stderr 均打印 | 定位 `importDefaultPromptAssets` 的 INSERT 参数与占位符数量是否不匹配；修好后补迁移/导入测试 |
