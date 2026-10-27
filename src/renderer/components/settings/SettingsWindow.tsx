@@ -70,6 +70,10 @@ export function SettingsWindow({ onClose, embedded = false }: { onClose?: () => 
   // than it did in a 900×680 window. Matches the section label, its description and its
   // keywords — enough for the vocabulary people actually type (主题/颜色/密钥/快捷键).
   const [settingsQuery, setSettingsQuery] = useState("")
+  // In the settings PANEL every category is stacked on one page (the Cherry-style layout);
+  // in the separate window the rail still switches between them. Collapse state is per
+  // category and local — it is a view preference, not a persisted setting.
+  const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({})
   const [accentInput, setAccentInput] = useState(custom_accent)
   const [shortcuts, setShortcuts] = useState<Record<string, string>>({})
   const [editingShortcut, setEditingShortcut] = useState<string | null>(null)
@@ -208,6 +212,8 @@ export function SettingsWindow({ onClose, embedded = false }: { onClose?: () => 
     { key: "custom_border", label: "边框颜色", value: custom_border, fallback: appearanceDefaults.border },
   ]
 
+  const showSection = (key: Section) => (embedded ? true : section === key)
+  const toggleSection = (key: string) => setCollapsedSections(previous => ({ ...previous, [key]: !previous[key] }))
   const normalizedQuery = settingsQuery.trim().toLowerCase()
   const filteredSections = normalizedQuery
     ? SECTIONS.filter(entry => (entry.label + entry.description + entry.keywords).toLowerCase().includes(normalizedQuery))
@@ -233,7 +239,10 @@ export function SettingsWindow({ onClose, embedded = false }: { onClose?: () => 
         <nav className="flex-1 space-y-1 overflow-y-auto p-2" aria-label='设置分区'>
           {filteredSections.length === 0 ? <p className="px-3 py-2 text-xs text-[var(--color-text-secondary)]">没有匹配的设置</p> : null}
           {filteredSections.map(s => (
-            <button key={s.key} onClick={() => setSection(s.key)}
+            <button key={s.key} onClick={() => {
+              if (!embedded) { setSection(s.key); return }
+              document.getElementById('settings-section-' + s.key)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+            }}
               aria-current={section === s.key ? 'page' : undefined}
               className={`ui-settings-nav-item w-full px-3 py-2.5 text-left text-sm ${
                 section === s.key
@@ -249,7 +258,8 @@ export function SettingsWindow({ onClose, embedded = false }: { onClose?: () => 
       {/* Right content */}
       <div className="ui-settings-scroll min-h-0 flex-1 overflow-y-auto p-4 sm:p-7">
         <div className="ui-settings-content mx-auto w-full max-w-5xl pb-5">
-        {section === "general" && (
+        {showSection("general") && (
+          <SettingsSectionCard id="general" title="通用设置" collapsed={collapsedSections["general"] === true} onToggle={() => toggleSection("general")}>
           <div className="space-y-5">
             <PanelHeader icon={Settings} title='通用设置' description='调整语言、字号、界面密度和随机标签范围' />
             <Field label="语言">
@@ -310,9 +320,11 @@ export function SettingsWindow({ onClose, embedded = false }: { onClose?: () => 
               提示：由于多窗口限制，若设置或历史记录未同步，请手动按 Ctrl+R 刷新页面。
             </span></div>
           </div>
+          </SettingsSectionCard>
         )}
 
-        {section === "appearance" && (
+        {showSection("appearance") && (
+          <SettingsSectionCard id="appearance" title="外观" collapsed={collapsedSections["appearance"] === true} onToggle={() => toggleSection("appearance")}>
           <div className="space-y-5">
             <PanelHeader icon={Palette} title='外观' description='深浅外观与 7 种色轮强调色相互独立组合' />
             <Field label="外观模式" desc="背景与文字使用浅色、深色或跟随 Windows；主题色独立选择">
@@ -377,9 +389,11 @@ export function SettingsWindow({ onClose, embedded = false }: { onClose?: () => 
               </div>
             </Field>
           </div>
+          </SettingsSectionCard>
         )}
 
-        {section === "api" && (
+        {showSection("api") && (
+          <SettingsSectionCard id="api" title="API 配置" collapsed={collapsedSections["api"] === true} onToggle={() => toggleSection("api")}>
           <div className="space-y-4">
             <PanelHeader icon={Plug} title='API 供应商' description='管理模型接口、协议和本地保存的认证信息' actions={!showProviderEditor && <Button variant='primary' icon={Plus} onClick={() => { setEditingProvider(null); setShowProviderEditor(true) }}>新增供应商</Button>} />
 
@@ -461,13 +475,23 @@ export function SettingsWindow({ onClose, embedded = false }: { onClose?: () => 
               </>
             )}
           </div>
+          </SettingsSectionCard>
         )}
 
-        {section === "ai" && <AiSettingsPanel />}
+        {showSection("ai") && (
+          <SettingsSectionCard id="ai" title="AI 工作台" collapsed={collapsedSections["ai"] === true} onToggle={() => toggleSection("ai")}>
+            <AiSettingsPanel />
+          </SettingsSectionCard>
+        )}
 
-        {section === "canvas" && <CanvasSettingsSection />}
+        {showSection("canvas") && (
+          <SettingsSectionCard id="canvas" title="无限画布" collapsed={collapsedSections["canvas"] === true} onToggle={() => toggleSection("canvas")}>
+            <CanvasSettingsSection />
+          </SettingsSectionCard>
+        )}
 
-        {section === "shortcuts" && (
+        {showSection("shortcuts") && (
+          <SettingsSectionCard id="shortcuts" title="快捷键" collapsed={collapsedSections["shortcuts"] === true} onToggle={() => toggleSection("shortcuts")}>
           <div className="space-y-4">
             <PanelHeader icon={Keyboard} title='快捷键管理' description='选择快捷键后按下新组合键，设置会自动保存' />
             <div className="space-y-2">
@@ -506,9 +530,11 @@ export function SettingsWindow({ onClose, embedded = false }: { onClose?: () => 
               ))}
             </div>
           </div>
+          </SettingsSectionCard>
         )}
 
-        {section === "data" && (
+        {showSection("data") && (
+          <SettingsSectionCard id="data" title="数据" collapsed={collapsedSections["data"] === true} onToggle={() => toggleSection("data")}>
           <div className="space-y-5">
             <PanelHeader icon={Database} title='数据管理' description='备份和恢复数据库，迁移朋友项目提示词并查看诊断记录' />
             <Field label="数据库" desc="备份和恢复全部数据">
@@ -541,9 +567,11 @@ export function SettingsWindow({ onClose, embedded = false }: { onClose?: () => 
             </Field>
             {dataMessage && <div className={`ui-inline-note ui-inline-note-${dataMessage.tone} text-xs`} role={dataMessage.tone === 'danger' ? 'alert' : 'status'}>{dataMessage.tone === 'success' ? <CheckCircle2 size={15} aria-hidden='true' /> : dataMessage.tone === 'danger' ? <AlertTriangle size={15} aria-hidden='true' /> : <Info size={15} aria-hidden='true' />}<span>{dataMessage.text}</span></div>}
           </div>
+          </SettingsSectionCard>
         )}
 
-        {section === "about" && (
+        {showSection("about") && (
+          <SettingsSectionCard id="about" title="关于" collapsed={collapsedSections["about"] === true} onToggle={() => toggleSection("about")}>
           <div className="space-y-3">
             <PanelHeader icon={Info} title='关于' description='应用版本、许可证和技术栈' />
             <div className="text-2xl font-bold text-[var(--color-text-primary)]">魔导书 Grimoire</div>
@@ -552,6 +580,7 @@ export function SettingsWindow({ onClose, embedded = false }: { onClose?: () => 
             <div className="text-sm text-[var(--color-text-secondary)]">Electron + React + TypeScript + Vite + Tailwind CSS + SQLite</div>
             <div className="text-sm leading-6 text-[var(--color-text-secondary)]">本项目是开源软件，允许使用、研究、修改和再分发。分发修改后的版本或通过网络提供服务时，请按照 AGPL-3.0 的要求提供对应源代码和许可证文本。</div>
           </div>
+          </SettingsSectionCard>
         )}
         </div>
       </div>
@@ -712,4 +741,40 @@ function Metric({ label, value, tone }: { label: string; value: number; tone: 'n
 
 function showToast(message: string, type: "success" | "error" | "info") {
   window.dispatchEvent(new CustomEvent("grimoire:toast", { detail: { message, type } }))
+}
+
+/**
+ * One collapsible category card. The header stays visible while collapsed so a reader can
+ * still see which category is hidden; expanded, only the chevron shows and the section's own
+ * heading carries the title (avoids printing it twice).
+ */
+function SettingsSectionCard({ id, title, collapsed, onToggle, children }: {
+  id: string
+  title: string
+  collapsed: boolean
+  onToggle: () => void
+  children: React.ReactNode
+}) {
+  return (
+    <section
+      id={'settings-section-' + id}
+      data-ui="settings.section"
+      data-section={id}
+      className="mb-4 rounded-[var(--gr-radius-lg)] border border-[var(--color-border)] bg-[var(--color-bg-secondary)]/50"
+    >
+      <div className="flex items-center justify-between gap-2 border-b border-transparent px-3 py-1.5">
+        <span className="truncate text-xs font-medium text-[var(--color-text-secondary)]">{collapsed ? title : ''}</span>
+        <button
+          type="button"
+          onClick={onToggle}
+          aria-expanded={!collapsed}
+          aria-label={(collapsed ? '展开' : '折叠') + title}
+          className="shrink-0 rounded px-2 py-0.5 text-[11px] text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-tertiary)] hover:text-[var(--color-accent-text)]"
+        >
+          {collapsed ? '展开 ▾' : '折叠 ▴'}
+        </button>
+      </div>
+      {collapsed ? null : <div className="px-3 pb-3">{children}</div>}
+    </section>
+  )
 }

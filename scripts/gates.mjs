@@ -18,7 +18,10 @@ const compatDir = path.join(root, 'src', 'vendor', 'cherry', 'compat')
 const definitions = [
   { id: 'G1', title: '渲染层类型', cmd: 'npx', args: ['tsc', '--noEmit', '-p', 'tsconfig.json'] },
   { id: 'G2', title: '主进程类型', cmd: 'npx', args: ['tsc', '-p', 'tsconfig.node.json', '--noEmit'] },
-  { id: 'G3', title: '根测试', cmd: 'npx', args: ['vitest', 'run', '--reporter=dot'], heavy: true },
+  // `--no-file-parallelism`: this host's vitest worker RPC intermittently times out
+  // ("onTaskUpdate") when many files run concurrently, even though every test passes.
+  // Sequential costs ~2m40 instead of ~40s and removes that class of red run.
+  { id: 'G3', title: '根测试', cmd: 'npx', args: ['vitest', 'run', '--reporter=dot', '--no-file-parallelism'], heavy: true },
   { id: 'G4', title: 'Cherry 适配层测试', cmd: 'npx', args: ['vitest', 'run', '--reporter=dot'], cwd: compatDir, heavy: true },
   { id: 'G5', title: 'Cherry 类型（自有=0 / 源码棘轮）', cmd: 'node', args: ['scripts/check-compat-types.mjs'] },
   { id: 'G6', title: '全量构建', cmd: 'npm', args: ['run', 'build'], heavy: true },

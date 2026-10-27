@@ -946,3 +946,32 @@ input:not([type="range"]):not([type="checkbox"]):not([type="radio"]):not([type="
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+/* ── Component baseline (M1.5.6) ─────────────────────────────────────────────
+ * The shared primitives read the design tokens instead of hard-coded radii and
+ * shadows, so the settings centre and the older panels agree on shape. Values are
+ * deliberately conservative: radius and elevation only, no size changes.
+ */
+.ui-field {
+  border-radius: var(--gr-radius-md);
+}
+.ui-settings-nav-item {
+  border-radius: var(--gr-radius-md);
+}
+.ui-segmented {
+  border-radius: var(--gr-radius-md);
+}
+.ui-segmented-item {
+  border-radius: calc(var(--gr-radius-md) - 1px);
+}
+.ui-popover-surface {
+  border-radius: var(--gr-radius-lg);
+  box-shadow: var(--gr-elevation-2);
+}
+.ui-panel-shell {
+  border-radius: var(--gr-radius-sm);
+}
+.ui-card, .ui-section-card {
+  border-radius: var(--gr-radius-lg);
+  box-shadow: var(--gr-elevation-1);
+}
