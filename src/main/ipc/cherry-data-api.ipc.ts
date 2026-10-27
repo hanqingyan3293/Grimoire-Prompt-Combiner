@@ -2105,6 +2105,11 @@ async function handleChatStreamRoute(route: string, input: unknown, sender: WebC
       if (!text) return
       if (!reasoningOpen) { reasoningOpen = true; emit('chunk', { ...base, chunk: { type: 'reasoning-start', id: reasoningId } }) }
       emit('chunk', { ...base, chunk: { type: 'reasoning-delta', id: reasoningId, delta: text } })
+    },
+    // The source renders approvals as a chunk part, not a separate channel: the card appears
+    // inline in the live message and the click answers via `ai.tool.approval.respond`.
+    onPermissionRequest: (requestId: string) => {
+      emit('chunk', { ...base, chunk: { type: 'tool-approval-request', approvalId: requestId, toolCallId: requestId } })
     }
   }
   const closeText = () => {

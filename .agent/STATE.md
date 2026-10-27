@@ -275,3 +275,27 @@ resources/agent-runtimes/     opencode.exe 134M (1.18.34) / pi.exe 107M (1.0.1)
 **实测证据**（2026-10-27 18:53 UTC）：窗口 URL `#/app/chat`，chunk 序列 `text-start,text-delta×5,text-end`，terminal `status=success,isTopicDone=true`。
 
 **未完成**：M2.4 recovery（未实现，界面不展示）、M2.5 prewarm（仍是显式不可用）、Agent 页 smoke、审批的真实交互 smoke。
+### M2 完成（2026-10-27 第五轮）
+
+| 计划项 | 状态 | 证据 |
+|---|---|---|
+| M2.1 ChatEngine / `ai.stream` 契约 | 完成 | open/attach/detach/abort 全实现；chunk/done/error 三事件经 `cherry:ai:stream:event` 分发；attach 有界重放（512 条 / 512KB） |
+| M2.2 源聊天页真实流 | 完成 | smoke：窗口 `#/app/chat`，5 段增量拼成「你好，世界」，终态 success，落库 assistant 行一致 |
+| M2.2b 源 Agent 页真实流 | 完成（协议层） | `agent:session:stream` + `agent.sessions.onStream`；smoke 用 agent 会话跑同一轮，文本与终态一致 |
+| M2.3 审批闭环 | 完成 | 权限请求 → `tool-approval-request` chunk → `ai.tool.approval.respond` → broker → 工具执行 → 续写「工具已完成」；smoke 断言 approvalIds 非空且终态 success |
+| M2.4 续流 / 恢复 | 完成（有界） | 源没有 recover 路由；等价能力是 attach 回放。终态后 attach 返回 not-found，历史从 SQLite 读 |
+| M2.5 prewarm 收敛 | 显式不可用 | `ai.agent.session.prewarm` 返回 NOT_IMPLEMENTED；源实现只在 `.catch` 里 `logger.warn`，用户不可见（见 AgentSessionMessages.tsx:164） |
+| M2.6 三条 smoke | 完成 | `npm run smoke:stream`：聊天 / Agent / 审批三条；真 Electron + 假 SSE provider |
+
+**说明**：M2.2b 只证明协议层（Agent 会话通过同一条 `ai.stream` 路由收发），没有对 Agent 页做 DOM 级点击验证。
+### 缺陷（2026-10-27 新增）
+
+| 编号 | 现象 | 证据 | 下一步 |
+|---|---|---|---|
+| D11 | `api.ai.vision` 返回 `{error: "Cannot read properties of undefined (reading '0')"}`，识图不可用 | smoke 中调用即复现；错误由 `ai:vision` 处理器捕获后原样返回 | 定位 `createClient(provider)` / `vision()` 入参形状；修好后把识图加回 smoke |
+
+### M2 完成证据
+
+`artifacts/stream-smoke-2026-10-27T19-31-56Z.json`：聊天 / Agent / 审批允许 / 审批拒绝 四条，含 chunk 序列、终态、落库内容。
+
+审批拒绝的语义记录：Grimoire runtime 把「工具被拒」当作整轮失败并上报原因（`Tool 权限被拒绝：…`），不是让模型带着拒绝结果继续。这是既有 runtime 行为，不在本轮改动范围。

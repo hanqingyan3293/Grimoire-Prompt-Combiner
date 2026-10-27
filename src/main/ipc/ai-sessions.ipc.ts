@@ -256,6 +256,9 @@ function readContextSettingsFromSettings() {
 export type AiStreamHooks = {
   onTextDelta?: (text: string) => void
   onReasoningDelta?: (text: string) => void
+  // Raised for every outstanding tool decision so the source stream can render its inline
+  // approval card. The decision itself travels back through `ai.tool.approval.respond`.
+  onPermissionRequest?: (requestId: string, detail: { permission: string; detail: unknown; tool?: string }) => void
 }
 
 export async function handleAiSessionSend(_event: { sender: Electron.WebContents }, input: unknown, hooks?: AiStreamHooks) {
@@ -459,6 +462,7 @@ export async function handleAiSessionSend(_event: { sender: Electron.WebContents
             const requested = appendAiEvent({ sessionId, eventType: "permission-requested", payload: { permission, detail, tool: call.name } })
             const requestId = 'ai_permission_' + crypto.randomUUID().replaceAll('-', '').slice(0, 18)
             createAiPermission({ sessionId, requestId, permission, detail })
+            hooks?.onPermissionRequest?.(requestId, { permission, detail, tool: call.name })
             broadcast({ kind: "event", record: requested })
             const allowed = await requestPermission(sender, sessionId, permission, detail, permissionMode, requestId, isMcpToolForcePrompt(call.name), admission.signal, 'ai:' + sessionId + ':' + (nativeIdentity?.configFingerprint || runtimeKind))
             const resolved = appendAiEvent({ sessionId, eventType: "permission-resolved", payload: { permission, detail, tool: call.name, decision: allowed ? "allow" : "deny" } })

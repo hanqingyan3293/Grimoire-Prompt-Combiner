@@ -198,6 +198,7 @@ export function registerAgentIPC(): void {
 export type AgentStreamHooks = {
   onTextDelta?: (text: string) => void
   onReasoningDelta?: (text: string) => void
+  onPermissionRequest?: (requestId: string, detail: { permission: string; detail: unknown }) => void
 }
 
 export async function handleAgentSessionSend(_event: { sender: Electron.WebContents }, value: unknown, hooks?: AgentStreamHooks) {
@@ -299,6 +300,7 @@ export async function handleAgentSessionSend(_event: { sender: Electron.WebConte
             const permission = host?.permission || runtimePermissionForAction(event.action)
             const detail = host?.detail || event.detail || { action: event.action }
             appendAgentSessionEvent({ sessionId, type: 'permission', data: { requestId: event.requestId, permission, detail, status: 'requested' } })
+            hooks?.onPermissionRequest?.(event.requestId, { permission, detail })
             const decision = await permissions.request({ sender, sessionId, scope: 'agent:' + sessionId + ':' + (nativeIdentity?.configFingerprint || snapshot.session.runtime), permission, action: host?.action || event.action, detail, native: !ownsToolDefinitions, mode: permissionMode, signal: admission.signal, requestId: event.requestId, channel: IPC_CHANNELS.AGENT_PERMISSION_REQUEST })
             const allowed = decision === 'allowOnce' || decision === 'allowForSession'
             if (!admission.signal.aborted) {
