@@ -18,6 +18,7 @@
     "test": "vitest run",
     "test:cherry-adapter": "vitest run src/integrations/cherry src/renderer/vendor/cherry",
     "typecheck:cherry-compat": "node src/vendor/cherry/compat/node_modules/typescript/bin/tsc --noEmit -p src/vendor/cherry/compat/tsconfig.json",
+    "check:panel-layout": "node scripts/check-panel-layout.mjs",
     "check:cherry-css": "node scripts/check-compat-css.mjs",
     "check:migration-matrix": "node scripts/check-migration-matrix.mjs .agent/MIGRATION_MATRIX.md",
     "runtime:pi-sdk-surface": "npm run build:main && node scripts/pi-sdk-surface-smoke.mjs",

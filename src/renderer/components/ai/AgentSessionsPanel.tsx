@@ -110,7 +110,7 @@ export function AgentSessionsPanel() {
         </div>)}
       </section>}
       <section className='ui-list-card space-y-3 p-3'>
-        <div className='grid gap-2 sm:grid-cols-2'>
+        <div className='grid gap-2 grid-cols-2'>
           <select className='ui-field' value={runtime} onChange={event => setRuntime(event.target.value as AgentRuntimeKind)} aria-label='Agent Runtime'>
             {runtimes.map(item => <option key={item.value} value={item.value}>{item.label}</option>)}
           </select>

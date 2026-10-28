@@ -77,7 +77,7 @@ export function McpPanel() {
     <div className='h-full space-y-3 overflow-auto p-4'>
       <PanelHeader icon={CloudCog} title='MCP 管理' description='配置外部工具服务器、连接状态和可用工具' actions={<IconButton icon={RefreshCw} label='刷新 MCP' onClick={() => void load()} disabled={loading} className={loading ? 'ui-spin-icon' : ''} />} />
       <section className='ui-list-card space-y-2 p-3'>
-        <div className='grid gap-2 sm:grid-cols-[minmax(0,1fr)_140px]'><input className='ui-field' value={name} onChange={event => setName(event.target.value)} placeholder='Server 名称' /><select className='ui-field' value={transport} onChange={event => setTransport(event.target.value as McpTransport)}><option value='http'>HTTP</option><option value='stdio'>stdio</option></select></div>
+        <div className='grid gap-2 grid-cols-[minmax(0,1fr)_140px]'><input className='ui-field' value={name} onChange={event => setName(event.target.value)} placeholder='Server 名称' /><select className='ui-field' value={transport} onChange={event => setTransport(event.target.value as McpTransport)}><option value='http'>HTTP</option><option value='stdio'>stdio</option></select></div>
         {transport === 'http' ? <input className='ui-field w-full' value={endpoint} onChange={event => setEndpoint(event.target.value)} placeholder='http://127.0.0.1:3000/mcp' /> : <input className='ui-field w-full' value={command} onChange={event => setCommand(event.target.value)} placeholder='MCP 启动命令' />}
         <Button size='sm' variant='primary' icon={Plus} onClick={() => void save()}>添加 MCP Server</Button>
         {message && <div className='ui-inline-note ui-inline-note-info text-xs' role='status'>{message}</div>}

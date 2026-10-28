@@ -1,0 +1,5 @@
+{
+  "findings": 0,
+  "allow": [],
+  "note": "Lower-only ratchet for scripts/check-panel-layout.mjs (G9)"
+}

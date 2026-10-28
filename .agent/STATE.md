@@ -759,3 +759,16 @@ resources/agent-runtimes/     opencode.exe 134M (1.18.34) / pi.exe 107M (1.0.1)
 - IPC 路由：`browser.history.list/add/delete/clear`、`browser.data.clear`（session 由 `persist:grimoire-browser` 取）。
 - 测试 8 条：去重与顺序、搜索与 limit、拒绝非 web URL、删除/清空、分域清理、失败回报、平台缺 API。
 - **页面保持只读**：缺的是浏览器宿主（WebContentsView 生命周期与导航），数据层不再是阻塞点。
+
+### 面板布局约定 + G9（2026-10-27 第四十五轮）
+
+同一个缺陷（双栏在窄面板里压成 28px、文字一字一行）在四处被手工修过，这轮把它变成约定和门禁：
+
+- 新增 `scripts/check-panel-layout.mjs`，两条规则：
+  1. `flex` 行里同时有 `shrink-0` 与 `flex-1` 却没有 `flex-wrap|flex-col|min-w-` → 命中（真实事故形状）；
+  2. 面板内出现 `sm:/md:/lg:/xl:` 视口断点 → 命中（面板宽度不跟窗口走）。
+  排除 `components/dev/`（整窗预览）与 `SettingsWindow.tsx`（独立设置窗口），它们的视口断点是正确的。
+- 修掉 8 处面板内视口断点：ImagesPanel、PromptAssetsPanel ×2、TagAssetManagerPanel ×2、
+  WorkspaceSystemPanels ×2、AgentWorkspacePanel 的 `xl:flex` 头部件。
+- 结果 **0 命中**，写入 `scripts/panel-layout-baseline.json` 作为只降不升的基线。
+- 新门禁 **G9 面板布局约定**（0.1s），并写进 GATES.md 的约定章节（三条规则 + 出处）。

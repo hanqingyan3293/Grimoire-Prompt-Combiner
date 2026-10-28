@@ -162,7 +162,7 @@ export function PromptAssetsPanel() {
         {queryDraft && <IconButton icon={X} label='清除资产搜索' onClick={() => setQueryDraft('')} className='absolute right-1 top-1/2 h-6 w-6 -translate-y-1/2' />}
       </div>
 
-      <div className='ui-segmented grid grid-cols-3 sm:grid-cols-5' role='group' aria-label='资产来源'>
+      <div className='ui-segmented grid grid-cols-3' role='group' aria-label='资产来源'>
         {SOURCES.map(option => <button key={option.value} onClick={() => { setSource(option.value); setOffset(0) }} aria-pressed={source === option.value} className={`ui-segmented-item truncate px-1 text-[11px] ${source === option.value ? 'ui-segmented-item-active' : ''}`}>{option.label}</button>)}
       </div>
 
@@ -257,7 +257,7 @@ function AssetPreview({ item, onCopy, onApply }: { item: PromptAssetItem; onCopy
       <div className='flex min-w-0 flex-wrap gap-2'><SourceBadge item={item} />{item.nsfw && <Badge tone='danger'>NSFW</Badge>}{item.variantCount > 0 && <Badge>{item.variantCount} 个变体</Badge>}</div>
       {item.detail && <p className='rounded-lg bg-[var(--color-bg-secondary)] px-3 py-2 text-xs leading-5 text-[var(--color-text-secondary)]'>{item.detail}</p>}
       <pre className='min-h-0 max-h-none min-w-0 flex-1 overflow-auto whitespace-pre-wrap break-words rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-primary)] p-4 text-xs leading-5 text-[var(--color-text-primary)]'>{item.prompt || '该资产没有可显示的提示词文本'}</pre>
-      <div className='flex flex-col gap-2 sm:flex-row'><Button icon={Copy} onClick={onCopy} className='flex-1'>复制原文</Button><Button variant='primary' icon={FolderOpen} onClick={onApply} className='flex-1'>应用到提示词</Button></div>
+      <div className='flex flex-row flex-wrap gap-2'><Button icon={Copy} onClick={onCopy} className='flex-1'>复制原文</Button><Button variant='primary' icon={FolderOpen} onClick={onApply} className='flex-1'>应用到提示词</Button></div>
     </div>
   )
 }

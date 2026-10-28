@@ -27,6 +27,7 @@ const definitions = [
   { id: 'G6', title: '全量构建', cmd: 'npm', args: ['run', 'build'], heavy: true },
   { id: 'G7', title: '迁移矩阵格式', cmd: 'npm', args: ['run', 'check:migration-matrix'] },
   { id: 'G8', title: 'CSS 覆盖率', cmd: 'npm', args: ['run', 'check:cherry-css'] },
+  { id: 'G9', title: '面板布局约定', cmd: 'node', args: ['scripts/check-panel-layout.mjs'] },
 ]
 
 const selected = definitions.filter(d => (only.length ? only.includes(d.id) : true) && !(fast && d.heavy))

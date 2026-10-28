@@ -126,3 +126,18 @@ npm run pack
 ## 一键跑（待建）
 
 `scripts/gates.mjs`（M0 交付）按 G1→G2→G3→G4→G5→G6→G7→G8 顺序跑，输出 JSON 摘要到 `artifacts/gates-<timestamp>.json`，任一失败即非零退出。G9/G11 需要 GUI/打包，单独 `--full` 开启。
+
+## 面板布局约定（G9 强制）
+
+面板宽度**不跟随窗口宽度**（实测：1280 窗口下每块面板只有 280px）。因此：
+
+1. **双栏面板必须可换行**：外层 `flex flex-wrap`，主区给 `min-w-*`，侧栏 `min-w-*` + `shrink-0`。
+   只写 `flex` 会把手动列压成一条缝（实测 28px，文字一字一行）。
+2. **面板内禁止视口断点**：`sm:` / `md:` / `lg:` / `xl:` 在面板里是假的——它们看的是窗口宽度。
+   需要「窄了就换行」时，用 `flex-wrap` + `min-w-*`；需要「窄了就少一列」时，用 grid 的固定列数。
+   例外：`components/dev/`（整窗预览）与 `components/settings/SettingsWindow.tsx`（独立设置窗口）。
+3. **折叠不渲染内容**：侧栏折叠时不要只加 `opacity-0`，否则零宽列里的文字既占布局又会读给读屏器。
+
+这三条来自四次真实事故（工作台、素材库、图库、Agent 消息区），不是风格偏好。
+`scripts/check-panel-layout.mjs` 扫描 1、2 两条并作为 **G9** 卡在门禁上；命中数超过
+`scripts/panel-layout-baseline.json` 即失败，且基线只允许手动下调。
