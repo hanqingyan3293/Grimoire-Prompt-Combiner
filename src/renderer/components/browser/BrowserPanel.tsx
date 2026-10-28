@@ -80,7 +80,9 @@ export function BrowserPanel({ panelId = 'browser-panel' }: { panelId?: string }
         <Globe size={14} className="text-[var(--color-text-secondary)]" />
         <input value={address} onChange={event => setAddress(event.target.value)} aria-label="地址"
           onKeyDown={event => { if (event.key === 'Enter') void navigate() }}
-          className="ui-field min-w-0 flex-1 px-2 py-1 text-xs" />
+          // A minimum width keeps the URL readable: at a 210px panel the four icon buttons next to it left
+          // the field ~30px wide (the screenshot showed "http"), which makes the address bar useless.
+          className="ui-field min-w-[10rem] flex-1 px-2 py-1 text-xs" />
         <Button size="sm" variant="secondary" onClick={() => void navigate()} disabled={busy}>打开</Button>
         <Button size="sm" variant="ghost" icon={RotateCw} onClick={() => void navigate(current || address)} disabled={busy} aria-label="刷新" />
         <Button size="sm" variant="ghost" icon={ArrowLeft} onClick={() => void navigate()} disabled={busy} aria-label="后退" />

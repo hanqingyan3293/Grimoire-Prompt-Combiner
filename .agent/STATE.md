@@ -1367,3 +1367,13 @@ fireEvent.click(await screen.findByRole('button', { name: '刷新模型' }))   /
 
 踩坑记录：第一次跑报 `window.api.selection.open is not a function`——**preload 是构建产物**，
 改了源码必须 `npm run build:main` 再跑旅程。这条早已写在纪律里，这次又被自己撞上。
+
+### 抽检：浏览器地址栏被压成 30px（2026-10-27 第八十五轮）
+
+`w960-narrow-browser` 截图显示地址栏只剩 `http` 四个字母——四个图标按钮（打开/刷新/后退/前进）
+在 210px 面板里把输入框挤到约 30px。和 ComfyUI 那次是同一类：**固定宽兄弟把可伸缩元素挤死**。
+
+修法：输入框 `min-w-0 flex-1` → `min-w-[10rem] flex-1`（行本身已有 `flex-wrap`，空间不够时按钮换行）。
+复跑截图确认地址栏显示完整的 `https://example.com`，按钮换到下一行。
+
+`npm run journeys` 全量复跑（修复前）：所有旅程 PASS；矩阵三档 18/18、空白 0、裁剪 0。
