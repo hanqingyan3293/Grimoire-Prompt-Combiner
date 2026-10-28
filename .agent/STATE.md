@@ -931,3 +931,12 @@ An error occurred in the <LocalAgentPanel> component.
 和之前 WebContentsView 是同一类限制。所以证据换成**读取 iframe 的 innerText**：
 修复后 `canvas.html` 帧内文本 **612 字符**，包含「画布/资产/提示词库/画布元素/画布暂无节点/无限画布 1/Codex 未连接」等真实 UI 文本，
 修复前该帧因崩溃为空。
+
+### M1.5：矩阵加「空白面板」检测 + 修标签名消失（2026-10-27 第五十七轮）
+
+- `--visual-matrix` 每个面板现在记录 `textLength`（面板正文 innerText 长度），**为 0 即 `blankPanels` 并让矩阵失败**；
+  `canvas` / `browser` 两个「把内容托管给 iframe / 原生视图」的面板豁免（探针读不到它们的内容，已用别的方式验证）。
+  这条检测正是为了自动抓住上一轮那种「挂载成功但一片空白」——手动抽检抓到过一次，现在变成常驻检查。
+- 修 `tag-asset-manager`：210px 下标签名被 `truncate` 压成 0 宽，**整行只剩徽标**（用户看不出是哪条标签）。
+  行改 `flex-wrap`、名称按钮 `min-w-[8rem] flex-1`；截图中名称恢复显示（手臂 (ar… / 寿司卷…），徽标换行到下一行。
+- 复跑矩阵：三档宽度 18/18 挂载、`blank: []`。

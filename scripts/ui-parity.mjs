@@ -469,15 +469,24 @@ if (process.argv.includes('--visual-matrix')) {
         if (!mounted) { run.panels.push({ type, mounted: false }); continue }
         await sleep(350)
         const measured = await evaluate(`(() => { const host = document.querySelector('[data-panel-type="' + window.__matrixType + '"]'); if (!host) return null; return { width: Math.round(host.getBoundingClientRect().width), height: Math.round(host.getBoundingClientRect().height) } })()`)
-        run.panels.push({ type, mounted: true, panelWidth: measured?.width ?? null, shot: await screenshot('w' + width + '-' + type) })
+        // A panel that mounts but shows nothing is the failure mode screenshots caught by hand (the
+        // canvas white screen). Text length makes it automatic; the two view-hosting panels are exempt
+        // because their content is an iframe / native view that this probe cannot read.
+        const textLength = await evaluate(`(() => { const host = document.querySelector('[data-panel-type="' + window.__matrixType + '"] .ui-panel-content') || document.querySelector('[data-panel-type="' + window.__matrixType + '"]'); return host ? (host.innerText || '').trim().length : -1 })()`)
+        run.panels.push({ type, mounted: true, panelWidth: measured?.width ?? null, textLength, shot: await screenshot('w' + width + '-' + type) })
       }
+      const VIEW_HOSTING = new Set(['canvas', 'browser'])
+      const blank = run.panels.filter(panel => panel.mounted && panel.textLength === 0 && !VIEW_HOSTING.has(panel.type)).map(panel => panel.type)
+      if (blank.length) run.blankPanels = blank
       matrix.runs.push({ ...run, panelWidths: [...new Set(run.panels.map(panel => panel.panelWidth).filter(Boolean))].sort((a, b) => a - b) })
     }
     await callWithTimeout('Emulation.clearDeviceMetricsOverride', {}, 10000)
     matrix.passed = matrix.runs.every(run => run.panels.every(panel => panel.mounted))
   } catch (error) { matrix.error = String(error) }
   fs.writeFileSync('artifacts/visual/ui-parity/visual-matrix.json', JSON.stringify(matrix, null, 2))
-  console.log('MATRIX ' + JSON.stringify(matrix.runs.map(run => ({ width: run.width, panelWidths: run.panelWidths, mounted: run.panels.filter(panel => panel.mounted).length + '/' + run.panels.length }))))
+  console.log('MATRIX ' + JSON.stringify(matrix.runs.map(run => ({ width: run.width, panelWidths: run.panelWidths, mounted: run.panels.filter(panel => panel.mounted).length + '/' + run.panels.length, blank: run.blankPanels ?? [] }))))
+  const blankShortfall = matrix.runs.some(run => (run.blankPanels ?? []).length > 0)
+  if (blankShortfall) process.exitCode = 1
   // Ratchet: a panel that stops mounting at any width is a regression even if every screenshot looks fine.
   let baseline = { minMountedPerWidth: 18 }
   try { baseline = JSON.parse(fs.readFileSync('scripts/visual-matrix-baseline.json', 'utf8')) } catch {}
