@@ -1249,3 +1249,15 @@ default: … 面板尚未接入 …
 文档同时写明真实差距：源支持任意嵌套分割，我们只有固定列结构——这也是 960 视口 18 命中的结构性来源。
 结论：建议改为 REIMPLEMENTED，等批准；文档末尾列了三个选项（批准 / 先补嵌套分割 / 走 VENDOR 路线）。
 探针文件已删除，类型检查干净。
+
+### 迁移矩阵纠偏 第二批（2026-10-27 第七十八轮）
+
+继续核对 PARTIALLY_MIGRATED 行，三行的 evidence 已过时或过弱，改写成可验证的证据：
+
+| 行 | 原 evidence | 问题 | 新 evidence 要点 |
+|---|---|---|---|
+| 40 Infinite Canvas | 「adapted，需比对快照布局与入口」 | 像是待办，没写现在的状态 | 白屏根因（Agent 浮层在 Router 之外）已修 + `CanvasErrorBoundary`；因 CDP 不合成 iframe，改用读帧：`canvas.html` 正文 **612 字符**真实 UI 文本；矩阵三档挂载 |
+| 42 提示词资产生命周期 | 「存在；源对齐待做」 | 太弱，等于没说 | 表 `novelai_work`/`novelai_version`（分支、父节点、编号、软删）+ 资产三表；版本服务（分支列表/批量软删/恢复/**真删**）；资产服务双向查询；工作台与素材库面板；**生命周期集成测试**；真实缺口只剩源目录成品面（见 43 行） |
+| 26 Provider/Model UI | 「pin 持久化待做」 | 与事实不符 | `cherry-pin.service.ts` 已实现 `listPins`/`findPinById`/`setPin`；真正剩下的只是源 ProviderSettings 表单与多语言 |
+
+`G7` 列数校验通过。教训同上轮：**矩阵的 evidence 必须写成可验证的事实**，写「待办」或「存在」等于放弃这条记录的判断力。
