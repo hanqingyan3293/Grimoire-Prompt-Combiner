@@ -984,3 +984,21 @@ An error occurred in the <LocalAgentPanel> component.
 
 `flex-shrink: 0` 这条最实际：紧行里徽标原本会被压到文字消失（和标签名消失是同一类症状，只是发生在徽标上）。
 截图复核（1280 视口 / 280px 面板）徽标为完整胶囊、无换行、名称正常截断。
+
+### M1.5：分段控件对齐源 tabs（2026-10-27 第六十一轮）
+
+源 `tabs.tsx` 的 `default` 变体：`h-9 w-fit rounded-lg bg-muted p-[3px]`，触发项 `text-sm font-medium whitespace-nowrap`，
+选中项落在**抬起的表面**上（`bg-background shadow`），而不是染 accent 色。
+
+对照我们的 `.ui-segmented`（修前）：有 1px 边框、`--radius-md` 圆角、项高 32px、选中项染 accent 12%。
+
+修后：
+
+| 属性 | 源 | 修后 |
+|---|---|---|
+| 边框 | 无（靠 muted 轨道） | 无 |
+| 圆角 | `rounded-lg` = 8px | 8px（注释说明为何不用共享 token：`--gr-radius-lg` 是 10px，为卡片调的） |
+| 高度 | `h-9` = 36px | `min-height: var(--gr-input-height)` = 36px |
+| 选中 | 抬起表面 + 阴影 | `surface` + `panel-shadow`，不再染 accent |
+
+截图复核（1280 视口）：分段控件为 muted 轨道 + 白色抬起项，与源一致；左侧与右侧两个实例都正常。

@@ -620,17 +620,22 @@ button:disabled {
 .ui-settings-nav-item:hover { background: var(--color-hover); color: var(--color-foreground); }
 .ui-settings-nav-item-active { border-color: color-mix(in srgb, var(--color-accent) 28%, transparent); background: color-mix(in srgb, var(--color-accent) 11%, transparent); color: var(--color-accent-text); }
 
+/* Segmented control parity with the vendored tabs primitive: `h-9 w-fit rounded-lg bg-muted p-[3px]`.
+ * The source draws no border here — the muted track is the affordance — and the active item sits on a
+ * raised surface rather than tinting the accent, which keeps the shape readable in both appearances. */
 .ui-segmented {
   overflow: hidden;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
+  border: 0;
+  /* Source `rounded-lg` is 8px; the shared token is 10px because it is tuned for cards. */
+  border-radius: 8px;
   background: var(--color-surface-subtle);
   padding: 3px;
   gap: 3px;
+  min-height: var(--gr-input-height);
 }
 
 .ui-segmented-item {
-  min-height: 32px;
+  min-height: calc(var(--gr-input-height) - 6px);
   border: 1px solid transparent;
   border-radius: var(--radius-sm);
   color: var(--color-muted-foreground);
@@ -638,7 +643,7 @@ button:disabled {
 }
 
 .ui-segmented-item:hover { background: var(--color-hover); color: var(--color-foreground); }
-.ui-segmented-item-active { border-color: color-mix(in srgb, var(--color-accent) 30%, transparent); background: color-mix(in srgb, var(--color-accent) 12%, var(--color-surface)); color: var(--color-accent-text); font-weight: var(--font-weight-medium); }
+.ui-segmented-item-active { border-color: var(--color-border); background: var(--color-surface); color: var(--color-foreground); font-weight: var(--font-weight-medium); box-shadow: 0 1px 2px var(--color-panel-shadow); }
 
 .ui-theme-swatch {
   border: 1px solid var(--color-border);
