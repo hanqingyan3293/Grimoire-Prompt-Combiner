@@ -7,7 +7,8 @@ import {
   recordNovelaiAssetUsage,
   updateNovelaiAsset,
 } from '../services/novelai-asset.service'
-import { ipcMain } from 'electron'
+import { exportNovelaiMetadataToPng, readNovelaiMetadataFromFile } from '../services/novelai-metadata-file.service'
+import { BrowserWindow, dialog, ipcMain } from 'electron'
 
 import { IPC_CHANNELS } from '../../shared/types'
 import {
@@ -107,4 +108,23 @@ export function registerNovelaiIPC(): void {
   })
   ipcMain.handle(IPC_CHANNELS.NOVELAI_ASSET_IMAGES, (_event, id: unknown) => listImagesUsingAsset(String(id ?? '')))
   ipcMain.handle(IPC_CHANNELS.NOVELAI_ASSET_BY_IMAGE, (_event, id: unknown) => listAssetsUsedByImage(String(id ?? '')))
+  // PNG metadata (M6.6): the dialog lives here so the renderer never receives a filesystem path
+  // it could reuse for arbitrary reads. Export writes a sibling `.meta.png`, never the original.
+  ipcMain.handle(IPC_CHANNELS.NOVELAI_METADATA_EXPORT, async (event, input: unknown) => {
+    const params = record(input)
+    const window = BrowserWindow.fromWebContents(event.sender) ?? undefined
+    const picked = await dialog.showOpenDialog(window as never, { title: '选择要写入参数的 PNG', filters: [{ name: 'PNG', extensions: ['png'] }], properties: ['openFile'] })
+    if (picked.canceled || !picked.filePaths.length) return { canceled: true }
+    const prompt = typeof params.prompt === 'string' ? params.prompt : ''
+    if (!prompt) return { error: 'EMPTY_PROMPT' }
+    const result = exportNovelaiMetadataToPng({ filePath: picked.filePaths[0], params: { ...params, prompt } as never })
+    return { canceled: false, ...result }
+  })
+  ipcMain.handle(IPC_CHANNELS.NOVELAI_METADATA_IMPORT, async (event) => {
+    const window = BrowserWindow.fromWebContents(event.sender) ?? undefined
+    const picked = await dialog.showOpenDialog(window as never, { title: '选择带生成参数的 PNG', filters: [{ name: 'PNG', extensions: ['png'] }], properties: ['openFile'] })
+    if (picked.canceled || !picked.filePaths.length) return { canceled: true }
+    const decoded = readNovelaiMetadataFromFile(picked.filePaths[0])
+    return { canceled: false, decoded }
+  })
 }

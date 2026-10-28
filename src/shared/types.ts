@@ -468,6 +468,8 @@ export const IPC_CHANNELS = {
   NOVELAI_ASSET_USE: "novelai:asset:use",
   NOVELAI_ASSET_IMAGES: "novelai:asset:images",
   NOVELAI_ASSET_BY_IMAGE: "novelai:asset:byImage",
+  NOVELAI_METADATA_EXPORT: "novelai:metadata:export",
+  NOVELAI_METADATA_IMPORT: "novelai:metadata:import",
   AI_SESSION_CREATE: "ai:session:create",
   AI_SESSION_UPDATE: "ai:session:update",
   AI_SESSION_DELETE: "ai:session:delete",

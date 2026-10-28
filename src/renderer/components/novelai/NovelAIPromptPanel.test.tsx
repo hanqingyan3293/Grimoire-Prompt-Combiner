@@ -25,6 +25,10 @@ const api = {
   deleteVersion: vi.fn(async () => ({ deleted: ['v2'] })),
   restoreVersion: vi.fn(),
   renameBranch: vi.fn(async () => true),
+  metadata: {
+    exportTo: vi.fn(async () => ({ canceled: false, writtenPath: 'C:/tmp/image.meta.png' })),
+    readFrom: vi.fn(async () => ({ canceled: false, decoded: { params: { prompt: 'from png' } } })),
+  },
 }
 
 // Without an explicit cleanup the previous render leaks into the next test and every query
@@ -55,5 +59,15 @@ describe('NovelAI prompt workbench (M6 UI)', () => {
     fireEvent.click(screen.getByRole('button', { name: /保存为新版本/ }))
     await waitFor(() => expect(api.createVersion).toHaveBeenCalledTimes(1))
     expect(api.createVersion).toHaveBeenCalledWith(expect.objectContaining({ workId: 'w1', parentVersionId: 'v2', snapshot: '1girl, solo', expectedRevision: 3 }))
+  })
+  it('exports the current prompt into a PNG and reads parameters back', async () => {
+    render(<NovelAIPromptPanel />)
+    await waitFor(() => expect(screen.getByLabelText('提示词原文')).toBeTruthy())
+    fireEvent.click(screen.getByRole('button', { name: /参数写入 PNG/ }))
+    await waitFor(() => expect(api.metadata.exportTo).toHaveBeenCalledWith(expect.objectContaining({ prompt: '1girl, {{long hair}}, __sky*2__' })))
+    await waitFor(() => expect(screen.getByText(/已写入/)).toBeTruthy())
+    fireEvent.click(screen.getByRole('button', { name: /从 PNG 读取/ }))
+    await waitFor(() => expect(api.metadata.readFrom).toHaveBeenCalled())
+    await waitFor(() => expect((screen.getByLabelText('提示词原文') as HTMLTextAreaElement).value).toBe('from png'))
   })
 })

@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
-import { GitBranch, History, Plus, RotateCcw, Save, Trash2 } from 'lucide-react'
+import { FileDown, FileUp, GitBranch, History, Plus, RotateCcw, Save, Trash2 } from 'lucide-react'
 import { parsePromptDocument, type PromptBlock } from '../../../shared/prompt-blocks'
 import { Badge } from '../ui/Badge'
 import { Button } from '../ui/Button'
@@ -30,8 +30,10 @@ export function NovelAIPromptPanel() {
   const [branchName, setBranchName] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [notice, setNotice] = useState<string | null>(null)
 
   const api = (typeof window !== 'undefined' ? (window as unknown as { api?: { novelai?: Record<string, (...args: unknown[]) => Promise<unknown>> } }).api?.novelai : undefined)
+  const metadataApi = (typeof window !== 'undefined' ? (window as unknown as { api?: { novelai?: { metadata?: { exportTo: (params: Record<string, unknown>) => Promise<{ canceled?: boolean; writtenPath?: string; error?: string }>; readFrom: () => Promise<{ canceled?: boolean; decoded?: { params: { prompt: string } } | null }> } } } }).api?.novelai?.metadata : undefined)
 
   const loadBundle = useCallback(async (workId: string) => {
     if (!api) return
@@ -93,6 +95,28 @@ export function NovelAIPromptPanel() {
     try { await api.restoreVersion(versionId); await loadBundle(bundle.work.id) } catch (cause) { setError(String(cause)) } finally { setBusy(false) }
   }
 
+  const exportMetadata = async () => {
+    if (!metadataApi) return
+    setBusy(true); setError(null)
+    try {
+      const result = await metadataApi.exportTo({ prompt: draft, model: 'novelai' })
+      if (result?.error) setError('导出失败：' + result.error)
+      else if (!result?.canceled) setNotice('已写入 ' + (result?.writtenPath ?? ''))
+    } catch (cause) { setError(String(cause)) } finally { setBusy(false) }
+  }
+
+  const importMetadata = async () => {
+    if (!metadataApi) return
+    setBusy(true); setError(null)
+    try {
+      const result = await metadataApi.readFrom()
+      if (result?.canceled) return
+      if (!result?.decoded) { setError('这张图没有生成参数'); return }
+      setDraft(result.decoded.params.prompt)
+      setNotice('已从 PNG 读取参数')
+    } catch (cause) { setError(String(cause)) } finally { setBusy(false) }
+  }
+
   const renameBranch = async () => {
     if (!api || !bundle || !current || !branchName.trim()) return
     setBusy(true); setError(null)
@@ -134,6 +158,8 @@ export function NovelAIPromptPanel() {
                   <Button size="sm" variant="primary" icon={Save} onClick={() => void saveVersion()} disabled={busy || !dirty}>保存为新版本</Button>
                   <Button size="sm" variant="ghost" icon={Trash2} onClick={() => void deleteVersion('single')} disabled={busy}>删此版本</Button>
                   <Button size="sm" variant="ghost" onClick={() => void deleteVersion('branch')} disabled={busy}>删整条分支</Button>
+                  <Button size="sm" variant="ghost" icon={FileDown} onClick={() => void exportMetadata()} disabled={busy}>参数写入 PNG</Button>
+                  <Button size="sm" variant="ghost" icon={FileUp} onClick={() => void importMetadata()} disabled={busy}>从 PNG 读取</Button>
                 </span>
               </div>
               <div className="flex min-h-0 flex-1">
@@ -177,6 +203,7 @@ export function NovelAIPromptPanel() {
             </>
           )}
           {error && <p role="alert" className="px-3 pb-2 text-xs text-[var(--color-danger)]">{error}</p>}
+          {notice && <p className="px-3 pb-2 text-xs text-[var(--color-text-secondary)]">{notice}</p>}
         </main>
       </div>
     </div>

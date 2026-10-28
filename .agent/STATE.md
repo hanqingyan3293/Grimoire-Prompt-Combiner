@@ -470,3 +470,11 @@ resources/agent-runtimes/     opencode.exe 134M (1.18.34) / pi.exe 107M (1.0.1)
   G3 分片 2 因此红了一次；单独重跑该分片是通过的。以后只按 `vite\bin|vite.js` 精确匹配。
 - 同时发现 `ui-parity.mjs` 每次运行会漏一个 vite dev server（`npx vite` 的子进程），单个约 1.3GB；
   已在 killTree 里按本次端口精确清理。清理后 node 进程从 14 个 / 5.9GB 降到 6 个 / 0.4GB。
+
+### M6.6 收口：PNG 参数导出/读取接进工作台（2026-10-27 第二十一轮）
+
+- 新增 `novelai-metadata-file.service`：`exportNovelaiMetadataToPng` 写**同目录 `<名>.meta.png`**（原图字节不变），
+  `readNovelaiMetadataFromFile` 纯读；非 PNG 直接报错，不写误导性文件。
+- IPC 两个通道（导出/导入），对话框在主进程，渲染层拿不到可复用的文件路径。
+- 工作台面板新增「参数写入 PNG」「从 PNG 读取」：导出当前草稿的参数，读取后把 prompt 填回草稿。
+- 测试：文件服务 3 条（原图不变、非 PNG 拒绝、无参数返回 null）+ 面板 1 条（导出/读回往返）。
