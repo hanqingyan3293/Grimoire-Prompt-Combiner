@@ -242,10 +242,12 @@ export function ImagesPanel() {
         actions={<><IconButton icon={RefreshCw} label='刷新资源库' onClick={() => void loadImages()} disabled={loading} className={loading ? 'ui-spin-icon' : ''} /><IconButton icon={ScanSearch} label='扫描生成元数据' onClick={() => void scanMetadata()} disabled={busy !== null} /></>}
       />
       {scanProgress ? <div className='text-xs text-[var(--color-text-secondary)]' role='status'>正在扫描元数据 {scanProgress.done}/{scanProgress.total || '…'}</div> : null}
-      <div className="grid grid-cols-3 gap-2">
-        <Button variant='primary' icon={ImagePlus} onClick={() => void handleAdd('managed')} disabled={busy !== null}>导入副本</Button>
-        <Button icon={Link2} onClick={() => void handleAdd('external')} disabled={busy !== null}>链接原文件</Button>
-        <Button icon={FolderSearch} onClick={() => void scanFolder()} disabled={busy !== null}>扫描文件夹</Button>
+      {/* Width-driven wrapping instead of three fixed columns: at 210px each button was ~60px wide and
+          the label rendered one character per line. */}
+      <div className="flex flex-wrap gap-2">
+        <Button className='min-w-[8rem] flex-1' variant='primary' icon={ImagePlus} onClick={() => void handleAdd('managed')} disabled={busy !== null}>导入副本</Button>
+        <Button className='min-w-[8rem] flex-1' icon={Link2} onClick={() => void handleAdd('external')} disabled={busy !== null}>链接原文件</Button>
+        <Button className='min-w-[8rem] flex-1' icon={FolderSearch} onClick={() => void scanFolder()} disabled={busy !== null}>扫描文件夹</Button>
       </div>
       {scanResult ? (
         <section className='ui-list-card space-y-2 p-3 text-xs'>

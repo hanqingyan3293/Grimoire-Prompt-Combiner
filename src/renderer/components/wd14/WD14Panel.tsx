@@ -309,8 +309,9 @@ export function WD14Panel() {
       />
       {diagnostics && (
         <section className='ui-list-card p-3'>
-          <div className='flex items-start justify-between gap-2'>
-            <div className='min-w-0'>
+          {/* Wraps instead of squeezing: at 210px the runtime label became one character per line. */}
+          <div className='flex flex-wrap items-start justify-between gap-2'>
+            <div className='min-w-[11rem] flex-1'>
               <div className='flex items-center gap-2 text-sm font-medium text-[var(--color-text-primary)]'><Settings2 size={15} className='text-[var(--color-accent-text)]' aria-hidden='true' />运行环境</div>
               <div className='mt-2 flex flex-wrap gap-1.5'>
                 <StatusBadge tone={diagnostics.pythonAvailable ? 'success' : 'danger'}>Python {diagnostics.pythonAvailable ? '可用' : '不可用'}</StatusBadge>
