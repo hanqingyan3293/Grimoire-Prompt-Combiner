@@ -22,6 +22,7 @@ import { listAiUsage, listUsageTimeline, projectUsageEntry, projectUsageTotals, 
 import { isPreventSleepActive, readLaunchOnBoot } from '../services/app-preferences.service'
 import { cherryPreferenceWiring, isCherryDeveloperModeEnabled, readCherryPreference as readCherryPref } from '../services/cherry-preference-consumers'
 import { getGatewayStatus, restartGateway, startGateway, stopGateway } from '../services/api-gateway.service'
+import { fetchUrls, searchWeb } from '../services/websearch.service'
 import type { PromptAssetItem } from '../../shared/prompt-asset-types'
 import type { AiAssistantRecord, AiTopicRecord } from '../../shared/ai-types'
 import { getActiveLogPath } from '../services/logger.service'
@@ -2332,6 +2333,30 @@ async function handleIpcApiRoute(route: string, input: unknown, sender: WebConte
     if (route === 'app.preferences.consumers') return ipcOk(cherryPreferenceWiring())
     // Local OpenAI-compatible gateway (M3). Config comes from the same `feature.api_gateway.*`
     // preferences the source page writes, so the page and the server cannot disagree about port/key.
+    // Web search (M3): the page's "测试" button sends only `{ providerId, keywords }`. Credentials and
+    // hosts come from the same preference the page writes, so the page and the executor cannot drift.
+    if (route === 'web_search.search_keywords' || route === 'web_search.fetch_urls') {
+      const payload = (value ?? {}) as { providerId?: unknown; keywords?: unknown; urls?: unknown }
+      const overrides = (readCherryPref('chat.web_search.provider_overrides') ?? {}) as Record<string, { apiKeys?: string[]; capabilities?: Record<string, { apiHost?: string }> }>
+      const isSearch = route === 'web_search.search_keywords'
+      const fallbackProvider = String(readCherryPref(isSearch ? 'chat.web_search.default_search_keywords_provider' : 'chat.web_search.default_fetch_urls_provider') ?? '')
+      const providerId = typeof payload.providerId === 'string' && payload.providerId ? payload.providerId : fallbackProvider
+      const override = overrides[providerId] ?? {}
+      const capability = isSearch ? 'searchKeywords' : 'fetchUrls'
+      const endpoint = override.capabilities?.[capability]?.apiHost
+      try {
+        if (isSearch) {
+          const keywords = Array.isArray(payload.keywords) ? payload.keywords.filter((item): item is string => typeof item === 'string').join(' ') : String(payload.keywords ?? '')
+          const results = await searchWeb({ provider: providerId, keywords, endpoint, apiKey: override.apiKeys?.[0], limit: Number(readCherryPref('chat.web_search.max_results')) || 5 })
+          return ipcOk(results)
+        }
+        const urls = Array.isArray(payload.urls) ? payload.urls.filter((item): item is string => typeof item === 'string') : []
+        return ipcOk(await fetchUrls({ urls }))
+      } catch (error) {
+        const code = (error as { code?: string }).code || 'UPSTREAM'
+        return ipcError(code, error instanceof Error ? error.message : String(error))
+      }
+    }
     if (route === 'api_gateway.status') return ipcOk(getGatewayStatus())
     if (route === 'api_gateway.start' || route === 'api_gateway.restart') {
       try {

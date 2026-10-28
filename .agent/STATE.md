@@ -651,3 +651,16 @@ resources/agent-runtimes/     opencode.exe 134M (1.18.34) / pi.exe 107M (1.0.1)
 顺带把已完成的两个页面写进矩阵：**常规**（ADAPTED，15/18 键有消费者，2 个死开关隐藏）与 **API 网关**（页面 VENDOR + 服务 REIMPLEMENTED，附重写证明：源服务依赖 Cherry 的 AI 服务/共享缓存/IPC 生命周期，本仓库均不存在）。
 
 结论的判据不是「难不难」，而是「解禁后有没有真服务」——否则就是一路在清除的那种假成功。
+
+### M3：联网搜索执行服务（2026-10-27 第三十七轮）
+
+- `websearch.service`：两个**形状不同**的供应商适配器证明适配边界——
+  SearXNG（自建、JSON、免 key、GET）与 Tavily（托管、POST、需 key）；其他 id 一律 `PROVIDER_NOT_SUPPORTED`，
+  不返回空列表冒充「没有结果」。
+- `fetchUrls`：只接受 http/https；**二进制内容直接拒绝**（不把乱码当正文）；解析后按 `maxBytes` 截断并标记 `truncated`。
+- `websearch-extract`：零依赖 HTML→文本（去 script/style/注释，按块换行，实体解码）。不是 readability，够喂模型。
+- IPC：`web_search.search_keywords` / `web_search.fetch_urls` 接进 `ipcApi` 路由；
+  供应商与凭据读页面自己写的偏好（`chat.web_search.provider_overrides`、`default_*_provider`、`max_results`），页面与执行方不会各说各话。
+- 测试 8 条（假上游）：SearXNG JSON + 摘要裁剪、Tavily POST + limit、未知供应商拒绝、
+  SearXNG 返回 HTML 时报错、正文提取去脚本、二进制拒绝、非 http 协议拒绝、实体解码。
+- 待办：页面仍只读——解禁前需要把「测试」按钮的结果接到界面上（现在只返回 IPC 结果），下一轮处理。
