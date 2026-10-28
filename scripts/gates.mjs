@@ -29,6 +29,8 @@ const definitions = [
   { id: 'G8', title: 'CSS 覆盖率', cmd: 'npm', args: ['run', 'check:cherry-css'] },
   { id: 'G9', title: '面板布局约定', cmd: 'node', args: ['scripts/check-panel-layout.mjs'] },
   { id: 'G10', title: '路由覆盖', cmd: 'node', args: ['scripts/check-route-coverage.mjs'] },
+  // G11 boots the real renderer, so it needs the built main bundle; it runs after G6 for that reason.
+  { id: 'G11', title: '样式契约（真实渲染器实测）', cmd: 'node', args: ['scripts/ui-parity.mjs', '--style-contract'], env: { ELECTRON_RUN_AS_NODE: '' } },
 ]
 
 const selected = definitions.filter(d => (only.length ? only.includes(d.id) : true) && !(fast && d.heavy))
