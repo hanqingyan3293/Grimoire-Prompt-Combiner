@@ -723,3 +723,17 @@ resources/agent-runtimes/     opencode.exe 134M (1.18.34) / pi.exe 107M (1.0.1)
 - 界面：回收站每条前加复选框，>1 条时出现「全选 / 恢复选中(n) / 永久删除选中」。
 - 测试：版本服务 20 条（新增 3 条批量：一次 revision、子节点不在批内拒绝、批量恢复且未知 id 先拒）；
   面板 9 条（新增批量恢复断言：勾选 v2、v1 → `restoreVersions(['v2','v1'])`）。
+
+### M3：截图服务与快捷键策略（2026-10-27 第四十二轮）
+
+- `screenshot.service`：`listCaptureSources`（找不到源时报 `NO_SOURCES`，不返回空列表）、
+  `decodePngDataUrl`（**校验 PNG 签名**、限制 40MB、拒绝非 data URL）、
+  `saveCapturedPng`（文件名消毒 + 时间戳，落盘前先解码校验）。capturer 以参数注入，无显示器也能测。
+- `screenshot-shortcut.service`：注册策略被测——关闭时必须**释放**旧加速键；换键时释放旧键；
+  冲突返回 `CONFLICT`；空加速键返回 `NO_ACCELERATOR`；registrar 抛错返回 `ERROR`。
+  实现上记住**拥有该绑定的 registrar**，释放时不再依赖调用方传同一个实例（这正是单测发现的设计缺陷）。
+- 偏好接线新增 3 条：`feature.screenshot.enabled`、`shortcut.screenshot.capture` 已接；
+  `feature.screenshot.auto_ocr` 标记为隐藏（本项目没有 OCR 服务，WD14 是标注不是 OCR）。
+- 测试：截图管线 4 条 + 快捷键策略 4 条，全绿。
+- 待办（下一步）：把 desktopCapturer/globalShortcut 真实实例接进主进程、加一个 `screenshot.capture_now` 路由，
+  然后解禁截图页；`auto_ocr` 保持隐藏。

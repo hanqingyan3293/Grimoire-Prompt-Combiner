@@ -33,6 +33,9 @@ export const CHERRY_GENERAL_PREFRENCES: readonly CherryPreferenceConsumer[] = Ob
   { key: 'agent.commit_attribution.enabled', wired: false, hidden: true, note: 'Grimoire Agent 不创建 git 提交，没有可归因对象；开关已隐藏' },
   { key: 'app.fetch.allow_private_network', wired: false, hidden: true, note: 'Grimoire 没有面向用户的抓取入口，私网判定无处生效；开关已隐藏' },
   { key: 'app.user.id', wired: false, note: '源用于匿名标识，Grimoire 没有读取方；页面上没有对应控件' },
+  { key: 'feature.screenshot.enabled', wired: true, note: '开关控制全局截图快捷键的注册与释放' },
+  { key: 'shortcut.screenshot.capture', wired: true, note: '变更时释放旧加速键并注册新加速键，冲突会回报' },
+  { key: 'feature.screenshot.auto_ocr', wired: false, hidden: true, note: '本项目没有 OCR 服务（WD14 是标注不是 OCR），开关已隐藏' },
   { key: 'BootConfig.app.disable_hardware_acceleration', wired: true, note: '启动前读取并调用 app.disableHardwareAcceleration()' },
 ])
 
