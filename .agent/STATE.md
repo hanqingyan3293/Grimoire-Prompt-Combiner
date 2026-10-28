@@ -712,3 +712,14 @@ resources/agent-runtimes/     opencode.exe 134M (1.18.34) / pi.exe 107M (1.0.1)
 - 面板：版本块新增「对比」，选中基准后显示 `v1 → v3：+2 / -1 / ~0 / =2` 与逐项 `+ / - / ~` 标签；
   对比在渲染层用两个快照本地计算，不额外请求、不引入服务端状态。
 - 测试：diff 4 条（增删不误报、权重算 reweight、位置无关、空输入）+ 面板 1 条（点「对比 v1」出现 `+1` 与新增块）。
+
+### M6：回收站批量操作（2026-10-27 第四十一轮）
+
+- 服务：`softDeleteNovelaiVersions`（多选删除）与 `restoreNovelaiVersions`（多选恢复）。
+  两个要点：**全有或全无**（先校验全部 id，再落第一个写入）；**修订号只升一次**（一次用户动作 = 一次 revision）。
+- 校验规则比原来更准：子节点**也在本批**里就不算阻塞（选中尾巴和它的父节点一起删是合法操作），
+  只有当活子节点不在本批中时才拒绝。
+- 通道：`novelai:version:deleteMany` / `restoreMany` + preload `deleteVersions` / `restoreVersions`。
+- 界面：回收站每条前加复选框，>1 条时出现「全选 / 恢复选中(n) / 永久删除选中」。
+- 测试：版本服务 20 条（新增 3 条批量：一次 revision、子节点不在批内拒绝、批量恢复且未知 id 先拒）；
+  面板 9 条（新增批量恢复断言：勾选 v2、v1 → `restoreVersions(['v2','v1'])`）。

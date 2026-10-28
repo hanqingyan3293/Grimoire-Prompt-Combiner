@@ -321,6 +321,58 @@ export function softDeleteNovelaiVersion(input: { workId: string; versionId: str
 }
 
 /** Restore a version and every deleted ancestor, so the line is never left with a hole. */
+/**
+ * Batch recycle-bin operations (M6).
+ *
+ * All-or-nothing: every id is validated before the first write, so a batch that names one foreign or
+ * live version cannot leave the work half-deleted. The revision bumps once, which is what a single
+ * user action deserves.
+ */
+export function softDeleteNovelaiVersions(input: { workId: string; versionIds: string[]; expectedRevision: number }): { deleted: string[] } {
+  const work = getNovelaiWork(input.workId)
+  if (!work) throw new NovelaiVersionError('WORK_NOT_FOUND', 'work not found')
+  if (input.expectedRevision !== work.revision) throw new NovelaiVersionError('REVISION_CONFLICT', 'work changed since revision ' + input.expectedRevision)
+  const ids = [...new Set(input.versionIds.filter(id => typeof id === 'string' && id))]
+  if (!ids.length) throw new NovelaiVersionError('INVALID_INPUT', 'no versions selected')
+  const versions = ids.map(id => {
+    const version = getNovelaiVersion(id)
+    if (!version || version.workId !== work.id || version.deletedAt) throw new NovelaiVersionError('VERSION_NOT_FOUND', 'version not found: ' + id)
+    return version
+  })
+  // Same invariant as the single delete, but a child that is ALSO in the batch is being deleted too, so
+  // it must not block: selecting a tail and its parent together is a legitimate batch.
+  const selected = new Set(ids)
+  for (const version of versions) {
+    const liveChildren = (getDatabase().exec('SELECT id FROM novelai_version WHERE parent_id=? AND deleted_at IS NULL', [version.id])[0]?.values ?? [])
+      .map(row => String(row[0]))
+      .filter(childId => !selected.has(childId))
+    if (liveChildren.length > 0) throw new NovelaiVersionError('INVALID_INPUT', 'version has children: ' + version.id)
+  }
+  const stamp = now()
+  const db = getDatabase()
+  db.exec('BEGIN IMMEDIATE')
+  try {
+    for (const id of ids) db.run('UPDATE novelai_version SET deleted_at=? WHERE id=? AND deleted_at IS NULL', [stamp, id])
+    const remaining = db.exec('SELECT ' + VERSION_COLUMNS + ' FROM novelai_version WHERE work_id=? AND deleted_at IS NULL ORDER BY number DESC LIMIT 1', [work.id])[0]?.values?.[0]
+    db.run('UPDATE novelai_work SET last_version_id=?, last_used_at=?, revision=revision+1 WHERE id=?', [remaining ? String(remaining[0]) : null, stamp, work.id])
+    db.exec('COMMIT')
+    saveDatabase()
+    return { deleted: ids }
+  } catch (error) {
+    try { db.exec('ROLLBACK') } catch {}
+    throw error
+  }
+}
+
+export function restoreNovelaiVersions(versionIds: string[]): NovelaiVersion[] {
+  const ids = [...new Set(versionIds.filter(id => typeof id === 'string' && id))]
+  if (!ids.length) throw new NovelaiVersionError('INVALID_INPUT', 'no versions selected')
+  for (const id of ids) {
+    if (!getNovelaiVersion(id)) throw new NovelaiVersionError('VERSION_NOT_FOUND', 'version not found: ' + id)
+  }
+  return ids.map(id => restoreNovelaiVersion(id))
+}
+
 export function restoreNovelaiVersion(versionId: string): NovelaiVersion {
   const version = getNovelaiVersion(versionId)
   if (!version) throw new NovelaiVersionError('VERSION_NOT_FOUND', 'version not found')

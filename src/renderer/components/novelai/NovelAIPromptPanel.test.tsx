@@ -25,6 +25,8 @@ const api = {
   createVersion: vi.fn(async () => ({ version: bundle.line[1], branched: false, unchanged: false })),
   deleteVersion: vi.fn(async () => ({ deleted: ['v2'] })),
   restoreVersion: vi.fn(),
+  deleteVersions: vi.fn(async () => ({ deleted: [] })),
+  restoreVersions: vi.fn(async () => []),
   renameBranch: vi.fn(async () => true),
   metadata: {
     exportTo: vi.fn(async () => ({ canceled: false, writtenPath: 'C:/tmp/image.meta.png' })),
@@ -88,5 +90,21 @@ describe('NovelAI prompt workbench (M6 UI)', () => {
     // In the fixture, v2 is v1 plus the random block, so exactly one addition is reported.
     expect(panel.textContent).toContain('+1')
     expect(panel.textContent).toContain('+ __sky*2__')
+  })
+  it('batches recycle-bin restore when several versions are selected', async () => {
+    // Only this test needs recycle-bin entries, so the fixture is extended per test rather than globally.
+    ;(api.bundle as unknown as { mockResolvedValueOnce: (value: unknown) => void }).mockResolvedValueOnce({
+      ...bundle,
+      deleted: [
+        { id: 'v2', number: 2, branchNumber: 1, branchId: 'b1', workId: 'w1', parentId: 'v1', snapshot: 'x', source: 'user', operation: 'edit', revision: 1, createdAt: '', deletedAt: 'now' },
+        { id: 'v1', number: 1, branchNumber: 1, branchId: 'b1', workId: 'w1', parentId: null, snapshot: 'y', source: 'user', operation: 'create', revision: 1, createdAt: '', deletedAt: 'now' },
+      ],
+    })
+    render(<NovelAIPromptPanel />)
+    await waitFor(() => expect(screen.getByLabelText('提示词原文')).toBeTruthy())
+    fireEvent.click(screen.getByLabelText('选择 v2'))
+    fireEvent.click(screen.getByLabelText('选择 v1'))
+    fireEvent.click(screen.getByRole('button', { name: /恢复选中/ }))
+    await waitFor(() => expect(api.restoreVersions).toHaveBeenCalledWith(['v2', 'v1']))
   })
 })

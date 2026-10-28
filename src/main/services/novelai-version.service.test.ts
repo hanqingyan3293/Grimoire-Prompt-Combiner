@@ -27,8 +27,10 @@ import {
   listNovelaiVersionsByImage,
   purgeNovelaiVersion,
   restoreNovelaiVersion,
+  restoreNovelaiVersions,
   setNovelaiBranchName,
   softDeleteNovelaiVersion,
+  softDeleteNovelaiVersions,
 } from './novelai-version.service'
 
 beforeEach(async () => {
@@ -206,5 +208,42 @@ describe('branch listing (M6 UI)', () => {
 
   it('throws for an unknown work instead of returning an empty list', () => {
     expect(() => listNovelaiBranches('nai_w_missing')).toThrow(/WORK_NOT_FOUND|work not found/)
+  })
+})
+describe('recycle bin batch operations (M6)', () => {
+  it('deletes several leaf versions at once and bumps the revision exactly once', () => {
+    const created = createNovelaiWork({ name: '批量删除', snapshot: 'a' })
+    const work = created.work
+    const first = createNovelaiVersion({ workId: work.id, parentVersionId: created.root.id, snapshot: 'b', source: 'user', operation: 'edit', expectedRevision: getNovelaiWork(work.id)!.revision })
+    const second = createNovelaiVersion({ workId: work.id, parentVersionId: first.version.id, snapshot: 'c', source: 'user', operation: 'edit', expectedRevision: getNovelaiWork(work.id)!.revision })
+    const revisionBefore = getNovelaiWork(work.id)!.revision
+    const result = softDeleteNovelaiVersions({ workId: work.id, versionIds: [second.version.id, first.version.id], expectedRevision: revisionBefore })
+    expect(result.deleted).toHaveLength(2)
+    expect(getNovelaiWork(work.id)!.revision).toBe(revisionBefore + 1)
+    expect(listNovelaiDeletedVersions(work.id).map(version => version.id).sort()).toEqual([first.version.id, second.version.id].sort())
+  })
+
+  it('refuses the whole batch when one selected version has live children', () => {
+    const created = createNovelaiWork({ name: '批量拒绝', snapshot: 'a' })
+    const work = created.work
+    const child = createNovelaiVersion({ workId: work.id, parentVersionId: created.root.id, snapshot: 'b', source: 'user', operation: 'edit', expectedRevision: getNovelaiWork(work.id)!.revision })
+    // The child is NOT in the batch, so the parent cannot disappear on its own.
+    void child
+    expect(() => softDeleteNovelaiVersions({ workId: work.id, versionIds: [created.root.id], expectedRevision: getNovelaiWork(work.id)!.revision }))
+      .toThrow(/children/)
+    // Nothing was written: the work still has every live version.
+    expect(listNovelaiDeletedVersions(work.id)).toHaveLength(0)
+  })
+
+  it('restores a batch and refuses unknown ids before touching anything', () => {
+    const created = createNovelaiWork({ name: '批量恢复', snapshot: 'a' })
+    const work = created.work
+    const child = createNovelaiVersion({ workId: work.id, parentVersionId: created.root.id, snapshot: 'b', source: 'user', operation: 'edit', expectedRevision: getNovelaiWork(work.id)!.revision })
+    softDeleteNovelaiVersions({ workId: work.id, versionIds: [child.version.id], expectedRevision: getNovelaiWork(work.id)!.revision })
+    expect(listNovelaiDeletedVersions(work.id)).toHaveLength(1)
+    const restored = restoreNovelaiVersions([child.version.id])
+    expect(restored).toHaveLength(1)
+    expect(listNovelaiDeletedVersions(work.id)).toHaveLength(0)
+    expect(() => restoreNovelaiVersions([child.version.id, 'nai_v_missing'])).toThrow(/not found/)
   })
 })

@@ -39,6 +39,8 @@ export function NovelAIPromptPanel() {
   // Diff against an older version: computed locally from the two snapshots, so no extra round trip and
   // no server-side state to keep in sync.
   const [compareBase, setCompareBase] = useState<Version | null>(null)
+  // Recycle-bin multi-select: batch restore/delete is one user action and one revision bump.
+  const [picked, setPicked] = useState<string[]>([])
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
@@ -145,6 +147,20 @@ export function NovelAIPromptPanel() {
   }, [api, current?.id])
 
   const comparison = compareBase && current ? diffPromptVersions(compareBase.snapshot, current.snapshot) : null
+
+  const togglePick = (id: string) => setPicked(current => current.includes(id) ? current.filter(item => item !== id) : [...current, id])
+
+  const restorePicked = async () => {
+    if (!api || !bundle || !picked.length) return
+    setBusy(true); setError(null)
+    try { await api.restoreVersions(picked); setPicked([]); await loadBundle(bundle.work.id) } catch (cause) { setError(String(cause)) } finally { setBusy(false) }
+  }
+
+  const deletePicked = async () => {
+    if (!api || !bundle || !picked.length) return
+    setBusy(true); setError(null)
+    try { await api.deleteVersions({ workId: bundle.work.id, versionIds: picked, expectedRevision: bundle.work.revision }); setPicked([]); await loadBundle(bundle.work.id) } catch (cause) { setError(String(cause)) } finally { setBusy(false) }
+  }
 
   const renameBranch = async () => {
     if (!api || !bundle || !current || !branchName.trim()) return
@@ -277,8 +293,18 @@ export function NovelAIPromptPanel() {
                   <div className="mt-2 flex flex-wrap items-center gap-1 text-[11px] text-[var(--color-text-secondary)]">
                     回收站：
                     {bundle.deleted.map(version => (
-                      <Button key={version.id} size="sm" variant="ghost" icon={RotateCcw} onClick={() => void restore(version.id)} disabled={busy}>v{version.number}</Button>
+                      <span key={version.id} className="inline-flex items-center gap-1 rounded border border-[var(--color-border)] px-1.5 py-0.5">
+                        <input type="checkbox" aria-label={'选择 v' + version.number} checked={picked.includes(version.id)} onChange={() => togglePick(version.id)} />
+                        <Button size="sm" variant="ghost" icon={RotateCcw} onClick={() => void restore(version.id)} disabled={busy}>v{version.number}</Button>
+                      </span>
                     ))}
+                    {bundle.deleted.length > 1 && (
+                      <span className="flex items-center gap-1">
+                        <Button size="sm" variant="ghost" onClick={() => setPicked(bundle.deleted.map(version => version.id))} disabled={busy}>全选</Button>
+                        <Button size="sm" variant="ghost" onClick={() => void restorePicked()} disabled={busy || !picked.length}>恢复选中（{picked.length}）</Button>
+                        <Button size="sm" variant="ghost" onClick={() => void deletePicked()} disabled={busy || !picked.length}>永久删除选中</Button>
+                      </span>
+                    )}
                   </div>
                 )}
               </div>
