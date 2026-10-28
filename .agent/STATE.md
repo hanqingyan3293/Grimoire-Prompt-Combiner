@@ -1128,3 +1128,20 @@ default: … 面板尚未接入 …
 2. **矩阵新增「表头裁剪」检测**：每个面板测 `[data-ui="panel.header"]` 的 `scrollHeight - clientHeight`，>1px 即记 `clippedHeaders` 并让矩阵失败。
    这条来自上轮的真实事故：Agent 模式条放在固定高度表头里，换行后第二行被裁掉，肉眼只看到「少了两项」。
    三档宽度复跑：`18/18` 挂载、`blank: []`、`clippedHeaders: []`。
+
+### M6 收尾：生命周期集成测试（2026-10-27 第七十轮）
+
+新增 `src/main/services/novelai-lifecycle.test.ts`：一条测试走完工作台 UI 的真实顺序，
+断言每一步用户会看到的状态——
+
+1. 建作品（根版本 = 1）；2. 在尖端续写（= 2）；3. **从根开分支**（`branched: true`）；
+4. 软删该分支（尖端仍在）；5. 恢复（编号保持 3）；6. 再软删并**真删**（行消失、回收站清空）；
+7. 幸存分支完好、编号不变、`lastVersionId` 不指向已删版本。
+
+单测覆盖零件，这条覆盖**接缝**（revision 递增、分支编号、回收站往返）。
+
+过程中三个断言是我写错、被测试纠正的（值得记录）：
+- 分支编号不是 2 而是 **3**（编号取该分支首版本的版本号）；
+- `createNovelaiAsset` 返回资产本身、入参是 `{kind,name,payload}`（没有 workId/content）；
+- `restoreNovelaiVersions` 收的是**裸 id 数组**，不是 `{workId,versionIds,expectedRevision}`。
+资产↔版本的关联走「版本 → 图片 → 资产用量」，那条链已有独立测试，本测试不重复造 image 行。
