@@ -1280,3 +1280,17 @@ import type { SelectionHookConstructor } from 'selection-hook'
 该替代属 REIMPLEMENTED，**需获批**后才动手；在获批前页面保持只读、不声称运行时。
 
 教训（与上一轮同源）：写「不适用」这种结论时，必须能指向具体代码行；否则它就是猜测，而猜测会撒谎。
+
+### 迁移矩阵纠偏第三批（2026-10-27 第八十轮）
+
+挑「证据最短」的行（<130 字符）逐条看，其中两行值得动手：
+
+**行 39「IDE Workspace interaction」——审计做完了，结论是「源里根本没有这个能力」**。
+在整棵源码树里搜 workspace-area 语义（`areaId` / `regionId` / `EditorArea` / `WorkspaceArea` / `useArea` / `areaState`）：
+**命中 1 处**，且是与这无关的 prompt 字段组件。源的交互由 file / notes / code / translate 页面承担，而这些已在第 29 行覆盖。
+于是把 evidence 写成「审计已完成，源无对应物」，并把归责列改成 `n/a`——保留行以留下审计痕迹，但**不再当作待办**。
+
+**行 60「Workspace semantic adapter」**：原写「Dockview source closure exists; Area/Editor/Region semantics pending」，
+容易误读成「等 dockview」。改写为：语义层在 Grimoire 自己身上——面板有类型（33 种）、自带文档与持久化，
+workspace store 拥有布局（列/顺序/浮动/最大化/popout）并存 SQLite；矩阵三档 18 面板无空白无裁剪。
+真正的缺口只剩 Area/Editor/Region（源无对应物）与 popout 完整行为未逐项验证。
