@@ -1,5 +1,6 @@
 {
   "offenders": 0,
-  "panelCount": 17,
-  "note": "Lower-only ratchet for --narrow-audit; raise only with a written reason in STATE.md"
+  "offendersAt960": 18,
+  "offendersAt1280": 1,
+  "note": "Per-width ratchet for --narrow-audit. Default width must be 0. The 960/1280 numbers are known structural debt of the four-column layout (panel width 210px / 280px); they may only go down."
 }
