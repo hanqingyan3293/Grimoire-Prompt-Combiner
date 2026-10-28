@@ -3,7 +3,9 @@ import {
   deleteNovelaiAsset,
   listAssetsUsedByImage,
   listImagesUsingAsset,
+  listAssetsUsedByVersion,
   listNovelaiAssets,
+  listVersionsUsingAsset,
   recordNovelaiAssetUsage,
   updateNovelaiAsset,
 } from '../services/novelai-asset.service'
@@ -12,6 +14,7 @@ import { BrowserWindow, dialog, ipcMain } from 'electron'
 
 import { IPC_CHANNELS } from '../../shared/types'
 import {
+  linkNovelaiVersionImage,
   createNovelaiVersion,
   createNovelaiWork,
   getNovelaiBranchName,
@@ -111,6 +114,13 @@ export function registerNovelaiIPC(): void {
   })
   ipcMain.handle(IPC_CHANNELS.NOVELAI_ASSET_IMAGES, (_event, id: unknown) => listImagesUsingAsset(String(id ?? '')))
   ipcMain.handle(IPC_CHANNELS.NOVELAI_ASSET_BY_IMAGE, (_event, id: unknown) => listAssetsUsedByImage(String(id ?? '')))
+  ipcMain.handle(IPC_CHANNELS.NOVELAI_VERSION_LINK_IMAGE, (_event, input: unknown) => {
+    const value = record(input)
+    linkNovelaiVersionImage({ versionId: String(value.versionId ?? ''), imageId: String(value.imageId ?? ''), seed: typeof value.seed === 'number' ? value.seed : null, variant: typeof value.variant === 'string' ? value.variant : '' })
+    return true
+  })
+  ipcMain.handle(IPC_CHANNELS.NOVELAI_ASSET_BY_VERSION, (_event, id: unknown) => listAssetsUsedByVersion(String(id ?? '')))
+  ipcMain.handle(IPC_CHANNELS.NOVELAI_ASSET_VERSIONS, (_event, id: unknown) => listVersionsUsingAsset(String(id ?? '')))
   // PNG metadata (M6.6): the dialog lives here so the renderer never receives a filesystem path
   // it could reuse for arbitrary reads. Export writes a sibling `.meta.png`, never the original.
   ipcMain.handle(IPC_CHANNELS.NOVELAI_METADATA_EXPORT, async (event, input: unknown) => {

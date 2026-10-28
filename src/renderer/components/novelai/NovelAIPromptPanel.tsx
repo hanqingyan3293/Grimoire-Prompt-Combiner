@@ -32,6 +32,9 @@ export function NovelAIPromptPanel() {
   // Saving from an older version is how a branch is started: the service forks when the parent
   // already has a child, so the UI only has to remember which version to branch from.
   const [branchFrom, setBranchFrom] = useState<Version | null>(null)
+  // Assets are recorded against images and a version links to images, so this list is derived
+  // server-side instead of being stored twice.
+  const [versionAssets, setVersionAssets] = useState<Array<{ imageId: string; asset: { id: string; name: string } }>>([])
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
@@ -128,6 +131,15 @@ export function NovelAIPromptPanel() {
   const branches = bundle?.branches ?? []
   const activeBranch = current ? branches.find(branch => branch.id === current.branchId) ?? null : null
 
+  useEffect(() => {
+    if (!api || !current) { setVersionAssets([]); return }
+    let alive = true
+    void (api.byVersion as ((id: string) => Promise<Array<{ imageId: string; asset: { id: string; name: string } }>>) | undefined)?.(current.id)
+      .then(list => { if (alive) setVersionAssets(list ?? []) })
+      .catch(() => { if (alive) setVersionAssets([]) })
+    return () => { alive = false }
+  }, [api, current?.id])
+
   const renameBranch = async () => {
     if (!api || !bundle || !current || !branchName.trim()) return
     setBusy(true); setError(null)
@@ -217,6 +229,14 @@ export function NovelAIPromptPanel() {
               </div>
               <div className="border-t border-[var(--color-border)] px-3 py-2">
                 <div className="mb-1 flex items-center gap-1 text-[11px] text-[var(--color-text-secondary)]"><History size={12} /> 当前这条线（{bundle.line.length} 版）</div>
+                {current && (
+                  <div className="mb-1 flex flex-wrap items-center gap-1 text-[11px] text-[var(--color-text-secondary)]">
+                    <span>这版用到的素材：</span>
+                    {versionAssets.length === 0 ? <span>暂无</span> : versionAssets.map(item => (
+                      <span key={item.asset.id + item.imageId} className="rounded border border-[var(--color-border)] px-1.5 py-0.5">{item.asset.name} · {item.imageId}</span>
+                    ))}
+                  </div>
+                )}
                 <div className="flex flex-wrap gap-1">
                   {bundle.line.map(version => (
                     <span key={version.id} className="inline-flex items-center gap-0.5">

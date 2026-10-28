@@ -140,6 +140,34 @@ export function listAssetsUsedByImage(imageId: string): NovelaiAsset[] {
   return ids.map(id => getNovelaiAsset(id)).filter((asset): asset is NovelaiAsset => asset !== null)
 }
 
+/**
+ * 「这个版本用过哪些素材」 (M6 联动).
+ *
+ * Assets are recorded against IMAGES, and a version links to images, so the version→asset relation is
+ * derived rather than stored twice: one source of truth (image usage) and no drift between the two.
+ */
+export function listAssetsUsedByVersion(versionId: string): Array<{ imageId: string; asset: NovelaiAsset }> {
+  const rows = getDatabase().exec(
+    'SELECT DISTINCT u.image_id, u.asset_id FROM novelai_version_image v JOIN novelai_asset_usage u ON u.image_id = v.image_id WHERE v.version_id=? ORDER BY u.image_id ASC',
+    [versionId],
+  )[0]?.values ?? []
+  const result: Array<{ imageId: string; asset: NovelaiAsset }> = []
+  for (const row of rows) {
+    const asset = getNovelaiAsset(String(row[1]))
+    if (asset) result.push({ imageId: String(row[0]), asset })
+  }
+  return result
+}
+
+/** 「这个素材用在哪些版本」——同一关系的反查。 */
+export function listVersionsUsingAsset(assetId: string): Array<{ versionId: string; workId: string; number: number; imageId: string }> {
+  const rows = getDatabase().exec(
+    'SELECT DISTINCT v.id, v.work_id, v.number, u.image_id FROM novelai_asset_usage u JOIN novelai_version_image i ON i.image_id = u.image_id JOIN novelai_version v ON v.id = i.version_id WHERE u.asset_id=? AND v.deleted_at IS NULL ORDER BY v.number DESC',
+    [assetId],
+  )[0]?.values ?? []
+  return rows.map(row => ({ versionId: String(row[0]), workId: String(row[1]), number: Number(row[2]), imageId: String(row[3]) }))
+}
+
 export function countNovelaiVersionReferences(imageId: string): number {
   return Number(getDatabase().exec('SELECT count(*) FROM novelai_version_image WHERE image_id=?', [imageId])[0]?.values?.[0]?.[0] ?? 0)
 }

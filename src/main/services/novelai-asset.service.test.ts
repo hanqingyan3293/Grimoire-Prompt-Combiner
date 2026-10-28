@@ -18,8 +18,10 @@ import {
   deleteNovelaiAsset,
   getNovelaiAsset,
   listAssetsUsedByImage,
+  listAssetsUsedByVersion,
   listImagesUsingAsset,
   listNovelaiAssets,
+  listVersionsUsingAsset,
   recordNovelaiAssetUsage,
   removeNovelaiAssetUsage,
   updateNovelaiAsset,
@@ -98,5 +100,30 @@ describe('NovelAI asset library (M6.4)', () => {
 
   it('ships schema v38', () => {
     expect(CURRENT_SCHEMA_VERSION).toBeGreaterThanOrEqual(38)
+  })
+})
+describe('version ↔ asset linkage (M6)', () => {
+  it('derives which assets a version used through its images, and answers the reverse', () => {
+    const work = createNovelaiWork({ name: '联动作品', snapshot: '1girl' })
+    const version = work.root
+    const asset = createNovelaiAsset({ kind: 'character', name: '雨中少女', payload: 'rain' })
+    linkNovelaiVersionImage({ versionId: version.id, imageId: 'img_link_1' })
+    recordNovelaiAssetUsage({ assetId: asset.id, imageId: 'img_link_1' })
+    // An image the version does not reference must not leak into the answer.
+    recordNovelaiAssetUsage({ assetId: asset.id, imageId: 'img_other' })
+
+    const used = listAssetsUsedByVersion(version.id)
+    expect(used).toHaveLength(1)
+    expect(used[0].imageId).toBe('img_link_1')
+    expect(used[0].asset.name).toBe('雨中少女')
+
+    const versions = listVersionsUsingAsset(asset.id)
+    expect(versions.map(item => item.versionId)).toContain(version.id)
+    expect(versions.every(item => item.imageId !== 'img_other')).toBe(true)
+  })
+
+  it('returns nothing for a version without images', () => {
+    const work = createNovelaiWork({ name: '空版本', snapshot: 'solo' })
+    expect(listAssetsUsedByVersion(work.root.id)).toEqual([])
   })
 })

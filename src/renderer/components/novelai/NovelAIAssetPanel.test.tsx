@@ -17,6 +17,7 @@ const api = {
   use: vi.fn(async () => true),
   images: vi.fn(async (assetId: string) => (assetId === 'a1' ? [{ imageId: 'img_1', via: 'manual', usedAt: 'now' }] : [])),
   byImage: vi.fn(async () => [assets[1]]),
+  versions: vi.fn(async () => [{ versionId: 'v9', workId: 'w1', number: 3, imageId: 'img_1' }]),
 }
 
 beforeEach(() => {
@@ -31,7 +32,8 @@ describe('NovelAI asset library panel (M6 UI)', () => {
     render(<NovelAIAssetPanel />)
     await waitFor(() => expect(screen.getAllByText('雨中少女').length).toBeGreaterThan(0))
     expect(screen.getAllByText('水彩').length).toBeGreaterThan(0)
-    await waitFor(() => expect(screen.getByText(/img_1/)).toBeTruthy())
+    // img_1 now appears twice on purpose: once as a usage, once under 「用在哪些版本」.
+    await waitFor(() => expect(screen.getAllByText(/img_1/).length).toBeGreaterThanOrEqual(2))
     expect(api.images).toHaveBeenCalledWith('a1')
   })
 

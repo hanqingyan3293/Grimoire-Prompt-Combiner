@@ -8,6 +8,7 @@ import { EmptyState, PanelHeader } from '../ui/Feedback'
 // delete guard live in novelai-asset.service and are covered by its tests.
 type Asset = { id: string; kind: string; name: string; payload: string; examples: string[]; uses: number; updatedAt: string }
 type Usage = { imageId: string; via: string; usedAt: string }
+type VersionUse = { versionId: string; workId: string; number: number; imageId: string }
 
 const KINDS: Array<{ value: string; label: string }> = [
   { value: '', label: '全部' },
@@ -26,6 +27,7 @@ type Api = {
   use: (input: { assetId: string; imageId: string; via?: string }) => Promise<boolean>
   images: (assetId: string) => Promise<Usage[]>
   byImage: (imageId: string) => Promise<Asset[]>
+  versions: (assetId: string) => Promise<VersionUse[]>
 }
 
 export function NovelAIAssetPanel() {
@@ -33,6 +35,7 @@ export function NovelAIAssetPanel() {
   const [assets, setAssets] = useState<Asset[]>([])
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [usages, setUsages] = useState<Usage[]>([])
+  const [versionUses, setVersionUses] = useState<VersionUse[]>([])
   const [newName, setNewName] = useState('')
   const [imageId, setImageId] = useState('')
   const [lookupImage, setLookupImage] = useState('')
@@ -56,6 +59,7 @@ export function NovelAIAssetPanel() {
     if (!api || !selectedId) { setUsages([]); return }
     let alive = true
     void api.images(selectedId).then(list => { if (alive) setUsages(list) }).catch(cause => { if (alive) setError(String(cause)) })
+    void api.versions(selectedId).then(list => { if (alive) setVersionUses(list ?? []) }).catch(() => { if (alive) setVersionUses([]) })
     return () => { alive = false }
   }, [api, selectedId])
 
@@ -130,6 +134,12 @@ export function NovelAIAssetPanel() {
                 <ImageIcon size={12} /> 用在哪些图：
                 {usages.length === 0 ? <span>暂无引用</span> : usages.map(usage => (
                   <span key={usage.imageId} className="rounded border border-[var(--color-border)] px-1.5 py-0.5">{usage.imageId} · {usage.via || 'manual'}</span>
+                ))}
+              </div>
+              <div className="flex flex-wrap items-center gap-1 text-[11px] text-[var(--color-text-secondary)]">
+                <span>用在哪些版本：</span>
+                {versionUses.length === 0 ? <span>暂无</span> : versionUses.map(use => (
+                  <span key={use.versionId + use.imageId} className="rounded border border-[var(--color-border)] px-1.5 py-0.5">v{use.number} · {use.imageId}</span>
                 ))}
               </div>
               <div className="flex flex-wrap items-center gap-1">

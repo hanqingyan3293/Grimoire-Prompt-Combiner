@@ -624,3 +624,15 @@ resources/agent-runtimes/     opencode.exe 134M (1.18.34) / pi.exe 107M (1.0.1)
    `ComfyUI` 的 `sm:grid-cols-4` 在 280px 面板里把四列压成 47px（Seed/Steps 标签竖排）。已改为固定两列；`QuickUtilityPopover` 同类问题一并处理。
 2. 640 窗口下 17/17 命中不是误报，是**四栏固定布局的真实下限**；要支持这种宽度需要重做布局（本轮未做，记录为已知限制）。
 3. 审计口径又收紧一次：**竖排文字必须是「宽度<60 且至少 3 行」**（按 lineHeight 折算行数），两行标题属于正常换行，不算缺陷。
+
+### M6：素材 ↔ 版本联动（2026-10-27 第三十五轮）
+
+素材是记在**图片**上的，版本通过 `novelai_version_image` 关联图片，因此「版本用过哪些素材」是**推导**出来的（一条 JOIN），
+不再存第二份关系——少一份数据就少一处漂移。
+
+- 新服务：`listAssetsUsedByVersion(versionId)`（版本→素材，带 imageId）、`listVersionsUsingAsset(assetId)`（素材→版本，排除回收站）。
+- 新通道：`novelai:asset:byVersion`、`novelai:asset:versions`，以及补上 `novelai:version:linkImage`（此前没有把图片挂到版本的入口，链条是断的）。
+- 面板：工作台选中版本时显示「这版用到的素材：名字 · imageId」；素材面板显示「用在哪些版本：v3 · imageId」。
+- 测试：素材服务 +2（推导双向、空版本返回空），共 9 条；面板 7 条。
+- 旅程新增两条断言：**先只建素材+记引用时 `byVersion` 必须为 0**（证明推导确实需要版本侧也挂图），补上 `linkImage` 后才出现素材；
+  工作台旅程现 8 项全 PASS。

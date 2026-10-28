@@ -228,6 +228,32 @@ if (process.argv.includes('--workbench')) {
     journey.observations.branches = branched
     journey.checks.branchedFromVersion = Array.isArray(branched) && branched.length === 2
     journey.shots.push(await screenshot('wb-06-branches'))
+    // Version ↔ asset linkage: assets are recorded per image, the version links to the image, and the
+    // panel should show the derived list without storing the relation twice.
+    const linkage = await evaluate(`(async () => {
+      const works = await window.api.novelai.listWorks()
+      const workId = works[0].id
+      const bundle = await window.api.novelai.bundle({ workId })
+      const version = bundle.line[bundle.line.length - 1]
+      const asset = await window.api.novelai.assets.create({ kind: 'character', name: '联动素材', payload: 'rain' })
+      await window.api.novelai.assets.use({ assetId: asset.id, imageId: 'img_matrix_link' })
+      const before = await window.api.novelai.assets.byVersion(version.id)
+      await window.api.novelai.linkImage({ versionId: version.id, imageId: 'img_matrix_link' })
+      const after = await window.api.novelai.assets.byVersion(version.id)
+      return { assetId: asset.id, versionId: version.id, before: before.length, after: after.map(item => item.asset.name) }
+    })()`)
+    journey.observations.linkage = linkage
+    journey.checks.linkageNeedsBothSides = linkage.before === 0
+    // Recording the image on the version is what closes the chain; do it and re-read.
+    const linked = await evaluate(`(async () => {
+      const works = await window.api.novelai.listWorks()
+      const bundle = await window.api.novelai.bundle({ workId: works[0].id })
+      const version = bundle.line[bundle.line.length - 1]
+      const used = await window.api.novelai.assets.byVersion(version.id)
+      return { used: used.map(item => item.asset.name) }
+    })()`)
+    journey.observations.linkage = linked
+    journey.checks.versionAssetLinkage = Array.isArray(linked.used) && linked.used.includes('联动素材')
     journey.workbenchText = await evaluate(`(document.querySelector('[data-panel-type="novelai-workbench"]') || document.body).innerText.slice(0, 400)`)
     journey.shots.push(await screenshot('wb-05-restored'))
     journey.passed = Object.values(journey.checks).every(Boolean)
