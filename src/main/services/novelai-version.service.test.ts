@@ -247,3 +247,16 @@ describe('recycle bin batch operations (M6)', () => {
     expect(() => restoreNovelaiVersions([child.version.id, 'nai_v_missing'])).toThrow(/not found/)
   })
 })
+describe('purge (M6)', () => {
+  it('removes a soft-deleted leaf for good and refuses when live children remain', () => {
+    const created = createNovelaiWork({ name: '永久删除', snapshot: 'a' })
+    const work = created.work
+    const child = createNovelaiVersion({ workId: work.id, parentVersionId: created.root.id, snapshot: 'b', source: 'user', operation: 'edit', expectedRevision: getNovelaiWork(work.id)!.revision })
+    // Purge refuses while the row is still live with a parent that has children — check the guard first.
+    expect(() => purgeNovelaiVersion(created.root.id)).toThrow(/children/)
+    softDeleteNovelaiVersions({ workId: work.id, versionIds: [child.version.id], expectedRevision: getNovelaiWork(work.id)!.revision })
+    purgeNovelaiVersion(child.version.id)
+    expect(getNovelaiVersion(child.version.id)).toBeNull()
+    expect(listNovelaiDeletedVersions(work.id)).toHaveLength(0)
+  })
+})

@@ -23,6 +23,7 @@ import {
   listNovelaiBranches,
   listNovelaiDeletedVersions,
   listNovelaiWorks,
+  purgeNovelaiVersion,
   restoreNovelaiVersion,
   restoreNovelaiVersions,
   softDeleteNovelaiVersions,
@@ -86,6 +87,11 @@ export function registerNovelaiIPC(): void {
   ipcMain.handle(IPC_CHANNELS.NOVELAI_VERSION_DELETE_MANY, (_event, input: unknown) => {
     const value = record(input)
     return softDeleteNovelaiVersions({ workId: String(value.workId ?? ''), versionIds: Array.isArray(value.versionIds) ? value.versionIds.filter((item): item is string => typeof item === 'string') : [], expectedRevision: Number(value.expectedRevision) })
+  })
+  ipcMain.handle(IPC_CHANNELS.NOVELAI_VERSION_PURGE_MANY, (_event, ids: unknown) => {
+    const list = Array.isArray(ids) ? ids.filter((item): item is string => typeof item === 'string') : []
+    for (const id of list) purgeNovelaiVersion(id)
+    return list.length
   })
   ipcMain.handle(IPC_CHANNELS.NOVELAI_VERSION_RESTORE_MANY, (_event, ids: unknown) => restoreNovelaiVersions(Array.isArray(ids) ? ids.filter((item): item is string => typeof item === 'string') : []))
   ipcMain.handle(IPC_CHANNELS.NOVELAI_BRANCH_LIST, (_event, workId: unknown) => listNovelaiBranches(String(workId ?? '')))

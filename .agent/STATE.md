@@ -940,3 +940,15 @@ An error occurred in the <LocalAgentPanel> component.
 - 修 `tag-asset-manager`：210px 下标签名被 `truncate` 压成 0 宽，**整行只剩徽标**（用户看不出是哪条标签）。
   行改 `flex-wrap`、名称按钮 `min-w-[8rem] flex-1`；截图中名称恢复显示（手臂 (ar… / 寿司卷…），徽标换行到下一行。
 - 复跑矩阵：三档宽度 18/18 挂载、`blank: []`。
+
+### M6：回收站「永久删除」名不副实（2026-10-27 第五十八轮）
+
+抽查回收站按钮时发现一个**承诺与行为不一致**的问题：
+
+- 按钮写着「永久删除选中」，但 `deletePicked` 调的是 `api.deleteVersions` → `softDeleteNovelaiVersions`，
+  也就是**又一次软删除**：行还躺在回收站里，用户以为已经删干净了。
+- 修法：补 `novelai:version:purgeMany` 通道 + `window.api.novelai.purgeVersions`，按钮改调 `purgeVersions`（真 `DELETE`）。
+- 服务层原有守卫保留：`purgeNovelaiVersion` 在还有活子节点时拒绝。
+- 测试：面板 +1（断言调用 `purgeVersions` 且**不再**调用 `deleteVersions`）；服务 +1（软删后真删、live 子节点拒绝），版本服务 21 条全绿。
+
+这也是一类「假成功」：不是功能缺失，而是按钮承诺了它没做的事。

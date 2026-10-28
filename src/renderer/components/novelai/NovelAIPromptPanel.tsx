@@ -156,10 +156,12 @@ export function NovelAIPromptPanel() {
     try { await api.restoreVersions(picked); setPicked([]); await loadBundle(bundle.work.id) } catch (cause) { setError(String(cause)) } finally { setBusy(false) }
   }
 
-  const deletePicked = async () => {
+  // The label says 永久删除, so it must actually purge. The previous handler called the SOFT delete and
+  // left the rows in the recycle bin — the button promised something it did not do.
+  const purgePicked = async () => {
     if (!api || !bundle || !picked.length) return
     setBusy(true); setError(null)
-    try { await api.deleteVersions({ workId: bundle.work.id, versionIds: picked, expectedRevision: bundle.work.revision }); setPicked([]); await loadBundle(bundle.work.id) } catch (cause) { setError(String(cause)) } finally { setBusy(false) }
+    try { await api.purgeVersions(picked); setPicked([]); await loadBundle(bundle.work.id) } catch (cause) { setError(String(cause)) } finally { setBusy(false) }
   }
 
   const renameBranch = async () => {
@@ -302,7 +304,7 @@ export function NovelAIPromptPanel() {
                       <span className="flex items-center gap-1">
                         <Button size="sm" variant="ghost" onClick={() => setPicked(bundle.deleted.map(version => version.id))} disabled={busy}>全选</Button>
                         <Button size="sm" variant="ghost" onClick={() => void restorePicked()} disabled={busy || !picked.length}>恢复选中（{picked.length}）</Button>
-                        <Button size="sm" variant="ghost" onClick={() => void deletePicked()} disabled={busy || !picked.length}>永久删除选中</Button>
+                        <Button size="sm" variant="ghost" onClick={() => void purgePicked()} disabled={busy || !picked.length}>永久删除选中</Button>
                       </span>
                     )}
                   </div>

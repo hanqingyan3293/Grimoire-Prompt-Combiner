@@ -27,6 +27,7 @@ const api = {
   restoreVersion: vi.fn(),
   deleteVersions: vi.fn(async () => ({ deleted: [] })),
   restoreVersions: vi.fn(async () => []),
+  purgeVersions: vi.fn(async () => 0),
   renameBranch: vi.fn(async () => true),
   metadata: {
     exportTo: vi.fn(async () => ({ canceled: false, writtenPath: 'C:/tmp/image.meta.png' })),
@@ -106,5 +107,22 @@ describe('NovelAI prompt workbench (M6 UI)', () => {
     fireEvent.click(screen.getByLabelText('选择 v1'))
     fireEvent.click(screen.getByRole('button', { name: /恢复选中/ }))
     await waitFor(() => expect(api.restoreVersions).toHaveBeenCalledWith(['v2', 'v1']))
+  })
+  it('permanently purges the selected versions instead of soft-deleting them again', async () => {
+    ;(api.bundle as unknown as { mockResolvedValueOnce: (value: unknown) => void }).mockResolvedValueOnce({
+      ...bundle,
+      deleted: [
+        { id: 'v2', number: 2, branchNumber: 1, branchId: 'b1', workId: 'w1', parentId: 'v1', snapshot: 'x', source: 'user', operation: 'edit', revision: 1, createdAt: '', deletedAt: 'now' },
+        { id: 'v1', number: 1, branchNumber: 1, branchId: 'b1', workId: 'w1', parentId: null, snapshot: 'y', source: 'user', operation: 'create', revision: 1, createdAt: '', deletedAt: 'now' },
+      ],
+    })
+    render(<NovelAIPromptPanel />)
+    await waitFor(() => expect(screen.getByLabelText('提示词原文')).toBeTruthy())
+    fireEvent.click(screen.getByLabelText('选择 v2'))
+    fireEvent.click(screen.getByLabelText('选择 v1'))
+    fireEvent.click(screen.getByRole('button', { name: /永久删除选中/ }))
+    // 永久删除 must purge; calling the soft delete again would leave the rows where they are.
+    await waitFor(() => expect(api.purgeVersions).toHaveBeenCalledWith(['v2', 'v1']))
+    expect(api.deleteVersions).not.toHaveBeenCalled()
   })
 })
