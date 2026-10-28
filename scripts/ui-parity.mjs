@@ -348,6 +348,7 @@ if (process.argv.includes('--narrow-audit')) {
       for (let i = 0; i < 24; i++) { if (await evaluate(`!!document.querySelector('[data-panel-type="' + window.__auditType + '"]')`)) { mounted = true; break } await sleep(250) }
       if (!mounted) { report.panels.push({ type, mounted: false }); continue }
       await sleep(400)
+      const bodyText = await evaluate(`(() => { const host = document.querySelector('[data-panel-type="' + window.__auditType + '"]'); return host ? host.innerText.trim().length : -1 })()`)
       const measured = await evaluate(`(() => {
         const host = document.querySelector('[data-panel-type="' + window.__auditType + '"]')
         if (!host) return null
@@ -378,8 +379,11 @@ if (process.argv.includes('--narrow-audit')) {
           if (style.overflowX !== 'visible') continue
           overflow.push({ tag: el.tagName.toLowerCase(), scroll: el.scrollWidth, client: el.clientWidth })
         }
-        return { vertical: vertical.slice(0, 6), overflow: overflow.slice(0, 6), width: Math.round(host.getBoundingClientRect().width) }
+        const firstChild = host.firstElementChild
+        return { vertical: vertical.slice(0, 6), overflow: overflow.slice(0, 6), width: Math.round(host.getBoundingClientRect().width), height: Math.round(host.getBoundingClientRect().height), firstChildHeight: firstChild ? Math.round(firstChild.getBoundingClientRect().height) : null }
       })()`)
+      const children = await evaluate(`(() => { const host = document.querySelector('[data-panel-type="' + window.__auditType + '"]'); const body = host.querySelector('.ui-panel-content') || host; return Array.from(body.children).slice(0, 5).map(child => ({ tag: child.tagName.toLowerCase(), cls: (child.className || '').toString().slice(0, 60), h: Math.round(child.getBoundingClientRect().height) })) })()`)
+      if (bodyText === 0) report.panels.push({ type, mounted: true, emptyBody: true })
       const widthTag = report.viewportWidth ? 'w' + report.viewportWidth + '-' : ''
       report.panels.push({ type, mounted: true, ...measured, shot: await screenshot(widthTag + 'narrow-' + type) })
     }
