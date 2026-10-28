@@ -1261,3 +1261,22 @@ default: … 面板尚未接入 …
 | 26 Provider/Model UI | 「pin 持久化待做」 | 与事实不符 | `cherry-pin.service.ts` 已实现 `listPins`/`findPinById`/`setPin`；真正剩下的只是源 ProviderSettings 表单与多语言 |
 
 `G7` 列数校验通过。教训同上轮：**矩阵的 evidence 必须写成可验证的事实**，写「待办」或「存在」等于放弃这条记录的判断力。
+
+### M3 划词助手：阻塞理由纠错（2026-10-27 第七十九轮）
+
+此前这条记的是「浮窗与本项目面板体系是两套界面，不在路线图内」——**这是判断，不是证据**。本轮去读源实现：
+
+```ts
+// src/vendor/cherry/source/src/main/services/selection/SelectionService.ts
+import type { SelectionHookConstructor } from 'selection-hook'
+```
+
+源靠 `selection-hook`（Node 原生模块，装全局鼠标/键盘钩子识别其它应用的选区）实现。实测：
+`node_modules` 无、pnpm store 无、`package.json` 无——它是需要与 Electron ABI 匹配的**按平台预编译原生模块**，
+仓库无法当 TS 源码 vendor。这才是真正的阻塞点。
+
+同时记下**可落地替代路径**（不需要原生模块）：全局快捷键 → `clipboard.readText()` → 浮窗动作菜单。
+零件我们都有：`screenshot-shortcut.service` 的注入式 globalShortcut、截图服务的剪贴板写入、popout 二窗。
+该替代属 REIMPLEMENTED，**需获批**后才动手；在获批前页面保持只读、不声称运行时。
+
+教训（与上一轮同源）：写「不适用」这种结论时，必须能指向具体代码行；否则它就是猜测，而猜测会撒谎。
