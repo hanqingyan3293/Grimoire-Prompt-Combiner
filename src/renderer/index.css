@@ -503,7 +503,28 @@ button:disabled {
 .ui-icon-button:not(:disabled):hover { border-color: color-mix(in srgb, var(--color-accent) 35%, transparent); background: color-mix(in srgb, var(--color-accent) 10%, transparent); color: var(--color-accent-text); }
 .ui-icon-button-danger:not(:disabled):hover { border-color: color-mix(in srgb, var(--color-danger) 40%, transparent); background: var(--color-danger-surface); color: var(--color-danger); }
 
-.ui-badge { display: inline-flex; min-height: 20px; align-items: center; border: 1px solid transparent; border-radius: 999px; padding: 2px 7px; font-size: var(--font-size-caption); font-weight: var(--font-weight-medium); line-height: 1; }
+/* Badge parity with the vendored primitive: full pill, no wrapping, never squeezed by a flex row, and a
+ * 12px icon slot. Without `flex-shrink: 0` a badge in a tight row shrank until its label disappeared. */
+.ui-badge {
+  display: inline-flex;
+  width: fit-content;
+  min-height: 20px;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  overflow: hidden;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  padding: 2px 7px;
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-medium);
+  line-height: 1;
+  white-space: nowrap;
+  max-width: 100%;
+}
+
+.ui-badge > svg { width: 12px; height: 12px; pointer-events: none; }
 .ui-badge-neutral { border-color: var(--color-border); background: var(--color-surface-subtle); color: var(--color-muted-foreground); }
 .ui-badge-accent { border-color: color-mix(in srgb, var(--color-accent) 30%, transparent); background: color-mix(in srgb, var(--color-accent) 10%, transparent); color: var(--color-accent-text); }
 .ui-badge-success { background: var(--color-success-surface); color: var(--color-success); }

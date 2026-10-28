@@ -968,3 +968,19 @@ An error occurred in the <LocalAgentPanel> component.
 这样「窄窗口下四栏不可用」既不冒充通过，也不阻塞其它工作。
 
 另：本轮抽检 `w960-history` / `w960-novelai-assets` / `w960-utility-sidebar` 三张，未发现新缺陷（标题换行、分类芯片多行、页签换行都正常）。
+
+### M1.5：徽标对齐源原语（2026-10-27 第六十轮）
+
+逐项比对 `packages/ui/src/components/primitives/badge.tsx` 与我们的 `.ui-badge`：
+
+| 属性 | 源 | 我们（修前） | 我们（修后） |
+|---|---|---|---|
+| 形状 | `rounded-full border` | 已一致 | 一致 |
+| 图标槽 | `[&>svg]:size-3` | 无 | `12px` |
+| 间距 | `gap-1` | 无 | `4px` |
+| 换行 | `whitespace-nowrap` | 无 | 有 |
+| 被压缩 | `shrink-0 w-fit` | **无** | `flex-shrink: 0` + `width: fit-content` |
+| 最大宽 | `overflow-hidden` | 无 | `max-width: 100%` + `overflow: hidden` |
+
+`flex-shrink: 0` 这条最实际：紧行里徽标原本会被压到文字消失（和标签名消失是同一类症状，只是发生在徽标上）。
+截图复核（1280 视口 / 280px 面板）徽标为完整胶囊、无换行、名称正常截断。
