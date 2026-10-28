@@ -1047,3 +1047,15 @@ An error occurred in the <LocalAgentPanel> component.
   四项全 PASS，气泡文本「刷新提示词资产」，截图可见深色气泡 + 向下箭头指向刷新按钮。
 
 说明：单测在 jsdom 里只能验证逻辑，真机验证补的是「定位、层级、主题色」这些只有渲染器才知道的事。
+
+### M1.5：标签页对齐源 line 变体（2026-10-27 第六十五轮）
+
+源 `tabs.tsx` 的 `line` 变体（horizontal）：触发项 `relative gap-2 px-2 py-2 **font-normal**`、
+`text-muted-foreground`，激活 `text-primary`，底部标记用 **`::after` 绝对定位**：平时 2px，激活 4px。
+
+我们原实现是 `border-bottom: 2px` + 常亮 2px，激活只换颜色、另外加了 8% accent 背景。两处偏差：
+1. 字重 600（源是 normal）；
+2. 激活标记高度应当 2px → 4px —— 但换成 border 会在激活瞬间把文字推动 2px，所以照源的做法规避：改 `::after` 绝对定位条。
+
+修后：字重 normal、字号 0.8125rem（源 14px，面板头一排四个页签在 210px 下需要紧一档，已注释说明）、
+激活项去掉背景色块（源没有），底部 4px accent 条。截图确认「标签字典」下方粗紫条正确，其它页签为 muted 常规字重。

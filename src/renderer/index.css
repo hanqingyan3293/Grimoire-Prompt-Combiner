@@ -874,12 +874,27 @@ button:disabled {
   font-weight: 600;
 }
 
+/* Line-tab parity with the vendored primitive: normal weight, muted label, and the active marker drawn
+ * as an absolutely positioned bar (2px → 4px) instead of a border. A border was 2px always and would
+ * shift the label by 2px when it turned 4px; the source avoids that with `::after`. */
 .ui-nav-tab {
-  border-bottom: 2px solid transparent;
+  position: relative;
   color: var(--color-text-secondary);
-  font-size: 0.78rem;
-  font-weight: 600;
-  transition: border-color 120ms ease, background-color 120ms ease, color 120ms ease;
+  /* Source is text-sm (14px); panel headers run one step tighter so a four-tab row still fits at 210px. */
+  font-size: 0.8125rem;
+  font-weight: var(--font-weight-normal, 400);
+  transition: color 120ms ease, background-color 120ms ease;
+}
+
+.ui-nav-tab::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 2px;
+  background: transparent;
+  transition: height 120ms ease, background-color 120ms ease;
 }
 
 .ui-nav-tab:hover {
@@ -887,9 +902,12 @@ button:disabled {
 }
 
 .ui-nav-tab-active {
-  border-bottom-color: var(--color-accent);
-  background: color-mix(in srgb, var(--color-accent) 8%, transparent);
   color: var(--color-accent-text);
+}
+
+.ui-nav-tab-active::after {
+  height: 4px;
+  background: var(--color-accent);
 }
 
 .ui-tree-card {
