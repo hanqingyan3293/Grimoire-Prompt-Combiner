@@ -910,3 +910,24 @@ grid-cols-N（N≥3）且类里没有 min-w- / minmax / auto-fit / auto-fill  �
 
 下一步（明确）：拿到 canvas 内容根的父链高度后修——候选修法是给 `.ui-panel-content` 内的直接子元素 `height:100%` 的百分比链补一个确定高度，
 或让 canvas 根改用 `absolute inset-0`。**下一轮必须先复现再改**，不能靠猜。
+
+### 修：无限画布空白（真根因是 Router 上下文，2026-10-27 第五十六轮）
+
+上一轮把空白量化为「宿主 421px、内容根 32px」，这一轮拿到**真根因**：
+
+```
+Error: useLocation() may be used only in the context of a <Router> component.
+An error occurred in the <LocalAgentPanel> component.
+```
+
+`canvas-vendor-entry.tsx` 把 `<AgentPanel />` 渲染在 `<RouterProvider>` **旁边**（sibling），
+而 `LocalAgentPanel` 内部调用 `useLocation()` → 挂载即抛错 → 整棵画布树被卸载 → 白屏，**且没有任何错误提示**。
+
+修法两处：
+1. 新增 `CanvasSurface` 布局组件，把 Agent 浮层放进路由元素内部（三个路由都用它包一层）；
+2. 新增 `CanvasErrorBoundary`：以后再崩会显示「无限画布渲染失败 + 原因 + 重新加载」，不再是白屏。
+
+验证方式（重要）：**截图看不到 iframe 内容**——CDP `Page.captureScreenshot` 不合成跨文档 iframe，
+和之前 WebContentsView 是同一类限制。所以证据换成**读取 iframe 的 innerText**：
+修复后 `canvas.html` 帧内文本 **612 字符**，包含「画布/资产/提示词库/画布元素/画布暂无节点/无限画布 1/Codex 未连接」等真实 UI 文本，
+修复前该帧因崩溃为空。

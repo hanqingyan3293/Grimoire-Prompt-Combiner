@@ -23,10 +23,45 @@ window.dispatchEvent(new CustomEvent('grimoire:canvas-mounted'))
 registerBuiltinNodes()
 registerBundledCanvasPlugins()
 
+// The agent overlay must live INSIDE the router: `LocalAgentPanel` calls `useLocation()`, and rendering
+// it as a sibling of `<RouterProvider>` threw on mount, unmounting the whole canvas tree — the panel was
+// simply blank with no error shown (found by the visual matrix).
+// A crash used to unmount the whole canvas and leave a blank white frame with no message. An error
+// boundary turns that into something the user (and a screenshot) can see.
+class CanvasErrorBoundary extends React.Component<{ children: React.ReactNode }, { message: string | null }> {
+  state = { message: null as string | null }
+  static getDerivedStateFromError(error: unknown) {
+    return { message: error instanceof Error ? error.message : String(error) }
+  }
+  render() {
+    if (this.state.message === null) return this.props.children
+    return (
+      <main className="grid h-full min-h-0 place-items-center bg-background p-6 text-foreground">
+        <section className="w-full max-w-xl rounded-xl border border-red-400/30 bg-card p-5 shadow-xl">
+          <h1 className="text-base font-semibold">无限画布渲染失败</h1>
+          <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-muted-foreground">{this.state.message}</p>
+          <button type="button" className="mt-3 rounded-md border px-3 py-1.5 text-sm" onClick={() => window.location.reload()}>重新加载</button>
+        </section>
+      </main>
+    )
+  }
+}
+
+function CanvasSurface({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="relative h-full min-h-0 w-full overflow-hidden">
+      {children}
+      <div className="pointer-events-none absolute inset-y-0 right-0 z-[70] flex justify-end">
+        <div className="pointer-events-auto h-full"><AgentPanel /></div>
+      </div>
+    </div>
+  )
+}
+
 const router = createMemoryRouter([
-  { path: '/', element: <CanvasPage /> },
-  { path: '/canvas', element: <CanvasPage /> },
-  { path: '/canvas/:id', element: <CanvasProjectPage /> },
+  { path: '/', element: <CanvasSurface><CanvasPage /></CanvasSurface> },
+  { path: '/canvas', element: <CanvasSurface><CanvasPage /></CanvasSurface> },
+  { path: '/canvas/:id', element: <CanvasSurface><CanvasProjectPage /></CanvasSurface> },
 ], { initialEntries: ['/canvas?mode=recent'] })
 
 document.documentElement.classList.add('grimoire-canvas-vendor')
@@ -83,15 +118,12 @@ function CanvasBootGate() {
   return (
     <div className="relative h-full min-h-0 w-full overflow-hidden">
       <RouterProvider router={router} />
-      <div className="pointer-events-none absolute inset-y-0 right-0 z-[70] flex justify-end">
-        <div className="pointer-events-auto h-full"><AgentPanel /></div>
-      </div>
     </div>
   )
 }
 
 createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <AppProviders><CanvasBootGate /></AppProviders>
+    <CanvasErrorBoundary><AppProviders><CanvasBootGate /></AppProviders></CanvasErrorBoundary>
   </React.StrictMode>,
 )
