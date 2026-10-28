@@ -1021,3 +1021,19 @@ An error occurred in the <LocalAgentPanel> component.
 定位方法是把它换成 `background-image: none` 后构建即通过，确认是 URI 本身的问题。
 改为纯 CSS：`appearance: none` 让方框成为普通元素，勾由 `::after` 的旋转边框画出（`border-width: 0 2px 2px 0` + `rotate(45deg)`）。
 教训：**样式里的 data URI 要先跑一次构建**，不要等门禁。
+
+### M1.5：提示气泡（Tooltip）替换原生 title（2026-10-27 第六十三轮）
+
+源 `tooltip.tsx`：深色气泡（`bg-neutral-900 text-neutral-50`）、`rounded-md`、`px-3 py-1.5`、`text-xs leading-relaxed`、
+`max-w-80`、带 12×6 箭头、默认 `sideOffset` 让气泡**离开触发元素**（源注释解释这是为了避免 hover 反馈循环）。
+
+我们此前全靠原生 `title`：系统样式、无箭头、不跟主题、键盘用户要等浏览器自己决定显示。
+
+新增 `Tooltip` 组件 + `.ui-tooltip` 样式：
+- 固定定位（不受面板 `overflow` 裁剪——这正是原生 title 唯一还行的原因）；
+- hover 与 **focus** 都显示，用 `aria-describedby` 关联（键盘可达）；
+- 深色气泡 + 箭头，深色主题下反色（`[data-appearance='dark']`）；
+- 偏移 6px，避免气泡压住触发元素。
+
+`IconButton` 改为用 Tooltip 包裹（去掉 `title`），所有面板头的图标按钮一次性受益。
+测试：Tooltip 2 条（hover 显示/离开隐藏、focus 显示且 `aria-describedby` 指向气泡），ui 原语 15 条全绿。

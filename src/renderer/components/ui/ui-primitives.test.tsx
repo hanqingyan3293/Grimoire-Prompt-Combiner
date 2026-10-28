@@ -13,7 +13,9 @@ describe('UI primitives', () => {
   it('renders semantic button variants and accessible icon buttons', () => {
     render(<><Button variant='primary' icon={Copy}>复制</Button><IconButton icon={Copy} label='复制提示词' /><Badge tone='success'>完成</Badge></>)
     expect(screen.getByRole('button', { name: '复制' }).className).toContain('ui-button-primary')
-    expect(screen.getByRole('button', { name: '复制提示词' }).getAttribute('title')).toBe('复制提示词')
+    // The hint moved from the `title` attribute to a themed tooltip: `aria-label` is the accessible
+    // name, and the bubble appears on hover/focus (covered by Tooltip.test.tsx).
+    expect(screen.getByRole('button', { name: '复制提示词' }).getAttribute('aria-label')).toBe('复制提示词')
     expect(screen.getByText('完成').className).toContain('ui-badge-success')
   })
 

@@ -1139,3 +1139,40 @@ textarea.ui-field {
   border-width: 0 2px 2px 0;
   transform: rotate(45deg);
 }
+
+/* Tooltip parity with the vendored primitive: dark bubble, 6px radius, px-3 py-1.5, text-xs,
+ * max-width 20rem, arrow pointing at the trigger. Fixed positioning keeps it out of the panel's
+ * overflow clipping, which is why the native `title` was the only thing that used to work. */
+.ui-tooltip {
+  position: fixed;
+  z-index: 90;
+  max-width: 20rem;
+  transform: translate(-50%, -100%);
+  padding: 6px 12px;
+  border-radius: 6px;
+  background: #171717;
+  color: #fafafa;
+  font-size: var(--font-size-caption);
+  line-height: 1.5;
+  white-space: normal;
+  overflow-wrap: break-word;
+  pointer-events: none;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+}
+
+.ui-tooltip[data-side='bottom'] { transform: translate(-50%, 0); }
+
+.ui-tooltip-arrow {
+  position: absolute;
+  left: 50%;
+  width: 12px;
+  height: 6px;
+  transform: translateX(-50%);
+}
+
+.ui-tooltip[data-side='top'] .ui-tooltip-arrow { top: 100%; background: #171717; clip-path: polygon(0 0, 100% 0, 50% 100%); }
+.ui-tooltip[data-side='bottom'] .ui-tooltip-arrow { bottom: 100%; background: #171717; clip-path: polygon(50% 0, 100% 100%, 0 100%); }
+
+[data-appearance='dark'] .ui-tooltip { background: #f5f5f5; color: #171717; }
+[data-appearance='dark'] .ui-tooltip[data-side='top'] .ui-tooltip-arrow,
+[data-appearance='dark'] .ui-tooltip[data-side='bottom'] .ui-tooltip-arrow { background: #f5f5f5; }
