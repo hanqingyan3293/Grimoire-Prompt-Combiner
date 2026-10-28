@@ -28,9 +28,13 @@ const SOURCE_SETTINGS = {
     limitation: '源 API 网关设置已挂载且可编辑：启动/停止/重启调用真实网关（OpenAI 兼容，转发到当前供应商），运行状态来自 api_gateway.status，端口与密钥取自本页保存的偏好。'
   },
   'settings-websearch': {
+    // Still read-only, but for a NEW reason: the search executor exists (websearch.service), while the
+    // provider credentials cannot be written — `chat.web_search.provider_overrides` is a protected
+    // preference and the dedicated credential adapter is not connected. Enabling the page now would let
+    // a user type an API key and silently fail to save it.
     readOnly: true,
     Component: lazy(() => import('../../source/src/renderer/pages/settings/WebSearchSettings/WebSearchSettings')),
-    limitation: '源联网搜索设置已挂载。已保存的 API key 和认证密码在 IPC 返回与 renderer 缓存前脱敏；供应商配置与搜索/抓取执行尚未接通，表单和凭据弹窗入口只读，不发起网络搜索，也不把未查询的认证状态当作无密钥。'
+    limitation: '源联网搜索设置已挂载，保持只读：搜索执行方已实现（SearXNG/Tavily 适配器 + 正文提取 + 8 条测试），但供应商凭据写不进去——chat.web_search.provider_overrides 属于受保护凭据偏好，专用凭据适配器尚未接入，通用写入会被主进程拒绝。解禁前必须先做该适配器，否则用户填了 key 也存不下来。'
   },
   'settings-selection-assistant': {
     readOnly: true,

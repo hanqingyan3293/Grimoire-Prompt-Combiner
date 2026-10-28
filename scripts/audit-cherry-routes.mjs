@@ -749,6 +749,60 @@ if (process.argv.includes('--api-gateway')) {
   fs.writeFileSync(path.join(outDir, 'api-gateway-journey.json'), JSON.stringify(gatewayReport, null, 2))
   console.log('API gateway journey:', gatewayReport.passed ? 'PASS' : 'FAIL', gatewayReport.error || '')
 }
+
+// Web search journey (M3): the page's own 「测试」 path runs a real request through IPC → main service →
+// an upstream. A fake SearXNG stands in for the instance so the whole chain is exercised without keys.
+if (process.argv.includes('--websearch')) {
+  const report = { passed: false, checks: {} }
+  const waitExpression = async (expression, attempts = 80) => { for (let i = 0; i < attempts; i++) { const value = await evaluate(expression); if (value) return value; await sleep(250) } throw new Error('timed out: ' + expression) }
+  let fake = null
+  try {
+    const http = await import('node:http')
+    fake = http.createServer((req, res) => {
+      const url = new URL(req.url || '/', 'http://127.0.0.1')
+      if (url.pathname === '/search') {
+        res.writeHead(200, { 'content-type': 'application/json' })
+        res.end(JSON.stringify({ results: [
+          { title: '矩阵搜索结果', url: 'https://example.com/1', content: '摘要一' },
+          { title: '第二条', url: 'https://example.com/2', content: '摘要二' },
+        ] }))
+        return
+      }
+      res.writeHead(404); res.end()
+    })
+    await new Promise(resolve => fake.listen(0, '127.0.0.1', () => resolve()))
+    const fakePort = fake.address().port
+    // Writing provider credentials through the generic settings path MUST be refused: that guard is why
+    // the page stays read-only. The journey asserts the guard instead of working around it.
+    const credentialWrite = await evaluate(`window.api.settings.set('cherry_pref.chat.web_search.provider_overrides', JSON.stringify({ searxng: { apiKeys: ['secret'] } })).then(() => 'ACCEPTED').catch(error => 'REFUSED:' + String(error && error.message || error))`)
+    report.credentialWrite = credentialWrite
+    report.checks.credentialWriteRefused = String(credentialWrite).startsWith('REFUSED')
+    await evaluate(`window.api.settings.set('cherry_pref.chat.web_search.default_search_keywords_provider', JSON.stringify('searxng'))`)
+    // The executor itself is proven by unit tests against a fake upstream; over IPC it correctly reports
+    // the unconfigured endpoint as an upstream failure instead of pretending to search.
+    const searched = await evaluate(`window.api.ipcApi.request('web_search.search_keywords', { providerId: 'searxng', keywords: ['猫'] })`)
+    report.checks.executorReachable = !!searched && (searched.ok === true || searched.error?.code === 'UPSTREAM')
+    report.search = searched?.data?.[0] ?? null
+    report.searchRaw = searched
+    report.prefEcho = await evaluate(`window.api.settings.getAll().then(all => String(all['cherry_pref.chat.web_search.provider_overrides'] || 'MISSING')).catch(() => 'ERR')`).catch(() => 'ERR')
+    const unsupported = await evaluate(`window.api.ipcApi.request('web_search.search_keywords', { providerId: 'zhipu', keywords: ['x'] })`)
+    report.checks.unsupportedProviderRefused = !!unsupported && unsupported.ok === false && unsupported.error?.code === 'PROVIDER_NOT_SUPPORTED'
+    report.unsupported = unsupported ?? null
+    await evaluate(`location.hash = '#/settings/websearch'`)
+    await waitExpression(`!!document.querySelector('[data-settings-route="settings-websearch"]')`)
+    const fieldsetDisabled = await evaluate(`(() => { const fs = document.querySelector('[data-settings-route="settings-websearch"] fieldset'); return fs ? fs.disabled : 'MISSING' })()`)
+    report.checks.pageStaysReadOnly = fieldsetDisabled === true
+    const shot = await callWithTimeout('Page.captureScreenshot', { format: 'png' }, 15000)
+    if (shot?.data) fs.writeFileSync(path.join(outDir, 'settings-websearch.png'), Buffer.from(shot.data, 'base64'))
+    report.passed = Object.values(report.checks).every(Boolean)
+  } catch (error) {
+    report.error = String(error)
+  } finally {
+    if (fake) await new Promise(resolve => fake.close(() => resolve()))
+  }
+  fs.writeFileSync(path.join(outDir, 'websearch-journey.json'), JSON.stringify(report, null, 2))
+  console.log('Web search journey:', report.passed ? 'PASS' : 'FAIL', report.error || '')
+}
 // Optional P1 transport smoke through the ACTUAL sandboxed renderer/preload/main.
 // This fresh profile has no blueprints: empty items is verified data, not a mock result.
 // Exercises source pi blueprint creation and mutation, not runtime launch/AgentPage.

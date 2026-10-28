@@ -664,3 +664,27 @@ resources/agent-runtimes/     opencode.exe 134M (1.18.34) / pi.exe 107M (1.0.1)
 - 测试 8 条（假上游）：SearXNG JSON + 摘要裁剪、Tavily POST + limit、未知供应商拒绝、
   SearXNG 返回 HTML 时报错、正文提取去脚本、二进制拒绝、非 http 协议拒绝、实体解码。
 - 待办：页面仍只读——解禁前需要把「测试」按钮的结果接到界面上（现在只返回 IPC 结果），下一轮处理。
+
+### M3：联网搜索页为什么仍只读（2026-10-27 第三十八轮）
+
+本轮尝试解禁 `/settings/websearch`，被一道**我们自己设的**防护挡住，并且证明挡得对：
+
+- 执行方已具备（`websearch.service`：SearXNG/Tavily 适配 + 正文提取 + 8 条测试），IPC 路由也已接上；
+- 但供应商凭据 `chat.web_search.provider_overrides` 属于**受保护偏好**（`cherry-settings-privacy.ts`），
+  `settings:set` 直接拒绝通用写入：
+  `Cherry credential settings require a dedicated main-process credential adapter; generic writes are unavailable`；
+- 也就是说：用户现在在页面上填 API key **存不下来**。此时解禁页面 = 让用户白填，正是要清除的假成功。
+
+因此：websearch 页**保持只读**，理由改成「缺专用凭据适配器」（比原来的「缺执行方」更精确）。
+
+交叉矩阵新增 `--websearch` 旅程，断言的是**防线本身**：
+
+| 断言 | 含义 |
+|---|---|
+| `credentialWriteRefused` | 通用路径写入凭据必须被拒绝（含被拒绝的原因） |
+| `executorReachable` | IPC 能到达执行方；未配置端点时返回 UPSTREAM，而不是假装搜到结果 |
+| `unsupportedProviderRefused` | 未知供应商返回 `PROVIDER_NOT_SUPPORTED` |
+| `pageStaysReadOnly` | 页面字段集仍禁用 |
+
+下一步（解禁前置）：实现 `chat.web_search.provider_overrides` 的**主进程凭据适配器**（写入加密、读取脱敏），
+然后页面才能解禁；届时把 `credentialsWriteRefused` 改成「写入成功且读回脱敏」。
