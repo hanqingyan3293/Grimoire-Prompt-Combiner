@@ -1311,3 +1311,19 @@ workspace store 拥有布局（列/顺序/浮动/最大化/popout）并存 SQLit
 
 矩阵行同步更新：仍不是完整能力（源的置顶浮窗与真正的跨应用选区捕获未做），但从「BLOCKED 不适用」改为
 **PARTIALLY_MIGRATED**，并写清已实现与未实现两部分。
+
+### M3 划词助手：浮窗补齐（2026-10-27 第八十二轮）
+
+上一轮做了「按键 → 剪贴板 → 动作」的管线但看不见界面；本轮补上浮窗。
+
+- selection.ipc.ts：捕获文本存在主进程（setCapturedSelection），窗口只读、只应用；选用动作后 hide()。
+  窗口开窗器以注入方式接入（setSelectionWindowOpener），避免 settings.ipc 反向 import main/index 造成的循环。
+- main/index.ts：openSelectionAssistantWindow() —— 380x240 无边框、置顶（screen-saver 层）、不占任务栏、
+  按光标定位并夹在显示器工作区内、失焦自动隐藏、复用同一窗口。
+- selection-assistant.service.ts：新增 applySelectionPlan(action, raw, sink)，把「动作语义」与「落地位置」分开，
+  快捷键路径与浮窗路径共用同一实现（不会两头漂移）。
+- SelectionAssistantView.tsx：#selection-assistant 哈希分支（沿用已有的 #theme-preview 模式），
+  显示字符数、捕获文本、三个动作按钮、错误提示；关闭按钮走 IPC。
+- preload/renderer 类型：window.api.selection.{current,apply,close} 三通道。
+
+类型检查（主进程 + 渲染层）与 vite build 均通过。

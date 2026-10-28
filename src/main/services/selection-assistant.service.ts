@@ -91,3 +91,36 @@ export function planSelectionAction(action: SelectionActionId, raw: string): Sel
   if (action === 'copy-normalized') return { kind: 'clipboard', text: normalized }
   return { kind: 'prompt-asset', payload: normalized }
 }
+
+// The sink is injected too: the service decides what the action MEANS, the caller decides where it lands
+// (clipboard, prompt asset, agent draft). One implementation is shared by the shortcut path and by the
+// floating window, so both cannot drift apart.
+export interface SelectionSink {
+  writeClipboard(text: string): void
+  createPromptAsset(input: { name: string; prompt: string; detail: string }): { id: string }
+}
+
+export type SelectionOutcome =
+  | { readonly kind: 'clipboard'; readonly text: string }
+  | { readonly kind: 'prompt-asset'; readonly assetId: string }
+  | { readonly kind: 'empty' }
+  | { readonly kind: 'failed'; readonly message: string }
+
+export function applySelectionPlan(action: SelectionActionId, raw: string, sink: SelectionSink): SelectionOutcome {
+  const plan = planSelectionAction(action, raw)
+  if (plan.kind === 'empty') return { kind: 'empty' }
+  if (plan.kind === 'clipboard') {
+    try {
+      sink.writeClipboard(plan.text)
+      return { kind: 'clipboard', text: plan.text }
+    } catch (error) {
+      return { kind: 'failed', message: error instanceof Error ? error.message : String(error) }
+    }
+  }
+  try {
+    const asset = sink.createPromptAsset({ name: plan.payload.slice(0, 24) || '选区', prompt: plan.payload, detail: '划词助手 · ' + new Date().toISOString() })
+    return { kind: 'prompt-asset', assetId: asset.id }
+  } catch (error) {
+    return { kind: 'failed', message: error instanceof Error ? error.message : String(error) }
+  }
+}

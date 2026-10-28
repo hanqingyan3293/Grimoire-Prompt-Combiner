@@ -1,5 +1,5 @@
 // 魔导书 Grimoire v7 — Electron 主进程入口
-import { app, BrowserWindow, WebContentsView, ipcMain, Menu, dialog, shell, nativeTheme } from "electron"
+import { app, BrowserWindow, WebContentsView, ipcMain, Menu, dialog, shell, nativeTheme, screen } from "electron"
 import path from "path"
 import fs from "fs"
 import { initDatabase, closeDatabase, getDatabase, importDefaultTags, saveDatabase, exportDatabase, importDatabase } from "./database"
@@ -7,6 +7,7 @@ import { registerTagsIPC } from "./ipc/tags.ipc"
 import { registerPresetsIPC } from "./ipc/presets.ipc"
 import { registerHistoryIPC } from "./ipc/history.ipc"
 import { registerSettingsIPC } from "./ipc/settings.ipc"
+import { registerSelectionAssistantIPC, setSelectionWindowOpener } from "./ipc/selection.ipc"
 import { registerThemeIPC } from "./ipc/theme.ipc"
 import { registerImagesIPC } from "./ipc/images.ipc"
 import { registerFavoritesIPC } from "./ipc/favorites.ipc"
@@ -68,6 +69,32 @@ function getRendererURL(hash: string): string {
     return devServerUrl.replace(/\/$/, '') + "/#" + hash
   }
   return "file://" + path.join(__dirname, "../../renderer/index.html") + "#" + hash
+}
+
+// Selection assistant popup (M3): frameless, always-on-top, positioned next to the cursor. Created lazily
+// and hidden on blur rather than destroyed, so pressing the shortcut repeatedly stays instant.
+let selectionWindow: BrowserWindow | null = null
+
+function openSelectionAssistantWindow(): void {
+  const cursor = screen.getCursorScreenPoint()
+  if (!selectionWindow || selectionWindow.isDestroyed()) {
+    selectionWindow = new BrowserWindow({
+      width: 380, height: 240, frame: false, alwaysOnTop: true, skipTaskbar: true, resizable: false, show: false,
+      webPreferences: { preload: getPreloadPath(), contextIsolation: true, nodeIntegration: false, sandbox: true },
+    })
+    selectionWindow.setAlwaysOnTop(true, 'screen-saver')
+    configureWindowSecurity(selectionWindow)
+    void selectionWindow.loadURL(getRendererURL('selection-assistant')).catch(error => {
+      logEvent('error', 'selection', '划词助手窗口加载失败', { context: error instanceof Error ? error.message : String(error) })
+    })
+    selectionWindow.on('blur', () => { if (selectionWindow && !selectionWindow.isDestroyed()) selectionWindow.hide() })
+  }
+  const display = screen.getDisplayNearestPoint(cursor)
+  const area = display.workArea
+  const x = Math.min(Math.max(cursor.x - 190, area.x + 8), area.x + area.width - 388)
+  const y = Math.min(Math.max(cursor.y + 16, area.y + 8), area.y + area.height - 248)
+  selectionWindow.setBounds({ x, y, width: 380, height: 240 })
+  selectionWindow.showInactive()
 }
 
 function configureWindowSecurity(window: BrowserWindow): void {
@@ -492,7 +519,9 @@ async function registerAllIPC(): Promise<void> {
   registerMcpCacheBridgeIPC()
   registerPresetsIPC()
   registerHistoryIPC()
+  setSelectionWindowOpener(openSelectionAssistantWindow)
   registerSettingsIPC()
+  registerSelectionAssistantIPC()
   registerThemeIPC()
   registerImagesIPC()
   registerFavoritesIPC()

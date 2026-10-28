@@ -5,6 +5,7 @@ import './index.css'
 import './styles/tokens.css'
 
 const ThemePreview = React.lazy(() => import('./components/dev/ThemePreview').then(module => ({ default: module.ThemePreview })))
+const SelectionAssistantView = React.lazy(() => import('./components/selection/SelectionAssistantView').then(module => ({ default: module.SelectionAssistantView })))
 
 function reportRendererFailure(message: string, stack = '', context = '') {
   try {
@@ -31,7 +32,9 @@ window.addEventListener('unhandledrejection', event => {
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    {window.location.hash.startsWith('#theme-preview')
+    {window.location.hash.startsWith('#selection-assistant')
+      ? <React.Suspense fallback={<div className='flex h-screen items-center justify-center text-sm'>正在载入划词助手</div>}><SelectionAssistantView /></React.Suspense>
+      : window.location.hash.startsWith('#theme-preview')
       ? <React.Suspense fallback={<div className='flex h-screen items-center justify-center text-sm text-[var(--color-text-secondary)]'>正在载入视觉验收页</div>}><ThemePreview /></React.Suspense>
       : <App />}
   </React.StrictMode>
