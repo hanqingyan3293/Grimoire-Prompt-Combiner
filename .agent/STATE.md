@@ -748,3 +748,14 @@ resources/agent-runtimes/     opencode.exe 134M (1.18.34) / pi.exe 107M (1.0.1)
   `captureOk / hasBytes / hasSize(1920×1080) / fileOnDisk / pngSignature`，实测 1.33MB PNG。
 - 截图页从只读改为**可编辑**；`auto_ocr` 行用 compat CSS 隐藏（本项目没有 OCR 服务）。
 - 测试调整：compat 的截图断言从「只读且控件禁用」改为「可编辑且 fieldset 未禁用」。
+
+### M3：浏览器页数据层（2026-10-27 第四十四轮）
+
+- schema **v39** 新增 `browser_history`（id/url/title/visited_at + 两个索引）。
+- `browser-history.service`：记录访问（**同 URL 去重**，重复访问更新而不是堆重复行——历史弹窗要的是站点不是每次导航）、
+  搜索（url 或 title）、单条删除、清空；**只接受 http/https**（`file://` 之类会把本地路径塞进历史）。
+- `browser-data.service`：`clearBrowserData(session, scopes)` 分域清理 cache/cookies/storage/auth，
+  **未选中的域一律不动**，失败逐域回报（不是整体成败），平台没有 clearAuthCache 时明确报不支持。
+- IPC 路由：`browser.history.list/add/delete/clear`、`browser.data.clear`（session 由 `persist:grimoire-browser` 取）。
+- 测试 8 条：去重与顺序、搜索与 limit、拒绝非 web URL、删除/清空、分域清理、失败回报、平台缺 API。
+- **页面保持只读**：缺的是浏览器宿主（WebContentsView 生命周期与导航），数据层不再是阻塞点。

@@ -25,7 +25,8 @@ import { createLegacyDatabase, type LegacyDatabase } from './services/sqlite.com
 // no inference from prompt assets or sessions.
 // v37: soft-delete (recycle bin) columns for NovelAI versions and works.
 // v38: NovelAI asset library + asset_usage (which image used which asset).
-export const CURRENT_SCHEMA_VERSION = 38
+// v39: embedded browser history (browser_history). Empty on upgrade — nothing to infer.
+export const CURRENT_SCHEMA_VERSION = 39
 let nativeDb: DatabaseSync | null = null
 let db: LegacyDatabase | null = null
 let dbPath = ''
@@ -1317,6 +1318,7 @@ export function initializeDatabaseConnection(connection: DatabaseSync, requireEx
   migrateNovelaiPromptVersions(legacy)
   migrateNovelaiVersionTrash(legacy)
   migrateNovelaiAssets(legacy)
+  migrateBrowserHistory(legacy)
 
   legacy.exec(INDEX_SQL)
   legacy.run("CREATE INDEX IF NOT EXISTS idx_history_task ON history(task_id)")
@@ -1406,6 +1408,21 @@ function migrateNovelaiAssets(legacy: LegacyDatabase): void {
     CREATE INDEX IF NOT EXISTS idx_novelai_asset_usage_image ON novelai_asset_usage(image_id);
   `)
 }
+// v39 — embedded browser history. One row per visit; the URL is the identity, timestamps order it.
+// Kept in its own table so the history dialog can page and clear it without touching chat data.
+function migrateBrowserHistory(legacy: LegacyDatabase): void {
+  legacy.exec(`
+    CREATE TABLE IF NOT EXISTS browser_history (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      url TEXT NOT NULL,
+      title TEXT NOT NULL DEFAULT '',
+      visited_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_browser_history_visited ON browser_history(visited_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_browser_history_url ON browser_history(url);
+  `)
+}
+
 function resolveDatabasePath(): string {
   // 便携模式：exe同目录有 portable 文件则数据存本地 data/ 文件夹
   const exeDir = path.dirname(app.getPath('exe'))

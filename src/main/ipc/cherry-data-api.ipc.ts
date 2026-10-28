@@ -1,4 +1,4 @@
-import { app, BrowserWindow, dialog, ipcMain, nativeTheme, shell } from 'electron'
+import { app, BrowserWindow, dialog, ipcMain, nativeTheme, session, shell } from 'electron'
 import type { WebContents } from 'electron'
 import crypto from 'crypto'
 import fs from 'fs'
@@ -22,6 +22,8 @@ import { listAiUsage, listUsageTimeline, projectUsageEntry, projectUsageTotals, 
 import { isPreventSleepActive, readLaunchOnBoot } from '../services/app-preferences.service'
 import { cherryPreferenceWiring, isCherryDeveloperModeEnabled, readCherryPreference as readCherryPref } from '../services/cherry-preference-consumers'
 import { getGatewayStatus, restartGateway, startGateway, stopGateway } from '../services/api-gateway.service'
+import { clearBrowserHistory, deleteBrowserVisit, listBrowserHistory, recordBrowserVisit } from '../services/browser-history.service'
+import { clearBrowserData } from '../services/browser-data.service'
 import { readCredentialPreference } from '../services/cherry-credential.service'
 import { fetchUrls, searchWeb } from '../services/websearch.service'
 import type { PromptAssetItem } from '../../shared/prompt-asset-types'
@@ -2358,6 +2360,22 @@ async function handleIpcApiRoute(route: string, input: unknown, sender: WebConte
         const code = (error as { code?: string }).code || 'UPSTREAM'
         return ipcError(code, error instanceof Error ? error.message : String(error))
       }
+    }
+    // Embedded browser history + data clearing (M3). The page's history dialog and clear dialog talk to
+    // these; the browser HOST is still missing, so the page stays read-only for its other controls.
+    if (route === 'browser.history.list') return ipcOk(listBrowserHistory({ query: typeof (value as { query?: unknown })?.query === 'string' ? String((value as { query?: string }).query) : '', limit: Number((value as { limit?: unknown })?.limit) || 200 }))
+    if (route === 'browser.history.add') {
+      const payload = (value ?? {}) as { url?: unknown; title?: unknown }
+      try { return ipcOk(recordBrowserVisit({ url: String(payload.url ?? ''), title: typeof payload.title === 'string' ? payload.title : '' })) }
+      catch (error) { return ipcError('BAD_INPUT', error instanceof Error ? error.message : String(error)) }
+    }
+    if (route === 'browser.history.delete') return ipcOk(deleteBrowserVisit(Number((value as { id?: unknown })?.id)))
+    if (route === 'browser.history.clear') return ipcOk(clearBrowserHistory())
+    if (route === 'browser.data.clear') {
+      const scopes = Array.isArray((value as { scopes?: unknown })?.scopes) ? ((value as { scopes: unknown[] }).scopes.filter(item => typeof item === 'string') as Array<'cache' | 'cookies' | 'storage' | 'auth'>) : []
+      const partition = typeof (value as { partition?: unknown })?.partition === 'string' ? String((value as { partition?: string }).partition) : 'persist:grimoire-browser'
+      const target = session.fromPartition(partition)
+      return clearBrowserData(target, scopes).then(result => ipcOk(result), error => ipcError('CLEAR_FAILED', error instanceof Error ? error.message : String(error)))
     }
     if (route === 'api_gateway.status') return ipcOk(getGatewayStatus())
     if (route === 'api_gateway.start' || route === 'api_gateway.restart') {
