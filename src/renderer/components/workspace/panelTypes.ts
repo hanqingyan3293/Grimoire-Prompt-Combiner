@@ -33,6 +33,7 @@ export const PANEL_TYPES = [
   "tag-batch",
   "gallery-search",
   "novelai-workbench",
+  "novelai-assets",
 ] as const
 
 export type PanelType = (typeof PANEL_TYPES)[number]

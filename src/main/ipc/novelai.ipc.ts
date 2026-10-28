@@ -1,3 +1,12 @@
+import {
+  createNovelaiAsset,
+  deleteNovelaiAsset,
+  listAssetsUsedByImage,
+  listImagesUsingAsset,
+  listNovelaiAssets,
+  recordNovelaiAssetUsage,
+  updateNovelaiAsset,
+} from '../services/novelai-asset.service'
 import { ipcMain } from 'electron'
 
 import { IPC_CHANNELS } from '../../shared/types'
@@ -71,4 +80,31 @@ export function registerNovelaiIPC(): void {
     setNovelaiBranchName(String(value.workId ?? ''), String(value.branchId ?? ''), String(value.name ?? ''))
     return true
   })
+  ipcMain.handle(IPC_CHANNELS.NOVELAI_ASSET_LIST, (_event, kind: unknown) => listNovelaiAssets(typeof kind === 'string' && kind ? kind as never : undefined))
+  ipcMain.handle(IPC_CHANNELS.NOVELAI_ASSET_CREATE, (_event, input: unknown) => {
+    const value = record(input)
+    return createNovelaiAsset({ kind: String(value.kind ?? 'other') as never, name: String(value.name ?? ''), payload: typeof value.payload === 'string' ? value.payload : '', examples: Array.isArray(value.examples) ? value.examples.filter((item): item is string => typeof item === 'string') : [] })
+  })
+  ipcMain.handle(IPC_CHANNELS.NOVELAI_ASSET_UPDATE, (_event, input: unknown) => {
+    const value = record(input)
+    const patch = record(value.patch)
+    return updateNovelaiAsset(String(value.id ?? ''), {
+      ...(typeof patch.name === 'string' ? { name: patch.name } : {}),
+      ...(typeof patch.payload === 'string' ? { payload: patch.payload } : {}),
+      ...(Array.isArray(patch.examples) ? { examples: patch.examples.filter((item): item is string => typeof item === 'string') } : {}),
+      ...(typeof patch.kind === 'string' ? { kind: patch.kind as never } : {}),
+    })
+  })
+  ipcMain.handle(IPC_CHANNELS.NOVELAI_ASSET_DELETE, (_event, input: unknown) => {
+    const value = record(input)
+    deleteNovelaiAsset(String(value.id ?? ''), { force: value.force === true })
+    return true
+  })
+  ipcMain.handle(IPC_CHANNELS.NOVELAI_ASSET_USE, (_event, input: unknown) => {
+    const value = record(input)
+    recordNovelaiAssetUsage({ assetId: String(value.assetId ?? ''), imageId: String(value.imageId ?? ''), via: typeof value.via === 'string' ? value.via : 'manual' })
+    return true
+  })
+  ipcMain.handle(IPC_CHANNELS.NOVELAI_ASSET_IMAGES, (_event, id: unknown) => listImagesUsingAsset(String(id ?? '')))
+  ipcMain.handle(IPC_CHANNELS.NOVELAI_ASSET_BY_IMAGE, (_event, id: unknown) => listAssetsUsedByImage(String(id ?? '')))
 }

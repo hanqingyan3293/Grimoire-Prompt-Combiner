@@ -24,6 +24,7 @@ const PromptAssetsPanel = lazy(() => import('../prompt-assets/PromptAssetsPanel'
 // in embedded mode, so there is one implementation instead of a "quick settings" subset.
 const SettingsPanel = lazy(() => import('../settings/SettingsWindow').then(module => ({ default: module.SettingsWindow })))
 const NovelAIPromptPanel = lazy(() => import('../novelai/NovelAIPromptPanel').then(module => ({ default: module.NovelAIPromptPanel })))
+const NovelAIAssetPanel = lazy(() => import('../novelai/NovelAIAssetPanel').then(module => ({ default: module.NovelAIAssetPanel })))
 
 export const PANEL_DEFINITIONS: Record<PanelType, PanelDefinition> = {
   "tag-sidebar": {
@@ -72,6 +73,7 @@ export const PANEL_DEFINITIONS: Record<PanelType, PanelDefinition> = {
   "tag-batch": { type: "tag-batch", title: "标签批量工具", description: "按筛选批量添加、删除、替换资产标签", enabled: true },
   "gallery-search": { type: "gallery-search", title: "图库搜索", description: "筛选轨、虚拟网格、检查器与保存搜索", enabled: true },
   "novelai-workbench": { type: "novelai-workbench", title: "提示词工作台", description: "块解析、版本线与回收站", enabled: true },
+  "novelai-assets": { type: "novelai-assets", title: "素材库", description: "角色/风格/场景素材与「用在哪些图」反查", enabled: true },
 }
 
 export const ENABLED_PANEL_OPTIONS = Object.values(PANEL_DEFINITIONS).filter(panel => panel.enabled)
@@ -209,6 +211,8 @@ export function renderPanel(type: PanelType, options?: { agentMode?: "chat" | "v
       return <GallerySearchPanel />
     case "novelai-workbench":
       return <LazyPanel><NovelAIPromptPanel /></LazyPanel>
+    case "novelai-assets":
+      return <LazyPanel><NovelAIAssetPanel /></LazyPanel>
     case "settings":
       return <LazyPanel><SettingsPanel embedded /></LazyPanel>
     case "logs":

@@ -455,3 +455,18 @@ resources/agent-runtimes/     opencode.exe 134M (1.18.34) / pi.exe 107M (1.0.1)
   不再用页面文本里出现「回收站」这种会误判的写法。
 - 顺带修面板在窄宽度下的排版：外层 `flex-wrap` + 主区 `min-w-[18rem]` + 块列表改为「徽章在上、文本在下」，
   之前窄面板会把作品名和块内容挤成竖排。
+
+### M6 UI 第二批：素材库面板（2026-10-27 第十九轮）
+
+- IPC 新增 7 个素材通道（list/create/update/delete/use/images/byImage）+ preload `window.api.novelai.assets.*`。
+- 面板 `NovelAIAssetPanel`：分类筛选、素材列表（带引用数）、素材内容编辑（失焦写回）、
+  **「用在哪些图」**（选中的素材 → 引用列表）、记一次引用、**反查「这张图用了哪些素材」**、删除素材（强制）。
+- 注册 `novelai-assets` 面板类型（单一来源 PANEL_TYPES + 定义 + 渲染分支）。
+- 测试 3 条：列表与引用数、记录引用后刷新、反查；顺带修正断言口径（UI 不编造 via，由主进程补默认）。
+
+### 进程清理教训（2026-10-27）
+
+- 一次「按 vite 杀进程」把正在跑的门禁 vitest 也杀了（`vitest.mjs` 的 command line 里包含子串 `vite`），
+  G3 分片 2 因此红了一次；单独重跑该分片是通过的。以后只按 `vite\bin|vite.js` 精确匹配。
+- 同时发现 `ui-parity.mjs` 每次运行会漏一个 vite dev server（`npx vite` 的子进程），单个约 1.3GB；
+  已在 killTree 里按本次端口精确清理。清理后 node 进程从 14 个 / 5.9GB 降到 6 个 / 0.4GB。
