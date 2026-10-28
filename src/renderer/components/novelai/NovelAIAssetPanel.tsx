@@ -86,6 +86,7 @@ export function NovelAIAssetPanel() {
   return (
     <div className="flex h-full min-h-0 flex-col">
       <PanelHeader title="素材库" description="角色 / 风格 / 场景 · 「这块用在哪些图」（M6）" icon={Library} />
+      {/* Same narrow-panel rule as the workbench: wrap instead of squeezing. */}
       <div className="flex min-h-0 flex-1 flex-wrap">
         <aside className="flex w-52 min-w-[10rem] shrink-0 flex-col gap-2 border-r border-[var(--color-border)] p-2">
           <div className="flex flex-wrap gap-1">
@@ -105,7 +106,7 @@ export function NovelAIAssetPanel() {
             {assets.map(asset => (
               <button key={asset.id} type="button" onClick={() => setSelectedId(asset.id)}
                 className={'flex w-full items-center gap-1 overflow-hidden px-2 py-1 text-left text-xs ' + (selectedId === asset.id ? 'bg-[var(--color-hover)] text-[var(--color-accent-text)]' : 'text-[var(--color-text-secondary)]')}>
-                <span className="min-w-0 flex-1 truncate">{asset.name}</span>
+                <span className="min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap">{asset.name}</span>
                 <span className="shrink-0 text-[10px]">{asset.uses}</span>
               </button>
             ))}

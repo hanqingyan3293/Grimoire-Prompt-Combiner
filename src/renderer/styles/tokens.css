@@ -22,6 +22,9 @@
   --gr-control-font-md: var(--gr-font-md);
   --gr-control-font-lg: var(--gr-font-lg);
   --gr-control-gap: 6px;
+  /* The source `Input` is h-9; fields keep their own height so a 36px input never forces a 36px
+   * textarea or a 36px inline filter box. */
+  --gr-input-height: 36px;
   --gr-control-padding-sm: 10px;
   --gr-control-padding-md: 10px;
   --gr-control-padding-lg: 16px;

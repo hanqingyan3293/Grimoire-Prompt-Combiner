@@ -960,8 +960,33 @@ input:not([type="range"]):not([type="checkbox"]):not([type="radio"]):not([type="
  * shadows, so the settings centre and the older panels agree on shape. Values are
  * deliberately conservative: radius and elevation only, no size changes.
  */
+/* Source parity for opted-in fields (M1.5.6). The vendored `Input` is h-9 / rounded-md /
+ * transparent background / 1px border, and its focus only changes the border colour. Dense
+ * panels that use native inputs keep Grimoire's compact defaults; anything marked `.ui-field`
+ * looks like the source. */
 .ui-field {
+  height: var(--gr-input-height);
+  border: 1px solid var(--color-border);
   border-radius: var(--gr-radius-md);
+  background-color: transparent;
+  transition: border-color var(--motion-fast) ease, box-shadow var(--motion-fast) ease;
+}
+
+.ui-field:focus, .ui-field:focus-visible {
+  border-color: var(--color-accent);
+  box-shadow: none;
+  outline: none;
+}
+
+.ui-field::placeholder {
+  color: var(--color-text-secondary);
+}
+
+textarea.ui-field {
+  height: auto;
+  min-height: calc(var(--gr-input-height) * 2);
+  padding-top: 6px;
+  padding-bottom: 6px;
 }
 .ui-settings-nav-item {
   border-radius: var(--gr-radius-md);

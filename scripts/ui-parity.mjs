@@ -228,6 +228,46 @@ if (process.argv.includes('--workbench')) {
   console.log('WORKBENCH ' + JSON.stringify(journey))
   if (!journey.passed) console.error('WORKBENCH_JOURNEY_FAILED')
 }
+
+// Asset library journey (M6 UI). Same approach as --workbench: switch a real panel to 素材库, then
+// create → record usage → reverse lookup → delete with the service holding the rules.
+if (process.argv.includes('--assets')) {
+  const journey = { passed: false, checks: {}, shots: [] }
+  const setValue = (selector, value) => `(() => { const el = document.querySelector(${JSON.stringify(selector)}); if (!el) return 'MISSING'; const proto = el.tagName === 'TEXTAREA' ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype; Object.getOwnPropertyDescriptor(proto, 'value').set.call(el, ${JSON.stringify(value)}); el.dispatchEvent(new Event('input', { bubbles: true })); return 'OK' })()`
+  const waitFor = async (expression, attempts = 80) => { for (let i = 0; i < attempts; i++) { const value = await evaluate(expression); if (value) return value; await sleep(250) } throw new Error('timed out: ' + expression) }
+  try {
+    const switched = await evaluate(`(() => { const sel = Array.from(document.querySelectorAll('select.ui-panel-select')).find(el => el.offsetParent !== null); if (!sel) return 'NO_SELECT'; Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(sel, 'novelai-assets'); sel.dispatchEvent(new Event('change', { bubbles: true })); return 'OK' })()`)
+    if (switched !== 'OK') throw new Error('panel switch failed: ' + switched)
+    await waitFor(`!!document.querySelector('[aria-label="新素材名"]')`)
+    journey.shots.push(await screenshot('as-01-empty'))
+    await evaluate(setValue('input[aria-label="新素材名"]', '雨中少女'))
+    await evaluate(`document.querySelector('[aria-label="新建素材"]').click()`)
+    await waitFor(`document.body.innerText.includes('雨中少女')`)
+    journey.checks.createdAsset = true
+    await evaluate(setValue('input[aria-label="图片 ID"]', 'img_matrix'))
+    await evaluate(`Array.from(document.querySelectorAll('button')).find(el => el.textContent.includes('记一次引用')).click()`)
+    const usage = await waitFor(`(async () => { const list = await window.api.novelai.assets.list(); const asset = list.find(item => item.name === '雨中少女'); if (!asset) return null; const images = await window.api.novelai.assets.images(asset.id); return images.length === 1 && images[0].imageId === 'img_matrix' ? { assetId: asset.id, images } : null })()`)
+    journey.observations = { usage }
+    journey.checks.recordedUsage = true
+    journey.shots.push(await screenshot('as-02-usage'))
+    await evaluate(setValue('input[aria-label="反查图片 ID"]', 'img_matrix'))
+    await evaluate(`Array.from(document.querySelectorAll('button')).find(el => el.textContent.trim() === '反查').click()`)
+    await waitFor(`document.body.innerText.includes('雨中少女')`)
+    const lookedUp = await evaluate(`(async () => { const list = await window.api.novelai.assets.byImage('img_matrix'); return list.map(item => item.name) })()`)
+    journey.observations.lookedUp = lookedUp
+    journey.checks.reverseLookup = Array.isArray(lookedUp) && lookedUp.includes('雨中少女')
+    journey.shots.push(await screenshot('as-03-lookup'))
+    await evaluate(`Array.from(document.querySelectorAll('button')).find(el => el.textContent.includes('删除素材')).click()`)
+    const removed = await waitFor(`(async () => { const list = await window.api.novelai.assets.list(); return list.length === 0 ? true : null })()`)
+    journey.checks.deletedAsset = removed === true
+    journey.shots.push(await screenshot('as-04-deleted'))
+    journey.passed = Object.values(journey.checks).every(Boolean)
+  } catch (error) {
+    journey.error = String(error)
+    journey.state = await evaluate(`(document.querySelector('[data-panel-type="novelai-assets"]') || document.body).innerText.slice(0, 500)`).catch(() => null)
+  }
+  console.log('ASSETS ' + JSON.stringify(journey))
+}
 console.log(JSON.stringify(report, null, 2))
 ws.close()
 killTree()

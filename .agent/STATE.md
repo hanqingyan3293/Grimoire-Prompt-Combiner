@@ -490,3 +490,11 @@ resources/agent-runtimes/     opencode.exe 134M (1.18.34) / pi.exe 107M (1.0.1)
 - 交叉矩阵 journey 增两条断言：`pageEditable`（fieldset 未禁用）与 `deadSwitchesHidden`（两行 computedStyle 为 none），五项全 PASS，
   截图 `artifacts/visual/cherry-routes/settings-general-wiring.png`。
 - 踩坑记录：只 `build:cherry-compat` 时接线报告仍显示旧数字——那份数字来自**主进程** bundle，必须同时 `build:main`。
+
+### M1.5.6 字段基线 + 素材面板旅程（2026-10-27 第二十三轮）
+
+- `.ui-field` 对齐源 `Input` 规格：36px 高（`--gr-input-height`）、`rounded-md`、透明背景、1px 边框，
+  focus 只改边框颜色（去掉原来的发光环）；`textarea.ui-field` 保持自适应高度。密集面板里未标 `.ui-field` 的原生输入不受影响。
+- 素材库旅程 `node scripts/ui-parity.mjs --assets` 一次通过：新建素材 → 记一次引用（API 断言 images 里有 img_matrix）
+  → 反查（byImage 返回该素材）→ 删除（列表清空），4 张截图 `as-*.png`。
+- 顺带给素材面板补上窄宽度换行规则，列表名不再折成两行。
