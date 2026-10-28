@@ -339,14 +339,17 @@ if (process.argv.includes('--narrow-audit')) {
     const types = await evaluate(`Array.from(new Set(Array.from(document.querySelectorAll('select.ui-panel-select option')).map(option => option.value)))`).then(list => only ? list.filter(item => item === only) : list)
     report.panelCount = types.length
     for (const type of types) {
-      const switched = await evaluate(`(() => { const sel = Array.from(document.querySelectorAll('select.ui-panel-select')).find(el => el.offsetParent !== null); if (!sel) return 'NO_SELECT'; Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(sel, ${JSON.stringify(type)}); sel.dispatchEvent(new Event('change', { bubbles: true })); return 'OK' })()`)
+      // The panel type travels through a page global: composing selectors with nested template literals
+      // produced unparseable code twice while building this harness.
+      await evaluate(`window.__auditType = ${JSON.stringify(type)}`)
+      const switched = await evaluate(`(() => { const sel = Array.from(document.querySelectorAll('select.ui-panel-select')).find(el => el.offsetParent !== null); if (!sel) return 'NO_SELECT'; Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(sel, window.__auditType); sel.dispatchEvent(new Event('change', { bubbles: true })); return 'OK' })()`)
       if (switched !== 'OK') { report.panels.push({ type, error: switched }); continue }
       let mounted = false
-      for (let i = 0; i < 24; i++) { if (await evaluate(`!!document.querySelector('[data-panel-type=' + JSON.stringify(${JSON.stringify(type)}) + ']')`)) { mounted = true; break } await sleep(250) }
+      for (let i = 0; i < 24; i++) { if (await evaluate(`!!document.querySelector('[data-panel-type="' + window.__auditType + '"]')`)) { mounted = true; break } await sleep(250) }
       if (!mounted) { report.panels.push({ type, mounted: false }); continue }
       await sleep(400)
       const measured = await evaluate(`(() => {
-        const host = document.querySelector('[data-panel-type=' + JSON.stringify(${JSON.stringify(type)}) + ']')
+        const host = document.querySelector('[data-panel-type="' + window.__auditType + '"]')
         if (!host) return null
         const vertical = []
         // Collapsed/animated-away chrome is not a layout defect: skip anything invisible.
@@ -359,11 +362,16 @@ if (process.argv.includes('--narrow-audit')) {
           // is wrapping, not collapsing, and truncation is already deliberate.
           const lineHeight = parseFloat(getComputedStyle(el).lineHeight || '16') || 16
           const lines = Math.round(rect.height / lineHeight)
-          if (rect.width > 0 && rect.width < 60 && lines >= 3) { const chain = []; let node = el.parentElement; for (let depth = 0; depth < 3 && node; depth += 1) { chain.push((node.className || '').toString().slice(0, 90)); node = node.parentElement } const parent = el.parentElement; const siblings = parent ? Array.from(parent.children).map(child => ({ cls: (child.className || '').toString().slice(0, 60), w: Math.round(child.getBoundingClientRect().width) })) : []; vertical.push({ text: text.slice(0, 24), width: Math.round(rect.width), chain, parentW: parent ? Math.round(parent.getBoundingClientRect().width) : 0, siblings: siblings.slice(0, 6) }) }
+          if (rect.width > 0 && rect.width < 60 && lines >= 3) {
+            const chain = []
+            let node = el.parentElement
+            for (let depth = 0; depth < 3 && node; depth += 1) { chain.push((node.className || '').toString().slice(0, 90)); node = node.parentElement }
+            vertical.push({ text: text.slice(0, 24), width: Math.round(rect.width), chain })
+          }
         }
-        const overflow = []
         // Only VISIBLE spill counts: a container that clips or scrolls its own content is handling it
         // (ellipsis, scrollbar). The defect is content escaping a box that does not.
+        const overflow = []
         for (const el of host.querySelectorAll('*')) {
           if (el.scrollWidth <= el.clientWidth + 8 || el.clientWidth <= 0) continue
           const style = getComputedStyle(el)
@@ -372,7 +380,8 @@ if (process.argv.includes('--narrow-audit')) {
         }
         return { vertical: vertical.slice(0, 6), overflow: overflow.slice(0, 6), width: Math.round(host.getBoundingClientRect().width) }
       })()`)
-      report.panels.push({ type, mounted: true, ...measured, shot: await screenshot('narrow-' + type) })
+      const widthTag = report.viewportWidth ? 'w' + report.viewportWidth + '-' : ''
+      report.panels.push({ type, mounted: true, ...measured, shot: await screenshot(widthTag + 'narrow-' + type) })
     }
     const offenders = report.panels.filter(panel => panel.vertical?.length || panel.overflow?.length)
     report.offenderCount = offenders.length
@@ -432,6 +441,48 @@ if (process.argv.includes('--browser')) {
   }
   fs.writeFileSync('artifacts/visual/ui-parity/browser-journey.json', JSON.stringify(report, null, 2))
   console.log('BROWSER ' + JSON.stringify({ passed: report.passed, checks: report.checks, visits: report.visits?.length }))
+}
+
+// Visual matrix: the same panel set at several viewport widths, in ONE session so the comparisons are
+// taken against the same layout state. Output is per-width offender counts plus per-panel screenshots,
+// which is what a "did the layout regress" review needs.
+if (process.argv.includes('--visual-matrix')) {
+  const widths = [1600, 1280, 960]
+  const matrix = { passed: false, runs: [] }
+  try {
+    for (const width of widths) {
+      await callWithTimeout('Emulation.setDeviceMetricsOverride', { width, height: 900, deviceScaleFactor: 1, mobile: false }, 10000)
+      await sleep(700)
+      const types = await evaluate(`Array.from(new Set(Array.from(document.querySelectorAll('select.ui-panel-select option')).map(option => option.value)))`)
+      const run = { width, panels: [] }
+      for (const type of types) {
+        // The panel type travels through a page global: composing selectors with nested template literals
+        // produced unparseable code twice while building this harness.
+        await evaluate(`window.__matrixType = ${JSON.stringify(type)}`)
+        await evaluate(`(() => { const sel = Array.from(document.querySelectorAll('select.ui-panel-select')).find(el => el.offsetParent !== null); if (!sel) return 'NO_SELECT'; Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(sel, window.__matrixType); sel.dispatchEvent(new Event('change', { bubbles: true })); return 'OK' })()`)
+        let mounted = false
+        for (let i = 0; i < 20; i++) { if (await evaluate(`!!document.querySelector('[data-panel-type="' + window.__matrixType + '"]')`)) { mounted = true; break } await sleep(200) }
+        if (!mounted) { run.panels.push({ type, mounted: false }); continue }
+        await sleep(350)
+        const measured = await evaluate(`(() => { const host = document.querySelector('[data-panel-type="' + window.__matrixType + '"]'); if (!host) return null; return { width: Math.round(host.getBoundingClientRect().width), height: Math.round(host.getBoundingClientRect().height) } })()`)
+        run.panels.push({ type, mounted: true, panelWidth: measured?.width ?? null, shot: await screenshot('w' + width + '-' + type) })
+      }
+      matrix.runs.push({ ...run, panelWidths: [...new Set(run.panels.map(panel => panel.panelWidth).filter(Boolean))].sort((a, b) => a - b) })
+    }
+    await callWithTimeout('Emulation.clearDeviceMetricsOverride', {}, 10000)
+    matrix.passed = matrix.runs.every(run => run.panels.every(panel => panel.mounted))
+  } catch (error) { matrix.error = String(error) }
+  fs.writeFileSync('artifacts/visual/ui-parity/visual-matrix.json', JSON.stringify(matrix, null, 2))
+  console.log('MATRIX ' + JSON.stringify(matrix.runs.map(run => ({ width: run.width, panelWidths: run.panelWidths, mounted: run.panels.filter(panel => panel.mounted).length + '/' + run.panels.length }))))
+  // Ratchet: a panel that stops mounting at any width is a regression even if every screenshot looks fine.
+  let baseline = { minMountedPerWidth: 18 }
+  try { baseline = JSON.parse(fs.readFileSync('scripts/visual-matrix-baseline.json', 'utf8')) } catch {}
+  const shortfalls = matrix.runs.filter(run => run.panels.filter(panel => panel.mounted).length < (baseline.minMountedPerWidth ?? 18))
+  if (shortfalls.length) {
+    console.log('MATRIX-FAIL ' + JSON.stringify(shortfalls.map(run => ({ width: run.width, mounted: run.panels.filter(panel => panel.mounted).length }))))
+    process.exitCode = 1
+  }
+  if (matrix.runs.length !== widths.length) process.exitCode = 1
 }
 console.log(JSON.stringify(report, null, 2))
 ws.close()
