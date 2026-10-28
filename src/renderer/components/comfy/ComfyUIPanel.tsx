@@ -178,13 +178,13 @@ export function ComfyUIPanel() {
           <Field label='正面提示词'><textarea value={quickForm.prompt} onChange={event => updateQuick('prompt', event.target.value)} className='ui-field min-h-20 resize-y' placeholder='输入正面提示词' /></Field>
           <Field label='负面提示词'><textarea value={quickForm.negative} onChange={event => updateQuick('negative', event.target.value)} className='ui-field min-h-16 resize-y' placeholder='输入负面提示词' /></Field>
         </div>
-        <div className='mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4'>
+        <div className='mt-2 grid grid-cols-2 gap-2'>
           <NumberField label='Seed' value={quickForm.seed} min={-1} max={4294967295} onChange={value => value !== undefined && updateQuick('seed', value)} />
           <NumberField label='Steps' value={quickForm.steps} min={1} max={200} onChange={value => value !== undefined && updateQuick('steps', value)} />
           <NumberField label='CFG' value={quickForm.cfg} min={0} max={50} step={0.1} onChange={value => value !== undefined && updateQuick('cfg', value)} />
           <NumberField label='Batch' value={quickForm.batch} min={1} max={16} onChange={value => value !== undefined && updateQuick('batch', value)} />
         </div>
-        <div className='mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4'>
+        <div className='mt-2 grid grid-cols-2 gap-2'>
           <Field label='采样器'><select value={quickForm.sampler} onChange={event => updateQuick('sampler', event.target.value)} className='ui-field'>{SAMPLERS.map(value => <option key={value}>{value}</option>)}</select></Field>
           <Field label='调度器'><select value={quickForm.scheduler} onChange={event => updateQuick('scheduler', event.target.value)} className='ui-field'>{SCHEDULERS.map(value => <option key={value}>{value}</option>)}</select></Field>
           <NumberField label='宽度' value={quickForm.width} min={64} max={4096} onChange={value => value !== undefined && updateQuick('width', value)} />

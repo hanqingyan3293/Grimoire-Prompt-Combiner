@@ -302,6 +302,14 @@ if (process.argv.includes('--narrow-audit')) {
   const report = { passed: false, panels: [] }
   try {
     const only = (process.argv.find(item => item.startsWith('--narrow-only=')) || '').split('=')[1]
+    // Width matrix: the same audit at several viewport widths, so "narrow looks fine" is not the only
+    // data point. Layouts that only work at one width are the ones that break in real resizing.
+    const widthArg = Number((process.argv.find(item => item.startsWith('--width=')) || '').split('=')[1])
+    if (Number.isFinite(widthArg) && widthArg >= 320) {
+      await callWithTimeout('Emulation.setDeviceMetricsOverride', { width: widthArg, height: 900, deviceScaleFactor: 1, mobile: false }, 10000)
+      report.viewportWidth = widthArg
+      await sleep(800)
+    }
     const types = await evaluate(`Array.from(new Set(Array.from(document.querySelectorAll('select.ui-panel-select option')).map(option => option.value)))`).then(list => only ? list.filter(item => item === only) : list)
     report.panelCount = types.length
     for (const type of types) {
@@ -321,7 +329,11 @@ if (process.argv.includes('--narrow-audit')) {
           const text = (el.innerText || '').trim()
           if (text.length < 4 || !visible(el)) continue
           const rect = el.getBoundingClientRect()
-          if (rect.width > 0 && rect.width < 40 && rect.height > 20) { const chain = []; let node = el.parentElement; for (let depth = 0; depth < 3 && node; depth += 1) { chain.push((node.className || '').toString().slice(0, 90)); node = node.parentElement } const parent = el.parentElement; const siblings = parent ? Array.from(parent.children).map(child => ({ cls: (child.className || '').toString().slice(0, 60), w: Math.round(child.getBoundingClientRect().width) })) : []; vertical.push({ text: text.slice(0, 24), width: Math.round(rect.width), chain, parentW: parent ? Math.round(parent.getBoundingClientRect().width) : 0, siblings: siblings.slice(0, 6) }) }
+          // "Vertical text" means the block is at least three lines tall inside a strip: a 2-line title
+          // is wrapping, not collapsing, and truncation is already deliberate.
+          const lineHeight = parseFloat(getComputedStyle(el).lineHeight || '16') || 16
+          const lines = Math.round(rect.height / lineHeight)
+          if (rect.width > 0 && rect.width < 60 && lines >= 3) { const chain = []; let node = el.parentElement; for (let depth = 0; depth < 3 && node; depth += 1) { chain.push((node.className || '').toString().slice(0, 90)); node = node.parentElement } const parent = el.parentElement; const siblings = parent ? Array.from(parent.children).map(child => ({ cls: (child.className || '').toString().slice(0, 60), w: Math.round(child.getBoundingClientRect().width) })) : []; vertical.push({ text: text.slice(0, 24), width: Math.round(rect.width), chain, parentW: parent ? Math.round(parent.getBoundingClientRect().width) : 0, siblings: siblings.slice(0, 6) }) }
         }
         const overflow = []
         // Only VISIBLE spill counts: a container that clips or scrolls its own content is handling it

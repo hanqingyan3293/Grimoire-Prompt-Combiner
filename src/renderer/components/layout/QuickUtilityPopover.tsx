@@ -65,7 +65,7 @@ export function QuickSettingsPanel({ variant = "popover" }: { variant?: "popover
         </div>
         <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-primary)] p-4">
           <div className="mb-2 text-xs font-medium text-[var(--color-text-secondary)]">主题</div>
-          <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
+          <div className="grid grid-cols-2 gap-2.5">
             {THEMES.map(item => (
               <button
                 key={item.key}
