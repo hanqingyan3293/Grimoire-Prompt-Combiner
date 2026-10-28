@@ -1,0 +1,5 @@
+{
+  "offenders": 0,
+  "panelCount": 17,
+  "note": "Lower-only ratchet for --narrow-audit; raise only with a written reason in STATE.md"
+}

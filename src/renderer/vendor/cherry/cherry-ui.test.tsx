@@ -23,7 +23,10 @@ describe('Cherry AI UI adapter', () => {
     expect(screen.getByText('conversation')).toBeTruthy()
     expect(screen.getByText('context')).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: '收起会话侧栏' }))
-    expect(screen.queryByText('sessions')).toBeTruthy()
+    // Collapsing unmounts the pane's contents: a zero-width column with invisible text is still text
+    // for assistive tech and still costs layout, so the assertion is that it is gone.
+    expect(screen.queryByText('sessions')).toBeNull()
     expect(screen.getByRole('button', { name: '展开会话侧栏' })).toBeTruthy()
+    expect(screen.getByText('conversation')).toBeTruthy()
   })
 })

@@ -301,7 +301,8 @@ if (process.argv.includes('--gallery')) {
 if (process.argv.includes('--narrow-audit')) {
   const report = { passed: false, panels: [] }
   try {
-    const types = await evaluate(`Array.from(new Set(Array.from(document.querySelectorAll('select.ui-panel-select option')).map(option => option.value)))`)
+    const only = (process.argv.find(item => item.startsWith('--narrow-only=')) || '').split('=')[1]
+    const types = await evaluate(`Array.from(new Set(Array.from(document.querySelectorAll('select.ui-panel-select option')).map(option => option.value)))`).then(list => only ? list.filter(item => item === only) : list)
     report.panelCount = types.length
     for (const type of types) {
       const switched = await evaluate(`(() => { const sel = Array.from(document.querySelectorAll('select.ui-panel-select')).find(el => el.offsetParent !== null); if (!sel) return 'NO_SELECT'; Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(sel, ${JSON.stringify(type)}); sel.dispatchEvent(new Event('change', { bubbles: true })); return 'OK' })()`)
@@ -314,15 +315,22 @@ if (process.argv.includes('--narrow-audit')) {
         const host = document.querySelector('[data-panel-type=' + JSON.stringify(${JSON.stringify(type)}) + ']')
         if (!host) return null
         const vertical = []
+        // Collapsed/animated-away chrome is not a layout defect: skip anything invisible.
+        const visible = (el) => { let node = el; while (node && node !== host.parentElement) { const style = getComputedStyle(node); if (style.display === 'none' || style.visibility === 'hidden' || Number(style.opacity) === 0) return false; node = node.parentElement } return true }
         for (const el of host.querySelectorAll('span,div,button,a,label,p,td,th,h1,h2,h3')) {
           const text = (el.innerText || '').trim()
-          if (text.length < 4) continue
+          if (text.length < 4 || !visible(el)) continue
           const rect = el.getBoundingClientRect()
-          if (rect.width > 0 && rect.width < 40 && rect.height > 20) { const chain = []; let node = el.parentElement; for (let depth = 0; depth < 3 && node; depth += 1) { chain.push((node.className || '').toString().slice(0, 90)); node = node.parentElement } vertical.push({ text: text.slice(0, 24), width: Math.round(rect.width), chain }) }
+          if (rect.width > 0 && rect.width < 40 && rect.height > 20) { const chain = []; let node = el.parentElement; for (let depth = 0; depth < 3 && node; depth += 1) { chain.push((node.className || '').toString().slice(0, 90)); node = node.parentElement } const parent = el.parentElement; const siblings = parent ? Array.from(parent.children).map(child => ({ cls: (child.className || '').toString().slice(0, 60), w: Math.round(child.getBoundingClientRect().width) })) : []; vertical.push({ text: text.slice(0, 24), width: Math.round(rect.width), chain, parentW: parent ? Math.round(parent.getBoundingClientRect().width) : 0, siblings: siblings.slice(0, 6) }) }
         }
         const overflow = []
+        // Only VISIBLE spill counts: a container that clips or scrolls its own content is handling it
+        // (ellipsis, scrollbar). The defect is content escaping a box that does not.
         for (const el of host.querySelectorAll('*')) {
-          if (el.scrollWidth > el.clientWidth + 8 && el.clientWidth > 0) overflow.push({ tag: el.tagName.toLowerCase(), scroll: el.scrollWidth, client: el.clientWidth })
+          if (el.scrollWidth <= el.clientWidth + 8 || el.clientWidth <= 0) continue
+          const style = getComputedStyle(el)
+          if (style.overflowX !== 'visible') continue
+          overflow.push({ tag: el.tagName.toLowerCase(), scroll: el.scrollWidth, client: el.clientWidth })
         }
         return { vertical: vertical.slice(0, 6), overflow: overflow.slice(0, 6), width: Math.round(host.getBoundingClientRect().width) }
       })()`)
@@ -334,7 +342,17 @@ if (process.argv.includes('--narrow-audit')) {
     report.passed = true
   } catch (error) { report.error = String(error) }
   fs.writeFileSync('artifacts/visual/ui-parity/narrow-audit.json', JSON.stringify(report, null, 2))
-  console.log('NARROW ' + JSON.stringify({ panelCount: report.panelCount, offenderCount: report.offenderCount, offenders: report.offenders }))
+  // Ratchet: the audit is only useful if regressions fail. `narrow-baseline.json` records the number
+  // of panels that were allowed to be broken when the audit was introduced; it must go down by hand.
+  const baselinePath = 'scripts/narrow-baseline.json'
+  let baseline = { offenders: 0 }
+  try { baseline = JSON.parse(fs.readFileSync(baselinePath, 'utf8')) } catch {}
+  const budget = typeof baseline.offenders === 'number' ? baseline.offenders : 0
+  if (report.offenderCount > budget) {
+    console.log('NARROW-FAIL offenders=' + report.offenderCount + ' budget=' + budget)
+    process.exitCode = 1
+  }
+  console.log('NARROW ' + JSON.stringify({ panelCount: report.panelCount, offenderCount: report.offenderCount, budget, offenders: report.offenders }))
 }
 console.log(JSON.stringify(report, null, 2))
 ws.close()

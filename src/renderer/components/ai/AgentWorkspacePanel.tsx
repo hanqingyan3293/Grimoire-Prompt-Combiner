@@ -407,7 +407,7 @@ export function AgentWorkspacePanel({ variant = "workspace", initialMode }: { va
   const header = <header className="flex min-h-14 shrink-0 items-center gap-3 border-b border-[var(--color-border)] bg-[var(--color-bg-primary)] px-4 py-2 shadow-sm">
         <div className="flex min-w-0 items-center gap-2">
           <div className="grid size-8 shrink-0 place-items-center rounded-xl bg-[var(--color-accent)]/15 text-[var(--color-accent-text)]"><Bot size={17} /></div>
-          <div className="min-w-0"><div className="text-sm font-semibold text-[var(--color-text-primary)]">Agent 工作台</div><div className="truncate text-[10px] text-[var(--color-text-secondary)]">{activeData?.session.title || '统一 AI 会话、工具与上下文'}</div></div>
+          <div className="min-w-0"><div className="truncate text-sm font-semibold text-[var(--color-text-primary)]">Agent 工作台</div><div className="truncate text-[10px] text-[var(--color-text-secondary)]">{activeData?.session.title || '统一 AI 会话、工具与上下文'}</div></div>
         </div>
         <nav className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto" aria-label="Agent 模式">
           {MODES.map(item => { const Icon = item.icon; return <button key={item.id} type="button" onClick={() => setMode(item.id)} aria-current={mode === item.id ? 'page' : undefined} className={'flex shrink-0 items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs transition-colors ' + (mode === item.id ? 'bg-[var(--color-accent)]/15 font-medium text-[var(--color-accent-text)]' : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-tertiary)] hover:text-[var(--color-text-primary)]')}><Icon size={14} />{item.label}</button> })}

@@ -1,5 +1,5 @@
 import { PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen, GripVertical } from 'lucide-react'
-import { useEffect, useMemo, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react'
 
 type ResizeSide = 'left' | 'right'
 type ResizeState = { side: ResizeSide; startX: number; startWidth: number }
@@ -66,37 +66,56 @@ export function CherryAgentShell({ header, toolbar, notice, sidebar, center, con
     }
   }, [resize])
 
+  const [width, setWidth] = useState(0)
+  const shellRef = useRef<HTMLDivElement | null>(null)
+  useEffect(() => {
+    const node = shellRef.current
+    if (!node) return
+    // jsdom (and any test host without the API) falls back to the un-measured layout instead of throwing.
+    if (typeof ResizeObserver === 'undefined') { setWidth(node.getBoundingClientRect().width); return }
+    const observer = new ResizeObserver(entries => { for (const entry of entries) setWidth(entry.contentRect.width) })
+    observer.observe(node)
+    setWidth(node.getBoundingClientRect().width)
+    return () => observer.disconnect()
+  }, [])
+
   const startResize = (side: ResizeSide, event: ReactPointerEvent<HTMLButtonElement>) => {
     event.preventDefault()
     event.stopPropagation()
     setResize({ side, startX: event.clientX, startWidth: side === 'left' ? leftWidth : rightWidth })
   }
 
-  const gridTemplateColumns = (leftCollapsed ? '0px' : leftWidth + 'px') + ' minmax(0, 1fr) ' + (rightCollapsed ? '0px' : rightWidth + 'px')
-  return <div data-cherry-root="true" className="flex h-full min-h-0 flex-col overflow-hidden bg-[var(--color-bg-primary)]">
+  // A panel can be resized down to a few hundred pixels. With fixed sidebars the grid then hands the
+  // centre column ~28px and every message renders one character per line — so below a threshold the
+  // sidebars give way to the conversation instead of squeezing it.
+  const narrow = width > 0 && width < 720
+  const showLeft = !leftCollapsed && !narrow
+  const showRight = !rightCollapsed && !narrow
+  const gridTemplateColumns = (showLeft ? leftWidth + 'px' : '0px') + ' minmax(0, 1fr) ' + (showRight ? rightWidth + 'px' : '0px')
+  return <div ref={shellRef} data-cherry-root="true" className="flex h-full min-h-0 flex-col overflow-hidden bg-[var(--color-bg-primary)]">
     {header}
     {notice}
     {toolbar}
     {compact ? <main className="min-h-0 flex-1 overflow-hidden">{center}</main> : <div className="relative grid min-h-0 flex-1" style={{ gridTemplateColumns }}>
-      <aside className={'relative min-h-0 overflow-hidden border-r border-[var(--color-border)] bg-[var(--color-bg-secondary)] transition-[width,opacity] duration-150 ' + (leftCollapsed ? 'pointer-events-none opacity-0' : 'opacity-100')}>
-        <div className="flex h-full min-h-0 flex-col p-3">
+      <aside className={'relative min-h-0 overflow-hidden border-r border-[var(--color-border)] bg-[var(--color-bg-secondary)] transition-[width,opacity] duration-150 ' + (showLeft ? 'opacity-100' : 'pointer-events-none opacity-0')}>
+        {showLeft && <div className="flex h-full min-h-0 flex-col p-3">
           <div className="mb-2 flex shrink-0 items-center justify-between gap-2 border-b border-[var(--color-border)] pb-2">
             <span className="text-[11px] font-semibold tracking-wide text-[var(--color-text-secondary)]">会话与导航</span>
             <button type="button" className="ui-toolbar-button h-7 w-7 p-0" onClick={() => setLeftCollapsed(true)} aria-label="收起会话侧栏" title="收起会话侧栏"><PanelLeftClose size={14} /></button>
           </div>
           <div className="min-h-0 flex-1 overflow-auto">{sidebar}</div>
-        </div>
+        </div>}
         <button type="button" className="absolute inset-y-0 right-[-8px] z-20 w-4 cursor-col-resize bg-transparent" onPointerDown={event => startResize('left', event)} aria-label="调整会话侧栏宽度" title="拖动调整侧栏宽度"><GripVertical className="pointer-events-none absolute left-1/2 top-1/2 size-3 -translate-x-1/2 -translate-y-1/2 text-[var(--color-border-strong)] opacity-0 transition-opacity hover:opacity-100" /></button>
       </aside>
       <main className="min-h-0 overflow-hidden bg-[var(--color-bg-primary)]">{center}</main>
-      <aside className={'relative min-h-0 overflow-hidden border-l border-[var(--color-border)] bg-[var(--color-bg-secondary)] transition-[width,opacity] duration-150 ' + (rightCollapsed ? 'pointer-events-none opacity-0' : 'opacity-100')}>
-        <div className="flex h-full min-h-0 flex-col p-3">
+      <aside className={'relative min-h-0 overflow-hidden border-l border-[var(--color-border)] bg-[var(--color-bg-secondary)] transition-[width,opacity] duration-150 ' + (showRight ? 'opacity-100' : 'pointer-events-none opacity-0')}>
+        {showRight && <div className="flex h-full min-h-0 flex-col p-3">
           <div className="mb-2 flex shrink-0 items-center justify-between gap-2 border-b border-[var(--color-border)] pb-2">
             <span className="text-[11px] font-semibold tracking-wide text-[var(--color-text-secondary)]">上下文与工具</span>
             <button type="button" className="ui-toolbar-button h-7 w-7 p-0" onClick={() => setRightCollapsed(true)} aria-label="收起上下文侧栏" title="收起上下文侧栏"><PanelRightClose size={14} /></button>
           </div>
           <div className="min-h-0 flex-1 space-y-3 overflow-auto">{context}</div>
-        </div>
+        </div>}
         <button type="button" className="absolute inset-y-0 left-[-8px] z-20 w-4 cursor-col-resize bg-transparent" onPointerDown={event => startResize('right', event)} aria-label="调整上下文侧栏宽度" title="拖动调整上下文侧栏宽度"><GripVertical className="pointer-events-none absolute left-1/2 top-1/2 size-3 -translate-x-1/2 -translate-y-1/2 text-[var(--color-border-strong)] opacity-0 transition-opacity hover:opacity-100" /></button>
       </aside>
       {leftCollapsed && <button type="button" className="absolute left-2 top-2 z-30 grid size-8 place-items-center rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-secondary)] text-[var(--color-text-secondary)] shadow-lg hover:text-[var(--color-text-primary)]" onClick={() => setLeftCollapsed(false)} aria-label="展开会话侧栏" title="展开会话侧栏"><PanelLeftOpen size={15} /></button>}

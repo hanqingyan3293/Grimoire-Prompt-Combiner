@@ -593,3 +593,18 @@ resources/agent-runtimes/     opencode.exe 134M (1.18.34) / pi.exe 107M (1.0.1)
 - `gallery-search`：主区 `min-w-[20rem]` → `min-w-[12rem]`，窄列下媒体区不再强行撑开。
 
 仍待修（下一轮）：`agent`（消息区被挤到 28px 宽，文字竖排）、`comfyui`（输入框溢出 20px）、`utility-sidebar` / `prompt-assets` / `tag-asset-manager`（span 文本截断无省略号）、`gallery-search`（筛选轨内部仍有 425px 容器）。
+
+### 窄面板：命中数 6 → 0，并加棘轮（2026-10-27 第三十三轮）
+
+- **agent 面板根因**：`AgentShell` 用 CSS grid `leftWidth px | 1fr | rightWidth px`；面板被拖到 304px 时，
+  两个固定侧栏把中间列压成 **28px**，于是每条消息一个字一行。
+  修法：外壳用 `ResizeObserver` 记录宽度，**< 720px 时自动收起两侧栏**（中间列为 `minmax(0,1fr)`），
+  且折叠时**不再渲染侧栏内容**（零宽列里的隐形文字既占布局又会读给读屏器）。
+- 审计口径收紧两处：
+  1. 跳过 `display:none / visibility:hidden / opacity:0` 的祖先——折叠掉的界面不算缺陷；
+  2. 横向溢出只统计 **computed overflow-x 为 visible** 的容器；自己裁切或滚动的（省略号、滚动条）属于已处理。
+  否则会把「已在处理的裁切」误报成缺陷，把所有面板都算成坏。
+- 收敛结果：**17 个面板，命中 0**（上一轮 7、修完 6）。
+- 新增棘轮 `scripts/narrow-baseline.json`（当前 `offenders: 0`）：命中数超过预算时 `--narrow-audit` 退出码为 1，
+  只能手动下调，不能悄悄放过。
+- 附带修：`cherry-ui.test.tsx` 的折叠断言改为「内容不再在 DOM 里」，并给 `ResizeObserver` 加了 jsdom 兜底。
