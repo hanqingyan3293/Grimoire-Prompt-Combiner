@@ -1145,3 +1145,18 @@ default: … 面板尚未接入 …
 - `createNovelaiAsset` 返回资产本身、入参是 `{kind,name,payload}`（没有 workId/content）；
 - `restoreNovelaiVersions` 收的是**裸 id 数组**，不是 `{workId,versionIds,expectedRevision}`。
 资产↔版本的关联走「版本 → 图片 → 资产用量」，那条链已有独立测试，本测试不重复造 image 行。
+
+### 反「凑数」第四层：端到端持久化验证（2026-10-27 第七十一轮）
+
+前三层查的是「有没有壳」（面板分支）、「有没有后端」（路由）、「有没有假数据」（服务返回值）。
+第四层补最后一类：**设置改了到底有没有写进 SQLite 并在重载后生效**。
+
+新增 `--comfy-persist` 旅程（走我们自己实现的 ComfyUI 面板，所以是对我们代码的检验，不是对源页面的）：
+
+1. 打开 ComfyUI 面板；2. 用**原生 setter + input 事件**往地址框真输入；3. 点「保存并连接」；
+4. 从 `settings.getAll()` 读 `comfyui_base_url`，必须等于输入值；5. **切走再切回**面板，输入框必须显示库里的值。
+
+四项关键断言全 PASS：`storedInDatabase: true`、`restoredFromDatabase: true`（实测值两端都是 `http://127.0.0.1:8199`）。
+
+为什么第 5 步是必需的：只断言输入框的值，即使什么都没保存也会通过（React 受控组件的 state 就够）。
+必须是「写入库 → 重新挂载 → 从库读回」，才算真的持久化。

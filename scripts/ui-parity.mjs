@@ -535,6 +535,42 @@ if (process.argv.some(argument => argument.startsWith('--measure='))) {
   const expression = '(() => { const panel = document.querySelector("[data-panel-type]") || document; return Array.from(panel.querySelectorAll(' + JSON.stringify(selector) + ')).slice(0, 6).map(element => { const rect = element.getBoundingClientRect(); const style = getComputedStyle(element); return { width: Math.round(rect.width), height: Math.round(rect.height), background: style.backgroundColor, border: style.borderColor, role: element.getAttribute("role") || element.type || "" } }) })()'
   console.log('MEASURE ' + selector + ' ' + JSON.stringify(await evaluate(expression)))
 }
+
+// `--comfy-persist` proves a page we own really persists: type into the ComfyUI address field, press
+// 保存并连接, read the value back from SQLite through `settings.getAll`, then reload the panel and check the
+// field shows the stored value. Asserting the input value alone would pass even if nothing was saved.
+if (process.argv.includes('--comfy-persist')) {
+  const report = { passed: false, checks: {} }
+  const waitForLocal = async (expression, attempts = 120) => { for (let index = 0; index < attempts; index += 1) { const value = await evaluate(expression); if (value) return value; await sleep(250) } throw new Error('timed out: ' + expression) }
+  try {
+    await waitForLocal(`!!document.querySelector('select.ui-panel-select')`)
+    const switched = await evaluate(`(() => { const select = Array.from(document.querySelectorAll('select.ui-panel-select')).find(element => element.offsetParent !== null); if (!select) return false; Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(select, 'comfyui'); select.dispatchEvent(new Event('change', { bubbles: true })); return true })()`)
+    report.checks.panelOpened = switched === true
+    await sleep(1200)
+    const target = 'http://127.0.0.1:8199'
+    const typed = await evaluate(`(() => { const input = document.querySelector('[data-panel-type="comfyui"] input.ui-field'); if (!input) return false; Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(input, ${JSON.stringify(target)}); input.dispatchEvent(new Event('input', { bubbles: true })); return true })()`)
+    report.checks.fieldTyped = typed === true
+    await sleep(400)
+    const clicked = await evaluate(`(() => { const panel = document.querySelector('[data-panel-type="comfyui"]'); if (!panel) return false; const button = Array.from(panel.querySelectorAll('button')).find(element => (element.textContent || '').includes('保存')); if (!button) return false; button.click(); return true })()`)
+    report.checks.saveClicked = clicked === true
+    await sleep(1200)
+    const stored = await evaluate(`(async () => { const all = await window.api.settings.getAll(); return all.comfyui_base_url })()`)
+    report.stored = stored
+    report.checks.storedInDatabase = stored === target
+    // Reload the panel by switching away and back: the field must come from the database, not from state.
+    await evaluate(`(() => { const select = Array.from(document.querySelectorAll('select.ui-panel-select')).find(element => element.offsetParent !== null); Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(select, 'tasks'); select.dispatchEvent(new Event('change', { bubbles: true })) })()`)
+    await sleep(800)
+    await evaluate(`(() => { const select = Array.from(document.querySelectorAll('select.ui-panel-select')).find(element => element.offsetParent !== null); Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(select, 'comfyui'); select.dispatchEvent(new Event('change', { bubbles: true })) })()`)
+    await sleep(1500)
+    const shown = await evaluate(`(() => { const input = document.querySelector('[data-panel-type="comfyui"] input.ui-field'); return input ? input.value : null })()`)
+    report.shownAfterReload = shown
+    report.checks.restoredFromDatabase = shown === target
+    report.passed = Object.values(report.checks).every(Boolean)
+  } catch (error) { report.error = String(error) }
+  fs.writeFileSync('artifacts/visual/ui-parity/comfy-persist.json', JSON.stringify(report, null, 2))
+  console.log('COMFY-PERSIST ' + JSON.stringify({ passed: report.passed, checks: report.checks, stored: report.stored, shown: report.shownAfterReload }))
+  if (!report.passed) process.exitCode = 1
+}
 console.log(JSON.stringify(report, null, 2))
 ws.close()
 killTree()
