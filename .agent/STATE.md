@@ -1002,3 +1002,22 @@ An error occurred in the <LocalAgentPanel> component.
 | 选中 | 抬起表面 + 阴影 | `surface` + `panel-shadow`，不再染 accent |
 
 截图复核（1280 视口）：分段控件为 muted 轨道 + 白色抬起项，与源一致；左侧与右侧两个实例都正常。
+
+### M1.5：复选框基线（2026-10-27 第六十二轮）
+
+源 `checkbox.tsx`：`aspect-square rounded-[4px] border` + `bg-transparent`，hover `bg-accent/50`，
+选中 `border-foreground text-foreground`（反色填充 + 勾），带轻微缩放动效。
+
+我们的原生 `<input type=checkbox>` 之前只设 `accent-color`——**控制不了圆角、轨道与 hover**。
+新增 `.ui-checkbox`：`appearance: none` 重绘方框（16px、4px 圆角、透明轨道、hover 淡 accent），
+选中用 `background-image` 画白色勾（data URI），保留原生语义（`:checked`、label 关联、disabled）。
+
+已迁移 4 处：回收站多选、识图面板、简易 AI 面板、图库检查器「连续探索」。
+分页器复核：源用 `buttonVariants(outline|ghost, size=icon)` = 36px 方按钮；我们的 `IconButton` 是 30px 方按钮，
+尺寸不同但同族，暂不改（改动会影响面板头所有图标按钮，收益不抵风险），记录在此备查。
+
+**踩坑（本轮）**：勾选标记最初用内联 SVG data URI 作 `background-image`，`vite build` 直接失败：
+`CssSyntaxError: index.css: Missed semicolon`（列号指向合并后的样式表，很难一眼看出是哪行）。
+定位方法是把它换成 `background-image: none` 后构建即通过，确认是 URI 本身的问题。
+改为纯 CSS：`appearance: none` 让方框成为普通元素，勾由 `::after` 的旋转边框画出（`border-width: 0 2px 2px 0` + `rotate(45deg)`）。
+教训：**样式里的 data URI 要先跑一次构建**，不要等门禁。

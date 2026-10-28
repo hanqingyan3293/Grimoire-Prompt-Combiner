@@ -510,7 +510,7 @@ function SimpleVision() {
                     onClick={() => toggleSelect(i)}
                     className={"flex items-center gap-1.5 px-2 py-1 rounded text-[11px] cursor-pointer " + (sel ? "bg-[var(--color-accent)]/15 text-[var(--color-accent-text)]" : "hover:bg-[var(--color-bg-primary)] text-[var(--color-text-primary)]")}
                   >
-                    <input type="checkbox" checked={sel} readOnly className="accent-[var(--color-accent)] w-3 h-3" />
+                    <input type="checkbox" checked={sel} readOnly className="ui-checkbox" />
                     <span className="font-medium flex-1 truncate">{s.en}</span>
                     <span className="text-[10px] text-[var(--color-text-secondary)] truncate max-w-[100px]">{s.zh}</span>
                     {inLib && <span className="text-[10px] text-green-400">lib</span>}

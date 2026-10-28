@@ -256,7 +256,7 @@ export function InspectorPanel({ item, className, onOpenSimilar }: { item: Galle
             </div>
             {/* 连续探索：来路可后退 + 自动以新图为起点重查 */}
             <div className="flex flex-wrap items-center gap-2 text-[10px]">
-              <label className="inline-flex items-center gap-1"><input type="checkbox" checked={autoExplore} onChange={event => setAutoExplore(event.target.checked)} />连续探索</label>
+              <label className="inline-flex items-center gap-1"><input type="checkbox" className="ui-checkbox" checked={autoExplore} onChange={event => setAutoExplore(event.target.checked)} />连续探索</label>
               {similarTrail.length > 0 ? <button type="button" className="rounded border border-[var(--color-border)] px-1.5 py-0.5 text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]" onClick={backInTrail}>← 返回 #{similarTrail.at(-1)}{similarTrail.length > 1 ? `（共 ${similarTrail.length} 步）` : ''}</button> : null}
             </div>
             {similar.loading ? <div className="text-[10px] text-[var(--color-text-secondary)]" role="status">正在计算…</div> : similar.items.length === 0 ? (

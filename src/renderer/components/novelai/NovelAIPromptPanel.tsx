@@ -296,7 +296,7 @@ export function NovelAIPromptPanel() {
                     回收站：
                     {bundle.deleted.map(version => (
                       <span key={version.id} className="inline-flex items-center gap-1 rounded border border-[var(--color-border)] px-1.5 py-0.5">
-                        <input type="checkbox" aria-label={'选择 v' + version.number} checked={picked.includes(version.id)} onChange={() => togglePick(version.id)} />
+                        <input type="checkbox" className="ui-checkbox" aria-label={'选择 v' + version.number} checked={picked.includes(version.id)} onChange={() => togglePick(version.id)} />
                         <Button size="sm" variant="ghost" icon={RotateCcw} onClick={() => void restore(version.id)} disabled={busy}>v{version.number}</Button>
                       </span>
                     ))}

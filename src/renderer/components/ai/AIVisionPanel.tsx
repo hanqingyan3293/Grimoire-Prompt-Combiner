@@ -205,7 +205,7 @@ export function AIVisionPanel() {
                 return (
                   <div key={i} onClick={() => toggleSelect(i)}
                     className={'flex items-center gap-2 px-3 py-2 rounded-lg text-sm cursor-pointer transition-colors ' + (sel ? 'bg-[var(--color-accent)]/15 text-[var(--color-accent-text)]' : 'hover:bg-[var(--color-bg-primary)] text-[var(--color-text-primary)]')}>
-                    <input type="checkbox" checked={sel} readOnly className="accent-[var(--color-accent)]" />
+                    <input type="checkbox" checked={sel} readOnly className="ui-checkbox" />
                     <span className="font-medium flex-1">{s.en}</span>
                     <span className="text-xs text-[var(--color-text-secondary)] max-w-[120px] truncate">{s.zh}</span>
                     {inLib && <span className="text-xs text-green-400 px-1.5 py-0.5 bg-green-400/10 rounded">库</span>}

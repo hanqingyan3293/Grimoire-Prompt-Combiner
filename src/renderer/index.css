@@ -1096,3 +1096,46 @@ textarea.ui-field {
 @media (prefers-reduced-motion: reduce) {
   .ui-switch, .ui-switch-thumb { transition: none; }
 }
+
+/* Checkbox parity with the vendored primitive: 16px square, 4px radius, transparent track, checked =
+ * inverted fill with a tick. Native inputs keep their semantics (label association, :checked state),
+ * only the box is redrawn — `accent-color` alone cannot control radius or the hover track. */
+.ui-checkbox {
+  appearance: none;
+  position: relative;
+  width: 16px;
+  height: 16px;
+  flex: 0 0 16px;
+  border: 1px solid var(--color-border-strong);
+  border-radius: 4px;
+  background-color: transparent;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: 12px 12px;
+  transition: background-color var(--motion-fast) ease, border-color var(--motion-fast) ease;
+  cursor: pointer;
+}
+
+.ui-checkbox:not(:disabled):hover { background-color: color-mix(in srgb, var(--color-accent) 22%, transparent); }
+
+.ui-checkbox:checked {
+  border-color: var(--color-text-primary);
+  background-color: var(--color-text-primary);
+  /* The tick is drawn with a rotated border, not an inline SVG data URI: postcss rejected the URI at
+   * build time, and a pseudo-element works because `appearance: none` makes the box a normal element. */
+}
+
+.ui-checkbox:focus-visible { outline: 2px solid var(--gr-focus-ring); outline-offset: 1px; }
+.ui-checkbox:disabled { cursor: not-allowed; opacity: 0.5; }
+
+.ui-checkbox:checked::after {
+  content: '';
+  position: absolute;
+  left: 4px;
+  top: 1px;
+  width: 4px;
+  height: 8px;
+  border: solid #ffffff;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
