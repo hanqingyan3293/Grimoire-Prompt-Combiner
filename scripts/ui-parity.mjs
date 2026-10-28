@@ -153,6 +153,71 @@ for (const panel of report.panels) {
 
 report.consoleErrors = consoleErrors.filter(line => line && !line.includes('Electron Security Warning'))
 report.ok = report.errors.length === 0 && report.consoleErrors.length === 0
+
+// Workbench click journey (M6 UI). Runs inside the real main window: switches an existing panel
+// to 提示词工作台 through its own header select, then drives create → edit → save → delete →
+// restore with real DOM events, screenshotting each state.
+if (process.argv.includes('--workbench')) {
+  const journey = { passed: false, checks: {}, shots: [], errors: [] }
+  const setValue = (selector, value) => `(() => {
+    const el = document.querySelector(${JSON.stringify(selector)});
+    if (!el) return 'MISSING';
+    const proto = el.tagName === 'SELECT' ? HTMLSelectElement.prototype : el.tagName === 'TEXTAREA' ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype;
+    const setter = Object.getOwnPropertyDescriptor(proto, 'value').set;
+    setter.call(el, ${JSON.stringify(value)});
+    el.dispatchEvent(new Event(el.tagName === 'SELECT' ? 'change' : 'input', { bubbles: true }));
+    return 'OK';
+  })()`
+  const waitFor = async (expression, attempts = 80) => { for (let i = 0; i < attempts; i++) { const value = await evaluate(expression); if (value) return value; await sleep(250) } throw new Error('timed out: ' + expression) }
+  try {
+    // Open the panel through the product's own add-menu (real clicks on real buttons). Seeding
+    // the workspace document was rejected earlier: the renderer keeps its own layout snapshot in
+    // localStorage, so a stored document alone does not change what is on screen.
+    // Target a real (non-system) panel: the tag sidebar is a system panel whose header has no
+    // add-menu behaviour, so clicking its '+' did nothing and the panel never appeared.
+    const trigger = await evaluate(`(() => { const hosts = Array.from(document.querySelectorAll('[data-ui="panel.shell"]')).filter(el => el.offsetParent !== null); const host = hosts.find(el => el.getAttribute('data-panel-type') !== 'tag-sidebar') || hosts[0]; const button = host && host.querySelector('button[title="添加面板"]'); if (!button) return 'NO_BUTTON'; button.click(); return 'OK' })()`)
+    await waitFor(`!!document.querySelector('.ui-popover-menu button.ui-menu-item')`, 60)
+    const added = await evaluate(`(() => {
+      const item = Array.from(document.querySelectorAll('.ui-popover-menu button.ui-menu-item')).find(el => el.textContent.trim() === '提示词工作台')
+      if (!item) return 'MISSING'
+      item.click()
+      return 'OK'
+    })()`)
+    journey.observations = { added }
+    if (added !== 'OK') throw new Error('workbench menu item not found')
+    await sleep(1200)
+    journey.afterAdd = await evaluate(`({ panels: Array.from(document.querySelectorAll('[data-ui="panel.shell"]')).map(el => el.getAttribute('data-panel-type')), hasPanel: !!document.querySelector('[data-panel-type="novelai-workbench"]'), bodySnippet: document.body.innerText.slice(0, 400) })`)
+    journey.shots.push(await screenshot('wb-00-added'))
+    await waitFor(`!!document.querySelector('[aria-label="新建作品"]')`, 60)
+    journey.shots.push(await screenshot('wb-01-empty'))
+    await evaluate(setValue('input[placeholder="新作品名"]', '交叉矩阵作品'))
+    await evaluate(`document.querySelector('[aria-label="新建作品"]').click()`)
+    await waitFor(`!!document.querySelector('[aria-label="提示词原文"]')`)
+    journey.checks.createdWork = true
+    await evaluate(setValue('textarea[aria-label="提示词原文"]', '1girl, {{long hair}}, __sky*2__'))
+    await waitFor(`document.body.innerText.includes('随机块')`)
+    journey.checks.blockView = true
+    journey.shots.push(await screenshot('wb-02-blocks'))
+    await evaluate(`Array.from(document.querySelectorAll('button')).find(el => el.textContent.includes('保存为新版本')).click()`)
+    await waitFor(`Array.from(document.querySelectorAll('button')).filter(el => el.textContent.trim().startsWith('v')).length >= 2`)
+    journey.checks.savedVersion = true
+    journey.shots.push(await screenshot('wb-03-two-versions'))
+    await evaluate(`Array.from(document.querySelectorAll('button')).find(el => el.textContent.includes('删此版本')).click()`)
+    await waitFor(`document.body.innerText.includes('回收站')`)
+    journey.checks.deletedVersion = true
+    journey.shots.push(await screenshot('wb-04-recycle'))
+    await evaluate(`Array.from(document.querySelectorAll('button')).find(el => el.textContent.trim() === 'v2').click()`)
+    await waitFor(`!document.body.innerText.includes('回收站')`)
+    journey.checks.restoredVersion = true
+    journey.shots.push(await screenshot('wb-05-restored'))
+    journey.passed = Object.values(journey.checks).every(Boolean)
+  } catch (error) {
+    journey.error = String(error)
+    journey.state = await evaluate(`({ text: document.body.innerText.slice(0, 800) })`).catch(() => null)
+  }
+  console.log('WORKBENCH ' + JSON.stringify(journey))
+  if (!journey.passed) console.error('WORKBENCH_JOURNEY_FAILED')
+}
 console.log(JSON.stringify(report, null, 2))
 ws.close()
 killTree()
