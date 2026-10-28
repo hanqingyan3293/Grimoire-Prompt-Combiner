@@ -94,11 +94,21 @@ describe('authentic source settings with disabled unavailable effects', () => {
       expect(screen.queryByTestId('compat-source-settings')).toBeNull()
       unmount()
     }
-    for (const path of ['/settings/api-gateway', '/settings/websearch']) {
+    // api-gateway is no longer read-only: it drives a real gateway, so its fieldset must be
+    // enabled while every still-read-only source page keeps the disabled fieldset and the note.
+    for (const path of ['/settings/websearch', '/settings/browser']) {
       const { route, unmount } = mount(path)
       expect(isCompatSourceSettingsRoute(route.id)).toBe(true)
       expect(screen.getByRole('note')).toHaveTextContent('不保存配置')
-      expect(readonlyFieldset(screen.getByRole('note').textContent?.includes('API 网关') ? 'API 网关设置' : '联网搜索设置')).toBeDisabled()
+      expect(readonlyFieldset(screen.getByRole('note').textContent?.includes('联网搜索') ? '联网搜索设置' : '浏览器设置')).toBeDisabled()
+      unmount()
+    }
+    {
+      const { route, unmount } = mount('/settings/api-gateway')
+      expect(isCompatSourceSettingsRoute(route.id)).toBe(true)
+      expect(screen.getByRole('note')).toHaveTextContent('本页可编辑')
+      // Editable routes carry no 「只读」 suffix, so the fieldset is looked up directly.
+      expect(document.querySelector('[data-settings-route="settings-api-gateway"] fieldset')?.hasAttribute('disabled')).toBe(false)
       unmount()
     }
   })

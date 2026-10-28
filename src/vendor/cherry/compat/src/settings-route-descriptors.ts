@@ -52,8 +52,8 @@ const tasks: SettingsDiagnosticDescriptor = {
 export const SETTINGS_DIAGNOSTICS: Record<RemainingSettingsId, SettingsDiagnosticDescriptor> = {
   'settings-api-gateway': {
     title: 'API 网关设置', source: 'ApiGatewaySettings / useApiGateway',
-    missing: ['api_gateway.start / api_gateway.stop / api_gateway.restart', '主进程监听、密钥认证与 feature.api_gateway.running 共享缓存'],
-    nextAction: '实现真实网关生命周期、端口绑定失败和运行状态发布，并验证配置写入与监听状态一致。'
+    missing: [],
+    nextAction: '网关已真实运行：OpenAI 兼容接口转发到当前供应商，运行状态经 api_gateway.status 同步到页面徽章。'
   },
   'settings-browser': {
     title: '浏览器设置', source: 'BrowserSettings（只读挂载）/ BrowserClearDialog / BrowserImportDialog（动作禁用）',

@@ -536,3 +536,14 @@ resources/agent-runtimes/     opencode.exe 134M (1.18.34) / pi.exe 107M (1.0.1)
 - IPC 路由 `api_gateway.status/start/stop/restart` 接到 `ipcApi` 路由器，配置读 `feature.api_gateway.{host,port,api_key}` 偏好——页面与服务不会对端口/密钥各说各话。
 - 测试 4 条（假上游）：models + 非流式完成、SSE 流式、缺/错 token 401、restart 后仍可服务。
 - 待办：页面还需要 `feature.api_gateway.running` 的共享缓存来源，以及把 api-gateway 从只读里解禁。
+
+### M3：API 网关页面接上真服务（2026-10-27 第二十八轮）
+
+- `CompatApiGatewayBridge`：每 2 秒把 `api_gateway.status` 映射进源共享缓存 `feature.api_gateway.running`，
+  页面徽章因此显示**真实**运行状态（此前源 main 写缓存，我们的 main 不写，徽章只会显示已停止）。
+- `settings-api-gateway` 从只读解禁：fieldset 用 per-route `readOnly` 标记（补上其余 4 页的 `readOnly: true`，
+  否则联合类型里访问 `.readOnly` 报 TS2339）。
+- 品牌：新增 `brand-overrides`，在 i18n 初始化后覆盖少数把上游当产品名的文案（如网关副标题“暴露 Cherry Studio 的 AI 功能”→“暴露魔导书的 AI 能力”）。
+- journey `--api-gateway` 五项全 PASS：页面可编辑、启动成功、**徽章显示运行中**、状态接口 running、停止成功；
+  截图显示运行中 + 端口 62935。
+- 门禁修复：G4 断言改为「只读页仍禁用、网关于可编辑」；G5 自有类型 0 错误。

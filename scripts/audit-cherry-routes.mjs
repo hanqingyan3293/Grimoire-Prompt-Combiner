@@ -714,6 +714,41 @@ if (process.argv.includes('--theme-journey')) {
   fs.writeFileSync(path.join(outDir, 'theme-journey.json'), JSON.stringify(themeReport, null, 2))
   console.log('Theme journey:', themeReport.passed ? 'PASS' : 'FAIL', themeReport.error || '')
 }
+
+// API gateway journey: the page's start/stop buttons must drive the real server, and the running
+// badge must come from `api_gateway.status` rather than a stored preference.
+if (process.argv.includes('--api-gateway')) {
+  const gatewayReport = { passed: false, checks: {} }
+  const waitForLocal = async (expression, attempts = 80) => { for (let i = 0; i < attempts; i++) { const value = await evaluate(expression); if (value) return value; await sleep(250) } throw new Error('timed out: ' + expression) }
+  try {
+    await evaluate(`window.api.settings.set('cherry_pref.feature.api_gateway.enabled', 'true')`)
+    await evaluate(`window.api.settings.set('cherry_pref.feature.api_gateway.api_key', JSON.stringify('matrix-key'))`)
+    await evaluate(`location.hash = '#/settings/api-gateway'`)
+    await waitForLocal(`!!document.querySelector('[data-settings-route="settings-api-gateway"]')`)
+    const fieldset = await evaluate(`(() => { const fs = document.querySelector('[data-settings-route="settings-api-gateway"] fieldset'); return fs ? fs.disabled : 'MISSING' })()`)
+    gatewayReport.checks.pageEditable = fieldset === false
+    const started = await evaluate(`window.api.ipcApi.request('api_gateway.start')`)
+    gatewayReport.checks.startOk = !!started && started.ok === true && started.data?.running === true
+    gatewayReport.start = started?.data ?? null
+    // The badge is fed by a 2s cache poll; wait for it to actually flip instead of screenshotting
+    // a stale "stopped" state and calling that evidence.
+    await waitForLocal("document.body.innerText.indexOf('运行中') >= 0", 20)
+    gatewayReport.checks.badgeShowsRunning = true
+    const status = await evaluate(`window.api.ipcApi.request('api_gateway.status')`)
+    gatewayReport.checks.statusRunning = !!status && status.data?.running === true
+    gatewayReport.status = status?.data ?? null
+    const shot = await callWithTimeout('Page.captureScreenshot', { format: 'png' }, 15000)
+    if (shot?.data) fs.writeFileSync(path.join(outDir, 'settings-api-gateway.png'), Buffer.from(shot.data, 'base64'))
+    const stopped = await evaluate(`window.api.ipcApi.request('api_gateway.stop')`)
+    gatewayReport.checks.stopOk = !!stopped && stopped.data?.running === false
+    gatewayReport.passed = Object.values(gatewayReport.checks).every(Boolean)
+  } catch (error) {
+    gatewayReport.error = String(error)
+    gatewayReport.state = await evaluate(`document.body.innerText.slice(0, 400)`).catch(() => null)
+  }
+  fs.writeFileSync(path.join(outDir, 'api-gateway-journey.json'), JSON.stringify(gatewayReport, null, 2))
+  console.log('API gateway journey:', gatewayReport.passed ? 'PASS' : 'FAIL', gatewayReport.error || '')
+}
 // Optional P1 transport smoke through the ACTUAL sandboxed renderer/preload/main.
 // This fresh profile has no blueprints: empty items is verified data, not a mock result.
 // Exercises source pi blueprint creation and mutation, not runtime launch/AgentPage.

@@ -22,21 +22,28 @@ const SOURCE_SETTINGS = {
   },
   'settings-api-gateway': {
     Component: lazy(() => import('../../source/src/renderer/pages/settings/ToolSettings/ApiGatewaySettings/ApiGatewaySettings')),
-    limitation: '源 API 网关设置已挂载。凭据在主进程投影时脱敏，通用偏好写入不允许保存或替换凭据。启动、停止、重启、密钥生成与复制控件只读；源运行指示没有真实网关状态支持，不能视为已确认停止或运行。'
+    // Grimoire now runs a real OpenAI-compatible gateway (api-gateway.service), and the running
+    // badge is fed from `api_gateway.status`; the page's controls therefore change real state.
+    readOnly: false,
+    limitation: '源 API 网关设置已挂载且可编辑：启动/停止/重启调用真实网关（OpenAI 兼容，转发到当前供应商），运行状态来自 api_gateway.status，端口与密钥取自本页保存的偏好。'
   },
   'settings-websearch': {
+    readOnly: true,
     Component: lazy(() => import('../../source/src/renderer/pages/settings/WebSearchSettings/WebSearchSettings')),
     limitation: '源联网搜索设置已挂载。已保存的 API key 和认证密码在 IPC 返回与 renderer 缓存前脱敏；供应商配置与搜索/抓取执行尚未接通，表单和凭据弹窗入口只读，不发起网络搜索，也不把未查询的认证状态当作无密钥。'
   },
   'settings-selection-assistant': {
+    readOnly: true,
     Component: lazy(() => import('../../source/src/renderer/pages/settings/SelectionAssistantSettings/SelectionAssistantSettings')),
     limitation: '源划词助手设置在 Windows 上只读挂载。原生 selection-hook、工具栏/动作窗口、全局快捷键和执行消费者尚未接通；控件不改变系统或偏好，设置导航链接仍使用真实路由。'
   },
   'settings-browser': {
+    readOnly: true,
     Component: lazy(() => import('../../source/src/renderer/pages/settings/BrowserSettings').then(module => ({ default: module.BrowserSettings }))),
     limitation: '浏览器偏好的执行消费者与导入/清理服务尚未接入。表单及动作按钮已由原生 disabled fieldset 禁用，历史记录弹窗也不开放：它需要真实 TabsProvider，不能用空 tab 上下文替代。'
   },
   'settings-screenshot': {
+    readOnly: true,
     Component: lazy(() => import('../../source/src/renderer/pages/settings/ScreenshotSettings/ScreenshotSettings')),
     limitation: '截图、全局快捷键与 OCR 执行服务尚未接入，表单及动作按钮已禁用。快捷键文本只是已保存的绑定；源组件按操作系统显示的 OCR 标签不代表识别服务可用，local_model 的默认状态也不代表已完成模型探测。只保留到已登记设置页的导航链接。'
   }
@@ -73,15 +80,15 @@ export function CompatSourceSettings({ route }: { route: CompatRoute }) {
   return (
     <div className="flex min-h-0 w-full flex-col" data-ui="compat.settings.source-readonly" data-settings-route={route.id}>
       <section role="note" id={noteId} aria-label={descriptor.title + '能力边界'} className="mx-4 mt-4 rounded border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-foreground">
-        <h1 className="font-medium">{descriptor.title}（PARTIALLY_MIGRATED · {route.id === 'settings-general' ? '可编辑' : '源页面只读'}）</h1>
+        <h1 className="font-medium">{descriptor.title}（PARTIALLY_MIGRATED · {SOURCE_SETTINGS[route.id as SourceSettingsId].readOnly === false ? '可编辑' : '源页面只读'}）</h1>
         <p className="mt-2">{limitation}</p>
-        <p className="mt-2">{route.id === 'settings-general' ? '本页可编辑：修改会立即生效并按上述消费者作用到主进程。' : '不保存配置、不注册全局行为、不启动服务；下方未接入功能不是可用能力。'}</p>
+        <p className="mt-2">{SOURCE_SETTINGS[route.id as SourceSettingsId].readOnly === false ? '本页可编辑：修改会立即生效并按上述消费者作用到主进程。' : '不保存配置、不注册全局行为、不启动服务；下方未接入功能不是可用能力。'}</p>
         <ul className="mt-2 list-disc pl-5">{descriptor.missing.map(item => <li key={item}>{item}</li>)}</ul>
         <p className="mt-2">下一步：{descriptor.nextAction}</p>
       </section>
       {route.id === 'settings-general' ? <CompatPreferenceWiring /> : null}
       {route.id === 'settings-general' ? <CompatDomainCapabilities /> : null}
-      <fieldset disabled={route.id !== 'settings-general'} aria-describedby={noteId} aria-label={descriptor.title + (route.id === 'settings-general' ? '' : '（只读）')} className="m-0 min-w-0 border-0 p-0">
+      <fieldset disabled={SOURCE_SETTINGS[route.id as SourceSettingsId].readOnly !== false} aria-describedby={noteId} aria-label={descriptor.title + (SOURCE_SETTINGS[route.id as SourceSettingsId].readOnly === false ? '' : '（只读）')} className="m-0 min-w-0 border-0 p-0">
         <Suspense fallback={<p role="status" className="p-4 text-sm text-muted-foreground">加载源设置页面…</p>}>
           <Component />
         </Suspense>

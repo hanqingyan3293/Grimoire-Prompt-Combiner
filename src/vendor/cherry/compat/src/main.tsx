@@ -8,6 +8,7 @@ import { initI18n } from '../../source/src/renderer/i18n/resolver'
 import './index.css'
 import './tailwind.css'
 import { startThemeBridge } from './theme-bridge'
+import { applyBrandOverrides } from './brand-overrides'
 
 // Follow the Grimoire theme (light/dark + accent) before the first paint of the shell.
 startThemeBridge()
@@ -17,6 +18,8 @@ startThemeBridge()
 // preference API, the resolver falls back to the default language instead of
 // rejecting, so the compat window still renders with real Cherry labels.
 void initI18n().finally(() => {
+  // Applied after the packs load: the overrides win over the vendored strings.
+  applyBrandOverrides()
   createRoot(document.getElementById('root')!).render(
     <StrictMode>
       <CherryChatShellEntry />

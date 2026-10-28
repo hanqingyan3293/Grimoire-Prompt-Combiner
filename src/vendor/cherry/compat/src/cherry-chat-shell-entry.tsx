@@ -56,6 +56,8 @@ const EnvironmentDependencies = lazy(() => import('../../source/src/renderer/pag
 const NotificationSettings = lazy(() => import('../../source/src/renderer/pages/settings/NotificationSettings/NotificationSettings'))
 // Source AboutSettings names Cherry Studio and its feedback address; see CompatAbout.tsx.
 const CompatAbout = lazy(() => import('./CompatAbout').then(module => ({ default: module.CompatAbout })))
+// Non-visual: mirrors gateway status into the source shared cache the settings page reads.
+const CompatApiGatewayBridge = lazy(() => import('./CompatApiGatewayBridge').then(module => ({ default: module.CompatApiGatewayBridge })))
 const PromptSettings = lazy(() => import('../../source/src/renderer/pages/settings/PromptSettings').then(module => ({ default: module.PromptSettings })))
 const UsageSettings = lazy(() => import('../../source/src/renderer/pages/settings/UsageSettings').then(module => ({ default: module.UsageSettings })))
 const ShortcutSettings = lazy(() => import('../../source/src/renderer/pages/settings/ShortcutSettings'))
@@ -1129,6 +1131,7 @@ function CherryChatShellContent() {
   // where the compat content needs them, inside the command runtime.
   return (
     <div data-cherry-root="true" className="h-screen w-screen bg-background text-foreground">
+        <Suspense fallback={null}><CompatApiGatewayBridge /></Suspense>
         <ThemeProvider>
           <CodeStyleProvider>
             <CommandContextKeyProvider>
