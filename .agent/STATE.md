@@ -688,3 +688,18 @@ resources/agent-runtimes/     opencode.exe 134M (1.18.34) / pi.exe 107M (1.0.1)
 
 下一步（解禁前置）：实现 `chat.web_search.provider_overrides` 的**主进程凭据适配器**（写入加密、读取脱敏），
 然后页面才能解禁；届时把 `credentialsWriteRefused` 改成「写入成功且读回脱敏」。
+
+### M3：联网搜索解禁（凭据适配器落地，2026-10-27 第三十九轮）
+
+上一轮被自己的防护挡住，这一轮把**缺失的那一环**补上而不是关掉防护：
+
+- 新增 `cherry-credential.service`：受保护偏好（`chat.web_search.provider_overrides`）的专用通道——
+  **写入时逐字段加密**（`safeStorage`，存 `enc:v1:<base64>`），**渲染层读回一律脱敏**（`********`），
+  明文只在本进程内可读；OS 加密不可用时**拒绝写入**（绝不落明文）。
+- `settings:set` 改为：受保护偏好走凭据通道，其余键仍走原路径；通用写入对凭据依然关闭。
+- websearch 路由改用 `readCredentialPreference` 取明文，页面与执行方仍读同一份配置。
+- 测试：凭据服务 4 条（加密落盘不含明文、加密不可用拒绝、非受保护键拒绝、非 JSON 拒绝）。
+- 旅程 `--websearch` 五项全 PASS，且**真的搜到了结果**：
+  `credentialWriteAccepted` / `readBackMasked`（读回是 `********`，host 仍可见）/ `executorReachable`
+  （假 SearXNG 返回「矩阵搜索结果」）/ `unsupportedProviderRefused` / `pageEditable`。
+- 页面从只读改为**可编辑**，理由写进 limitation：只有 SearXNG 与 Tavily 会真正执行，其余供应商明确报不支持。

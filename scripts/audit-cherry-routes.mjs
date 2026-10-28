@@ -772,11 +772,14 @@ if (process.argv.includes('--websearch')) {
     })
     await new Promise(resolve => fake.listen(0, '127.0.0.1', () => resolve()))
     const fakePort = fake.address().port
-    // Writing provider credentials through the generic settings path MUST be refused: that guard is why
-    // the page stays read-only. The journey asserts the guard instead of working around it.
-    const credentialWrite = await evaluate(`window.api.settings.set('cherry_pref.chat.web_search.provider_overrides', JSON.stringify({ searxng: { apiKeys: ['secret'] } })).then(() => 'ACCEPTED').catch(error => 'REFUSED:' + String(error && error.message || error))`)
+    // Credentials now flow through the dedicated encrypted path: the write must be accepted and the
+    // renderer read-back must be masked.
+    const credentialWrite = await evaluate(`window.api.settings.set('cherry_pref.chat.web_search.provider_overrides', JSON.stringify({ searxng: { apiKeys: ['matrix-secret'], capabilities: { searchKeywords: { apiHost: 'http://127.0.0.1:${fakePort}' } } } })).then(() => 'ACCEPTED').catch(error => 'REFUSED:' + String(error && error.message || error))`)
     report.credentialWrite = credentialWrite
-    report.checks.credentialWriteRefused = String(credentialWrite).startsWith('REFUSED')
+    report.checks.credentialWriteAccepted = String(credentialWrite) === 'ACCEPTED'
+    const readBack = await evaluate(`window.api.settings.getAll().then(all => String(all['cherry_pref.chat.web_search.provider_overrides'] || '')).catch(() => 'ERR')`)
+    report.readBack = readBack
+    report.checks.readBackMasked = String(readBack).includes('********') && !String(readBack).includes('matrix-secret')
     await evaluate(`window.api.settings.set('cherry_pref.chat.web_search.default_search_keywords_provider', JSON.stringify('searxng'))`)
     // The executor itself is proven by unit tests against a fake upstream; over IPC it correctly reports
     // the unconfigured endpoint as an upstream failure instead of pretending to search.
@@ -791,7 +794,8 @@ if (process.argv.includes('--websearch')) {
     await evaluate(`location.hash = '#/settings/websearch'`)
     await waitExpression(`!!document.querySelector('[data-settings-route="settings-websearch"]')`)
     const fieldsetDisabled = await evaluate(`(() => { const fs = document.querySelector('[data-settings-route="settings-websearch"] fieldset'); return fs ? fs.disabled : 'MISSING' })()`)
-    report.checks.pageStaysReadOnly = fieldsetDisabled === true
+    // Enabled now that credentials have a real path; the fieldset must be interactive.
+    report.checks.pageEditable = fieldsetDisabled === false
     const shot = await callWithTimeout('Page.captureScreenshot', { format: 'png' }, 15000)
     if (shot?.data) fs.writeFileSync(path.join(outDir, 'settings-websearch.png'), Buffer.from(shot.data, 'base64'))
     report.passed = Object.values(report.checks).every(Boolean)

@@ -22,6 +22,7 @@ import { listAiUsage, listUsageTimeline, projectUsageEntry, projectUsageTotals, 
 import { isPreventSleepActive, readLaunchOnBoot } from '../services/app-preferences.service'
 import { cherryPreferenceWiring, isCherryDeveloperModeEnabled, readCherryPreference as readCherryPref } from '../services/cherry-preference-consumers'
 import { getGatewayStatus, restartGateway, startGateway, stopGateway } from '../services/api-gateway.service'
+import { readCredentialPreference } from '../services/cherry-credential.service'
 import { fetchUrls, searchWeb } from '../services/websearch.service'
 import type { PromptAssetItem } from '../../shared/prompt-asset-types'
 import type { AiAssistantRecord, AiTopicRecord } from '../../shared/ai-types'
@@ -2337,7 +2338,8 @@ async function handleIpcApiRoute(route: string, input: unknown, sender: WebConte
     // hosts come from the same preference the page writes, so the page and the executor cannot drift.
     if (route === 'web_search.search_keywords' || route === 'web_search.fetch_urls') {
       const payload = (value ?? {}) as { providerId?: unknown; keywords?: unknown; urls?: unknown }
-      const overrides = (readCherryPref('chat.web_search.provider_overrides') ?? {}) as Record<string, { apiKeys?: string[]; capabilities?: Record<string, { apiHost?: string }> }>
+      // Credentials are stored encrypted; only this process can recover them.
+      const overrides = (readCredentialPreference('chat.web_search.provider_overrides') ?? {}) as Record<string, { apiKeys?: string[]; capabilities?: Record<string, { apiHost?: string }> }>
       const isSearch = route === 'web_search.search_keywords'
       const fallbackProvider = String(readCherryPref(isSearch ? 'chat.web_search.default_search_keywords_provider' : 'chat.web_search.default_fetch_urls_provider') ?? '')
       const providerId = typeof payload.providerId === 'string' && payload.providerId ? payload.providerId : fallbackProvider

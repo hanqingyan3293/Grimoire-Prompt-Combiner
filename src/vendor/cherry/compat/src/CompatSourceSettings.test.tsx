@@ -96,11 +96,19 @@ describe('authentic source settings with disabled unavailable effects', () => {
     }
     // api-gateway is no longer read-only: it drives a real gateway, so its fieldset must be
     // enabled while every still-read-only source page keeps the disabled fieldset and the note.
-    for (const path of ['/settings/websearch', '/settings/browser']) {
+    for (const path of ['/settings/screenshot', '/settings/browser']) {
       const { route, unmount } = mount(path)
       expect(isCompatSourceSettingsRoute(route.id)).toBe(true)
       expect(screen.getByRole('note')).toHaveTextContent('不保存配置')
-      expect(readonlyFieldset(screen.getByRole('note').textContent?.includes('联网搜索') ? '联网搜索设置' : '浏览器设置')).toBeDisabled()
+      expect(readonlyFieldset(screen.getByRole('note').textContent?.includes('截图') ? '截图设置' : '浏览器设置')).toBeDisabled()
+      unmount()
+    }
+    // 联网搜索 became editable once credentials had a dedicated encrypted path.
+    {
+      const { route, unmount } = mount('/settings/websearch')
+      expect(isCompatSourceSettingsRoute(route.id)).toBe(true)
+      expect(screen.getByRole('note')).toHaveTextContent('本页可编辑')
+      expect(document.querySelector('[data-settings-route="settings-websearch"] fieldset')?.hasAttribute('disabled')).toBe(false)
       unmount()
     }
     {

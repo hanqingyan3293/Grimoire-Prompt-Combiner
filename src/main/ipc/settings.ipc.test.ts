@@ -6,12 +6,17 @@ import { IPC_CHANNELS } from '../../shared/types'
 
 let root = ''
 const handlers = new Map<string, (event: unknown, ...args: unknown[]) => Promise<unknown>>()
+let encryptionAvailable = true
 const send = vi.fn()
 vi.mock('electron', () => ({
   app: { getPath: () => root },
   ipcMain: { handle: (channel: string, handler: (event: unknown, ...args: unknown[]) => Promise<unknown>) => handlers.set(channel, handler) },
   BrowserWindow: { getAllWindows: () => [{ isDestroyed: () => false, webContents: { send } }] },
-  safeStorage: { isEncryptionAvailable: () => false }
+  safeStorage: {
+    isEncryptionAvailable: () => encryptionAvailable,
+    encryptString: (value: string) => Buffer.from('enc:' + value),
+    decryptString: (buffer: Buffer) => buffer.toString().replace(/^enc:/, ''),
+  }
 }))
 vi.mock('../services/comfy-client', () => ({ configureComfyUI: vi.fn() }))
 vi.mock('../services/app-preferences.service', () => ({ applyLaunchOnBoot: vi.fn(), applyPreventSleep: vi.fn(), applyProxy: vi.fn() }))
@@ -54,12 +59,31 @@ describe('main-only Cherry credential settings boundary', () => {
     expect(db.exec('SELECT value FROM settings WHERE key=?', [websearch])[0].values[0][0]).toBe(webValue)
   })
 
-  it('refuses generic credential writes before database mutation or success broadcasts', async () => {
-    for (const key of [gateway, websearch]) {
-      await expect(call(IPC_CHANNELS.SETTINGS_SET, key, '"synthetic-new-secret"')).rejects.toThrow('dedicated main-process credential adapter')
-      expect(getDatabase().exec('SELECT value FROM settings WHERE key=?', [key])[0]?.values ?? []).toHaveLength(0)
+  it('refuses to store credentials when OS encryption is unavailable, without mutating the database', async () => {
+    encryptionAvailable = false
+    try {
+      for (const key of [gateway, websearch]) {
+        // A well-formed credential payload, so the refusal comes from the encryption guard rather than
+        // from payload validation.
+        await expect(call(IPC_CHANNELS.SETTINGS_SET, key, key === gateway ? '"synthetic-new-secret"' : JSON.stringify({ tavily: { apiKeys: ['synthetic-new-secret'] } }))).rejects.toThrow(/encryption is unavailable|could not be safely/i)
+        expect(getDatabase().exec('SELECT value FROM settings WHERE key=?', [key])[0]?.values ?? []).toHaveLength(0)
+      }
+      expect(send).not.toHaveBeenCalled()
+    } finally {
+      encryptionAvailable = true
     }
-    expect(send).not.toHaveBeenCalled()
+  })
+
+  it('stores credentials encrypted and keeps the renderer read masked', async () => {
+    const canary = 'synthetic-encrypted-canary'
+    await call(IPC_CHANNELS.SETTINGS_SET, websearch, JSON.stringify({ tavily: { apiKeys: [canary], apiHost: 'https://example.invalid' } }))
+    const stored = String(getDatabase().exec('SELECT value FROM settings WHERE key=?', [websearch])[0].values[0][0])
+    expect(stored).not.toContain(canary)
+    expect(stored).toContain('enc:v1:')
+    expect(stored).toContain('https://example.invalid')
+    const snapshot = await call(IPC_CHANNELS.SETTINGS_GET_ALL)
+    expect(JSON.stringify(snapshot)).not.toContain(canary)
+    expect(JSON.stringify(snapshot)).toContain('********')
   })
 
   it('does not export malformed credential JSON and leaves safe settings writes functional', async () => {

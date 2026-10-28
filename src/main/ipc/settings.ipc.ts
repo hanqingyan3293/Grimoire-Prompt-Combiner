@@ -7,6 +7,7 @@ import { requireHttpUrl } from "../services/input-validation"
 import { applyLaunchOnBoot, applyPreventSleep, applyProxy } from "../services/app-preferences.service"
 import { logEvent } from "../services/logger.service"
 import { isProtectedCherrySetting, redactCherrySetting } from '../../shared/cherry-settings-privacy'
+import { writeCredentialPreference } from '../services/cherry-credential.service'
 
 export function registerSettingsIPC(): void {
   // Default settings
@@ -46,7 +47,14 @@ export function registerSettingsIPC(): void {
 
   ipcMain.handle(IPC_CHANNELS.SETTINGS_SET, async (_event, key: string, value: string) => {
     if (isProtectedCherrySetting(key)) {
-      throw new Error('Cherry credential settings require a dedicated main-process credential adapter; generic writes are unavailable')
+      // Dedicated path for declared credential preferences (M3): encrypted at rest, plaintext only in
+      // this process. The generic branch below stays closed for them.
+      writeCredentialPreference(key.slice('cherry_pref.'.length), value)
+      saveDatabase()
+      for (const win of BrowserWindow.getAllWindows()) {
+        if (!win.isDestroyed()) win.webContents.send('data:refresh')
+      }
+      return true
     }
     if (key === 'comfyui_base_url') value = requireHttpUrl(value, 'ComfyUI 地址')
     const db = getDatabase()

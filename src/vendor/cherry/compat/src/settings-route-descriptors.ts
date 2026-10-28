@@ -111,9 +111,9 @@ export const SETTINGS_DIAGNOSTICS: Record<RemainingSettingsId, SettingsDiagnosti
     nextAction: '接入全局划词和多窗口服务，验证平台权限、动作执行、禁用与资源清理。'
   },
   'settings-websearch': {
-    title: '联网搜索设置', source: 'WebSearchSettings / useWebSearch',
-    missing: ['源 WebSearch provider 配置、密钥保管与连接测试', 'chat.web_search.* 的搜索/抓取、过滤及压缩消费者'],
-    nextAction: '适配源搜索服务和配置消费链，验证真实搜索/抓取、认证失败和过滤压缩后挂载。'
+    title: '联网搜索设置', source: 'WebSearchSettings / useWebSearchProviderCheck',
+    missing: ['除 SearXNG 与 Tavily 之外的供应商适配器', '搜索结果的配额与压缩策略消费链'],
+    nextAction: 'SearXNG 与 Tavily 已可真实执行搜索，凭据经专用通道加密存储；其余供应商的「测试」会明确报不支持。'
   },
   'settings-skills': skills,
   'settings-skill-detail': skills,
