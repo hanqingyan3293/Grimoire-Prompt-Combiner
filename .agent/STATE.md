@@ -509,3 +509,13 @@ resources/agent-runtimes/     opencode.exe 134M (1.18.34) / pi.exe 107M (1.0.1)
 截图 `artifacts/visual/cherry-routes/theme-light.png` / `theme-dark.png`。
 
 踩坑：空聊天页没有 `chat.view`，等待锚点改用 `part:composer-input`；另外 theme journey 自带的 waitExpression 需要在本块内定义。
+
+### M1.5.5 品牌收尾：关于页换成我们自己的（2026-10-27 第二十五轮）
+
+- 源 `AboutSettings` 会把产品名写成 Cherry Studio、给出 Cherry 的反馈邮箱、并提供指向 Cherry 发布服务的「检查更新」。
+  这三件事在本构建里都不是真的，因此该路由改为渲染 `CompatAbout`（`data-ui="compat.about"`）。
+- 新页面内容：魔导书 Grimoire + 版本（`app.get_info`）、上游与许可（**保留 Cherry Studio 2.1.4 / AGPL-3.0 署名**——这是许可要求，不是残留）、
+  运行形态 / 应用路径 / 数据目录 / 架构，以及一句明确说明「没有检查更新、没有 Cherry 反馈邮箱」。
+- 路由审计的 About 期望信号同步改为本页内容（`魔导书 Grimoire` / `上游与许可`），51/51 仍全绿，截图 `route-settings-about.png`。
+- 导出路径核查：`ExportService` 里剩余的 Cherry 字样（Joplin `source` 字段、思源默认路径、User-Agent）都不在我们暴露的导出入口上；
+  我们的 markdown 导出走 `saveMarkdownExport`，不写入任何品牌字样。

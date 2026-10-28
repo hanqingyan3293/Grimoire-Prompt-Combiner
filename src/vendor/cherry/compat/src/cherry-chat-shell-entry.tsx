@@ -54,7 +54,8 @@ const AppearanceSettings = lazy(() => import('../../source/src/renderer/pages/se
 const DataSettings = lazy(() => import('../../source/src/renderer/pages/settings/DataSettings/DataSettings'))
 const EnvironmentDependencies = lazy(() => import('../../source/src/renderer/pages/settings/DependenciesSettings/EnvironmentDependencies'))
 const NotificationSettings = lazy(() => import('../../source/src/renderer/pages/settings/NotificationSettings/NotificationSettings'))
-const AboutSettings = lazy(() => import('../../source/src/renderer/pages/settings/AboutSettings/AboutSettings'))
+// Source AboutSettings names Cherry Studio and its feedback address; see CompatAbout.tsx.
+const CompatAbout = lazy(() => import('./CompatAbout').then(module => ({ default: module.CompatAbout })))
 const PromptSettings = lazy(() => import('../../source/src/renderer/pages/settings/PromptSettings').then(module => ({ default: module.PromptSettings })))
 const UsageSettings = lazy(() => import('../../source/src/renderer/pages/settings/UsageSettings').then(module => ({ default: module.UsageSettings })))
 const ShortcutSettings = lazy(() => import('../../source/src/renderer/pages/settings/ShortcutSettings'))
@@ -1101,7 +1102,7 @@ function CherryChatShellContent() {
             : route.id === 'settings-appearance' ? <AppearanceSettings />
                 : route.id === 'settings-data' ? <DataSettings />
                   : route.id === 'settings-notifications' ? <NotificationSettings />
-                  : route.id === 'settings-about' ? <AboutSettings />
+                  : route.id === 'settings-about' ? <CompatAbout />
                   : route.id === 'settings-prompts' ? <PromptSettings />
                   : route.id === 'settings-usage' ? <UsageSettings />
                   : route.id === 'settings-shortcut' ? <ShortcutSettings />

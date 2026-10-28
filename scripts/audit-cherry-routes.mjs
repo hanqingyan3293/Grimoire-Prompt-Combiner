@@ -299,7 +299,9 @@ const ROUTE_SIGNALS = {
   '/settings/data': ['数据目录', '云备份设置', '重置数据'],
   '/settings/dependencies': ['环境依赖', '管理应用运行所需的二进制工具'],
   '/settings/notifications': ['对话完成通知', '应用更新', '小程序通知'],
-  '/settings/about': ['关于我们', '更新日志'],
+  // Grimoire replaces the source About page (it named Cherry Studio and linked Cherry's feedback
+  // address); the signals are now this build's own sections.
+  '/settings/about': ['魔导书 Grimoire', '上游与许可'],
   // Not a page: the deliberate BLOCKED diagnostic, asserted by its own heading so the route
   // cannot start reporting OK if the page is ever replaced by an empty surface.
   '/settings/general': ['常规设置尚未接入'],
