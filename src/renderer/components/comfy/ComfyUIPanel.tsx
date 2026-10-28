@@ -149,8 +149,9 @@ export function ComfyUIPanel() {
       <PanelHeader icon={CloudCog} title='ComfyUI 工作台' description='连接本地服务，编辑工作流并提交生成任务' actions={<div className='flex items-center gap-2'><StatusBadge tone={online ? 'success' : 'danger'}>{online ? `已连接${version ? ` · v${version}` : ''}` : '未连接'}</StatusBadge><IconButton icon={RefreshCw} label='刷新 ComfyUI 状态' onClick={() => void refresh()} disabled={busy} className={busy ? 'ui-spin-icon' : ''} /></div>} />
       <section className='ui-list-card p-3'>
         <Field label='ComfyUI 地址'>
-          <div className='flex gap-2'>
-            <input value={baseUrlDraft} onChange={event => setBaseUrlDraft(event.target.value)} className='ui-field min-w-0 flex-1' placeholder='http://127.0.0.1:8188' />
+          {/* Wraps instead of squeezing: at a 210px panel the input was 12px wide and showed "ht". */}
+          <div className='flex flex-wrap gap-2'>
+            <input value={baseUrlDraft} onChange={event => setBaseUrlDraft(event.target.value)} className='ui-field min-w-[10rem] flex-1' placeholder='http://127.0.0.1:8188' />
             <Button size='sm' icon={Save} onClick={() => void saveBaseUrl()} disabled={busy || baseUrlDraft.trim() === baseUrl}>保存并连接</Button>
           </div>
         </Field>
