@@ -640,6 +640,78 @@ if (process.argv.includes('--settings-wiring-journey')) {
   fs.writeFileSync(path.join(outDir, 'settings-wiring-journey.json'), JSON.stringify(wiring, null, 2))
   console.log('Settings wiring journey:', wiring.passed ? 'PASS' : 'FAIL', wiring.error || '')
 }
+
+// Theme comparison journey: publish the real Grimoire palettes through the theme bridge and capture
+// the same route in both appearances, then measure the difference in-page (canvas diff). A theme
+// class swap that changes nothing visually would pass a class assertion but fail this one.
+if (process.argv.includes('--theme-journey')) {
+  const themeReport = { passed: false, checks: {} }
+  const waitExpression = async (expression, attempts = 80) => { for (let i = 0; i < attempts; i++) { const value = await evaluate(expression); if (value) return value; await sleep(250) } throw new Error('timed out: ' + expression) }
+  const css = fs.readFileSync(path.join(root, 'src/renderer/styles/themes.css'), 'utf8')
+  const readBlock = (selector) => {
+    const start = css.indexOf(selector + ' {')
+    if (start < 0) return {}
+    const end = css.indexOf('}', start)
+    const body = css.slice(start + selector.length + 2, end)
+    const vars = {}
+    for (const line of body.split('\n')) {
+      const match = /^\s*(--color-[a-z-]+):\s*([^;]+);/.exec(line)
+      if (match) vars[match[1]] = match[2].trim()
+    }
+    return vars
+  }
+  const base = readBlock(':root')
+  const light = { ...base, ...readBlock('[data-appearance="light"]') }
+  const dark = { ...base, ...readBlock('[data-appearance="dark"]') }
+  const publish = async (mode, vars) => evaluate(`window.api.theme.publish({ mode: '${mode}', vars: ${JSON.stringify(vars)} })`)
+  const shot = async (name) => {
+    const data = await callWithTimeout('Page.captureScreenshot', { format: 'png' }, 15000)
+    if (!data?.data) throw new Error('screenshot failed: ' + name)
+    fs.writeFileSync(path.join(outDir, name + '.png'), Buffer.from(data.data, 'base64'))
+    return data.data
+  }
+  try {
+    await evaluate(`window.location.hash = '#/app/chat'`)
+    // The empty chat page renders the composer without `chat.view`; the composer is the stable anchor.
+    await waitExpression(`!!document.querySelector('[data-ui="part:composer-input"]')`)
+    await publish('light', light)
+    await sleep(600)
+    themeReport.checks.lightApplied = await evaluate(`!document.documentElement.classList.contains('dark')`)
+    const lightPng = await shot('theme-light')
+    await publish('dark', dark)
+    await sleep(600)
+    themeReport.checks.darkApplied = await evaluate(`document.documentElement.classList.contains('dark')`)
+    const darkPng = await shot('theme-dark')
+    themeReport.checks.filesDiffer = lightPng !== darkPng
+    // Real pixel comparison: both screenshots are decoded in the page and differenced on a canvas,
+    // so "the theme changed" is measured, not inferred from a class name.
+    const diff = await evaluate(`(async () => {
+      const load = (b64) => new Promise((resolve, reject) => { const img = new Image(); img.onload = () => resolve(img); img.onerror = reject; img.src = 'data:image/png;base64,' + b64 })
+      const [a, b] = await Promise.all([load(${JSON.stringify(lightPng)}), load(${JSON.stringify(darkPng)})])
+      if (a.width !== b.width || a.height !== b.height) return { mismatch: true }
+      const canvas = document.createElement('canvas')
+      canvas.width = a.width; canvas.height = a.height
+      const ctx = canvas.getContext('2d')
+      ctx.drawImage(a, 0, 0); const left = ctx.getImageData(0, 0, a.width, a.height).data
+      ctx.drawImage(b, 0, 0); const right = ctx.getImageData(0, 0, a.width, a.height).data
+      let sum = 0, changed = 0
+      for (let i = 0; i < left.length; i += 4) {
+        const delta = (Math.abs(left[i] - right[i]) + Math.abs(left[i + 1] - right[i + 1]) + Math.abs(left[i + 2] - right[i + 2])) / 3
+        sum += delta
+        if (delta > 8) changed += 1
+      }
+      const pixels = left.length / 4
+      return { width: a.width, height: a.height, meanDelta: Math.round((sum / pixels) * 10) / 10, changedPct: Math.round((changed / pixels) * 1000) / 10 }
+    })()`)
+    themeReport.checks.pixelsDiffer = !!diff && diff.meanDelta > 3 && diff.changedPct > 5
+    themeReport.observation = diff
+    themeReport.passed = Object.values(themeReport.checks).every(Boolean)
+  } catch (error) {
+    themeReport.error = String(error)
+  }
+  fs.writeFileSync(path.join(outDir, 'theme-journey.json'), JSON.stringify(themeReport, null, 2))
+  console.log('Theme journey:', themeReport.passed ? 'PASS' : 'FAIL', themeReport.error || '')
+}
 // Optional P1 transport smoke through the ACTUAL sandboxed renderer/preload/main.
 // This fresh profile has no blueprints: empty items is verified data, not a mock result.
 // Exercises source pi blueprint creation and mutation, not runtime launch/AgentPage.

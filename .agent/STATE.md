@@ -498,3 +498,14 @@ resources/agent-runtimes/     opencode.exe 134M (1.18.34) / pi.exe 107M (1.0.1)
 - 素材库旅程 `node scripts/ui-parity.mjs --assets` 一次通过：新建素材 → 记一次引用（API 断言 images 里有 img_matrix）
   → 反查（byImage 返回该素材）→ 删除（列表清空），4 张截图 `as-*.png`。
 - 顺带给素材面板补上窄宽度换行规则，列表名不再折成两行。
+
+### 交叉矩阵：主题对比（2026-10-27 第二十四轮）
+
+`node scripts/audit-cherry-routes.mjs --theme-journey`：从 `themes.css` 解析 `:root` / `[data-appearance=light|dark]` 的 `--color-*`，
+通过 `window.api.theme.publish` 依次发布浅色与深色调色板（走真实 theme bridge），同一路由各截一张图，
+再把两张 PNG 注入页面用 canvas 做**逐像素差异**统计。
+
+实测：`lightApplied / darkApplied / filesDiffer / pixelsDiffer` 四项全 true，1583×954，meanDelta **231.1**，changedPct **100%**。
+截图 `artifacts/visual/cherry-routes/theme-light.png` / `theme-dark.png`。
+
+踩坑：空聊天页没有 `chat.view`，等待锚点改用 `part:composer-input`；另外 theme journey 自带的 waitExpression 需要在本块内定义。
