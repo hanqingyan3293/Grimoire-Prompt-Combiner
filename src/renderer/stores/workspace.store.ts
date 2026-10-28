@@ -1,5 +1,5 @@
 import { create } from "zustand"
-import type { PanelType } from "../components/workspace/panelTypes"
+import { PANEL_TYPES, type PanelType } from "../components/workspace/panelTypes"
 import { normalizeWorkspaceDocument, workspaceDocumentFromLegacy, workspaceDocumentToLegacy, type WorkspaceDocument, type WorkspaceDocumentOptions } from "../components/workspace/workspace-document"
 
 export interface WorkspaceSlot {
@@ -208,33 +208,10 @@ const MIN_SPLIT_RATIO = 0.12
 const MAX_SPLIT_RATIO = 0.88
 const MAX_LAYOUT_DEPTH = 32
 const FALLBACK_PANEL_TYPE: PanelType = "utility-sidebar"
-const VALID_PANEL_TYPES = new Set<PanelType>([
-  "tag-sidebar",
-  "prompt-workbench",
-  "utility-sidebar",
-  "presets",
-  "history",
-  "images",
-  "ai-assistant",
-  "ai-chat",
-  "ai-vision",
-  "agent",
-  "agent-sessions",
-  "mcp",
-  "settings",
-  "logs",
-  "provider-manager",
-  "model-manager",
-  "tasks",
-  "wd14",
-  "comfyui",
-  "canvas",
-  "prompt-assets",
-  "tag-asset-manager",
-  "tag-batch",
-  "gallery-search",
-])
-
+// Derived from the registry, not hand-written. The previous hardcoded list silently turned any
+// newly registered panel into `utility-sidebar` on reload — adding 提示词工作台 to the registry was
+// enough to reproduce it, and nothing logged why.
+const VALID_PANEL_TYPES = new Set<PanelType>(PANEL_TYPES)
 export function isPersistablePanelType(value: unknown): value is PanelType {
   return typeof value === 'string' && VALID_PANEL_TYPES.has(value as PanelType)
 }

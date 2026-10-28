@@ -102,8 +102,10 @@ export function NovelAIPromptPanel() {
   return (
     <div className="flex h-full min-h-0 flex-col">
       <PanelHeader title="提示词工作台" description="块解析 · 版本树 · 回收站（M6）" icon={GitBranch} />
-      <div className="flex min-h-0 flex-1">
-        <aside className="flex w-48 shrink-0 flex-col gap-2 border-r border-[var(--color-border)] p-2">
+      {/* Wrap instead of squeezing: a narrow panel used to shrink the middle column to a sliver
+          and render every label vertically. */}
+      <div className="flex min-h-0 flex-1 flex-wrap">
+        <aside className="flex w-44 min-w-[9rem] shrink-0 flex-col gap-2 border-r border-[var(--color-border)] p-2">
           <div className="flex gap-1">
             <input value={newWorkName} onChange={event => setNewWorkName(event.target.value)} placeholder="新作品名" className="ui-field min-w-0 flex-1 px-2 py-1 text-xs" />
             <Button size="sm" variant="secondary" onClick={() => void createWork()} disabled={busy || !newWorkName.trim()} aria-label="新建作品"><Plus size={14} /></Button>
@@ -112,23 +114,23 @@ export function NovelAIPromptPanel() {
             {works.length === 0 && <p className="p-2 text-xs text-[var(--color-text-secondary)]">还没有作品</p>}
             {works.map(work => (
               <button key={work.id} type="button" onClick={() => void loadBundle(work.id)}
-                className={'ui-nav-tab block w-full truncate px-2 py-1.5 text-left text-xs ' + (bundle?.work.id === work.id ? 'ui-nav-tab-active' : '')}>
+                className={'ui-nav-tab block w-full overflow-hidden text-ellipsis whitespace-nowrap px-2 py-1.5 text-left text-xs ' + (bundle?.work.id === work.id ? 'ui-nav-tab-active' : '')}>
                 {work.name}
               </button>
             ))}
           </div>
         </aside>
-        <main className="flex min-h-0 min-w-0 flex-1 flex-col">
+        <main className="flex min-h-0 min-w-[18rem] flex-1 flex-col">
           {!bundle ? (
             <EmptyState icon={GitBranch} title="选择或新建一个作品" description="每个作品有自己的版本线；回到旧版再改会自动拉分支。" />
           ) : (
             <>
-              <div className="flex items-center gap-2 border-b border-[var(--color-border)] px-3 py-2">
+              <div className="flex flex-wrap items-center gap-2 border-b border-[var(--color-border)] px-3 py-2">
                 <span className="text-sm font-medium">{bundle.work.name}</span>
                 <Badge tone="neutral">r{bundle.work.revision}</Badge>
-                <input value={branchName} onChange={event => setBranchName(event.target.value)} placeholder="分支名" className="ui-field w-32 px-2 py-1 text-xs" />
+                <input value={branchName} onChange={event => setBranchName(event.target.value)} placeholder="分支名" className="ui-field w-24 min-w-0 shrink px-2 py-1 text-xs" />
                 <Button size="sm" variant="ghost" onClick={() => void renameBranch()} disabled={busy || !branchName.trim()}>命名分支</Button>
-                <span className="ml-auto flex gap-1">
+                <span className="ml-auto flex flex-wrap gap-1">
                   <Button size="sm" variant="primary" icon={Save} onClick={() => void saveVersion()} disabled={busy || !dirty}>保存为新版本</Button>
                   <Button size="sm" variant="ghost" icon={Trash2} onClick={() => void deleteVersion('single')} disabled={busy}>删此版本</Button>
                   <Button size="sm" variant="ghost" onClick={() => void deleteVersion('branch')} disabled={busy}>删整条分支</Button>
@@ -142,11 +144,13 @@ export function NovelAIPromptPanel() {
                 </div>
                 <div className="flex min-h-0 w-1/2 flex-col gap-1 overflow-auto border-l border-[var(--color-border)] p-3">
                   {blocks.map((block, index) => (
-                    <div key={index} className="flex items-start gap-2 rounded px-2 py-1 text-xs odd:bg-[var(--color-bg-secondary)]">
-                      <span className="w-6 shrink-0 text-[var(--color-text-secondary)]">{index + 1}</span>
-                      <Badge tone={TYPE_TONE[block.type]}>{TYPE_LABEL[block.type]}</Badge>
-                      <span className="min-w-0 flex-1 break-all font-mono">{block.raw}</span>
-                      {weightLabel(block) && <span className="shrink-0 text-[11px] text-[var(--color-text-secondary)]">{weightLabel(block)}</span>}
+                    <div key={index} className="flex flex-col gap-1 rounded px-2 py-1 text-xs odd:bg-[var(--color-bg-secondary)]">
+                      <span className="flex items-center gap-1.5">
+                        <span className="text-[var(--color-text-secondary)]">{index + 1}</span>
+                        <Badge tone={TYPE_TONE[block.type]}>{TYPE_LABEL[block.type]}</Badge>
+                        {weightLabel(block) && <span className="text-[11px] text-[var(--color-text-secondary)]">{weightLabel(block)}</span>}
+                      </span>
+                      <span className="break-words font-mono leading-snug">{block.raw}</span>
                     </div>
                   ))}
                 </div>

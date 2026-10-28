@@ -203,17 +203,24 @@ if (process.argv.includes('--workbench')) {
     journey.checks.savedVersion = true
     journey.shots.push(await screenshot('wb-03-two-versions'))
     await evaluate(`Array.from(document.querySelectorAll('button')).find(el => el.textContent.includes('删此版本')).click()`)
-    await waitFor(`document.body.innerText.includes('回收站')`)
+    // Assert on the same API the panel uses; the old check searched page text for 「回收站」, which
+    // exists elsewhere in the app and made a failed delete look successful.
+    const deletedState = await waitFor(`(async () => { const panel = document.querySelector('[data-panel-type="novelai-workbench"]'); if (!panel) return null; const works = await window.api.novelai.listWorks(); if (!works.length) return null; const bundle = await window.api.novelai.bundle({ workId: works[0].id }); return bundle && bundle.deleted.length === 1 ? { deleted: bundle.deleted.length } : null })()`, 60)
+    journey.observations.deletedState = deletedState
     journey.checks.deletedVersion = true
     journey.shots.push(await screenshot('wb-04-recycle'))
-    await evaluate(`Array.from(document.querySelectorAll('button')).find(el => el.textContent.trim() === 'v2').click()`)
-    await waitFor(`!document.body.innerText.includes('回收站')`)
+    const restoreClicked = await evaluate(`(() => { const panel = document.querySelector('[data-panel-type="novelai-workbench"]'); if (!panel) return 'NO_PANEL'; const button = Array.from(panel.querySelectorAll('button')).find(el => el.textContent.trim() === 'v2'); if (!button) return 'NO_BUTTON'; button.click(); return 'OK' })()`)
+    journey.observations.restoreClicked = restoreClicked
+    const restoredState = await waitFor(`(async () => { const works = await window.api.novelai.listWorks(); if (!works.length) return null; const bundle = await window.api.novelai.bundle({ workId: works[0].id }); return bundle && bundle.deleted.length === 0 && bundle.line.length === 2 ? { line: bundle.line.length } : null })()`, 60)
+    journey.observations.restoredState = restoredState
     journey.checks.restoredVersion = true
+    journey.workbenchText = await evaluate(`(document.querySelector('[data-panel-type="novelai-workbench"]') || document.body).innerText.slice(0, 400)`)
     journey.shots.push(await screenshot('wb-05-restored'))
     journey.passed = Object.values(journey.checks).every(Boolean)
   } catch (error) {
     journey.error = String(error)
-    journey.state = await evaluate(`({ text: document.body.innerText.slice(0, 800) })`).catch(() => null)
+    journey.panelText = await evaluate(`(() => { const panel = document.querySelector('[data-panel-type="novelai-workbench"]'); return panel ? panel.innerText.slice(0, 700) : 'NO_PANEL' })()`).catch(() => null)
+    journey.shots.push(await screenshot('wb-99-failure').catch(() => null))
   }
   console.log('WORKBENCH ' + JSON.stringify(journey))
   if (!journey.passed) console.error('WORKBENCH_JOURNEY_FAILED')
