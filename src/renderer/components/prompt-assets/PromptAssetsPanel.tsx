@@ -162,7 +162,7 @@ export function PromptAssetsPanel() {
         {queryDraft && <IconButton icon={X} label='清除资产搜索' onClick={() => setQueryDraft('')} className='absolute right-1 top-1/2 h-6 w-6 -translate-y-1/2' />}
       </div>
 
-      <div className='ui-segmented grid grid-cols-3' role='group' aria-label='资产来源'>
+      <div className='ui-segmented flex flex-wrap' role='group' aria-label='资产来源'>
         {SOURCES.map(option => <button key={option.value} onClick={() => { setSource(option.value); setOffset(0) }} aria-pressed={source === option.value} className={`ui-segmented-item truncate px-1 text-[11px] ${source === option.value ? 'ui-segmented-item-active' : ''}`}>{option.label}</button>)}
       </div>
 

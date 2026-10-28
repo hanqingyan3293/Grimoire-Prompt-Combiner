@@ -262,7 +262,7 @@ export function InspectorPanel({ item, className, onOpenSimilar }: { item: Galle
             {similar.loading ? <div className="text-[10px] text-[var(--color-text-secondary)]" role="status">正在计算…</div> : similar.items.length === 0 ? (
               <div className="text-[10px] text-[var(--color-text-secondary)]">没有在阈值内找到相似图。若尚未建索引，请先在工具栏执行「建立相似索引」。</div>
             ) : (
-              <div className="grid grid-cols-4 gap-1.5">
+              <div className="grid grid-cols-4 gap-1.5 [&>*]:min-w-0">
                 {similar.items.map(entry => (
                   <button key={entry.imageRefId} type="button" className="ui-list-card overflow-hidden p-1 text-left" onClick={() => exploreSimilar(entry.imageRefId)} title={`距离 ${entry.distance.toFixed(3)}${autoExplore ? '；点击以此图为起点继续' : ''}`}>
                     <SimilarThumb imageRefId={entry.imageRefId} />

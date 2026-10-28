@@ -873,3 +873,25 @@ resources/agent-runtimes/     opencode.exe 134M (1.18.34) / pi.exe 107M (1.0.1)
 - 修后刷新矩阵截图确认两处均正常；第二轮矩阵数据不变（351/280/210，18/18）。
 
 至此三轮抽检共 10 张截图，修掉 4 处真实布局缺陷，全部是「能挂载但内容不可用」这一类。
+
+### G9 第三条规则：固定列数网格（2026-10-27 第五十四轮）
+
+图片库按钮竖排的根因是 `grid-cols-3`：固定列数网格**不知道自己有多宽**，210px 下每格约 60px。
+这条补进 G9：
+
+```text
+grid-cols-N（N≥3）且类里没有 min-w- / minmax / auto-fit / auto-fill  → 命中
+```
+
+首轮命中 5 处并全部处理：
+
+| 位置 | 处理 |
+|---|---|
+| CanvasToolbar `grid-cols-3` | 改 `flex flex-wrap` |
+| ComfyUI 指标三列 | 保留网格 + `[&>*]:min-w-0` |
+| InspectorPanel `grid-cols-4` | 保留网格 + `[&>*]:min-w-0` |
+| QuickUtilityPopover `grid-cols-3` | 保留网格 + `[&>*]:min-w-0` |
+| PromptAssetsPanel 分段控件 | 改 `flex flex-wrap` |
+
+刷新矩阵截图确认 1600 视口（351px 面板）下这些改动没有把布局搞坏：分段控件仍一行、ComfyUI 地址行正常。
+命中数 5 → **0**，GATES.md 已补规则来历与两种修法。

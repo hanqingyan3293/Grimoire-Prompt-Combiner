@@ -55,7 +55,7 @@ export function QuickSettingsPanel({ variant = "popover" }: { variant?: "popover
       <div className="space-y-4">
         <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-primary)] p-4">
           <div className="mb-2 text-xs font-medium text-[var(--color-text-secondary)]">外观模式</div>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-3 gap-2 [&>*]:min-w-0">
             {[["system", "系统"], ["light", "浅色"], ["dark", "深色"]].map(([value, label]) => (
               <button key={value} onClick={() => setSetting("appearance_mode", value)} className={"rounded border px-2 py-2 text-xs transition-colors " + (appearance_mode === value ? "border-[var(--color-accent)] bg-[var(--color-accent)]/15 text-[var(--color-accent-text)]" : "border-[var(--color-border)] text-[var(--color-text-secondary)] hover:border-[var(--color-accent)]/50")}>
                 {label}

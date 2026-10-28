@@ -157,7 +157,7 @@ export function ComfyUIPanel() {
         </Field>
       </section>
 
-      <div className='grid grid-cols-3 gap-2 text-center text-xs'>
+      <div className='grid grid-cols-3 gap-2 text-center text-xs [&>*]:min-w-0'>
         <Metric label='Checkpoint' value={models.checkpoints.length} />
         <Metric label='UNet' value={models.unets.length} />
         <Metric label='LoRA' value={models.loras.length} />

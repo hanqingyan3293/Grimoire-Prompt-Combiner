@@ -141,3 +141,8 @@ npm run pack
 这三条来自四次真实事故（工作台、素材库、图库、Agent 消息区），不是风格偏好。
 `scripts/check-panel-layout.mjs` 扫描 1、2 两条并作为 **G9** 卡在门禁上；命中数超过
 `scripts/panel-layout-baseline.json` 即失败，且基线只允许手动下调。
+
+**第三条规则（2026-10-28 增补）**：`grid-cols-N`（N ≥ 3）且没有宽度保护（`min-w-` / `minmax` / `auto-fit` / `auto-fill`）→ 命中。
+来历：图片库三个按钮在 210px 面板下每格约 60px，「链接原文件」四字竖排。固定列数网格不知道自己有多宽，
+窄面板下就是逐格挤压。修法二选一：改成 `flex flex-wrap` + 子项 `min-w-*`（宽度驱动），
+或保留网格但给子项加 `[&>*]:min-w-0` 让内容可缩。

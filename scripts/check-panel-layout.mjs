@@ -26,6 +26,9 @@ function walk(dir, out = []) {
 }
 
 const VIEWPORT_BREAKPOINT = /className=(?:"|'|\{`)([^"'`]*\b(?:sm|md|lg|xl|2xl):[^"'`]*)/g
+// Rule 3: a fixed grid of 3+ columns has no idea how wide it will be. At a 210px panel each cell of
+// `grid-cols-3` is ~60px, which is how the image-library buttons ended up one character per line.
+const FIXED_GRID = /className=(?:"|'|\{`)([^"'`]*\bgrid-cols-([3-9])\b[^"'`]*)/g
 const TWO_COLUMN_ROW = /className="flex[^"]*"/g
 
 // `components/dev/` holds full-window preview pages, not panels, so viewport breakpoints are correct there.
@@ -35,6 +38,9 @@ for (const file of walk(COMPONENTS).filter(item => !EXCLUDED.some(pattern => ite
   const source = fs.readFileSync(file, 'utf8')
   const relative = path.relative(ROOT, file).replace(/\\/g, '/')
   for (const line of source.split('\n')) {
+    const grid = FIXED_GRID.exec(line)
+    if (grid && !/min-w-|auto-fit|auto-fill|minmax/.test(grid[1])) findings.push({ kind: 'fixed-grid', file: relative, detail: grid[1].slice(0, 80) })
+    FIXED_GRID.lastIndex = 0
     const breakpoint = VIEWPORT_BREAKPOINT.exec(line)
     if (breakpoint) findings.push({ kind: 'viewport-breakpoint', file: relative, detail: breakpoint[1].slice(0, 80) })
     VIEWPORT_BREAKPOINT.lastIndex = 0
