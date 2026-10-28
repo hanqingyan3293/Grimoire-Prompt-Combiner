@@ -409,17 +409,38 @@ export function AgentWorkspacePanel({ variant = "workspace", initialMode }: { va
           <div className="grid size-8 shrink-0 place-items-center rounded-xl bg-[var(--color-accent)]/15 text-[var(--color-accent-text)]"><Bot size={17} /></div>
           <div className="min-w-0"><div className="truncate text-sm font-semibold text-[var(--color-text-primary)]">Agent 工作台</div><div className="truncate text-[10px] text-[var(--color-text-secondary)]">{activeData?.session.title || '统一 AI 会话、工具与上下文'}</div></div>
         </div>
-        <nav className="flex min-w-[12rem] flex-1 items-center gap-1 overflow-x-auto" aria-label="Agent 模式">
-          {MODES.map(item => { const Icon = item.icon; return <button key={item.id} type="button" onClick={() => setMode(item.id)} aria-current={mode === item.id ? 'page' : undefined} className={'flex shrink-0 items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs transition-colors ' + (mode === item.id ? 'bg-[var(--color-accent)]/15 font-medium text-[var(--color-accent-text)]' : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-tertiary)] hover:text-[var(--color-text-primary)]')}><Icon size={14} />{item.label}</button> })}
-        </nav>
         <div className="hidden shrink-0 items-center gap-2 text-[10px] text-[var(--color-text-secondary)]"><span className="rounded-md border border-[var(--color-border)] px-2 py-1">{selectedRuntime}</span><span className="max-w-32 truncate">{model || '未选择模型'}</span></div>
       </header>
   const notice = <>{permissionRequests.length > 0 && <div className="shrink-0 space-y-2 border-b border-amber-500/30 bg-amber-500/10 p-3">{permissionRequests.map(request => <div key={request.requestId} className="rounded-lg border border-amber-500/30 bg-[var(--color-bg-primary)] p-2 text-xs"><div className="font-semibold text-amber-700 dark:text-amber-300">等待权限确认：{request.permission}</div>{request.detail !== undefined && <pre className="mt-1 max-h-20 overflow-auto whitespace-pre-wrap text-[10px] text-[var(--color-text-secondary)]">{JSON.stringify(request.detail, null, 2)}</pre>}<div className="mt-2 flex flex-wrap gap-1"><Button size="sm" variant="primary" onClick={() => void decidePermission(request.requestId, 'allowOnce')}>允许一次</Button><Button size="sm" variant="secondary" onClick={() => void decidePermission(request.requestId, 'allowForSession')}>本会话允许</Button><Button size="sm" variant="ghost" onClick={() => void decidePermission(request.requestId, 'deny')}>拒绝</Button></div></div>)}</div>}{bridgeWarning && <div className="shrink-0 border-b border-amber-500/30 bg-amber-500/10 px-4 py-2 text-xs text-amber-700 dark:text-amber-300" role="alert">{bridgeWarning}</div>}</>
-  const conversationHeader = <CherryConversationHeader title="Agent 工作台" subtitle={activeData?.session.title || '统一 AI 会话、工具与上下文'} mode={mode} modes={MODES} runtime={selectedRuntime} model={model} onModeChange={value => setMode(value as AgentMode)} />
+  // Modes live on their own wrapping row, not inside the panel header: the header has a fixed height, so a
+  // wrapped row there is clipped and the last modes become unreachable (measured at a 351px panel).
+  const modeRow = (
+    <div className='flex flex-wrap items-center gap-1 px-2 pb-1.5' role='tablist' aria-label='Agent 模式'>
+      {MODES.map(item => {
+        const Icon = item.icon
+        return (
+          <button
+            key={item.id}
+            type='button'
+            role='tab'
+            aria-selected={mode === item.id}
+            onClick={() => setMode(item.id)}
+            className={'flex shrink-0 items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs transition-colors ' + (mode === item.id ? 'bg-[var(--color-accent)]/15 font-medium text-[var(--color-accent-text)]' : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-tertiary)] hover:text-[var(--color-text-primary)]')}
+          >
+            <Icon size={14} aria-hidden='true' />
+            {item.label}
+          </button>
+        )
+      })}
+    </div>
+  )
+  // The header keeps the title/runtime/model only: its height is fixed, so the mode switcher moved to its
+  // own wrapping row above the conversation body.
+  const conversationHeader = <CherryConversationHeader title="Agent 工作台" subtitle={activeData?.session.title || '统一 AI 会话、工具与上下文'} mode={mode} modes={[]} runtime={selectedRuntime} model={model} onModeChange={() => {}} />
   const sessionSidebar = <CherrySessionSidebar sessions={sessions} activeId={activeId} query={sessionQuery} onQueryChange={setSessionQuery} onSelect={refreshActive} onCreate={() => void createSession()} onDelete={deleteSession} onRename={async (id, title) => { const session = await cherry.sessions.update({ id, title }); setSessions(current => current.map(item => item.id === id ? session : item)); if (activeId === id) setActiveData(current => current ? { ...current, session } : current) }} onBranch={() => void branchSession()} onExport={exportSession} onImport={() => void importSession()} assistants={assistants} topics={topics} activeAssistantId={activeAssistantId} onAssistantChange={id => void changeAssistant(id)} onTopicCreate={() => void createTopic()} onTopicSelect={id => void selectTopic(id)} />
   const context = <><ContextPanel providers={providers} provider={selectedProvider} model={model} catalogModels={catalogModels} runtimeStatuses={runtimeStatuses} runtime={selectedRuntime} onRuntimeChange={changeRuntime} onRefreshRuntimes={refreshRuntimes} onProviderChange={changeProvider} onModelChange={async nextModel => { setModelOverride(nextModel); if (activeId) { const session = await cherry.sessions.update({ id: activeId, modelId: nextModel }); setActiveData(current => current ? { ...current, session } : current) } }} session={activeData?.session || null} events={activeData?.events || []} onInterrupt={() => void interruptSession()} onRetry={() => void retrySession()} busy={busy} onOpenSettings={() => void cherry.windows.openSettings()} /><CherryContextPicker contexts={contexts} onChange={setContexts} /></>
   const errorView = error ? <div className="shrink-0 border-t border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-500" role="alert">{error}</div> : null
-  const body = <CherryAgentShell header={conversationHeader} notice={notice} toolbar={variant === 'compact' ? <CompactRuntimeBar runtime={selectedRuntime} runtimeStatuses={runtimeStatuses} onRuntimeChange={changeRuntime} onRefresh={refreshRuntimes} onOpenWorkspace={() => void cherry.windows.openAI()} /> : undefined} compact={variant === 'compact'} center={<div className="flex h-full min-h-0 flex-col">{modeContent}</div>} sidebar={sessionSidebar} context={context} error={errorView} />
+  const body = <CherryAgentShell header={conversationHeader} notice={notice} toolbar={variant === 'compact' ? <CompactRuntimeBar runtime={selectedRuntime} runtimeStatuses={runtimeStatuses} onRuntimeChange={changeRuntime} onRefresh={refreshRuntimes} onOpenWorkspace={() => void cherry.windows.openAI()} /> : undefined} compact={variant === 'compact'} center={<div className="flex h-full min-h-0 flex-col">{modeRow}{modeContent}</div>} sidebar={sessionSidebar} context={context} error={errorView} />
   if (legacyUi && variant === 'workspace') return <ChatLayout />
   return variant === "compact" ? body : <CherryHostProvider bridge={cherry}><div className="h-full min-h-0 overflow-hidden bg-[var(--color-bg-secondary)]">{body}</div></CherryHostProvider>
 }

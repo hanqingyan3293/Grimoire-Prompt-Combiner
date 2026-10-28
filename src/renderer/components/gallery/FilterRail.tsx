@@ -78,7 +78,7 @@ export function FilterRail({ className }: { className?: string }): React.ReactEl
         {FAVORITE_OPTIONS.map(option => (
           <label key={String(option.value)} className="flex items-center gap-1.5">
             <input
-              type="radio"
+              type="radio" className="ui-radio"
               name="gallery-favorite"
               checked={favorite === option.value}
               onChange={() => setQuery({ favorite: option.value })}

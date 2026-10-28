@@ -2617,6 +2617,8 @@ async function handleIpcApiRoute(route: string, input: unknown, sender: WebConte
       return ipcOk([])
     }
     if (route === 'mcp.server.get_logs') {
+      // Grimoire keeps MCP server output in the task log, not per-server ring buffers. `[]` is the empty
+      // protocol result the source log viewer already renders as "no entries", not fabricated rows.
       return ipcOk([])
     }
     // ── File routes (Files page) ──────────────────────────────────────────────

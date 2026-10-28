@@ -1091,7 +1091,8 @@ textarea.ui-field {
   align-items: center;
   border-radius: 9999px;
   border: 1px solid var(--color-border-strong);
-  background: var(--color-bg-tertiary);
+  /* The track must read as a track: with the tertiary surface it looked like a lone circle on light panels. */
+  background: color-mix(in srgb, var(--color-border-strong) 55%, var(--color-bg-secondary));
   transition: background-color var(--motion-fast) ease, border-color var(--motion-fast) ease;
 }
 
@@ -1203,3 +1204,25 @@ textarea.ui-field {
 [data-appearance='dark'] .ui-tooltip { background: #f5f5f5; color: #171717; }
 [data-appearance='dark'] .ui-tooltip[data-side='top'] .ui-tooltip-arrow,
 [data-appearance='dark'] .ui-tooltip[data-side='bottom'] .ui-tooltip-arrow { background: #f5f5f5; }
+
+/* Radio parity with the checkbox baseline: same 16px box metrics and 4px radius family, but a circle and
+ * a filled dot. The gallery filter rail used bare native radios, which the OS drew as 12px grey circles
+ * that read the same whether or not they were selected. */
+.ui-radio {
+  appearance: none;
+  position: relative;
+  width: 16px;
+  height: 16px;
+  flex: 0 0 16px;
+  border: 1px solid var(--color-border-strong);
+  border-radius: 999px;
+  background: transparent;
+  transition: border-color var(--motion-fast) ease;
+  cursor: pointer;
+}
+
+.ui-radio:not(:disabled):hover { border-color: var(--color-text-secondary); }
+.ui-radio:checked { border-color: var(--color-text-primary); }
+.ui-radio:checked::after { content: ''; position: absolute; inset: 3px; border-radius: 999px; background: var(--color-text-primary); }
+.ui-radio:focus-visible { outline: 2px solid var(--gr-focus-ring); outline-offset: 1px; }
+.ui-radio:disabled { cursor: not-allowed; opacity: 0.5; }
