@@ -1327,3 +1327,29 @@ workspace store 拥有布局（列/顺序/浮动/最大化/popout）并存 SQLit
 - preload/renderer 类型：window.api.selection.{current,apply,close} 三通道。
 
 类型检查（主进程 + 渲染层）与 vite build 均通过。
+
+### 划词助手测试补齐（2026-10-27 第八十三轮）
+
+- `SelectionAssistantView.test.tsx`（jsdom，4 条）：显示主进程交来的捕获文本、点动作走 IPC、
+  **无捕获时按钮禁用**（不能看起来可点）、关闭走 IPC。
+- `selection-assistant.service.test.ts` +2 条：`applySelectionPlan` 经注入 sink 落地并回报位置；
+  sink 抛错时返回 `failed` 而不是伪造成功（剪贴板被占 / 库已关闭两种）。
+- 服务测试共 7 条、视图测试 4 条，全绿。
+
+### G4 第二次抖动：找到的不是超时，是竞态（2026-10-27 第八十三轮）
+
+上一轮把 `asyncUtilTimeout` 调到 5s 后 G4 又红了一次，说明**不是等得不够久**。看测试本体：
+
+```ts
+render(<CompatProviderMcpPanel ... />)
+fireEvent.click(await screen.findByRole('button', { name: '刷新模型' }))   // ← 按钮一出现就点
+```
+
+`刷新模型` 在**还没选中 provider** 时会直接 early-return——而 provider 列表是异步来的。
+全量套件负载下，按钮先画出来、数据后到，点击就白点，随后 `findByTestId('provider-model-sync')` 等不到。
+
+修法：点击**之前**先等数据落地（`findByText('OpenAI')` + `waitFor(providers.list called)`）。
+这条和上一轮的 5s 超时是两个不同的病：上一轮治的是「等得太短」，这轮治的是「点得太早」。
+
+顺带记一个自己踩的坑：批量插入前置条件时，其中一处插到了 `render()` **之前**（那个测试是先设 mock 再渲染），
+导致 `findByText` 在空树上等待并超时——**按行号批量改代码必须逐处看上下文**，这次是测试自己报出来的。

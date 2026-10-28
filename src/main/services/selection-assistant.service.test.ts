@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
-  SELECTION_ACTIONS, applySelectionShortcut, currentSelectionShortcut, normalizeSelection,
+  SELECTION_ACTIONS, applySelectionPlan, applySelectionShortcut, currentSelectionShortcut, normalizeSelection,
   planSelectionAction, resetSelectionShortcutForTests, selectionToTags,
 } from './selection-assistant.service'
 
@@ -54,5 +54,27 @@ describe('selection assistant (M3, no native hook)', () => {
 
   it('normalizes CRLF and collapses runs of spaces so a copied block stays one shape', () => {
     expect(normalizeSelection('a\r\n\r\nb\t\tc')).toBe('a\nb c')
+  })
+  it('applies a plan through the injected sink and reports where it landed', () => {
+    const written: string[] = []
+    const created: Array<{ name: string; prompt: string }> = []
+    const sink = {
+      writeClipboard: (value: string) => { written.push(value) },
+      createPromptAsset: (input: { name: string; prompt: string; detail: string }) => { created.push(input); return { id: 'asset:1' } },
+    }
+    expect(applySelectionPlan('copy-normalized', 'a\n\nb', sink)).toEqual({ kind: 'clipboard', text: 'a\nb' })
+    expect(written).toEqual(['a\nb'])
+    expect(applySelectionPlan('to-prompt-asset', 'line', sink)).toEqual({ kind: 'prompt-asset', assetId: 'asset:1' })
+    expect(created[0]?.prompt).toBe('line')
+    expect(applySelectionPlan('copy-as-tags', '   ', sink)).toEqual({ kind: 'empty' })
+  })
+
+  it('surfaces a sink failure instead of reporting success', () => {
+    const failing = {
+      writeClipboard: () => { throw new Error('clipboard locked') },
+      createPromptAsset: () => { throw new Error('db closed') },
+    }
+    expect(applySelectionPlan('copy-normalized', 'x', failing)).toEqual({ kind: 'failed', message: 'clipboard locked' })
+    expect(applySelectionPlan('to-prompt-asset', 'x', failing)).toEqual({ kind: 'failed', message: 'db closed' })
   })
 })

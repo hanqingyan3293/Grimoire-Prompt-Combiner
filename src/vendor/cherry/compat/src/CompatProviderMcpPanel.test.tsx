@@ -77,6 +77,8 @@ describe('CompatProviderMcpPanel', () => {
     let resolvePull: (value: Awaited<ReturnType<CherryProviderApi['fetchModelsForProvider']>>) => void = () => undefined
     host.providers.fetchModelsForProvider.mockImplementationOnce(() => new Promise(resolve => { resolvePull = resolve }))
     render(<CompatProviderMcpPanel onProviderSettings={vi.fn()} />)
+    expect(await screen.findByText('OpenAI')).toBeTruthy()
+    await waitFor(() => expect(host.providers.list).toHaveBeenCalledOnce())
     fireEvent.click(await screen.findByRole('button', { name: '刷新模型' }))
 
     fireEvent.change(screen.getByRole('combobox'), { target: { value: 'p2' } })
