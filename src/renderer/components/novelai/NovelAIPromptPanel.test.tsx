@@ -15,6 +15,7 @@ const bundle = {
   ],
   branchName: '主线',
   deleted: [],
+    branches: [],
 }
 
 const api = {

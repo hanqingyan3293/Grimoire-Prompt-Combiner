@@ -198,6 +198,37 @@ export function listNovelaiBranchLine(workId: string, branchId?: string): Novela
   return line.reverse()
 }
 
+export interface NovelaiBranchSummary { readonly id: string; readonly name: string | null; readonly number: number; readonly tipVersionId: string; readonly tipNumber: number; readonly size: number }
+
+/**
+ * Branches of a work, newest tip first.
+ *
+ * The workbench used to show only the current line, so every branch but the active one was
+ * invisible even though the model supports them. A branch is the version row that started it, which
+ * is why `number` here is that row's version number.
+ */
+export function listNovelaiBranches(workId: string): NovelaiBranchSummary[] {
+  const work = getNovelaiWork(workId)
+  if (!work) throw new NovelaiVersionError('WORK_NOT_FOUND', 'work not found')
+  const rows = getDatabase().exec(
+    'SELECT branch_id, MAX(number) AS tip, COUNT(*) AS size FROM novelai_version WHERE work_id=? AND deleted_at IS NULL GROUP BY branch_id ORDER BY tip DESC',
+    [workId],
+  )[0]?.values ?? []
+  return rows.map(row => {
+    const branchId = String(row[0])
+    const tipNumber = Number(row[1])
+    const tip = getNovelaiVersion(branchId)
+    return {
+      id: branchId,
+      name: getNovelaiBranchName(branchId),
+      number: tip ? tip.number : tipNumber,
+      tipVersionId: branchId,
+      tipNumber,
+      size: Number(row[2]),
+    }
+  })
+}
+
 export function setNovelaiBranchName(workId: string, branchId: string, name: string): void {
   const work = getNovelaiWork(workId)
   if (!work) throw new NovelaiVersionError('WORK_NOT_FOUND', 'work not found')

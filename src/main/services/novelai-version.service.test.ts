@@ -17,6 +17,7 @@ import {
   createNovelaiVersion,
   createNovelaiWork,
   getNovelaiBranchName,
+  listNovelaiBranches,
   getNovelaiWork,
   getNovelaiVersion,
   linkNovelaiVersionImage,
@@ -182,5 +183,28 @@ describe('NovelAI prompt version tree (M6.2)', () => {
       expect(() => createNovelaiVersion({ workId: work.id, parentVersionId: third.id, snapshot: 'a, b, c, d', expectedRevision: 4 })).toThrow(/recycle/i)
       expect(second.id).toBeTruthy()
     })
+  })
+})
+describe('branch listing (M6 UI)', () => {
+  it('lists every branch with its tip and size, newest tip first', () => {
+    const created = createNovelaiWork({ name: '分支作品', snapshot: 'a' })
+    const work = created.work
+    const root = created.root
+    // Two children of the root: the second one must start its own branch (the parent already has a child).
+    const first = createNovelaiVersion({ workId: work.id, parentVersionId: root.id, snapshot: 'b', source: 'user', operation: 'edit', expectedRevision: getNovelaiWork(work.id)!.revision })
+    const second = createNovelaiVersion({ workId: work.id, parentVersionId: root.id, snapshot: 'c', source: 'user', operation: 'edit', expectedRevision: getNovelaiWork(work.id)!.revision })
+    // A second child of the same parent starts its own branch instead of extending the first.
+    expect(second.branched).toBe(true)
+    expect(second.version.branchId).not.toBe(first.version.branchId)
+    const branches = listNovelaiBranches(work.id)
+    expect(branches).toHaveLength(2)
+    expect(branches.map(branch => branch.tipVersionId)).toContain(root.branchId)
+    expect(branches.map(branch => branch.tipVersionId)).toContain(second.version.branchId)
+    expect(branches[0].tipNumber).toBeGreaterThanOrEqual(branches[1].tipNumber)
+    expect(branches.every(branch => branch.size >= 1)).toBe(true)
+  })
+
+  it('throws for an unknown work instead of returning an empty list', () => {
+    expect(() => listNovelaiBranches('nai_w_missing')).toThrow(/WORK_NOT_FOUND|work not found/)
   })
 })

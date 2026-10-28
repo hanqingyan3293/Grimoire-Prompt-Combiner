@@ -460,6 +460,7 @@ export const IPC_CHANNELS = {
   NOVELAI_VERSION_DELETE: "novelai:version:delete",
   NOVELAI_VERSION_RESTORE: "novelai:version:restore",
   NOVELAI_BRANCH_RENAME: "novelai:branch:rename",
+  NOVELAI_BRANCH_LIST: "novelai:branch:list",
   NOVELAI_WORK_BUNDLE: "novelai:work:bundle",
   NOVELAI_ASSET_LIST: "novelai:asset:list",
   NOVELAI_ASSET_CREATE: "novelai:asset:create",

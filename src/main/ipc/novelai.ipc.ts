@@ -17,6 +17,7 @@ import {
   getNovelaiBranchName,
   getNovelaiWork,
   listNovelaiBranchLine,
+  listNovelaiBranches,
   listNovelaiDeletedVersions,
   listNovelaiWorks,
   restoreNovelaiVersion,
@@ -49,6 +50,7 @@ export function registerNovelaiIPC(): void {
       line,
       branchName: line.length ? getNovelaiBranchName(line[line.length - 1].branchId) : null,
       deleted: listNovelaiDeletedVersions(workId),
+      branches: listNovelaiBranches(workId),
     }
   })
   ipcMain.handle(IPC_CHANNELS.NOVELAI_VERSION_LINE, (_event, input: unknown) => {
@@ -76,6 +78,7 @@ export function registerNovelaiIPC(): void {
     })
   })
   ipcMain.handle(IPC_CHANNELS.NOVELAI_VERSION_RESTORE, (_event, id: unknown) => restoreNovelaiVersion(String(id ?? '')))
+  ipcMain.handle(IPC_CHANNELS.NOVELAI_BRANCH_LIST, (_event, workId: unknown) => listNovelaiBranches(String(workId ?? '')))
   ipcMain.handle(IPC_CHANNELS.NOVELAI_BRANCH_RENAME, (_event, input: unknown) => {
     const value = record(input)
     setNovelaiBranchName(String(value.workId ?? ''), String(value.branchId ?? ''), String(value.name ?? ''))

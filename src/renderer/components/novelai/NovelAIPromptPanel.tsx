@@ -10,7 +10,8 @@ import { EmptyState, PanelHeader } from '../ui/Feedback'
 // parses the draft with the same pure parser so the block list can never disagree with the text.
 type Work = { id: string; name: string; lastVersionId: string | null; revision: number; updatedAt?: string; lastUsedAt: string }
 type Version = { id: string; workId: string; parentId: string | null; number: number; branchId: string; branchNumber: number; snapshot: string; source: 'user' | 'agent'; operation: string; createdAt: string; deletedAt: string | null }
-type Bundle = { work: Work; line: Version[]; branchName: string | null; deleted: Version[] }
+type Branch = { id: string; name: string | null; number: number; tipVersionId: string; tipNumber: number; size: number }
+type Bundle = { work: Work; line: Version[]; branchName: string | null; deleted: Version[]; branches: Branch[] }
 
 const TYPE_LABEL: Record<PromptBlock['type'], string> = { tags: '标签块', paragraph: '段落块', random: '随机块' }
 const TYPE_TONE: Record<PromptBlock['type'], 'neutral' | 'accent' | 'warning'> = { tags: 'accent', paragraph: 'neutral', random: 'warning' }
@@ -35,9 +36,9 @@ export function NovelAIPromptPanel() {
   const api = (typeof window !== 'undefined' ? (window as unknown as { api?: { novelai?: Record<string, (...args: unknown[]) => Promise<unknown>> } }).api?.novelai : undefined)
   const metadataApi = (typeof window !== 'undefined' ? (window as unknown as { api?: { novelai?: { metadata?: { exportTo: (params: Record<string, unknown>) => Promise<{ canceled?: boolean; writtenPath?: string; error?: string }>; readFrom: () => Promise<{ canceled?: boolean; decoded?: { params: { prompt: string } } | null }> } } } }).api?.novelai?.metadata : undefined)
 
-  const loadBundle = useCallback(async (workId: string) => {
+  const loadBundle = useCallback(async (workId: string, branchId?: string) => {
     if (!api) return
-    const next = await api.bundle({ workId }) as Bundle | null
+    const next = await api.bundle(branchId ? { workId, branchId } : { workId }) as Bundle | null
     setBundle(next)
     if (next) {
       const tip = next.line[next.line.length - 1]
@@ -117,6 +118,12 @@ export function NovelAIPromptPanel() {
     } catch (cause) { setError(String(cause)) } finally { setBusy(false) }
   }
 
+  // The active branch is the one the visible line ends on; the list comes from the same bundle call.
+  // `branches` is optional: an older main process (or stale built bundle) returns a payload without
+  // it, and a crash here took the whole panel down instead of just hiding the branch row.
+  const branches = bundle?.branches ?? []
+  const activeBranch = current ? branches.find(branch => branch.id === current.branchId) ?? null : null
+
   const renameBranch = async () => {
     if (!api || !bundle || !current || !branchName.trim()) return
     setBusy(true); setError(null)
@@ -154,6 +161,23 @@ export function NovelAIPromptPanel() {
                 <Badge tone="neutral">r{bundle.work.revision}</Badge>
                 <input value={branchName} onChange={event => setBranchName(event.target.value)} placeholder="分支名" className="ui-field w-24 min-w-0 shrink px-2 py-1 text-xs" />
                 <Button size="sm" variant="ghost" onClick={() => void renameBranch()} disabled={busy || !branchName.trim()}>命名分支</Button>
+                {bundle && branches.length > 1 && (
+                  <span className="flex flex-wrap items-center gap-1" aria-label="分支列表">
+                    <span className="text-[11px] text-[var(--color-text-secondary)]">分支：</span>
+                    {branches.map(branch => (
+                      <button
+                        key={branch.id}
+                        type="button"
+                        onClick={() => void loadBundle(bundle.work.id, branch.id)}
+                        title={'分支 ' + branch.number + ' · ' + branch.size + ' 个版本' + (branch.name ? ' · ' + branch.name : '')}
+                        className={'rounded border px-1.5 py-0.5 text-[11px] ' + (activeBranch && activeBranch.id === branch.id ? 'border-[var(--color-accent)] text-[var(--color-accent-text)]' : 'border-[var(--color-border)] text-[var(--color-text-secondary)]')}
+                      >
+                        {branch.name || '分支 ' + branch.number}
+                        <span className="ml-1 opacity-60">b{branch.number}</span>
+                      </button>
+                    ))}
+                  </span>
+                )}
                 <span className="ml-auto flex flex-wrap gap-1">
                   <Button size="sm" variant="primary" icon={Save} onClick={() => void saveVersion()} disabled={busy || !dirty}>保存为新版本</Button>
                   <Button size="sm" variant="ghost" icon={Trash2} onClick={() => void deleteVersion('single')} disabled={busy}>删此版本</Button>

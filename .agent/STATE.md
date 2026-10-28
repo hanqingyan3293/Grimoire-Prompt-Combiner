@@ -547,3 +547,13 @@ resources/agent-runtimes/     opencode.exe 134M (1.18.34) / pi.exe 107M (1.0.1)
 - journey `--api-gateway` 五项全 PASS：页面可编辑、启动成功、**徽章显示运行中**、状态接口 running、停止成功；
   截图显示运行中 + 端口 62935。
 - 门禁修复：G4 断言改为「只读页仍禁用、网关于可编辑」；G5 自有类型 0 错误。
+
+### M6 UI：分支列表与切换（2026-10-27 第二十九轮）
+
+- 服务新增 `listNovelaiBranches(workId)`：按 `branch_id` 聚合出每条分支的 tip 与版本数，tip 新的在前；未知 work 抛错而不是返回空表。
+- `bundle` 返回值新增 `branches`，面板一次请求就能画出分支条；`novelai:branch:list` 通道与 `window.api.novelai.listBranches` 同步提供。
+- 面板新增分支条（>1 条分支才显示）：名字或「分支 N」+ `bN` 标记，点击用 `bundle({workId, branchId})` 切到该分支；
+  当前分支高亮。之前只有当前线可见，其它分支在数据里存在但界面上完全看不到。
+- 测试：版本服务 +2（两条分支的 tip/大小、未知 work 抛错），共 17 条绿；面板 6 条绿。
+- **踩坑**：面板在 `branches` 缺失时直接崩掉整块面板（ui-parity 报 `NO_PANEL`）。原因是 ui-parity 用的是**已构建**的 dist/main，
+  改完 IPC 必须 `build:main`；同时给面板加了 `bundle?.branches ?? []` 兜底——旧主进程/旧数据只应隐藏分支条，不应该连累整块面板。
