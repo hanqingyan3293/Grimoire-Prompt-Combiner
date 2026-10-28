@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { FileDown, FileUp, GitBranch, History, Plus, RotateCcw, Save, Trash2 } from 'lucide-react'
 import { parsePromptDocument, type PromptBlock } from '../../../shared/prompt-blocks'
+import { diffPromptVersions } from '../../../shared/prompt-diff'
 import { Badge } from '../ui/Badge'
 import { Button } from '../ui/Button'
 import { EmptyState, PanelHeader } from '../ui/Feedback'
@@ -35,6 +36,9 @@ export function NovelAIPromptPanel() {
   // Assets are recorded against images and a version links to images, so this list is derived
   // server-side instead of being stored twice.
   const [versionAssets, setVersionAssets] = useState<Array<{ imageId: string; asset: { id: string; name: string } }>>([])
+  // Diff against an older version: computed locally from the two snapshots, so no extra round trip and
+  // no server-side state to keep in sync.
+  const [compareBase, setCompareBase] = useState<Version | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
@@ -140,6 +144,8 @@ export function NovelAIPromptPanel() {
     return () => { alive = false }
   }, [api, current?.id])
 
+  const comparison = compareBase && current ? diffPromptVersions(compareBase.snapshot, current.snapshot) : null
+
   const renameBranch = async () => {
     if (!api || !bundle || !current || !branchName.trim()) return
     setBusy(true); setError(null)
@@ -244,6 +250,11 @@ export function NovelAIPromptPanel() {
                         className={'rounded border px-2 py-0.5 text-[11px] ' + (version.id === selectedVersionId ? 'border-[var(--color-accent)] text-[var(--color-accent-text)]' : 'border-[var(--color-border)] text-[var(--color-text-secondary)]')}>
                         v{version.number} · {version.operation || '编辑'} · b{version.branchNumber}
                       </button>
+                      <button type="button" title={'以 v' + version.number + ' 为基准对比'} aria-label={'对比 v' + version.number}
+                        onClick={() => setCompareBase(compareBase?.id === version.id ? null : version)}
+                        className={'rounded border px-1 py-0.5 text-[10px] ' + (compareBase?.id === version.id ? 'border-[var(--color-accent)] text-[var(--color-accent-text)]' : 'border-transparent text-[var(--color-text-secondary)] hover:border-[var(--color-border)]')}>
+                        对比
+                      </button>
                       <button type="button" title={'从 v' + version.number + ' 开新分支'} aria-label={'从 v' + version.number + ' 开新分支'}
                         onClick={() => { setBranchFrom(version); setSelectedVersionId(version.id); setDraft(version.snapshot) }}
                         className={'rounded border px-1 py-0.5 text-[10px] ' + (branchFrom?.id === version.id ? 'border-[var(--color-accent)] text-[var(--color-accent-text)]' : 'border-transparent text-[var(--color-text-secondary)] hover:border-[var(--color-border)]')}>
@@ -252,6 +263,16 @@ export function NovelAIPromptPanel() {
                     </span>
                   ))}
                 </div>
+                {comparison && compareBase && current && (
+                  <div className="mt-2 rounded border border-[var(--color-border)] p-2 text-[11px]" aria-label="版本对比">
+                    <div className="text-[var(--color-text-secondary)]">v{compareBase.number} → v{current.number}：{comparison.summary}</div>
+                    <div className="mt-1 flex flex-wrap gap-1">
+                      {comparison.added.map(item => <span key={'a' + item.text} className="rounded bg-[var(--color-bg-tertiary)] px-1.5 py-0.5 text-[var(--color-success)]">+ {item.text}</span>)}
+                      {comparison.removed.map(item => <span key={'r' + item.text} className="rounded bg-[var(--color-bg-tertiary)] px-1.5 py-0.5 text-[var(--color-danger)]">- {item.text}</span>)}
+                      {comparison.reweighted.map(item => <span key={'w' + item.text} className="rounded bg-[var(--color-bg-tertiary)] px-1.5 py-0.5">~ {item.text} {item.before}→{item.after}</span>)}
+                    </div>
+                  </div>
+                )}
                 {bundle.deleted.length > 0 && (
                   <div className="mt-2 flex flex-wrap items-center gap-1 text-[11px] text-[var(--color-text-secondary)]">
                     回收站：

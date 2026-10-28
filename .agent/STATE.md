@@ -703,3 +703,12 @@ resources/agent-runtimes/     opencode.exe 134M (1.18.34) / pi.exe 107M (1.0.1)
   `credentialWriteAccepted` / `readBackMasked`（读回是 `********`，host 仍可见）/ `executorReachable`
   （假 SearXNG 返回「矩阵搜索结果」）/ `unsupportedProviderRefused` / `pageEditable`。
 - 页面从只读改为**可编辑**，理由写进 limitation：只有 SearXNG 与 Tavily 会真正执行，其余供应商明确报不支持。
+
+### M6：版本差异对比（2026-10-27 第四十轮）
+
+- 新增 `shared/prompt-diff`：**按内容而不是位置**比较两个快照（移动标签不算改动）；
+  权重语法在比较前剥掉（`{x}` → `{{x}}` 是**同一标签加重**，不是删一个加一个）；
+  权重变化单独归为 `reweighted`，标签描述带 kind+value（`increase:0.05` → `increase:0.1`）。
+- 面板：版本块新增「对比」，选中基准后显示 `v1 → v3：+2 / -1 / ~0 / =2` 与逐项 `+ / - / ~` 标签；
+  对比在渲染层用两个快照本地计算，不额外请求、不引入服务端状态。
+- 测试：diff 4 条（增删不误报、权重算 reweight、位置无关、空输入）+ 面板 1 条（点「对比 v1」出现 `+1` 与新增块）。

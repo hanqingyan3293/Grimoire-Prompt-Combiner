@@ -80,4 +80,13 @@ describe('NovelAI prompt workbench (M6 UI)', () => {
     fireEvent.click(screen.getByRole('button', { name: /保存为新版本/ }))
     await waitFor(() => expect(api.createVersion).toHaveBeenCalledWith(expect.objectContaining({ parentVersionId: 'v1', operation: '开分支' })))
   })
+  it('diffs two versions in place when 对比 is used', async () => {
+    render(<NovelAIPromptPanel />)
+    await waitFor(() => expect(screen.getByLabelText('提示词原文')).toBeTruthy())
+    fireEvent.click(screen.getByRole('button', { name: '对比 v1' }))
+    const panel = screen.getByLabelText('版本对比')
+    // In the fixture, v2 is v1 plus the random block, so exactly one addition is reported.
+    expect(panel.textContent).toContain('+1')
+    expect(panel.textContent).toContain('+ __sky*2__')
+  })
 })
