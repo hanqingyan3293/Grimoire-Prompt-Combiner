@@ -15,7 +15,10 @@ const isWindowsHost = typeof navigator !== 'undefined' && /Windows/i.test(naviga
 const SOURCE_SETTINGS = {
   'settings-general': {
     Component: lazy(() => import('../../source/src/renderer/pages/settings/GeneralSettings/GeneralSettings')),
-    limitation: '源通用设置已挂载。17 个键中 14 个已有真实消费者（开机自启、防休眠、代理三键、上下文四键、重试四键、开发者模式、Agent 语言），另 3 个仍无消费者；只要还有开关是死的，整页就保持只读，避免点下去只有心理安慰。'
+    // Every control this page shows now has a real consumer (see cherry-preference-consumers); the
+    // two switches that could not take effect are hidden by compat CSS, so the page is editable.
+    readOnly: false,
+    limitation: '源通用设置已挂载且可编辑：页面上每个开关都有真实消费者（开机自启、防休眠、代理三键、上下文四键、重试四键、开发者模式、Agent 语言、硬件加速）。另有 2 个在 Grimoire 里无处生效的开关（私网抓取、提交归因）已隐藏，底部接线报告里注明原因。'
   },
   'settings-api-gateway': {
     Component: lazy(() => import('../../source/src/renderer/pages/settings/ToolSettings/ApiGatewaySettings/ApiGatewaySettings')),
@@ -59,26 +62,26 @@ export function CompatSourceSettings({ route }: { route: CompatRoute }) {
   const descriptor = route.id === 'settings-general' ? {
     title: '通用设置',
     missing: [
-      'agent.commit_attribution.enabled：Grimoire Agent 不创建 git 提交，没有可归因对象',
-      'app.fetch.allow_private_network：没有面向用户的抓取入口，私网判定无处生效',
-      'app.user.id：源用于匿名标识，Grimoire 没有读取方',
+      'agent.commit_attribution.enabled：Grimoire Agent 不创建 git 提交，开关已隐藏',
+      'app.fetch.allow_private_network：没有面向用户的抓取入口，开关已隐藏',
+      'app.user.id：源用于匿名标识，页面上没有对应控件',
     ],
-    nextAction: '要么为这三个键实现真实消费者，要么在源页面里隐去对应控件；两者都要能验证，之后整页才解除只读。'
+    nextAction: '页面上每个可见开关都已生效；将来若接入抓取或提交归因能力，再解除对应开关的隐藏。'
   } : getSettingsDiagnostic(route.id)
   if (!descriptor) return <CompatRemainingSettings route={route} />
   const noteId = 'compat-source-settings-' + route.id
   return (
     <div className="flex min-h-0 w-full flex-col" data-ui="compat.settings.source-readonly" data-settings-route={route.id}>
       <section role="note" id={noteId} aria-label={descriptor.title + '能力边界'} className="mx-4 mt-4 rounded border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-foreground">
-        <h1 className="font-medium">{descriptor.title}（PARTIALLY_MIGRATED · 源页面只读）</h1>
+        <h1 className="font-medium">{descriptor.title}（PARTIALLY_MIGRATED · {route.id === 'settings-general' ? '可编辑' : '源页面只读'}）</h1>
         <p className="mt-2">{limitation}</p>
-        <p className="mt-2">不保存配置、不注册全局行为、不启动服务；下方未接入功能不是可用能力。</p>
+        <p className="mt-2">{route.id === 'settings-general' ? '本页可编辑：修改会立即生效并按上述消费者作用到主进程。' : '不保存配置、不注册全局行为、不启动服务；下方未接入功能不是可用能力。'}</p>
         <ul className="mt-2 list-disc pl-5">{descriptor.missing.map(item => <li key={item}>{item}</li>)}</ul>
         <p className="mt-2">下一步：{descriptor.nextAction}</p>
       </section>
       {route.id === 'settings-general' ? <CompatPreferenceWiring /> : null}
       {route.id === 'settings-general' ? <CompatDomainCapabilities /> : null}
-      <fieldset disabled aria-describedby={noteId} aria-label={descriptor.title + '（只读）'} className="m-0 min-w-0 border-0 p-0">
+      <fieldset disabled={route.id !== 'settings-general'} aria-describedby={noteId} aria-label={descriptor.title + (route.id === 'settings-general' ? '' : '（只读）')} className="m-0 min-w-0 border-0 p-0">
         <Suspense fallback={<p role="status" className="p-4 text-sm text-muted-foreground">加载源设置页面…</p>}>
           <Component />
         </Suspense>

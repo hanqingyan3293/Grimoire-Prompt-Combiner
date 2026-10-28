@@ -23,6 +23,7 @@ import { registerPromptAssetsIPC } from "./ipc/prompt-assets.ipc"
 import { registerWorkspaceIPC } from "./ipc/workspace.ipc"
 import { registerAgentIPC } from "./ipc/agent.ipc"
 import { registerNovelaiIPC } from "./ipc/novelai.ipc"
+import { applyBootConfig, defaultDatabasePathFor } from "./services/boot-config.service"
 import { registerAiSessionsIPC, shutdownAiSessions } from "./ipc/ai-sessions.ipc"
 import { registerTagIntelligenceIPC } from './ipc/tag-intelligence.ipc'
 import { registerMediaIPC } from './ipc/media.ipc'
@@ -615,9 +616,12 @@ let isQuitting = false
     mainWindow.focus()
   })
 
+// Must run before `whenReady`: Electron ignores the GPU switch afterwards.
+const bootConfig = applyBootConfig({ databasePath: defaultDatabasePathFor(app.getPath('userData')), apply: () => app.disableHardwareAcceleration() })
+
 app.whenReady().then(async () => {
   try {
-    logEvent('info', 'application', 'Application startup')
+    logEvent('info', 'application', 'Application startup', { context: JSON.stringify(bootConfig) })
     await initDatabase()
     await registerAllIPC()
     await initDefaultTags()

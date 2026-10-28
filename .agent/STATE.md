@@ -478,3 +478,15 @@ resources/agent-runtimes/     opencode.exe 134M (1.18.34) / pi.exe 107M (1.0.1)
 - IPC 两个通道（导出/导入），对话框在主进程，渲染层拿不到可复用的文件路径。
 - 工作台面板新增「参数写入 PNG」「从 PNG 读取」：导出当前草稿的参数，读取后把 prompt 填回草稿。
 - 测试：文件服务 3 条（原图不变、非 PNG 拒绝、无参数返回 null）+ 面板 1 条（导出/读回往返）。
+
+### M3：通用设置整页解除只读（2026-10-27 第二十二轮）
+
+- 补上最后一个可见开关的消费者：`BootConfig.app.disable_hardware_acceleration` 在 **app ready 之前**读取并调用 `app.disableHardwareAcceleration()`
+  （新增 `boot-config.service`，用只读 SQLite 直接读 settings；读不到/坏库都不阻塞启动）。
+- 两个无处生效的开关（`app.fetch.allow_private_network`、`agent.commit_attribution.enabled`）用 compat CSS **隐藏**（节点仍在，display:none），
+  并在接线报告里写明「已隐藏 N 个无法生效的开关」；`app.user.id` 在页面上没有控件，单独注明。
+- `settings-general` 从「只读」变为**可编辑**：`CompatSourceSettings` 支持 per-route `readOnly` 标记，字段集只对其余页面禁用。
+- 接线报告现状 **15/18**（含硬件加速），2 隐藏 + 1 无控件。
+- 交叉矩阵 journey 增两条断言：`pageEditable`（fieldset 未禁用）与 `deadSwitchesHidden`（两行 computedStyle 为 none），五项全 PASS，
+  截图 `artifacts/visual/cherry-routes/settings-general-wiring.png`。
+- 踩坑记录：只 `build:cherry-compat` 时接线报告仍显示旧数字——那份数字来自**主进程** bundle，必须同时 `build:main`。

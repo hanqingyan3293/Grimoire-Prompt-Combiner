@@ -29,3 +29,14 @@
  * `main.tsx` directly after this file and its `tailwind.css` sibling.
  */
 @import '../../source/src/renderer/assets/styles/index.css';
+
+/* `/settings/general` — controls whose preference has no consumer in Grimoire.
+ *
+ * Leaving them visible would be the same fake success this project keeps removing: the switch
+ * moves, the preference is stored, and nothing happens. They stay listed (with the reason) in the
+ * wiring report above the page, but the dead toggles themselves are not rendered.
+ * */
+#setting-general-allow-private-network,
+#setting-general-commit-attribution {
+  display: none;
+}

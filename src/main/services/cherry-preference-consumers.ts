@@ -9,6 +9,8 @@ import { getDatabase } from '../database'
 export type CherryPreferenceConsumer = {
   readonly key: string
   readonly wired: boolean
+  /** The control is hidden in the source page because the preference cannot take effect here. */
+  readonly hidden?: boolean
   /** Where the consumer lives, or what is missing when it is not wired. */
   readonly note: string
 }
@@ -28,9 +30,10 @@ export const CHERRY_GENERAL_PREFRENCES: readonly CherryPreferenceConsumer[] = Ob
   { key: 'chat.retry.fallback_model_ids', wired: true, note: 'ai/runtime/retry-policy 读取' },
   { key: 'app.developer_mode.enabled', wired: true, note: 'system.toggle_dev_tools 与 DevTools 快捷键受它控制' },
   { key: 'agent.language', wired: true, note: 'agent 轮次装配系统提示词时注入语言指令' },
-  { key: 'agent.commit_attribution.enabled', wired: false, note: 'Grimoire Agent 目前不创建 git 提交，没有可归因的提交' },
-  { key: 'app.fetch.allow_private_network', wired: false, note: 'Grimoire 没有面向用户的抓取工具，只有供应商/ComfyUI/MCP 这些固定端点，私网判定无处生效' },
-  { key: 'app.user.id', wired: false, note: '源用于匿名标识；Grimoire 没有读取方' },
+  { key: 'agent.commit_attribution.enabled', wired: false, hidden: true, note: 'Grimoire Agent 不创建 git 提交，没有可归因对象；开关已隐藏' },
+  { key: 'app.fetch.allow_private_network', wired: false, hidden: true, note: 'Grimoire 没有面向用户的抓取入口，私网判定无处生效；开关已隐藏' },
+  { key: 'app.user.id', wired: false, note: '源用于匿名标识，Grimoire 没有读取方；页面上没有对应控件' },
+  { key: 'BootConfig.app.disable_hardware_acceleration', wired: true, note: '启动前读取并调用 app.disableHardwareAcceleration()' },
 ])
 
 export function cherryPreferenceWiring(): { total: number; wired: number; items: readonly CherryPreferenceConsumer[] } {

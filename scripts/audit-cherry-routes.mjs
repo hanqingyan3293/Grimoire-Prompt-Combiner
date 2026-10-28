@@ -613,6 +613,12 @@ if (process.argv.includes('--settings-wiring-journey')) {
     const wiringText = await waitForLocal(`(() => { const el = document.querySelector('[data-ui="compat.preference-wiring"]'); const text = el && el.innerText; return text && text.includes('/') ? text : null })()`)
     wiring.checks.reportRendered = /已接线\s*\d+\/\d+/.test(String(wiringText))
     wiring.observations.push({ wiringText: String(wiringText).slice(0, 300) })
+    // Hidden means "not rendered to the user", which is `display:none`; the node still exists in the
+    // DOM because the CSS layer hides it rather than the source component dropping it.
+    const pageState = await evaluate(`(() => { const fieldset = document.querySelector('[data-settings-route="settings-general"] fieldset'); const hidden = (selector) => { const el = document.querySelector(selector); return !el || getComputedStyle(el).display === 'none' }; return { enabled: !!fieldset && fieldset.disabled === false, hiddenPrivateNetwork: hidden('#setting-general-allow-private-network'), hiddenCommit: hidden('#setting-general-commit-attribution') } })()`)
+    wiring.observations.push({ pageState })
+    wiring.checks.pageEditable = !!pageState && pageState.enabled === true
+    wiring.checks.deadSwitchesHidden = !!pageState && pageState.hiddenPrivateNetwork === true && pageState.hiddenCommit === true
     const shot = await callWithTimeout('Page.captureScreenshot', { format: 'png' }, 10000)
     if (shot?.data) fs.writeFileSync(path.join(outDir, 'settings-general-wiring.png'), Buffer.from(shot.data, 'base64'))
     // Developer mode off must be a real gate, not a stored value.
