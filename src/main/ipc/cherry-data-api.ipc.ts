@@ -23,6 +23,7 @@ import { isPreventSleepActive, readLaunchOnBoot } from '../services/app-preferen
 import { cherryPreferenceWiring, isCherryDeveloperModeEnabled, readCherryPreference as readCherryPref } from '../services/cherry-preference-consumers'
 import { getGatewayStatus, restartGateway, startGateway, stopGateway } from '../services/api-gateway.service'
 import { clearBrowserHistory, deleteBrowserVisit, listBrowserHistory, recordBrowserVisit } from '../services/browser-history.service'
+import { clearBookmarks, importBookmarks, listBookmarks } from '../services/bookmark-import.service'
 import { closeBrowserHost, getBrowserHost, navigateBrowserHost, openBrowserHost, updateBrowserHostBounds } from '../services/browser-host.service'
 import { clearBrowserData } from '../services/browser-data.service'
 import { readCredentialPreference } from '../services/cherry-credential.service'
@@ -2392,6 +2393,16 @@ async function handleIpcApiRoute(route: string, input: unknown, sender: WebConte
         return ipcError(code, error instanceof Error ? error.message : String(error))
       }
     }
+    // Bookmark import (M3): the dialog hands over the export's text; the parser decides what is a
+    // bookmark. Re-importing the same file changes nothing.
+    if (route === 'browser.import.run') {
+      const payload = (value ?? {}) as { content?: unknown }
+      if (typeof payload.content !== 'string' || !payload.content) return ipcError('BAD_INPUT', 'bookmark file content is required')
+      try { return ipcOk(importBookmarks(payload.content)) }
+      catch (error) { return ipcError('IMPORT_FAILED', error instanceof Error ? error.message : String(error)) }
+    }
+    if (route === 'browser.import.list') return ipcOk(listBookmarks())
+    if (route === 'browser.import.clear') return ipcOk(clearBookmarks())
     if (route === 'browser.history.list') return ipcOk(listBrowserHistory({ query: typeof (value as { query?: unknown })?.query === 'string' ? String((value as { query?: string }).query) : '', limit: Number((value as { limit?: unknown })?.limit) || 200 }))
     if (route === 'browser.history.add') {
       const payload = (value ?? {}) as { url?: unknown; title?: unknown }

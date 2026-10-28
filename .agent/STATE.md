@@ -796,3 +796,14 @@ resources/agent-runtimes/     opencode.exe 134M (1.18.34) / pi.exe 107M (1.0.1)
 - 说明：截图中网页区域是空白——CDP `Page.captureScreenshot` 只截渲染层合成结果，**不含原生子视图**。
   所以证明「页面真的渲染了」的不是截图，而是标题：`<title>` 只有在 Chromium 真解析并渲染后才会回调到 `page-title-updated`。
 - 页面（设置页）仍只读：历史/清理已可用，但**书签导入**还没有解析器，且宿主尚未接隐私/权限偏好。
+
+### M3：书签导入（2026-10-27 第四十八轮）
+
+- `bookmark-import.service` + schema **v40** `browser_bookmark`：解析 Netscape 书签格式（Chrome/Edge/Firefox 导出同一格式），
+  **只接受 http/https**（`javascript:` / `chrome://` / `place:` 计入 skipped，不进库——它们在内嵌宿主里无法安全打开）。
+- 两个细节：`href` 里的 `&amp;` 也要解码（第一版只解码标题，查询串会带 `&amp;` 进库，单测抓到）；
+  重复导入**幂等**（URL 主键，第二次 imported=0）。
+- 路由：`browser.import.run`（收文件文本）、`browser.import.list`、`browser.import.clear`。
+- 测试 3 条：文件夹/链接解析与实体解码、幂等导入、空文件与清空。
+- 浏览器设置页仍只读，但三条动作（导入 / 历史 / 清理）此后都有真实后端；
+  剩余只差两个偏好消费者（`app.browser.open_links_in_browser`、`app.browser.agent_control.enabled`）。

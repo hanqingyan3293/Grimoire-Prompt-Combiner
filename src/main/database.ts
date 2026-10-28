@@ -26,7 +26,8 @@ import { createLegacyDatabase, type LegacyDatabase } from './services/sqlite.com
 // v37: soft-delete (recycle bin) columns for NovelAI versions and works.
 // v38: NovelAI asset library + asset_usage (which image used which asset).
 // v39: embedded browser history (browser_history). Empty on upgrade — nothing to infer.
-export const CURRENT_SCHEMA_VERSION = 39
+// v40: imported bookmarks (browser_bookmark). Deduplicated by URL.
+export const CURRENT_SCHEMA_VERSION = 40
 let nativeDb: DatabaseSync | null = null
 let db: LegacyDatabase | null = null
 let dbPath = ''
@@ -1319,6 +1320,7 @@ export function initializeDatabaseConnection(connection: DatabaseSync, requireEx
   migrateNovelaiVersionTrash(legacy)
   migrateNovelaiAssets(legacy)
   migrateBrowserHistory(legacy)
+  migrateBrowserBookmarks(legacy)
 
   legacy.exec(INDEX_SQL)
   legacy.run("CREATE INDEX IF NOT EXISTS idx_history_task ON history(task_id)")
@@ -1420,6 +1422,19 @@ function migrateBrowserHistory(legacy: LegacyDatabase): void {
     );
     CREATE INDEX IF NOT EXISTS idx_browser_history_visited ON browser_history(visited_at DESC);
     CREATE INDEX IF NOT EXISTS idx_browser_history_url ON browser_history(url);
+  `)
+}
+
+// v40 — bookmarks imported from a browser export. One row per URL so re-importing is idempotent.
+function migrateBrowserBookmarks(legacy: LegacyDatabase): void {
+  legacy.exec(`
+    CREATE TABLE IF NOT EXISTS browser_bookmark (
+      url TEXT PRIMARY KEY NOT NULL,
+      title TEXT NOT NULL DEFAULT '',
+      folder TEXT NOT NULL DEFAULT '',
+      created_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_browser_bookmark_folder ON browser_bookmark(folder);
   `)
 }
 
