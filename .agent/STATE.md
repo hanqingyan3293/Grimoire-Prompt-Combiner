@@ -1234,3 +1234,18 @@ default: … 面板尚未接入 …
 默认 `findBy*` 只等 1000ms，在那种负载下会超时。修法：compat 的 vitest 配置 `testTimeout/hookTimeout = 20s`，
 `configure({ asyncUtilTimeout: 5000 })`。重跑 G4 与全量门禁均绿。
 这类红不掩盖：如果真是逻辑问题，加长超时只会让它更慢地红，不会变绿。
+
+### Docking engine 证明文档（2026-10-27 第七十七轮）
+
+上一轮把矩阵第 37 行留在 NOT_IMPLEMENTED，并记下「下一步写证明」。本轮写完：
+`.agent/records/2026-10-28-docking-engine-proof.md`。
+
+实测证据（不是判断）：
+- `dockview-core/package.json` 的 `main`/`types` 指向 `dist/`，vendored 源码里没有 `dist/`；
+- 探针实验：渲染层直接 import vendor 的 TS 入口 → `TS2307: Cannot find module`（解析依赖构建产物）；
+- 渲染层 `tsconfig.include` 不含 `src/vendor/**`；
+- `workspace-engine-adapter.ts` 适配边界已在，但没有可实例化的后端。
+
+文档同时写明真实差距：源支持任意嵌套分割，我们只有固定列结构——这也是 960 视口 18 命中的结构性来源。
+结论：建议改为 REIMPLEMENTED，等批准；文档末尾列了三个选项（批准 / 先补嵌套分割 / 走 VENDOR 路线）。
+探针文件已删除，类型检查干净。
