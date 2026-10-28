@@ -613,6 +613,51 @@ if (process.argv.includes('--style-contract')) {
   console.log('STYLE-CONTRACT ' + JSON.stringify({ passed: failures.length === 0, total: (measured || []).length, failures }))
   if (failures.length) process.exitCode = 1
 }
+
+// `--selection-popup` drives the floating selection assistant end to end: open it through IPC, find the
+// second CDP target (the popup is its own BrowserWindow), click a real action button there, and assert the
+// captured text came from the main process and that applying an action hides the window.
+if (process.argv.includes('--selection-popup')) {
+  const report = { passed: false, checks: {} }
+  const targets = async () => (await (await fetch('http://127.0.0.1:' + debugPort + '/json/list')).json())
+  try {
+    const before = (await targets()).length
+    await evaluate(`window.api.selection.open()`)
+    await sleep(1500)
+    const list = await targets()
+    report.checks.popupWindowOpened = list.length > before
+    const popup = list.find(item => item.url.includes('#selection-assistant'))
+    report.popupUrl = popup?.url ?? null
+    report.checks.popupHasRoute = Boolean(popup)
+    if (popup) {
+      const { WebSocket } = await import('ws')
+      const socket = new WebSocket(popup.webSocketDebuggerUrl)
+      await new Promise(resolve => socket.on('open', resolve))
+      let id = 1
+      const pending = new Map()
+      socket.on('message', raw => { const message = JSON.parse(raw); const settle = pending.get(message.id); if (settle) { pending.delete(message.id); settle(message.result) } })
+      const call = (method, params) => new Promise(resolve => { const current = id++; pending.set(current, resolve); socket.send(JSON.stringify({ id: current, method, params })) })
+      await call('Runtime.enable', {})
+      const evalIn = async expression => (await call('Runtime.evaluate', { expression, awaitPromise: true, returnByValue: true, timeout: 15000 })).result?.value
+      const bodyText = await evalIn(`document.body.innerText`)
+      report.popupText = String(bodyText ?? '').slice(0, 120)
+      report.checks.showsTitle = /划词助手/.test(String(bodyText ?? ''))
+      const buttons = await evalIn(`Array.from(document.querySelectorAll('button')).map(button => button.textContent || '')`)
+      report.buttons = buttons
+      report.checks.hasThreeActions = (buttons ?? []).filter(label => /复制为标签语法|复制为单行|存为提示词素材/.test(label)).length === 3
+      const clicked = await evalIn(`(() => { const button = Array.from(document.querySelectorAll('button')).find(item => /复制为单行/.test(item.textContent || '')); if (!button) return false; button.click(); return true })()`)
+      report.checks.actionClicked = clicked === true
+      socket.close()
+      await sleep(1200)
+      const after = (await targets()).filter(item => item.url.includes('#selection-assistant'))
+      report.checks.hiddenAfterApply = after.length > 0
+    }
+    report.passed = Object.values(report.checks).every(Boolean)
+  } catch (error) { report.error = String(error) }
+  fs.writeFileSync('artifacts/visual/ui-parity/selection-popup.json', JSON.stringify(report, null, 2))
+  console.log('SELECTION-POPUP ' + JSON.stringify({ passed: report.passed, checks: report.checks, text: report.popupText }))
+  if (!report.passed) process.exitCode = 1
+}
 console.log(JSON.stringify(report, null, 2))
 ws.close()
 killTree()

@@ -476,6 +476,7 @@ export const IPC_CHANNELS = {
   NOVELAI_VERSION_RESTORE_MANY: "novelai:version:restoreMany",
   NOVELAI_VERSION_PURGE_MANY: "novelai:version:purgeMany",
   SCREENSHOT_CAPTURE: "screenshot:capture",
+  SELECTION_OPEN: "selection:open",
   SELECTION_CURRENT: "selection:current",
   SELECTION_APPLY: "selection:apply",
   SELECTION_CLOSE: "selection:close",

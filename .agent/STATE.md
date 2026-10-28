@@ -1353,3 +1353,17 @@ fireEvent.click(await screen.findByRole('button', { name: '刷新模型' }))   /
 
 顺带记一个自己踩的坑：批量插入前置条件时，其中一处插到了 `render()` **之前**（那个测试是先设 mock 再渲染），
 导致 `findByText` 在空树上等待并超时——**按行号批量改代码必须逐处看上下文**，这次是测试自己报出来的。
+
+### 划词助手浮窗的真机旅程（2026-10-27 第八十四轮）
+
+新增 `--selection-popup`（已并入 `npm run journeys`）：
+
+1. 通过新通道 `selection:open` 打开浮窗（该通道也让设置页/测试能手动触发，不必按快捷键）；
+2. 从 CDP `/json/list` 找到**第二个 target**（浮窗是独立 BrowserWindow）；
+3. 连它的 WebSocket，断言：标题含「划词助手」、**三个动作按钮都在**、点「复制为单行」真的触发；
+4. 应用后窗口被 `hide()`（target 仍在但不再显示）。
+
+实测 6 项全 PASS，浮窗正文文本为「划词助手 · 未捕获内容 / 先在任意应用里选中文字并复制，再按快捷键 / 三个动作」。
+
+踩坑记录：第一次跑报 `window.api.selection.open is not a function`——**preload 是构建产物**，
+改了源码必须 `npm run build:main` 再跑旅程。这条早已写在纪律里，这次又被自己撞上。

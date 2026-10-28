@@ -14,6 +14,7 @@ const journeys = [
   { flag: '--tooltip', label: '提示气泡（4 项）' },
   { flag: '--comfy-persist', label: 'ComfyUI 持久化闭环（5 项）' },
   { flag: '--style-contract', label: '样式契约（24 项）' },
+  { flag: '--selection-popup', label: '划词助手浮窗（6 项）' },
   { flag: '--visual-matrix', label: '视觉矩阵 18 面板 × 3 宽度' },
   ...(quick ? [] : [{ flag: '--narrow-audit --width=960', label: '窄面板审计（960）' }]),
 ]
@@ -28,7 +29,7 @@ for (const journey of journeys) {
   })
   const ok = run.status === 0
   const output = (run.stdout || '') + (run.stderr || '')
-  const headline = output.split('\n').find(line => /^(WORKBENCH|ASSETS|GALLERY|TOOLTIP|COMFY-PERSIST|STYLE-CONTRACT|MATRIX|NARROW)/.test(line)) || ''
+  const headline = output.split('\n').find(line => /^(WORKBENCH|ASSETS|GALLERY|TOOLTIP|COMFY-PERSIST|STYLE-CONTRACT|SELECTION-POPUP|MATRIX|NARROW)/.test(line)) || ''
   results.push({ flag: journey.flag, label: journey.label, ok, status: run.status, headline: headline.slice(0, 400) })
   console.log(ok ? 'PASS' : 'FAIL')
 }

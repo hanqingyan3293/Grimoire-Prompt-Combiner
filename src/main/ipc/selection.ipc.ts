@@ -33,6 +33,11 @@ export function selectionSink(): SelectionSink {
 }
 
 export function registerSelectionAssistantIPC(): void {
+  // `open` exists so the popup can be exercised without a global shortcut (tests, and the settings page).
+  ipcMain.handle(IPC_CHANNELS.SELECTION_OPEN, () => {
+    openSelectionAssistant()
+    return true
+  })
   ipcMain.handle(IPC_CHANNELS.SELECTION_CURRENT, () => ({ text: captured, actions: ['copy-as-tags', 'copy-normalized', 'to-prompt-asset'] }))
   ipcMain.handle(IPC_CHANNELS.SELECTION_APPLY, (event, action: unknown) => {
     const id = String(action || '') as SelectionActionId
