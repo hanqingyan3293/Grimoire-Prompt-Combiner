@@ -1,4 +1,4 @@
-import { app, BrowserWindow, dialog, ipcMain, nativeTheme, session, shell } from 'electron'
+import { app, BrowserWindow, dialog, ipcMain, nativeTheme, session, shell, WebContentsView } from 'electron'
 import type { WebContents } from 'electron'
 import crypto from 'crypto'
 import fs from 'fs'
@@ -23,6 +23,7 @@ import { isPreventSleepActive, readLaunchOnBoot } from '../services/app-preferen
 import { cherryPreferenceWiring, isCherryDeveloperModeEnabled, readCherryPreference as readCherryPref } from '../services/cherry-preference-consumers'
 import { getGatewayStatus, restartGateway, startGateway, stopGateway } from '../services/api-gateway.service'
 import { clearBrowserHistory, deleteBrowserVisit, listBrowserHistory, recordBrowserVisit } from '../services/browser-history.service'
+import { closeBrowserHost, getBrowserHost, navigateBrowserHost, openBrowserHost, updateBrowserHostBounds } from '../services/browser-host.service'
 import { clearBrowserData } from '../services/browser-data.service'
 import { readCredentialPreference } from '../services/cherry-credential.service'
 import { fetchUrls, searchWeb } from '../services/websearch.service'
@@ -2363,6 +2364,34 @@ async function handleIpcApiRoute(route: string, input: unknown, sender: WebConte
     }
     // Embedded browser history + data clearing (M3). The page's history dialog and clear dialog talk to
     // these; the browser HOST is still missing, so the page stays read-only for its other controls.
+    // Embedded browser host (M3). The renderer reports the rectangle it reserved for the view; main owns
+    // the view itself. Every navigation lands in browser_history, so the history dialog has real data.
+    if (route === 'browser.host.open' || route === 'browser.host.bounds' || route === 'browser.host.navigate' || route === 'browser.host.close' || route === 'browser.host.get') {
+      const payload = (value ?? {}) as { id?: unknown; url?: unknown; bounds?: { x?: number; y?: number; width?: number; height?: number } }
+      const id = String(payload.id ?? '')
+      const window = sender ? BrowserWindow.fromWebContents(sender) : null
+      if (!window) return ipcError('NO_WINDOW', 'browser host needs a window')
+      const bounds = { x: Number(payload.bounds?.x) || 0, y: Number(payload.bounds?.y) || 0, width: Number(payload.bounds?.width) || 0, height: Number(payload.bounds?.height) || 0 }
+      try {
+        if (route === 'browser.host.open') {
+          const result = openBrowserHost(id, {
+            window: window as never,
+            createView: ({ partition }) => new WebContentsView({ webPreferences: { partition, sandbox: true, contextIsolation: true } }) as never,
+            url: String(payload.url ?? 'about:blank'),
+            bounds,
+            onVisit: visit => { try { recordBrowserVisit(visit) } catch {} },
+          })
+          return ipcOk(result)
+        }
+        if (route === 'browser.host.bounds') return ipcOk(updateBrowserHostBounds(id, bounds, window as never))
+        if (route === 'browser.host.navigate') return ipcOk({ url: navigateBrowserHost(id, String(payload.url ?? '')) })
+        if (route === 'browser.host.close') return ipcOk(closeBrowserHost(id, window as never))
+        return ipcOk(getBrowserHost(id))
+      } catch (error) {
+        const code = (error as { code?: string }).code || 'BROWSER_HOST_FAILED'
+        return ipcError(code, error instanceof Error ? error.message : String(error))
+      }
+    }
     if (route === 'browser.history.list') return ipcOk(listBrowserHistory({ query: typeof (value as { query?: unknown })?.query === 'string' ? String((value as { query?: string }).query) : '', limit: Number((value as { limit?: unknown })?.limit) || 200 }))
     if (route === 'browser.history.add') {
       const payload = (value ?? {}) as { url?: unknown; title?: unknown }

@@ -772,3 +772,16 @@ resources/agent-runtimes/     opencode.exe 134M (1.18.34) / pi.exe 107M (1.0.1)
   WorkspaceSystemPanels ×2、AgentWorkspacePanel 的 `xl:flex` 头部件。
 - 结果 **0 命中**，写入 `scripts/panel-layout-baseline.json` 作为只降不升的基线。
 - 新门禁 **G9 面板布局约定**（0.1s），并写进 GATES.md 的约定章节（三条规则 + 出处）。
+
+### M3：浏览器宿主服务（2026-10-27 第四十六轮）
+
+`browser-host.service`：主进程持有 `WebContentsView`，渲染层只上报为它预留的矩形。
+
+- `openBrowserHost(id, {window, createView, url, bounds, onVisit})`：按 `persist:grimoire-browser` 建视图、
+  挂到窗口、设 bounds、`loadURL`；订阅 `did-navigate` / `page-title-updated`，每次导航回调 `onVisit` → 写 `browser_history`。
+- `updateBrowserHostBounds`：**位置先夹回窗口内，尺寸再按剩余空间夹**——只按窗口尺寸夹宽度仍会在 x=1150 溢出（单测发现）。
+- `navigateBrowserHost` / `closeBrowserHost` / `getBrowserHost` / `closeAllBrowserHosts`。
+- URL 校验：没写协议补 `https://`（用户直接输 `example.com` 能用），有协议则必须 http/https（`file:` / `javascript:` 拒绝）。
+- IPC 路由：`browser.host.open/bounds/navigate/close/get`，`createView` 用真实 `WebContentsView`（sandbox + contextIsolation）。
+- 测试 5 条：分区与挂载、导航回调、bounds 夹取（含越界回拉）、拒绝非 web URL 与未知 id、关闭幂等。
+- 页面仍只读：现在只差**渲染层面板**（上报矩形 + 地址栏），下一轮做。
