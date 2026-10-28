@@ -23,6 +23,7 @@ const PromptAssetsPanel = lazy(() => import('../prompt-assets/PromptAssetsPanel'
 // The full settings surface as a panel (M1.5): same component the settings window uses,
 // in embedded mode, so there is one implementation instead of a "quick settings" subset.
 const SettingsPanel = lazy(() => import('../settings/SettingsWindow').then(module => ({ default: module.SettingsWindow })))
+const BrowserPanel = lazy(() => import('../browser/BrowserPanel').then(module => ({ default: module.BrowserPanel })))
 const NovelAIPromptPanel = lazy(() => import('../novelai/NovelAIPromptPanel').then(module => ({ default: module.NovelAIPromptPanel })))
 const NovelAIAssetPanel = lazy(() => import('../novelai/NovelAIAssetPanel').then(module => ({ default: module.NovelAIAssetPanel })))
 
@@ -72,6 +73,7 @@ export const PANEL_DEFINITIONS: Record<PanelType, PanelDefinition> = {
   "tag-asset-manager": { type: "tag-asset-manager", title: "标签与资产", description: "标签关系、候选确认和资产标注", enabled: true },
   "tag-batch": { type: "tag-batch", title: "标签批量工具", description: "按筛选批量添加、删除、替换资产标签", enabled: true },
   "gallery-search": { type: "gallery-search", title: "图库搜索", description: "筛选轨、虚拟网格、检查器与保存搜索", enabled: true },
+  "browser": { type: "browser", title: "浏览器", description: "内嵌网页视图（主进程 WebContentsView），导航写入历史", enabled: true },
   "novelai-workbench": { type: "novelai-workbench", title: "提示词工作台", description: "块解析、版本线与回收站", enabled: true },
   "novelai-assets": { type: "novelai-assets", title: "素材库", description: "角色/风格/场景素材与「用在哪些图」反查", enabled: true },
 }
@@ -207,6 +209,9 @@ export function renderPanel(type: PanelType, options?: { agentMode?: "chat" | "v
       return <LazyPanel><TagAssetManagerPanel /></LazyPanel>
     case "tag-batch":
       return <TagBatchToolsPanel />
+    case "browser":
+      // Each panel instance needs its own host id, otherwise two browser panels would share one view.
+      return <LazyPanel><BrowserPanel /></LazyPanel>
     case "gallery-search":
       return <GallerySearchPanel />
     case "novelai-workbench":

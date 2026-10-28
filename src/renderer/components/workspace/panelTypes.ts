@@ -32,6 +32,7 @@ export const PANEL_TYPES = [
   "tag-asset-manager",
   "tag-batch",
   "gallery-search",
+  "browser",
   "novelai-workbench",
   "novelai-assets",
 ] as const

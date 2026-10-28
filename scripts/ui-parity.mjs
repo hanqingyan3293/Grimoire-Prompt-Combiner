@@ -392,6 +392,47 @@ if (process.argv.includes('--narrow-audit')) {
   }
   console.log('NARROW ' + JSON.stringify({ panelCount: report.panelCount, offenderCount: report.offenderCount, budget, offenders: report.offenders }))
 }
+
+// Embedded browser journey: a REAL WebContentsView loaded through the real IPC host routes. The fake
+// page is served locally so the assertion is about the host (rect, navigation, history), not a website.
+if (process.argv.includes('--browser')) {
+  const report = { passed: false, checks: {} }
+  const http = await import('node:http')
+  const server = http.createServer((_req, res) => {
+    res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' })
+    res.end('<!doctype html><html><head><title>矩阵浏览器页</title></head><body><h1 id="h">hello</h1></body></html>')
+  })
+  try {
+    await new Promise(resolve => server.listen(0, '127.0.0.1', () => resolve()))
+    const port = server.address().port
+    const url = 'http://127.0.0.1:' + port + '/page'
+    const switched = await evaluate(`(() => { const sel = Array.from(document.querySelectorAll('select.ui-panel-select')).find(el => el.offsetParent !== null); if (!sel) return 'NO_SELECT'; Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(sel, 'browser'); sel.dispatchEvent(new Event('change', { bubbles: true })); return 'OK' })()`)
+    report.checks.panelSwitched = switched === 'OK'
+    for (let i = 0; i < 40; i++) { if (await evaluate(`!!document.querySelector('[data-ui="browser.panel"]')`)) break; await sleep(250) }
+    report.checks.panelMounted = await evaluate(`!!document.querySelector('[data-ui="browser.panel"]')`)
+    await sleep(600)
+    const navigated = await evaluate(`window.api.ipcApi.request('browser.host.navigate', { id: 'browser-panel', url: ${JSON.stringify(url)} })`)
+    report.navigated = navigated?.data ?? navigated?.error ?? null
+    report.checks.navigateAccepted = !!navigated && navigated.ok === true
+    await sleep(2500)
+    const history = await evaluate(`window.api.ipcApi.request('browser.history.list', { limit: 20 })`)
+    const visits = (history?.data ?? [])
+    report.visits = visits.slice(0, 3)
+    report.checks.historyRecorded = visits.some(visit => String(visit.url).includes('/page'))
+    report.checks.titleCaptured = visits.some(visit => String(visit.title).includes('矩阵浏览器页'))
+    const host = await evaluate(`window.api.ipcApi.request('browser.host.get', { id: 'browser-panel' })`)
+    report.host = host?.data ?? null
+    report.checks.hostAlive = !!host && host.ok === true && host.data !== null
+    report.shots = [await screenshot('browser-01-live')]
+    report.passed = Object.values(report.checks).every(Boolean)
+  } catch (error) {
+    report.error = String(error)
+  } finally {
+    await new Promise(resolve => server.close(() => resolve()))
+  }
+  fs.writeFileSync('artifacts/visual/ui-parity/browser-journey.json', JSON.stringify(report, null, 2))
+  console.log('BROWSER ' + JSON.stringify({ passed: report.passed, checks: report.checks, visits: report.visits?.length }))
+}
 console.log(JSON.stringify(report, null, 2))
 ws.close()
 killTree()

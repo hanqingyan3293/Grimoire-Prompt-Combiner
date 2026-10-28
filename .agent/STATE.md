@@ -785,3 +785,14 @@ resources/agent-runtimes/     opencode.exe 134M (1.18.34) / pi.exe 107M (1.0.1)
 - IPC 路由：`browser.host.open/bounds/navigate/close/get`，`createView` 用真实 `WebContentsView`（sandbox + contextIsolation）。
 - 测试 5 条：分区与挂载、导航回调、bounds 夹取（含越界回拉）、拒绝非 web URL 与未知 id、关闭幂等。
 - 页面仍只读：现在只差**渲染层面板**（上报矩形 + 地址栏），下一轮做。
+
+### M3：浏览器面板（真视图上线，2026-10-27 第四十七轮）
+
+- 新增面板类型 `browser` 与组件 `BrowserPanel`：地址栏 + 打开/刷新/后退/前进 + 历史回访列表；
+  **组件本身不渲染网页**，只上报为 `WebContentsView` 预留的矩形（ResizeObserver + rAF 合并，避免拖分隔条时每帧跨 IPC）。
+- 卸载时调 `browser.host.close`；首次挂载 `browser.host.open`。
+- 旅程 `--browser` 六项全 PASS：面板切换/挂载、导航被接受、**历史记录了该 URL**、
+  **标题捕获到「矩阵浏览器页」**、宿主存活。
+- 说明：截图中网页区域是空白——CDP `Page.captureScreenshot` 只截渲染层合成结果，**不含原生子视图**。
+  所以证明「页面真的渲染了」的不是截图，而是标题：`<title>` 只有在 Chromium 真解析并渲染后才会回调到 `page-title-updated`。
+- 页面（设置页）仍只读：历史/清理已可用，但**书签导入**还没有解析器，且宿主尚未接隐私/权限偏好。
