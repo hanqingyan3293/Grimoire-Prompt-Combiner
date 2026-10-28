@@ -1214,3 +1214,23 @@ default: … 面板尚未接入 …
 - 960 窄面板 18 命中 = 预算 18（登记在案的结构性债）。
 
 定位：**不并入默认门禁**（整套 6–9 分钟），用于批量 UI 改动后或交付前。门禁仍是每轮跑的 G1–G11。
+
+### 迁移矩阵纠偏（2026-10-27 第七十六轮）
+
+矩阵里有 49 行 PARTIALLY_MIGRATED、1 行 BLOCKED、3 行 NOT_IMPLEMENTED。挑出状态最可疑的三行逐条核对代码，
+结果**两行已经过时**（写着未完成，其实早就做了）：
+
+| 行 | 原状态 | 实测 | 新状态 |
+|---|---|---|---|
+| 89 `/settings/general` | BLOCKED（称只显示诊断页） | `readOnly: false`，页面可编辑；无对应能力的两个开关由 compat CSS 隐藏；开发者模式闸门由 `--settings-wiring-journey` 验证（关→`DEVELOPER_MODE_DISABLED`，开→成功） | PARTIALLY_MIGRATED |
+| 43 提示词目录生命周期 | NOT_IMPLEMENTED（称审计未做） | 表 `prompt_assets` / `prompt_asset_categories` / `prompt_asset_category_links` 俱全，`default-prompt-assets.service`、`prompt-asset-browser`、`prompt-assets` 面板都在；缺的是目录包的导入导出与版本固定 | PARTIALLY_MIGRATED |
+| 37 Docking engine | NOT_IMPLEMENTED | adapter 声明 `legacy-compatible | dockview`；dockview 已 vendor 但**不是**当前引擎，实际用的是 Grimoire 自有面板系统 | **保持 NOT_IMPLEMENTED**：按 AGENTS.md，自有实现属 REIMPLEMENTED，需书面证明 + 明确批准才能改状态，下一步写证明并请示 |
+
+`G7` 迁移矩阵格式门禁在改后仍通过（121 行、列数一致）。
+
+教训：矩阵是「当时的判断」，不是「现在的真相」——过一段时间必须回头核对，否则它会以权威的口吻说谎。
+
+**G4 抖动修复（同轮）**：G4 曾红一次，单独跑该文件 6/6 通过——说明是**负载下的 flake**（G4 与 G3 并行，整机被占满）。
+默认 `findBy*` 只等 1000ms，在那种负载下会超时。修法：compat 的 vitest 配置 `testTimeout/hookTimeout = 20s`，
+`configure({ asyncUtilTimeout: 5000 })`。重跑 G4 与全量门禁均绿。
+这类红不掩盖：如果真是逻辑问题，加长超时只会让它更慢地红，不会变绿。
