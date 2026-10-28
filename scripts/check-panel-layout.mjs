@@ -54,6 +54,21 @@ for (const file of walk(COMPONENTS).filter(item => !EXCLUDED.some(pattern => ite
   }
 }
 
+// Rule 4: an ENABLED panel type must have a render branch. A type that is offered in the panel picker but
+// falls through to the placeholder branch ships "面板尚未接入" as if it were a feature — the exact filler
+// this project keeps removing. Disabled legacy types are allowed to have no branch.
+const REGISTRY = path.join(ROOT, 'src/renderer/components/workspace/PanelRegistry.tsx')
+try {
+  const registry = fs.readFileSync(REGISTRY, 'utf8')
+  const enabledTypes = [...registry.matchAll(/type: "([a-z0-9-]+)"[^}]*enabled: true/g)].map(match => match[1])
+  const cases = new Set([...registry.matchAll(/case "([a-z0-9-]+)":/g)].map(match => match[1]))
+  for (const type of enabledTypes) {
+    if (!cases.has(type)) findings.push({ kind: 'enabled-without-branch', file: 'PanelRegistry.tsx', detail: type })
+  }
+} catch (error) {
+  findings.push({ kind: 'registry-unreadable', file: 'PanelRegistry.tsx', detail: String(error) })
+}
+
 let baseline = { findings: 0, allow: [] }
 try { baseline = JSON.parse(fs.readFileSync(BASELINE, 'utf8')) } catch {}
 const budget = typeof baseline.findings === 'number' ? baseline.findings : 0
