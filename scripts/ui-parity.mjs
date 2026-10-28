@@ -294,6 +294,48 @@ if (process.argv.includes('--gallery')) {
   } catch (error) { report.error = String(error) }
   console.log('GALLERY ' + JSON.stringify(report))
 }
+
+// Narrow-panel audit: every panel type is mounted in the same narrow column and measured. Two
+// heuristics catch the failures screenshots already showed twice — text squeezed into a vertical
+// strip (element narrower than 40px holding a real word) and containers that overflow horizontally.
+if (process.argv.includes('--narrow-audit')) {
+  const report = { passed: false, panels: [] }
+  try {
+    const types = await evaluate(`Array.from(new Set(Array.from(document.querySelectorAll('select.ui-panel-select option')).map(option => option.value)))`)
+    report.panelCount = types.length
+    for (const type of types) {
+      const switched = await evaluate(`(() => { const sel = Array.from(document.querySelectorAll('select.ui-panel-select')).find(el => el.offsetParent !== null); if (!sel) return 'NO_SELECT'; Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(sel, ${JSON.stringify(type)}); sel.dispatchEvent(new Event('change', { bubbles: true })); return 'OK' })()`)
+      if (switched !== 'OK') { report.panels.push({ type, error: switched }); continue }
+      let mounted = false
+      for (let i = 0; i < 24; i++) { if (await evaluate(`!!document.querySelector('[data-panel-type=' + JSON.stringify(${JSON.stringify(type)}) + ']')`)) { mounted = true; break } await sleep(250) }
+      if (!mounted) { report.panels.push({ type, mounted: false }); continue }
+      await sleep(400)
+      const measured = await evaluate(`(() => {
+        const host = document.querySelector('[data-panel-type=' + JSON.stringify(${JSON.stringify(type)}) + ']')
+        if (!host) return null
+        const vertical = []
+        for (const el of host.querySelectorAll('span,div,button,a,label,p,td,th,h1,h2,h3')) {
+          const text = (el.innerText || '').trim()
+          if (text.length < 4) continue
+          const rect = el.getBoundingClientRect()
+          if (rect.width > 0 && rect.width < 40 && rect.height > 20) { const chain = []; let node = el.parentElement; for (let depth = 0; depth < 3 && node; depth += 1) { chain.push((node.className || '').toString().slice(0, 90)); node = node.parentElement } vertical.push({ text: text.slice(0, 24), width: Math.round(rect.width), chain }) }
+        }
+        const overflow = []
+        for (const el of host.querySelectorAll('*')) {
+          if (el.scrollWidth > el.clientWidth + 8 && el.clientWidth > 0) overflow.push({ tag: el.tagName.toLowerCase(), scroll: el.scrollWidth, client: el.clientWidth })
+        }
+        return { vertical: vertical.slice(0, 6), overflow: overflow.slice(0, 6), width: Math.round(host.getBoundingClientRect().width) }
+      })()`)
+      report.panels.push({ type, mounted: true, ...measured, shot: await screenshot('narrow-' + type) })
+    }
+    const offenders = report.panels.filter(panel => panel.vertical?.length || panel.overflow?.length)
+    report.offenderCount = offenders.length
+    report.offenders = offenders.map(panel => panel.type)
+    report.passed = true
+  } catch (error) { report.error = String(error) }
+  fs.writeFileSync('artifacts/visual/ui-parity/narrow-audit.json', JSON.stringify(report, null, 2))
+  console.log('NARROW ' + JSON.stringify({ panelCount: report.panelCount, offenderCount: report.offenderCount, offenders: report.offenders }))
+}
 console.log(JSON.stringify(report, null, 2))
 ws.close()
 killTree()

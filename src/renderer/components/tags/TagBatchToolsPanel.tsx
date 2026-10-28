@@ -115,7 +115,7 @@ export function TagBatchToolsPanel() {
       <PanelHeader title="标签批量工具" description="按筛选批量添加 / 删除 / 替换资产标签（先 dry-run 后应用）" />
       <div className="min-h-0 flex-1 space-y-4 overflow-auto p-3 text-xs">
         <section className="space-y-2 rounded border border-[var(--color-border)] p-3">
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             <span className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap font-medium text-[var(--color-text-primary)]"><Search size={13} aria-hidden="true" />目标筛选</span>
             <select value={assetType} onChange={event => setAssetType(event.target.value)} className="ui-field w-32" aria-label="资产类型">
               <option value="image">图片</option>
@@ -140,7 +140,7 @@ export function TagBatchToolsPanel() {
         </section>
 
         <section className="space-y-2 rounded border border-[var(--color-border)] p-3">
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             <span className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap font-medium text-[var(--color-text-primary)]"><ListChecks size={13} aria-hidden="true" />操作</span>
             <select value={opType} onChange={event => { setOpType(event.target.value as 'add' | 'remove' | 'replace'); setPreview(null) }} className="ui-field w-28" aria-label="操作类型">
               <option value="add">添加标签</option>

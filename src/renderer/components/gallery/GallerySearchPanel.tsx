@@ -108,7 +108,7 @@ export function GallerySearchPanel() {
         <SavedSearches className="border-t border-[var(--color-border)]" />
       </div>
 
-      <div className="flex min-w-[20rem] flex-1 flex-col">
+      <div className="flex min-w-[12rem] flex-1 flex-col">
         <GalleryToolbar className="border-b border-[var(--color-border)]" />
         <SyntaxQueryBar className="border-b border-[var(--color-border)]" />
 

@@ -576,3 +576,20 @@ resources/agent-runtimes/     opencode.exe 134M (1.18.34) / pi.exe 107M (1.0.1)
   修之前媒体列被挤成一条缝，右侧控件竖排成「在/网/格」。
 - 测试：新增 Switch 2 条；图库测试把 `getByRole('checkbox')` 改为 `switch`（语义变了，断言也要跟着变）。
 - 证据：ui-parity 新增 `--gallery` 旅程（切到图库面板 → 截图），实测 **6 个开关**渲染正常，截图 `gallery-01-switches.png`。
+
+### 窄面板系统排查（2026-10-27 第三十二轮）
+
+新增 `node scripts/ui-parity.mjs --narrow-audit`：把面板选择器里的**每一个**面板类型（17 个）依次挂到同一条窄列（304px）里，测量两类失败信号：
+
+1. **竖排文字**：宽度 < 40px 但高度 > 20px 且带 4 字以上文本的叶子节点（附 3 层祖先 className）；
+2. **横向溢出**：`scrollWidth > clientWidth + 8` 的容器。
+
+每个面板存一张截图（`artifacts/visual/ui-parity/narrow-*.png`），汇总写 `narrow-audit.json`。
+
+首轮结果：**17 个面板中 7 个有命中** —— utility-sidebar、agent、comfyui、prompt-assets、tag-asset-manager、tag-batch、gallery-search。
+
+本轮修掉 2 处：
+- `tag-batch`：两处 `flex items-center gap-3` 的筛选行（固定宽 select + nowrap 标签）改成 `flex-wrap`，容器不再 447px 溢出（命中数 7 → 6）。
+- `gallery-search`：主区 `min-w-[20rem]` → `min-w-[12rem]`，窄列下媒体区不再强行撑开。
+
+仍待修（下一轮）：`agent`（消息区被挤到 28px 宽，文字竖排）、`comfyui`（输入框溢出 20px）、`utility-sidebar` / `prompt-assets` / `tag-asset-manager`（span 文本截断无省略号）、`gallery-search`（筛选轨内部仍有 425px 容器）。
