@@ -557,3 +557,12 @@ resources/agent-runtimes/     opencode.exe 134M (1.18.34) / pi.exe 107M (1.0.1)
 - 测试：版本服务 +2（两条分支的 tip/大小、未知 work 抛错），共 17 条绿；面板 6 条绿。
 - **踩坑**：面板在 `branches` 缺失时直接崩掉整块面板（ui-parity 报 `NO_PANEL`）。原因是 ui-parity 用的是**已构建**的 dist/main，
   改完 IPC 必须 `build:main`；同时给面板加了 `bundle?.branches ?? []` 兜底——旧主进程/旧数据只应隐藏分支条，不应该连累整块面板。
+
+### M6 UI：从此版本开分支（2026-10-27 第三十轮）
+
+- 版本线上每个版本多一个「开分支」按钮：点了之后草稿区顶部显示「将从 vN 开新分支」（可取消），
+  保存时 `parentVersionId` 用该版本、`operation='开分支'`——分支规则仍由服务决定（父版本已有子版本则自立分支），UI 不自己造规则。
+- `NovelaiBranchSummary` 补 `branchNumber`：分支条显示「分支 2 b2 · 1 版」，与版本块上的 `b2` 对齐；
+  之前的 `number` 是「起分支的版本号」，和 `branchNumber` 混用会让人以为分支编号错乱。
+- 测试：面板 +1（点从 v1 开分支 → 保存时 parentVersionId=v1、operation=开分支），novelai 相关共 24 条绿。
+- 交叉矩阵：工作台旅程新增分支步骤，`branches` 实测 `[1,2]`（两条分支、版本数 1 与 2），断言 6 项全 PASS，截图 `wb-06-branches.png`。

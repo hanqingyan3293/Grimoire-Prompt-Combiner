@@ -71,4 +71,13 @@ describe('NovelAI prompt workbench (M6 UI)', () => {
     await waitFor(() => expect(api.metadata.readFrom).toHaveBeenCalled())
     await waitFor(() => expect((screen.getByLabelText('提示词原文') as HTMLTextAreaElement).value).toBe('from png'))
   })
+  it('branches from an older version instead of always extending the tip', async () => {
+    render(<NovelAIPromptPanel />)
+    await waitFor(() => expect(screen.getByLabelText('提示词原文')).toBeTruthy())
+    fireEvent.click(screen.getByRole('button', { name: '从 v1 开新分支' }))
+    await waitFor(() => expect(screen.getByText(/将从 v1 开新分支/)).toBeTruthy())
+    fireEvent.change(screen.getByLabelText('提示词原文'), { target: { value: '1girl, long hair' } })
+    fireEvent.click(screen.getByRole('button', { name: /保存为新版本/ }))
+    await waitFor(() => expect(api.createVersion).toHaveBeenCalledWith(expect.objectContaining({ parentVersionId: 'v1', operation: '开分支' })))
+  })
 })

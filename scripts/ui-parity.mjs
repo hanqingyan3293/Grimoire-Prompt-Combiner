@@ -217,6 +217,17 @@ if (process.argv.includes('--workbench')) {
     const restoredState = await waitFor(`(async () => { const works = await window.api.novelai.listWorks(); if (!works.length) return null; const bundle = await window.api.novelai.bundle({ workId: works[0].id }); return bundle && bundle.deleted.length === 0 && bundle.line.length === 2 ? { line: bundle.line.length } : null })()`, 60)
     journey.observations.restoredState = restoredState
     journey.checks.restoredVersion = true
+    // Branch from an older version: the service forks when the parent already has a child, so this
+    // exercises the real branching rule rather than a UI-only flag.
+    const branchFrom = await evaluate(`(() => { const button = document.querySelector('[aria-label="从 v1 开新分支"]'); if (!button) return 'NO_BUTTON'; button.click(); return 'OK' })()`)
+    journey.observations.branchFrom = branchFrom
+    await waitFor(`(() => { const panel = document.querySelector('[data-panel-type="novelai-workbench"]'); return !!panel && panel.innerText.indexOf('将从 v1 开新分支') >= 0 })()`, 40)
+    await evaluate(`(() => { const panel = document.querySelector('[data-panel-type="novelai-workbench"]'); const area = panel && panel.querySelector('textarea'); if (!area) return 'NO_AREA'; Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value').set.call(area, '1girl, {{long hair}}, 分支线'); area.dispatchEvent(new Event('input', { bubbles: true })); return 'OK' })()`)
+    await evaluate(`(() => { const panel = document.querySelector('[data-panel-type="novelai-workbench"]'); const button = Array.from(panel.querySelectorAll('button')).find(el => el.textContent.includes('保存为新版本')); if (!button) return 'NO_SAVE'; button.click(); return 'OK' })()`)
+    const branched = await waitFor(`(async () => { const works = await window.api.novelai.listWorks(); if (!works.length) return null; const branches = await window.api.novelai.listBranches(works[0].id); return branches.length === 2 ? branches.map(branch => branch.size) : null })()`, 60)
+    journey.observations.branches = branched
+    journey.checks.branchedFromVersion = Array.isArray(branched) && branched.length === 2
+    journey.shots.push(await screenshot('wb-06-branches'))
     journey.workbenchText = await evaluate(`(document.querySelector('[data-panel-type="novelai-workbench"]') || document.body).innerText.slice(0, 400)`)
     journey.shots.push(await screenshot('wb-05-restored'))
     journey.passed = Object.values(journey.checks).every(Boolean)

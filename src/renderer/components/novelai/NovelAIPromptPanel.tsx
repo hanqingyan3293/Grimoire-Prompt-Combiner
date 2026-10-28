@@ -10,7 +10,7 @@ import { EmptyState, PanelHeader } from '../ui/Feedback'
 // parses the draft with the same pure parser so the block list can never disagree with the text.
 type Work = { id: string; name: string; lastVersionId: string | null; revision: number; updatedAt?: string; lastUsedAt: string }
 type Version = { id: string; workId: string; parentId: string | null; number: number; branchId: string; branchNumber: number; snapshot: string; source: 'user' | 'agent'; operation: string; createdAt: string; deletedAt: string | null }
-type Branch = { id: string; name: string | null; number: number; tipVersionId: string; tipNumber: number; size: number }
+type Branch = { id: string; name: string | null; branchNumber: number; number: number; tipVersionId: string; tipNumber: number; size: number }
 type Bundle = { work: Work; line: Version[]; branchName: string | null; deleted: Version[]; branches: Branch[] }
 
 const TYPE_LABEL: Record<PromptBlock['type'], string> = { tags: '标签块', paragraph: '段落块', random: '随机块' }
@@ -29,6 +29,9 @@ export function NovelAIPromptPanel() {
   const [selectedVersionId, setSelectedVersionId] = useState<string | null>(null)
   const [newWorkName, setNewWorkName] = useState('')
   const [branchName, setBranchName] = useState('')
+  // Saving from an older version is how a branch is started: the service forks when the parent
+  // already has a child, so the UI only has to remember which version to branch from.
+  const [branchFrom, setBranchFrom] = useState<Version | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
@@ -76,7 +79,8 @@ export function NovelAIPromptPanel() {
     if (!api || !bundle || !current) return
     setBusy(true); setError(null)
     try {
-      await api.createVersion({ workId: bundle.work.id, parentVersionId: current.id, snapshot: draft, expectedRevision: bundle.work.revision, operation: '编辑' })
+      await api.createVersion({ workId: bundle.work.id, parentVersionId: (branchFrom ?? current).id, snapshot: draft, expectedRevision: bundle.work.revision, operation: branchFrom ? '开分支' : '编辑' })
+      setBranchFrom(null)
       await loadBundle(bundle.work.id)
     } catch (cause) { setError(String(cause)) } finally { setBusy(false) }
   }
@@ -169,11 +173,11 @@ export function NovelAIPromptPanel() {
                         key={branch.id}
                         type="button"
                         onClick={() => void loadBundle(bundle.work.id, branch.id)}
-                        title={'分支 ' + branch.number + ' · ' + branch.size + ' 个版本' + (branch.name ? ' · ' + branch.name : '')}
+                        title={'分支 ' + branch.branchNumber + ' · ' + branch.size + ' 个版本（起于 v' + branch.number + '）'}
                         className={'rounded border px-1.5 py-0.5 text-[11px] ' + (activeBranch && activeBranch.id === branch.id ? 'border-[var(--color-accent)] text-[var(--color-accent-text)]' : 'border-[var(--color-border)] text-[var(--color-text-secondary)]')}
                       >
-                        {branch.name || '分支 ' + branch.number}
-                        <span className="ml-1 opacity-60">b{branch.number}</span>
+                        {branch.name || '分支 ' + branch.branchNumber}
+                        <span className="ml-1 opacity-60">b{branch.branchNumber} · {branch.size} 版</span>
                       </button>
                     ))}
                   </span>
@@ -182,6 +186,12 @@ export function NovelAIPromptPanel() {
                   <Button size="sm" variant="primary" icon={Save} onClick={() => void saveVersion()} disabled={busy || !dirty}>保存为新版本</Button>
                   <Button size="sm" variant="ghost" icon={Trash2} onClick={() => void deleteVersion('single')} disabled={busy}>删此版本</Button>
                   <Button size="sm" variant="ghost" onClick={() => void deleteVersion('branch')} disabled={busy}>删整条分支</Button>
+                  {branchFrom && (
+                    <span className="flex items-center gap-1 text-[11px] text-[var(--color-accent-text)]">
+                      将从 v{branchFrom.number} 开新分支
+                      <button type="button" className="underline" onClick={() => setBranchFrom(null)}>取消</button>
+                    </span>
+                  )}
                   <Button size="sm" variant="ghost" icon={FileDown} onClick={() => void exportMetadata()} disabled={busy}>参数写入 PNG</Button>
                   <Button size="sm" variant="ghost" icon={FileUp} onClick={() => void importMetadata()} disabled={busy}>从 PNG 读取</Button>
                 </span>
@@ -209,10 +219,17 @@ export function NovelAIPromptPanel() {
                 <div className="mb-1 flex items-center gap-1 text-[11px] text-[var(--color-text-secondary)]"><History size={12} /> 当前这条线（{bundle.line.length} 版）</div>
                 <div className="flex flex-wrap gap-1">
                   {bundle.line.map(version => (
-                    <button key={version.id} type="button" onClick={() => { setSelectedVersionId(version.id); setDraft(version.snapshot) }}
-                      className={'rounded border px-2 py-0.5 text-[11px] ' + (version.id === selectedVersionId ? 'border-[var(--color-accent)] text-[var(--color-accent-text)]' : 'border-[var(--color-border)] text-[var(--color-text-secondary)]')}>
-                      v{version.number} · {version.operation || '编辑'} · b{version.branchNumber}
-                    </button>
+                    <span key={version.id} className="inline-flex items-center gap-0.5">
+                      <button type="button" onClick={() => { setSelectedVersionId(version.id); setDraft(version.snapshot) }}
+                        className={'rounded border px-2 py-0.5 text-[11px] ' + (version.id === selectedVersionId ? 'border-[var(--color-accent)] text-[var(--color-accent-text)]' : 'border-[var(--color-border)] text-[var(--color-text-secondary)]')}>
+                        v{version.number} · {version.operation || '编辑'} · b{version.branchNumber}
+                      </button>
+                      <button type="button" title={'从 v' + version.number + ' 开新分支'} aria-label={'从 v' + version.number + ' 开新分支'}
+                        onClick={() => { setBranchFrom(version); setSelectedVersionId(version.id); setDraft(version.snapshot) }}
+                        className={'rounded border px-1 py-0.5 text-[10px] ' + (branchFrom?.id === version.id ? 'border-[var(--color-accent)] text-[var(--color-accent-text)]' : 'border-transparent text-[var(--color-text-secondary)] hover:border-[var(--color-border)]')}>
+                        开分支
+                      </button>
+                    </span>
                   ))}
                 </div>
                 {bundle.deleted.length > 0 && (

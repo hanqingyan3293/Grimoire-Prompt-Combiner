@@ -198,7 +198,17 @@ export function listNovelaiBranchLine(workId: string, branchId?: string): Novela
   return line.reverse()
 }
 
-export interface NovelaiBranchSummary { readonly id: string; readonly name: string | null; readonly number: number; readonly tipVersionId: string; readonly tipNumber: number; readonly size: number }
+export interface NovelaiBranchSummary {
+  readonly id: string
+  readonly name: string | null
+  /** Ordinal of the branch inside the work (`b1`, `b2`…), matching what the version chips show. */
+  readonly branchNumber: number
+  /** Version number of the row that started the branch. */
+  readonly number: number
+  readonly tipVersionId: string
+  readonly tipNumber: number
+  readonly size: number
+}
 
 /**
  * Branches of a work, newest tip first.
@@ -221,6 +231,7 @@ export function listNovelaiBranches(workId: string): NovelaiBranchSummary[] {
     return {
       id: branchId,
       name: getNovelaiBranchName(branchId),
+      branchNumber: tip ? tip.branchNumber : 1,
       number: tip ? tip.number : tipNumber,
       tipVersionId: branchId,
       tipNumber,
