@@ -1037,3 +1037,13 @@ An error occurred in the <LocalAgentPanel> component.
 
 `IconButton` 改为用 Tooltip 包裹（去掉 `title`），所有面板头的图标按钮一次性受益。
 测试：Tooltip 2 条（hover 显示/离开隐藏、focus 显示且 `aria-describedby` 指向气泡），ui 原语 15 条全绿。
+
+### M1.5：弹出层对齐 + 提示气泡真机验证（2026-10-27 第六十四轮）
+
+- `.ui-popover-surface` 对齐源 popover：**0.5px 发丝边框**（源 `border-[0.5px]`）、8px 圆角、`shadow-lg`。
+  去掉了原来的 `0 0 0 1px` 内环——它和真实边框叠在一起，深色模式下看着像双线。
+- 新增 `.ui-popover-panel`（`w-72 p-4`）对应源的通用 popover 体；菜单仍用 `.ui-popover-menu` 的 4px 紧凑内边距。
+- 新增 `--tooltip` 旅程：用 CDP 真鼠标移动到图标按钮上 → 断言气泡出现、文本匹配、**不是系统样式**、`aria-describedby` 关联，并截图。
+  四项全 PASS，气泡文本「刷新提示词资产」，截图可见深色气泡 + 向下箭头指向刷新按钮。
+
+说明：单测在 jsdom 里只能验证逻辑，真机验证补的是「定位、层级、主题色」这些只有渲染器才知道的事。

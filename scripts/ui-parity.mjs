@@ -500,6 +500,30 @@ if (process.argv.includes('--visual-matrix')) {
   }
   if (matrix.runs.length !== widths.length) process.exitCode = 1
 }
+
+// Tooltip journey (M1.5): hover a panel-header icon button and prove the themed bubble really appears.
+// The unit test runs in jsdom; this one checks the real renderer, real positioning and real styling.
+if (process.argv.includes('--tooltip')) {
+  const report = { passed: false, checks: {} }
+  try {
+    const box = await evaluate(`(() => { const buttons = Array.from(document.querySelectorAll('.ui-icon-button')).filter(el => el.offsetParent !== null && el.getAttribute('aria-label')); const button = buttons[0]; if (!button) return null; const rect = button.getBoundingClientRect(); return { x: Math.round(rect.left + rect.width / 2), y: Math.round(rect.top + rect.height / 2), label: button.getAttribute('aria-label') } })()`)
+    report.anchor = box
+    if (!box) throw new Error('no icon button in a panel header')
+    await callWithTimeout('Input.dispatchMouseEvent', { type: 'mouseMoved', x: box.x, y: box.y }, 5000)
+    await sleep(600)
+    const bubble = await evaluate(`(() => { const tooltip = document.querySelector('[role="tooltip"]'); if (!tooltip) return null; const rect = tooltip.getBoundingClientRect(); const style = getComputedStyle(tooltip); return { text: (tooltip.textContent || '').trim(), top: Math.round(rect.top), height: Math.round(rect.height), background: style.backgroundColor, color: style.color, ariaDescribedBy: !!document.querySelector('[aria-describedby="' + tooltip.id + '"]') } })()`)
+    report.bubble = bubble
+    report.checks.bubbleVisible = !!bubble && bubble.height > 8
+    report.checks.hasText = !!bubble && bubble.text.length > 0 && bubble.text.includes(String(box.label || '').slice(0, 2))
+    report.checks.themedNotSystem = !!bubble && bubble.background !== 'rgba(0, 0, 0, 0)'
+    report.checks.ariaLinked = !!bubble && bubble.ariaDescribedBy
+    report.shots = [await screenshot('tooltip-01-hover')]
+    report.passed = Object.values(report.checks).every(Boolean)
+  } catch (error) { report.error = String(error) }
+  fs.writeFileSync('artifacts/visual/ui-parity/tooltip-journey.json', JSON.stringify(report, null, 2))
+  console.log('TOOLTIP ' + JSON.stringify({ passed: report.passed, checks: report.checks, text: report.bubble?.text }))
+  if (!report.passed) process.exitCode = 1
+}
 console.log(JSON.stringify(report, null, 2))
 ws.close()
 killTree()

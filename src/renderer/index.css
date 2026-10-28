@@ -164,12 +164,21 @@ button:disabled {
   cursor: nesw-resize !important;
 }
 
+/* Popover surface parity with the vendored primitive: hairline border (source uses border-[0.5px]),
+ * 8px radius, shadow-lg, and no second ring — the previous inset ring doubled as a fake border and made
+ * the panel look outlined in dark mode. */
 .ui-popover-surface {
   overflow: hidden;
-  border: 1px solid var(--color-border-strong);
+  border: 0.5px solid var(--color-border);
   border-radius: 8px;
-  background: color-mix(in srgb, var(--color-bg-secondary) 92%, var(--color-bg-tertiary));
-  box-shadow: 0 12px 36px rgba(0,0,0,0.36), 0 0 0 1px rgba(255,255,255,0.035);
+  background: var(--color-bg-secondary);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.28);
+}
+
+/* Generic popover body: source is `w-72 p-4`; menus keep their tighter 4px padding via .ui-popover-menu. */
+.ui-popover-panel {
+  width: 288px;
+  padding: 16px;
 }
 
 .ui-utility-popover {
