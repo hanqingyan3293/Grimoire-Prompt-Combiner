@@ -10,6 +10,8 @@
   --gr-radius-md: 6px;
   --gr-radius-lg: 10px;
   --gr-radius-xl: 14px;
+  /* Source dialogs are rounded-3xl (24px); overlays carry the separation, not a border. */
+  --gr-radius-2xl: 24px;
 
   /* Control geometry — mirrors the vendored source Button spec (rounded-md base,
    * 30/28/36px heights, 13/12/14px type, 6px gap) so a single token change moves

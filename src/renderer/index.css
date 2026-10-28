@@ -58,7 +58,7 @@
   --button-height-lg: var(--gr-control-height-lg);
   --input-radius: var(--radius-md);
   --card-radius: var(--radius-lg);
-  --dialog-radius: var(--radius-lg);
+  --dialog-radius: var(--gr-radius-2xl);
   --dialog-shadow: 0 20px 64px rgba(0,0,0,0.42);
 }
 
@@ -684,8 +684,18 @@ button:disabled {
   object-fit: cover;
 }
 
-.ui-dialog-overlay { background: rgba(0,0,0,0.58); backdrop-filter: blur(2px); }
-.ui-dialog-surface { border: 1px solid var(--color-border-strong); border-radius: var(--dialog-radius); background: var(--color-surface); color: var(--color-foreground); box-shadow: var(--dialog-shadow); }
+/* Source parity for dialogs (M1.5.6): the vendored dialog is rounded-3xl, borderless, and relies on
+ * the overlay + shadow for separation. The previous 1px border argued with the shadow. */
+.ui-dialog-overlay { background: rgba(0,0,0,0.55); backdrop-filter: blur(2px); }
+.ui-dialog-surface { border: 0; border-radius: var(--dialog-radius); background: var(--color-surface); color: var(--color-foreground); box-shadow: var(--dialog-shadow); }
+
+/* Table baseline: row height and hairlines come from tokens, so a dense settings table and a media
+ * table look like the same product. */
+.ui-table { width: 100%; border-collapse: collapse; font-size: var(--gr-font-md); }
+.ui-table thead th { height: var(--gr-control-height-sm); padding: 0 var(--gr-space-2); text-align: left; font-weight: 500; color: var(--color-text-secondary); border-bottom: 1px solid var(--color-border); }
+.ui-table tbody td { height: var(--gr-row-height); padding: 0 var(--gr-space-2); border-bottom: 1px solid color-mix(in srgb, var(--color-border) 60%, transparent); }
+.ui-table tbody tr:hover { background: var(--color-hover); }
+.ui-table tbody tr:last-child td { border-bottom: 0; }
 
 .ui-toast { display: flex; min-height: 40px; max-width: min(460px, calc(100vw - 32px)); align-items: center; gap: 8px; border: 1px solid var(--color-border-strong); border-radius: var(--radius-lg); padding: 9px 13px; background: var(--color-surface); color: var(--color-foreground); box-shadow: var(--shadow-md); font-size: var(--font-size-body-sm); }
 .ui-toast-success { border-color: color-mix(in srgb, var(--color-success) 45%, var(--color-border)); }

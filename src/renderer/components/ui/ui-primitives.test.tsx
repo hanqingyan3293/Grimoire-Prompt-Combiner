@@ -17,6 +17,17 @@ describe('UI primitives', () => {
     expect(screen.getByText('完成').className).toContain('ui-badge-success')
   })
 
+  it('uses the shared dialog baseline and closes from the overlay', () => {
+    const onClose = vi.fn()
+    render(<Modal title='基线弹窗' open onClose={onClose}><p>内容</p></Modal>)
+    const surface = document.querySelector('.ui-dialog-surface')
+    expect(surface).toBeTruthy()
+    // The radius/border/shadow live in one CSS rule; the class is the contract components share.
+    expect(document.querySelector('.ui-dialog-overlay')).toBeTruthy()
+    fireEvent.click(document.querySelector('.ui-dialog-overlay')!)
+    expect(onClose).toHaveBeenCalledOnce()
+  })
+
   it('closes a modal with Escape', () => {
     const onClose = vi.fn()
     render(<Modal title='测试弹窗' open onClose={onClose}><p>内容</p></Modal>)

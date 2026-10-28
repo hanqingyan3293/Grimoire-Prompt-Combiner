@@ -519,3 +519,11 @@ resources/agent-runtimes/     opencode.exe 134M (1.18.34) / pi.exe 107M (1.0.1)
 - 路由审计的 About 期望信号同步改为本页内容（`魔导书 Grimoire` / `上游与许可`），51/51 仍全绿，截图 `route-settings-about.png`。
 - 导出路径核查：`ExportService` 里剩余的 Cherry 字样（Joplin `source` 字段、思源默认路径、User-Agent）都不在我们暴露的导出入口上；
   我们的 markdown 导出走 `saveMarkdownExport`，不写入任何品牌字样。
+
+### M1.5.6 对话框与表格基线（2026-10-27 第二十六轮）
+
+- 对话框对齐源规格：新增 `--gr-radius-2xl: 24px`（源 `rounded-3xl`），`.ui-dialog-surface` **去掉 1px 边框**、
+  圆角改用 2xl、阴影保留——之前边框和阴影互相打架；遮罩改为 0.55 透明度 + 2px 模糊。
+- 新增 `.ui-table` 基线：表头高 `--gr-control-height-sm`、行高 `--gr-row-height`（随密度切换）、
+  细分隔线（`color-mix` 60%）与 hover 底色，让设置表和媒体表看起来是同一个产品。
+- 测试补 1 条：`.ui-dialog-surface` / `.ui-dialog-overlay` 存在且点遮罩能关闭（与 Escape 关闭并列）。
