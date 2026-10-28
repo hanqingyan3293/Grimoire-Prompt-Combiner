@@ -566,3 +566,13 @@ resources/agent-runtimes/     opencode.exe 134M (1.18.34) / pi.exe 107M (1.0.1)
   之前的 `number` 是「起分支的版本号」，和 `branchNumber` 混用会让人以为分支编号错乱。
 - 测试：面板 +1（点从 v1 开分支 → 保存时 parentVersionId=v1、operation=开分支），novelai 相关共 24 条绿。
 - 交叉矩阵：工作台旅程新增分支步骤，`branches` 实测 `[1,2]`（两条分支、版本数 1 与 2），断言 6 项全 PASS，截图 `wb-06-branches.png`。
+
+### M1.5.6：开关组件基线 + 图库窄宽度修复（2026-10-27 第三十一轮）
+
+- 新增 `Switch`（`role="switch"`）：32×18 轨道 / 14px 滑块 / 选中填 accent，`sm` 为 26×15；
+  键盘焦点环、disabled 半透明、`prefers-reduced-motion` 下不动画。
+- 迁移三处原生 checkbox：图库「来源」5 项、「包含隐含子标签」、供应商模型勾选（模型名也变成可点击标签）。
+- 图库面板窄宽度修复：外层 `flex-wrap`，左栏 `min-w-[13rem]`、主区 `min-w-[20rem]`；
+  修之前媒体列被挤成一条缝，右侧控件竖排成「在/网/格」。
+- 测试：新增 Switch 2 条；图库测试把 `getByRole('checkbox')` 改为 `switch`（语义变了，断言也要跟着变）。
+- 证据：ui-parity 新增 `--gallery` 旅程（切到图库面板 → 截图），实测 **6 个开关**渲染正常，截图 `gallery-01-switches.png`。

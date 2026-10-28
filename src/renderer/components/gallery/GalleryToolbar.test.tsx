@@ -189,7 +189,8 @@ describe('SavedSearches', () => {
 describe('FilterRail', () => {
   it('writes source / favorite / tag logic into the store', () => {
     render(<FilterRail />)
-    fireEvent.click(screen.getByRole('checkbox', { name: 'ComfyUI 生成' }))
+    // The source baseline is a real switch, so the control announces itself as a switch, not a checkbox.
+    fireEvent.click(screen.getByRole('switch', { name: 'ComfyUI 生成' }))
     expect(useGalleryStore.getState().query.sourceKinds).toEqual(['generated-comfy'])
     fireEvent.click(screen.getByRole('radio', { name: '已收藏' }))
     expect(useGalleryStore.getState().query.favorite).toBe(true)

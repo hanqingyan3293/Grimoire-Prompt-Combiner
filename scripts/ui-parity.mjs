@@ -279,6 +279,21 @@ if (process.argv.includes('--assets')) {
   }
   console.log('ASSETS ' + JSON.stringify(journey))
 }
+
+// Switch baseline visual check: the gallery filter rail is the densest place the new <Switch> appears.
+if (process.argv.includes('--gallery')) {
+  const report = { passed: false, checks: {} }
+  try {
+    const switched = await evaluate(`(() => { const sel = Array.from(document.querySelectorAll('select.ui-panel-select')).find(el => el.offsetParent !== null); if (!sel) return 'NO_SELECT'; Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(sel, 'gallery-search'); sel.dispatchEvent(new Event('change', { bubbles: true })); return 'OK' })()`)
+    report.checks.switched = switched === 'OK'
+    for (let i = 0; i < 40; i++) { if (await evaluate(`!!document.querySelector('[data-panel-type="gallery-search"]')`)) break; await sleep(250) }
+    report.checks.mounted = await evaluate(`!!document.querySelector('[data-panel-type="gallery-search"]')`)
+    report.checks.switches = await evaluate(`document.querySelectorAll('[data-panel-type="gallery-search"] [role="switch"]').length`)
+    report.shots = [await screenshot('gallery-01-switches')]
+    report.passed = report.checks.switched && report.checks.mounted && report.checks.switches > 0
+  } catch (error) { report.error = String(error) }
+  console.log('GALLERY ' + JSON.stringify(report))
+}
 console.log(JSON.stringify(report, null, 2))
 ws.close()
 killTree()

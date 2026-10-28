@@ -100,13 +100,15 @@ export function GallerySearchPanel() {
   }
 
   return (
-    <div className="flex h-full min-h-0">
-      <div className="flex w-60 shrink-0 flex-col overflow-auto border-r border-[var(--color-border)]">
+    // Narrow panels used to squeeze the media column to a sliver and render the right-hand controls
+    // vertically; wrapping keeps each column readable instead of shrinking both.
+    <div className="flex h-full min-h-0 flex-wrap">
+      <div className="flex w-60 min-w-[13rem] shrink-0 flex-col overflow-auto border-r border-[var(--color-border)]">
         <FilterRail />
         <SavedSearches className="border-t border-[var(--color-border)]" />
       </div>
 
-      <div className="flex min-w-0 flex-1 flex-col">
+      <div className="flex min-w-[20rem] flex-1 flex-col">
         <GalleryToolbar className="border-b border-[var(--color-border)]" />
         <SyntaxQueryBar className="border-b border-[var(--color-border)]" />
 

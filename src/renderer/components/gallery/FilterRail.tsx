@@ -8,6 +8,7 @@ import { Button } from '../ui/Button'
 import { TagAutocomplete } from '../tags/TagAutocomplete'
 import { useGalleryStore, type GalleryQueryState } from '../../stores/gallery.store'
 import { useTagsStore } from '../../stores/tags.store'
+import { Switch } from '../ui/Switch'
 
 const SOURCE_KINDS: ReadonlyArray<{ id: MediaSourceKind; label: string }> = [
   { id: 'imported-reference', label: '导入参考' },
@@ -60,14 +61,15 @@ export function FilterRail({ className }: { className?: string }): React.ReactEl
       <section className="space-y-1.5 rounded border border-[var(--color-border)] p-2.5">
         <h3 className="text-[10px] font-medium text-[var(--color-text-secondary)]">来源</h3>
         {SOURCE_KINDS.map(kind => (
-          <label key={kind.id} className="flex items-center gap-1.5">
-            <input
-              type="checkbox"
+          <div key={kind.id} className="flex items-center gap-1.5">
+            <Switch
+              size="sm"
+              aria-label={kind.label}
               checked={sourceKinds.includes(kind.id)}
-              onChange={event => toggleSourceKind(kind.id, event.target.checked)}
+              onCheckedChange={checked => toggleSourceKind(kind.id, checked)}
             />
             {kind.label}
-          </label>
+          </div>
         ))}
       </section>
 
@@ -142,14 +144,15 @@ export function FilterRail({ className }: { className?: string }): React.ReactEl
               <option value="none">排除</option>
             </select>
           </div>
-          <label className="inline-flex items-center gap-1.5">
-            <input
-              type="checkbox"
+          <div className="inline-flex items-center gap-1.5">
+            <Switch
+              size="sm"
+              aria-label="包含隐含子标签"
               checked={includeImplied}
-              onChange={event => setQuery({ includeImplied: event.target.checked })}
+              onCheckedChange={checked => setQuery({ includeImplied: checked })}
             />
             包含隐含子标签
-          </label>
+          </div>
         </div>
       </section>
     </div>

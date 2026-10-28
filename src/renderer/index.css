@@ -1018,3 +1018,48 @@ textarea.ui-field {
   border-radius: var(--gr-radius-lg);
   box-shadow: var(--gr-elevation-1);
 }
+
+/* Switch baseline (M1.5.6): source parity with the vendored Radix switch — 32x18 track, 14px thumb,
+ * accent fill when on, and the thumb slides by (track - thumb - 4). Never animate when the user asked
+ * for reduced motion. */
+.ui-switch {
+  position: relative;
+  display: inline-flex;
+  flex-shrink: 0;
+  width: 32px;
+  height: 18px;
+  align-items: center;
+  border-radius: 9999px;
+  border: 1px solid var(--color-border-strong);
+  background: var(--color-bg-tertiary);
+  transition: background-color var(--motion-fast) ease, border-color var(--motion-fast) ease;
+}
+
+.ui-switch-sm { width: 26px; height: 15px; }
+
+.ui-switch-on {
+  border-color: var(--color-accent);
+  background: var(--color-accent);
+}
+
+.ui-switch:focus-visible { outline: 2px solid var(--gr-focus-ring); outline-offset: 1px; }
+.ui-switch:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.ui-switch-thumb {
+  position: absolute;
+  left: 1px;
+  width: 14px;
+  height: 14px;
+  border-radius: 9999px;
+  background: var(--color-bg-secondary);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.28);
+  transition: transform var(--motion-fast) ease;
+}
+
+.ui-switch-on .ui-switch-thumb { transform: translateX(14px); }
+.ui-switch-sm .ui-switch-thumb { width: 11px; height: 11px; }
+.ui-switch-sm.ui-switch-on .ui-switch-thumb { transform: translateX(11px); }
+
+@media (prefers-reduced-motion: reduce) {
+  .ui-switch, .ui-switch-thumb { transition: none; }
+}

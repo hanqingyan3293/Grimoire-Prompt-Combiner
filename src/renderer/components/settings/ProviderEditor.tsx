@@ -3,6 +3,7 @@ import React, { useState, useEffect } from "react"
 import { CheckCircle2, Eye, EyeOff, ListFilter, LoaderCircle, PlugZap, Save, X } from "lucide-react"
 import { Button, IconButton } from "../ui/Button"
 import type { Provider, ProviderSaveInput } from "@shared/types"
+import { Switch } from '../ui/Switch'
 
 interface Props {
   provider: Provider | null
@@ -223,11 +224,10 @@ export function ProviderEditor({ provider, onSave, onCancel }: Props) {
               {filteredModels.map(m => {
                 const checked = models.includes(m)
                 return (
-                  <label key={m} className={`flex items-center gap-2 px-2 py-1 rounded text-xs cursor-pointer transition-colors ${checked ? "bg-[var(--color-accent)]/10" : "hover:bg-[var(--color-bg-primary)]"}`}>
-                    <input type="checkbox" checked={checked} onChange={() => toggleModel(m)}
-                      className="accent-[var(--color-accent)]" />
-                    <span className={checked ? "text-[var(--color-accent-text)]" : "text-[var(--color-text-secondary)]"}>{m}</span>
-                  </label>
+                  <div key={m} className={`flex items-center gap-2 px-2 py-1 rounded text-xs transition-colors ${checked ? "bg-[var(--color-accent)]/10" : "hover:bg-[var(--color-bg-primary)]"}`}>
+                    <Switch size="sm" aria-label={m} checked={checked} onCheckedChange={() => toggleModel(m)} />
+                    <button type="button" onClick={() => toggleModel(m)} className={checked ? "text-[var(--color-accent-text)]" : "text-[var(--color-text-secondary)]"}>{m}</button>
+                  </div>
                 )
               })}
             </div>
