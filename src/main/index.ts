@@ -23,6 +23,7 @@ import { registerPromptAssetsIPC } from "./ipc/prompt-assets.ipc"
 import { registerWorkspaceIPC } from "./ipc/workspace.ipc"
 import { registerAgentIPC } from "./ipc/agent.ipc"
 import { registerNovelaiIPC } from "./ipc/novelai.ipc"
+import { registerScreenshotIPC } from "./ipc/screenshot.ipc"
 import { applyBootConfig, defaultDatabasePathFor } from "./services/boot-config.service"
 import { registerAiSessionsIPC, shutdownAiSessions } from "./ipc/ai-sessions.ipc"
 import { registerTagIntelligenceIPC } from './ipc/tag-intelligence.ipc'
@@ -507,6 +508,7 @@ async function registerAllIPC(): Promise<void> {
   registerWorkspaceIPC()
   registerAgentIPC()
   registerNovelaiIPC()
+  registerScreenshotIPC()
   registerAiSessionsIPC()
   registerSystemIPC()
   applyPersistedIntegrationSettings()

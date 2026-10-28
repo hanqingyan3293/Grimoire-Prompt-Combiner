@@ -45,9 +45,11 @@ const SOURCE_SETTINGS = {
     limitation: '浏览器偏好的执行消费者与导入/清理服务尚未接入。表单及动作按钮已由原生 disabled fieldset 禁用，历史记录弹窗也不开放：它需要真实 TabsProvider，不能用空 tab 上下文替代。'
   },
   'settings-screenshot': {
-    readOnly: true,
+    // Enabled: capture works (desktopCapturer → validated PNG → media/screenshots), the accelerator is
+    // registered as a real global shortcut, and the OCR switch is hidden because there is no OCR service.
+    readOnly: false,
     Component: lazy(() => import('../../source/src/renderer/pages/settings/ScreenshotSettings/ScreenshotSettings')),
-    limitation: '截图、全局快捷键与 OCR 执行服务尚未接入，表单及动作按钮已禁用。快捷键文本只是已保存的绑定；源组件按操作系统显示的 OCR 标签不代表识别服务可用，local_model 的默认状态也不代表已完成模型探测。只保留到已登记设置页的导航链接。'
+    limitation: '截图与全局快捷键已真实接入：按键触发 desktopCapturer 截屏，图片经 PNG 校验后落到媒体目录并复制到剪贴板；关闭开关会立即释放快捷键，冲突会在日志中回报。本构建没有 OCR 服务（WD14 是标注不是 OCR），「自动 OCR」开关已隐藏，源组件按平台显示的 OCR 文案不代表可用。'
   }
 } as const
 

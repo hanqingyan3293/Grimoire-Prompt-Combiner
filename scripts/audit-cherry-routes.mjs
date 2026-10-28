@@ -807,6 +807,30 @@ if (process.argv.includes('--websearch')) {
   fs.writeFileSync(path.join(outDir, 'websearch-journey.json'), JSON.stringify(report, null, 2))
   console.log('Web search journey:', report.passed ? 'PASS' : 'FAIL', report.error || '')
 }
+
+// Screen capture journey (M3): a REAL desktopCapturer call through the real IPC route. The assertion is
+// that a PNG lands on disk and is readable — a no-op "capture" that returns a path would fail here.
+if (process.argv.includes('--screenshot')) {
+  const report = { passed: false, checks: {} }
+  try {
+    const captured = await evaluate(`window.api.screenshot.capture()`)
+    report.raw = captured && { ok: captured.ok, error: captured.error, filePath: captured.data?.filePath, bytes: captured.data?.bytes, width: captured.data?.width, height: captured.data?.height }
+    report.checks.captureOk = !!captured && captured.ok === true
+    report.checks.hasBytes = !!captured?.data && captured.data.bytes > 1000
+    report.checks.hasSize = !!captured?.data && captured.data.width > 0 && captured.data.height > 0
+    const exists = captured?.data?.filePath ? fs.existsSync(captured.data.filePath) : false
+    report.checks.fileOnDisk = exists === true
+    if (exists) {
+      const head = fs.readFileSync(captured.data.filePath).subarray(0, 8)
+      report.checks.pngSignature = head.equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))
+    }
+    report.passed = Object.values(report.checks).every(Boolean)
+  } catch (error) {
+    report.error = String(error)
+  }
+  fs.writeFileSync(path.join(outDir, 'screenshot-journey.json'), JSON.stringify(report, null, 2))
+  console.log('Screenshot journey:', report.passed ? 'PASS' : 'FAIL', report.error || '', JSON.stringify(report.checks))
+}
 // Optional P1 transport smoke through the ACTUAL sandboxed renderer/preload/main.
 // This fresh profile has no blueprints: empty items is verified data, not a mock result.
 // Exercises source pi blueprint creation and mutation, not runtime launch/AgentPage.

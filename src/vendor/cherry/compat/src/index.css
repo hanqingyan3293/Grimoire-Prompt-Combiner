@@ -40,3 +40,9 @@
 #setting-general-commit-attribution {
   display: none;
 }
+
+/* `/settings/screenshot` — the OCR switch is hidden: this build has no OCR service (WD14 is tagging,
+ * not text recognition), so leaving it visible would promise recognition that never happens. */
+[data-settings-route="settings-screenshot"] label:has(input[aria-label*="OCR"]) {
+  display: none;
+}

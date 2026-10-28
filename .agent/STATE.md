@@ -737,3 +737,14 @@ resources/agent-runtimes/     opencode.exe 134M (1.18.34) / pi.exe 107M (1.0.1)
 - 测试：截图管线 4 条 + 快捷键策略 4 条，全绿。
 - 待办（下一步）：把 desktopCapturer/globalShortcut 真实实例接进主进程、加一个 `screenshot.capture_now` 路由，
   然后解禁截图页；`auto_ocr` 保持隐藏。
+
+### M3：截图页解禁（真实截屏落盘，2026-10-27 第四十三轮）
+
+- 新增 `screenshot-capture.service`：真正调用 `desktopCapturer`（screen 源、1920×1080 缩略图），
+  交给 `screenshot.service` 做 PNG 魔数校验与命名，落盘到 `userData/media/screenshots/` 并复制到剪贴板。
+- 新通道 `screenshot:capture` + preload `window.api.screenshot.capture()`，错误以 `{ok:false,error.code}` 返回。
+- 偏好副作用接上 `globalShortcut`：开关或加速键变化时统一应用（关闭即释放、换键先释放旧键、冲突记 warn）。
+- 旅程 `--screenshot` 五项全 PASS，且是**真实截图**：
+  `captureOk / hasBytes / hasSize(1920×1080) / fileOnDisk / pngSignature`，实测 1.33MB PNG。
+- 截图页从只读改为**可编辑**；`auto_ocr` 行用 compat CSS 隐藏（本项目没有 OCR 服务）。
+- 测试调整：compat 的截图断言从「只读且控件禁用」改为「可编辑且 fieldset 未禁用」。

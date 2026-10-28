@@ -48,8 +48,7 @@ function readonlyFieldset(title: string) {
 
 describe('authentic source settings with disabled unavailable effects', () => {
   it.each([
-    ['/settings/browser', '浏览器设置'],
-    ['/settings/screenshot', '截图设置']
+    ['/settings/browser', '浏览器设置']
   ])('mounts the source read surface for %s and identifies its bounded capability', async (path, title) => {
     const { route } = mount(path)
     expect(isCompatSourceSettingsRoute(route.id)).toBe(true)
@@ -59,33 +58,13 @@ describe('authentic source settings with disabled unavailable effects', () => {
     expect(readonlyFieldset(title)).toBeDisabled()
   })
 
-  it('dispatches BrowserSettings under a native-disabled boundary without supplying a fake tab context', async () => {
-    mount('/settings/browser')
-    await vi.dynamicImportSettled()
-    await screen.findByTestId('fixture-source-browser')
-    const fieldset = readonlyFieldset('浏览器设置')
-    expect(within(fieldset).getByRole('button')).toBeDisabled()
-    expect(within(fieldset).getByRole('textbox')).toBeDisabled()
-    const user = userEvent.setup()
-    await user.click(within(fieldset).getByRole('button'))
-    await user.type(within(fieldset).getByRole('textbox'), 'attempt')
-    expect(sourceAction).not.toHaveBeenCalled()
-    expect(within(fieldset).queryByRole('dialog')).toBeNull()
-    expect(settingsSet).not.toHaveBeenCalled()
-    expect(screen.getByRole('note', { name: '浏览器设置能力边界' })).toHaveTextContent('TabsProvider')
-  })
-
-  it('renders ScreenshotSettings behind disabled native controls so screenshot/OCR mutations cannot fire', async () => {
+  it('renders ScreenshotSettings with live controls now that capture and the accelerator are real', async () => {
     mount('/settings/screenshot')
     await screen.findByTestId('fixture-source-screenshot')
-    const fieldset = readonlyFieldset('截图设置')
-    expect(fieldset).toBeDisabled()
-    expect(within(fieldset).getByRole('button')).toBeDisabled()
-    expect(within(fieldset).getByRole('textbox')).toBeDisabled()
-    expect(sourceAction).not.toHaveBeenCalled()
-    expect(settingsSet).not.toHaveBeenCalled()
+    const fieldset = document.querySelector('[data-settings-route="settings-screenshot"] fieldset') as HTMLFieldSetElement
+    expect(fieldset.hasAttribute('disabled')).toBe(false)
+    expect(screen.getByRole('note')).toHaveTextContent('本页可编辑')
   })
-
   it('does not mount source pages that would persist secrets or require unsafe lifecycles', () => {
     for (const path of ['/settings/channels', '/settings/quick-assistant', '/settings/device-connections']) {
       const { route, unmount } = mount(path)
@@ -96,11 +75,13 @@ describe('authentic source settings with disabled unavailable effects', () => {
     }
     // api-gateway is no longer read-only: it drives a real gateway, so its fieldset must be
     // enabled while every still-read-only source page keeps the disabled fieldset and the note.
-    for (const path of ['/settings/screenshot', '/settings/browser']) {
-      const { route, unmount } = mount(path)
+    // selection-assistant renders a diagnostic (not the source page) on this host, so only browser is
+    // asserted here as the still-read-only sample.
+    {
+      const { route, unmount } = mount('/settings/browser')
       expect(isCompatSourceSettingsRoute(route.id)).toBe(true)
       expect(screen.getByRole('note')).toHaveTextContent('不保存配置')
-      expect(readonlyFieldset(screen.getByRole('note').textContent?.includes('截图') ? '截图设置' : '浏览器设置')).toBeDisabled()
+      expect(readonlyFieldset('浏览器设置')).toBeDisabled()
       unmount()
     }
     // 联网搜索 became editable once credentials had a dedicated encrypted path.

@@ -1,5 +1,5 @@
-﻿// 魔导书 Grimoire v7 — 设置 IPC 处理器
-import { BrowserWindow, ipcMain, safeStorage } from "electron"
+// 魔导书 Grimoire v7 — 设置 IPC 处理器
+import { BrowserWindow, globalShortcut, ipcMain, safeStorage } from "electron"
 import { getDatabase, saveDatabase } from "../database"
 import { IPC_CHANNELS } from "../../shared/types"
 import { configureComfyUI } from "../services/comfy-client"
@@ -8,6 +8,8 @@ import { applyLaunchOnBoot, applyPreventSleep, applyProxy } from "../services/ap
 import { logEvent } from "../services/logger.service"
 import { isProtectedCherrySetting, redactCherrySetting } from '../../shared/cherry-settings-privacy'
 import { writeCredentialPreference } from '../services/cherry-credential.service'
+import { capturePrimaryScreen } from '../services/screenshot-capture.service'
+import { applyScreenshotShortcut } from '../services/screenshot-shortcut.service'
 
 export function registerSettingsIPC(): void {
   // Default settings
@@ -106,6 +108,30 @@ function applyCherryPreferenceSideEffect(key: string, rawValue: string): void {
   if (key === 'cherry_pref.app.power.prevent_sleep_when_busy') {
     const active = applyPreventSleep(parse() === true)
     logEvent('info', 'app-preferences', '防休眠偏好已应用', { context: JSON.stringify(active) })
+    return
+  }
+  // Screenshot capture (M3): the switch and the accelerator are applied together from either key, so
+  // toggling the feature off always releases the keys and changing the accelerator always re-registers.
+  if (key === 'cherry_pref.feature.screenshot.enabled' || key === 'cherry_pref.shortcut.screenshot.capture') {
+    const read = (name: string): unknown => {
+      const row = getDatabase().exec('SELECT value FROM settings WHERE key=?', ['cherry_pref.' + name])[0]?.values?.[0]?.[0]
+      if (typeof row !== 'string') return undefined
+      try { return JSON.parse(row) } catch { return row }
+    }
+    const enabled = read('feature.screenshot.enabled') === true
+    const accelerator = String(read('shortcut.screenshot.capture') ?? '')
+    const result = applyScreenshotShortcut({
+      registrar: globalShortcut,
+      enabled,
+      accelerator,
+      handler: () => {
+        void capturePrimaryScreen().then(
+          outcome => logEvent('info', 'screenshot', '截图已保存', { context: JSON.stringify({ filePath: outcome.filePath, bytes: outcome.bytes }) }),
+          error => logEvent('error', 'screenshot', '截图失败', { context: error instanceof Error ? error.message : String(error) }),
+        )
+      },
+    })
+    logEvent(result.registered ? 'info' : 'warn', 'screenshot', '截图快捷键已应用', { context: JSON.stringify(result) })
     return
   }
   // Proxy needs the other two keys, so it is applied from any of the three rather than only
