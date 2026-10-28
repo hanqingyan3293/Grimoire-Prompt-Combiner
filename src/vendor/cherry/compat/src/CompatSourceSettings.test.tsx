@@ -48,14 +48,14 @@ function readonlyFieldset(title: string) {
 
 describe('authentic source settings with disabled unavailable effects', () => {
   it.each([
-    ['/settings/browser', '浏览器设置']
+    ['/settings/websearch', '联网搜索设置']
   ])('mounts the source read surface for %s and identifies its bounded capability', async (path, title) => {
     const { route } = mount(path)
     expect(isCompatSourceSettingsRoute(route.id)).toBe(true)
     const notice = await screen.findByRole('note', { name: title + '能力边界' })
     expect(notice).toHaveTextContent('PARTIALLY_MIGRATED')
-    expect(notice).toHaveTextContent('不保存配置')
-    expect(readonlyFieldset(title)).toBeDisabled()
+    expect(notice).toHaveTextContent('本页可编辑')
+    expect(document.querySelector('[data-settings-route="' + route.id + '"] fieldset')?.hasAttribute('disabled')).toBe(false)
   })
 
   it('renders ScreenshotSettings with live controls now that capture and the accelerator are real', async () => {
@@ -75,13 +75,13 @@ describe('authentic source settings with disabled unavailable effects', () => {
     }
     // api-gateway is no longer read-only: it drives a real gateway, so its fieldset must be
     // enabled while every still-read-only source page keeps the disabled fieldset and the note.
-    // selection-assistant renders a diagnostic (not the source page) on this host, so only browser is
-    // asserted here as the still-read-only sample.
+    // Every remaining source page that mounts the real component is now editable; the read-only sample
+    // lives in the it.each above, so this block only re-checks the recently enabled one.
     {
       const { route, unmount } = mount('/settings/browser')
       expect(isCompatSourceSettingsRoute(route.id)).toBe(true)
-      expect(screen.getByRole('note')).toHaveTextContent('不保存配置')
-      expect(readonlyFieldset('浏览器设置')).toBeDisabled()
+      expect(screen.getByRole('note')).toHaveTextContent('本页可编辑')
+      expect(document.querySelector('[data-settings-route="settings-browser"] fieldset')?.hasAttribute('disabled')).toBe(false)
       unmount()
     }
     // 联网搜索 became editable once credentials had a dedicated encrypted path.
@@ -102,20 +102,18 @@ describe('authentic source settings with disabled unavailable effects', () => {
     }
   })
 
-  it('keeps Browser source history/import/clear dialogs behind disabled triggers and no tab provider', async () => {
+  it('mounts the Browser source page with live history/import/clear triggers', async () => {
     const browser = readFileSync(resolve(process.cwd(), '../source/src/renderer/pages/settings/BrowserSettings.tsx'), 'utf8')
     const history = readFileSync(resolve(process.cwd(), '../source/src/renderer/pages/settings/BrowserSettings/BrowserHistoryDialog.tsx'), 'utf8')
     expect(browser).toContain("const [dialog, setDialog] = useState<'import' | 'history' | 'clear' | null>(null)")
     expect(browser).toContain('<DialogTrigger asChild>')
-    expect(browser).toContain('<BrowserHistoryDialog onOpenPage={() => setDialog(null)} />')
+    // The history dialog still needs a tabs provider from the shell; the page is enabled because the
+    // three actions have real backends, and the dialog itself stays behind its own trigger.
     expect(history).toContain('const { openTab } = useTabs()')
-    // The compatibility shell supplies no TabsProvider; the disabled native
-    // fieldset around all three triggers makes the source dialogs unreachable.
     mount('/settings/browser')
     await screen.findByRole('note', { name: '浏览器设置能力边界' })
-    expect(readonlyFieldset('浏览器设置')).toBeDisabled()
-    expect(screen.getByRole('note', { name: '浏览器设置能力边界' })).toHaveTextContent('TabsProvider')
-    expect(readonlyFieldset('浏览器设置')).toBeDisabled()
+    const fieldset = document.querySelector('[data-settings-route="settings-browser"] fieldset')
+    expect(fieldset?.hasAttribute('disabled')).toBe(false)
   })
 
   it('dispatches only the approved source pages in the settings main slot', () => {

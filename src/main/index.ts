@@ -1,5 +1,5 @@
 // 魔导书 Grimoire v7 — Electron 主进程入口
-import { app, BrowserWindow, ipcMain, Menu, dialog, shell, nativeTheme } from "electron"
+import { app, BrowserWindow, WebContentsView, ipcMain, Menu, dialog, shell, nativeTheme } from "electron"
 import path from "path"
 import fs from "fs"
 import { initDatabase, closeDatabase, getDatabase, importDefaultTags, saveDatabase, exportDatabase, importDatabase } from "./database"
@@ -25,6 +25,7 @@ import { registerAgentIPC } from "./ipc/agent.ipc"
 import { registerNovelaiIPC } from "./ipc/novelai.ipc"
 import { registerScreenshotIPC } from "./ipc/screenshot.ipc"
 import { applyBootConfig, defaultDatabasePathFor } from "./services/boot-config.service"
+import { openWebLink } from "./services/open-link.service"
 import { registerAiSessionsIPC, shutdownAiSessions } from "./ipc/ai-sessions.ipc"
 import { registerTagIntelligenceIPC } from './ipc/tag-intelligence.ipc'
 import { registerMediaIPC } from './ipc/media.ipc'

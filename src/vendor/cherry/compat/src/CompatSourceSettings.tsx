@@ -40,9 +40,11 @@ const SOURCE_SETTINGS = {
     limitation: '源划词助手设置在 Windows 上只读挂载。原生 selection-hook、工具栏/动作窗口、全局快捷键和执行消费者尚未接通；控件不改变系统或偏好，设置导航链接仍使用真实路由。'
   },
   'settings-browser': {
-    readOnly: true,
+    // Enabled: history, data clearing and bookmark import all have real backends, and the one visible
+    // preference routes links for real. The agent-control switch is hidden (no such tool yet).
+    readOnly: false,
     Component: lazy(() => import('../../source/src/renderer/pages/settings/BrowserSettings').then(module => ({ default: module.BrowserSettings }))),
-    limitation: '浏览器偏好的执行消费者与导入/清理服务尚未接入。表单及动作按钮已由原生 disabled fieldset 禁用，历史记录弹窗也不开放：它需要真实 TabsProvider，不能用空 tab 上下文替代。'
+    limitation: '源浏览器设置已挂载且可编辑：历史记录（去重/搜索/删除/清空）、分域清理数据、书签导入（Netscape 格式，只收 http/https，重复导入幂等）都是真实实现；「在浏览器中打开链接」偏好决定链接走内嵌浏览器还是系统浏览器。Agent 浏览器控制尚无对应工具，该开关已隐藏。'
   },
   'settings-screenshot': {
     // Enabled: capture works (desktopCapturer → validated PNG → media/screenshots), the accelerator is

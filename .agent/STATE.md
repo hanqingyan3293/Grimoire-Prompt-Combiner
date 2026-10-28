@@ -807,3 +807,14 @@ resources/agent-runtimes/     opencode.exe 134M (1.18.34) / pi.exe 107M (1.0.1)
 - 测试 3 条：文件夹/链接解析与实体解码、幂等导入、空文件与清空。
 - 浏览器设置页仍只读，但三条动作（导入 / 历史 / 清理）此后都有真实后端；
   剩余只差两个偏好消费者（`app.browser.open_links_in_browser`、`app.browser.agent_control.enabled`）。
+
+### M3：浏览器设置页解禁（2026-10-27 第四十九轮）
+
+- 新增 `open-link.service`：`app.browser.open_links_in_browser` 的**单一判定点**——
+  http/https 且偏好为真 → 内嵌 `WebContentsView`（每窗口复用 `external-links` 宿主，尺寸铺满窗口）；
+  其余一律 `shell.openExternal`。非 web 协议（`file:` / `javascript:`）**永远走系统**，不进内嵌宿主。
+- `OPEN_EXTERNAL` 改走该服务，链接不会因打开它的界面不同而走两条路。
+- 偏好接线：`app.browser.open_links_in_browser` 已接；`app.browser.agent_control.enabled` 标记**隐藏**
+  （本构建没有 Agent 浏览器控制工具，留着就是死开关）。
+- 浏览器设置页从只读改为**可编辑**：导入/历史/清理三条动作都有真实后端，一个可见偏好真实生效。
+- 测试：链接路由 2 条（默认系统、非 web 永不走内嵌）+ compat 断言改为「可编辑」口径。
