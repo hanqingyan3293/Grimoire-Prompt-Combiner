@@ -527,3 +527,12 @@ resources/agent-runtimes/     opencode.exe 134M (1.18.34) / pi.exe 107M (1.0.1)
 - 新增 `.ui-table` 基线：表头高 `--gr-control-height-sm`、行高 `--gr-row-height`（随密度切换）、
   细分隔线（`color-mix` 60%）与 hover 底色，让设置表和媒体表看起来是同一个产品。
 - 测试补 1 条：`.ui-dialog-surface` / `.ui-dialog-overlay` 存在且点遮罩能关闭（与 Escape 关闭并列）。
+
+### M3：本地 OpenAI 兼容网关（2026-10-27 第二十七轮）
+
+- 新增 `api-gateway.service`：真 HTTP 服务，路由 `/v1/models`、`/v1/chat/completions`（流式与非流式）、`/health`；
+  Bearer 鉴权；**转发到当前 provider**（复用 `ai/client` 与 `getActiveProvider`），不做第二套供应商配置。
+- 端口 0 = 由系统分配；`restart` 会先关旧监听再起（测试验证不泄漏）。流式分支若已发出响应头再抛错，只 `end()` 不再写 JSON（否则掩盖真实上游错误）。
+- IPC 路由 `api_gateway.status/start/stop/restart` 接到 `ipcApi` 路由器，配置读 `feature.api_gateway.{host,port,api_key}` 偏好——页面与服务不会对端口/密钥各说各话。
+- 测试 4 条（假上游）：models + 非流式完成、SSE 流式、缺/错 token 401、restart 后仍可服务。
+- 待办：页面还需要 `feature.api_gateway.running` 的共享缓存来源，以及把 api-gateway 从只读里解禁。

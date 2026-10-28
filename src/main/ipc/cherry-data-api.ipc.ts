@@ -20,7 +20,8 @@ import { createPromptAsset, deletePromptAsset, orderedPromptAssetIds, queryPromp
 import type { PromptOrderAnchor } from '../services/prompt-asset-browser'
 import { listAiUsage, listUsageTimeline, projectUsageEntry, projectUsageTotals, summarizeAiUsage } from '../services/usage.service'
 import { isPreventSleepActive, readLaunchOnBoot } from '../services/app-preferences.service'
-import { cherryPreferenceWiring, isCherryDeveloperModeEnabled } from '../services/cherry-preference-consumers'
+import { cherryPreferenceWiring, isCherryDeveloperModeEnabled, readCherryPreference as readCherryPref } from '../services/cherry-preference-consumers'
+import { getGatewayStatus, restartGateway, startGateway, stopGateway } from '../services/api-gateway.service'
 import type { PromptAssetItem } from '../../shared/prompt-asset-types'
 import type { AiAssistantRecord, AiTopicRecord } from '../../shared/ai-types'
 import { getActiveLogPath } from '../services/logger.service'
@@ -2329,6 +2330,23 @@ async function handleIpcApiRoute(route: string, input: unknown, sender: WebConte
       return ipcOk(await hasWritePermission(value.path))
     }
     if (route === 'app.preferences.consumers') return ipcOk(cherryPreferenceWiring())
+    // Local OpenAI-compatible gateway (M3). Config comes from the same `feature.api_gateway.*`
+    // preferences the source page writes, so the page and the server cannot disagree about port/key.
+    if (route === 'api_gateway.status') return ipcOk(getGatewayStatus())
+    if (route === 'api_gateway.start' || route === 'api_gateway.restart') {
+      try {
+        const config = {
+          host: typeof readCherryPref('feature.api_gateway.host') === 'string' ? String(readCherryPref('feature.api_gateway.host')) : '127.0.0.1',
+          port: Number(readCherryPref('feature.api_gateway.port')) || 0,
+          apiKey: typeof readCherryPref('feature.api_gateway.api_key') === 'string' ? String(readCherryPref('feature.api_gateway.api_key')) : '',
+        }
+        const status = route === 'api_gateway.start' ? await startGateway(config) : await restartGateway(config)
+        return ipcOk(status)
+      } catch (error) {
+        return ipcError('GATEWAY_START_FAILED', error instanceof Error ? error.message : String(error))
+      }
+    }
+    if (route === 'api_gateway.stop') return ipcOk(await stopGateway())
     if (route === 'system.toggle_dev_tools') {
       // `/settings/general` 的开发者模式开关只有关住 DevTools 才算真正生效：显式关闭时拒绝，
       // 未设置时保持 Grimoire 一直以来的行为（允许）。
