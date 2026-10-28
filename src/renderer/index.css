@@ -1067,10 +1067,8 @@ textarea.ui-field {
 .ui-segmented-item {
   border-radius: calc(var(--gr-radius-md) - 1px);
 }
-.ui-popover-surface {
-  border-radius: var(--gr-radius-lg);
-  box-shadow: var(--gr-elevation-2);
-}
+/* `.ui-popover-surface` is defined once near the top; a second definition here silently won the cascade
+ * with a different radius (10px instead of the source's 8px). Caught by --style-contract. */
 .ui-panel-shell {
   border-radius: var(--gr-radius-sm);
 }

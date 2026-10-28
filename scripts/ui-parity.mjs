@@ -571,6 +571,36 @@ if (process.argv.includes('--comfy-persist')) {
   console.log('COMFY-PERSIST ' + JSON.stringify({ passed: report.passed, checks: report.checks, stored: report.stored, shown: report.shownAfterReload }))
   if (!report.passed) process.exitCode = 1
 }
+
+// `--style-contract` checks that the baseline classes are actually APPLIED, not merely present in the
+// stylesheet. It builds throwaway elements with each class, reads computed styles, and compares against the
+// values the vendored primitives dictate. A class that exists but lost its rule (typo, later override,
+// cascade order) passes a grep and fails this.
+if (process.argv.includes('--style-contract')) {
+  const contract = [
+    { className: 'ui-badge', tag: 'span', property: 'borderRadius', expect: '999px' },
+    { className: 'ui-badge', tag: 'span', property: 'display', expect: 'inline-flex' },
+    { className: 'ui-badge', tag: 'span', property: 'whiteSpace', expect: 'nowrap' },
+    { className: 'ui-badge', tag: 'span', property: 'flexShrink', expect: '0' },
+    { className: 'ui-field', tag: 'input', property: 'height', expect: '36px' },
+    { className: 'ui-switch', tag: 'button', property: 'width', expect: '32px' },
+    { className: 'ui-switch', tag: 'button', property: 'height', expect: '18px' },
+    { className: 'ui-switch ui-switch-sm', tag: 'button', property: 'width', expect: '26px' },
+    { className: 'ui-checkbox', tag: 'input', property: 'width', expect: '16px' },
+    { className: 'ui-checkbox', tag: 'input', property: 'borderRadius', expect: '4px' },
+    { className: 'ui-radio', tag: 'input', property: 'borderRadius', expect: '999px' },
+    { className: 'ui-icon-button', tag: 'button', property: 'width', expect: '30px' },
+    { className: 'ui-segmented', tag: 'div', property: 'minHeight', expect: '36px' },
+    { className: 'ui-popover-surface', tag: 'div', property: 'borderRadius', expect: '8px' },
+    { className: 'ui-tooltip', tag: 'div', property: 'position', expect: 'fixed' },
+    { className: 'ui-nav-tab', tag: 'button', property: 'position', expect: 'relative' },
+  ]
+  const measured = await evaluate(`(() => { const contract = ${JSON.stringify('CONTRACT')}; return contract.map(item => { const element = document.createElement(item.tag); element.className = item.className; document.body.appendChild(element); const style = getComputedStyle(element); const value = style[item.property] || ''; element.remove(); return { className: item.className, property: item.property, expected: item.expect, actual: value, ok: value === item.expect } }) })()`.replace('"CONTRACT"', JSON.stringify(contract)))
+  const failures = (measured || []).filter(item => !item.ok)
+  fs.writeFileSync('artifacts/visual/ui-parity/style-contract.json', JSON.stringify({ passed: failures.length === 0, measured, failures }, null, 2))
+  console.log('STYLE-CONTRACT ' + JSON.stringify({ passed: failures.length === 0, total: (measured || []).length, failures }))
+  if (failures.length) process.exitCode = 1
+}
 console.log(JSON.stringify(report, null, 2))
 ws.close()
 killTree()
