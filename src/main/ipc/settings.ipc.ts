@@ -1,5 +1,5 @@
 // 魔导书 Grimoire v7 — 设置 IPC 处理器
-import { BrowserWindow, globalShortcut, ipcMain, safeStorage } from "electron"
+import { BrowserWindow, clipboard, globalShortcut, ipcMain, safeStorage } from "electron"
 import { getDatabase, saveDatabase } from "../database"
 import { IPC_CHANNELS } from "../../shared/types"
 import { configureComfyUI } from "../services/comfy-client"
@@ -10,6 +10,8 @@ import { isProtectedCherrySetting, redactCherrySetting } from '../../shared/cher
 import { writeCredentialPreference } from '../services/cherry-credential.service'
 import { capturePrimaryScreen } from '../services/screenshot-capture.service'
 import { applyScreenshotShortcut } from '../services/screenshot-shortcut.service'
+import { applySelectionShortcut, planSelectionAction } from '../services/selection-assistant.service'
+import { createPromptAsset } from '../services/prompt-asset-browser'
 
 export function registerSettingsIPC(): void {
   // Default settings
@@ -132,6 +134,45 @@ function applyCherryPreferenceSideEffect(key: string, rawValue: string): void {
       },
     })
     logEvent(result.registered ? 'info' : 'warn', 'screenshot', '截图快捷键已应用', { context: JSON.stringify(result) })
+    return
+  }
+  // Selection assistant (M3): source Cherry captures a selection with the native `selection-hook` addon,
+  // which this repository does not have. The fallback is a global shortcut that reads the clipboard after
+  // the user copies: it needs no native code and still turns a selection into tags or a prompt asset.
+  if (key === 'cherry_pref.feature.selection.enabled' || key === 'cherry_pref.shortcut.selection.assistant') {
+    const readSelection = (name: string): unknown => {
+      const row = getDatabase().exec('SELECT value FROM settings WHERE key=?', ['cherry_pref.' + name])[0]?.values?.[0]?.[0]
+      if (typeof row !== 'string') return undefined
+      try { return JSON.parse(row) } catch { return row }
+    }
+    const enabled = readSelection('feature.selection.enabled') === true
+    const accelerator = String(readSelection('shortcut.selection.assistant') ?? 'CommandOrControl+Shift+S')
+    const result = applySelectionShortcut({
+      registrar: globalShortcut,
+      enabled,
+      accelerator,
+      handler: () => {
+        // The action is resolved at press time so a preference change applies without re-registering.
+        const action = String(readSelection('feature.selection.action') ?? 'copy-as-tags')
+        const plan = planSelectionAction(action === 'to-prompt-asset' ? 'to-prompt-asset' : action === 'copy-normalized' ? 'copy-normalized' : 'copy-as-tags', clipboard.readText())
+        if (plan.kind === 'empty') {
+          logEvent('warn', 'selection', '划词助手：剪贴板为空，未生成内容')
+          return
+        }
+        if (plan.kind === 'clipboard') {
+          clipboard.writeText(plan.text)
+          logEvent('info', 'selection', '划词助手：已转换并写回剪贴板', { context: JSON.stringify({ chars: plan.text.length }) })
+          return
+        }
+        try {
+          const asset = createPromptAsset(getDatabase(), { name: plan.payload.slice(0, 24) || '选区', prompt: plan.payload, detail: '划词助手 · ' + new Date().toISOString() })
+          logEvent('info', 'selection', '划词助手：已存为提示词素材', { context: JSON.stringify({ assetId: asset.id }) })
+        } catch (error) {
+          logEvent('error', 'selection', '划词助手：写入素材失败', { context: error instanceof Error ? error.message : String(error) })
+        }
+      },
+    })
+    logEvent(result.registered ? 'info' : 'warn', 'selection', '划词助手快捷键已应用', { context: JSON.stringify(result) })
     return
   }
   // Proxy needs the other two keys, so it is applied from any of the three rather than only

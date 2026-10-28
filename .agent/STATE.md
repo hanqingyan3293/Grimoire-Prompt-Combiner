@@ -1294,3 +1294,20 @@ import type { SelectionHookConstructor } from 'selection-hook'
 容易误读成「等 dockview」。改写为：语义层在 Grimoire 自己身上——面板有类型（33 种）、自带文档与持久化，
 workspace store 拥有布局（列/顺序/浮动/最大化/popout）并存 SQLite；矩阵三档 18 面板无空白无裁剪。
 真正的缺口只剩 Area/Editor/Region（源无对应物）与 popout 完整行为未逐项验证。
+
+### M3 划词助手：无原生依赖的替代实现（2026-10-27 第八十一轮）
+
+上一轮确认了真阻塞（原生 `selection-hook`），并记下一条不需要原生模块的路径。本轮把它做出来：
+
+**新服务 `selection-assistant.service.ts`（纯逻辑，依赖全部注入）**
+- `applySelectionShortcut`：开关与快捷键成对生效；关闭必释放按键；换键重注册；冲突/抛错如实报 `CONFLICT` / `ERROR`；
+- `normalizeSelection` / `selectionToTags`：折叠换行与多余空白，**保留权重语法**（`(x:1.2)` / `{{x}}` / `[x]` 不被当标点清掉）；
+- `planSelectionAction`：三个动作 → `clipboard` / `prompt-asset` / `empty`（空白选区直接拒绝，不生成空内容）。
+
+**接线**（`settings.ipc.ts`）：`feature.selection.enabled` + `shortcut.selection.assistant` 变化时应用；
+按键时读 `clipboard.readText()` → 计划 → 写回剪贴板，或经 `createPromptAsset` 写入**真实的**提示词素材行。
+
+**测试 5 条**（无需显示器）：开关/换键/冲突/抛错、空白拒绝、权重语法保留、CRLF 归一、三动作计划。
+
+矩阵行同步更新：仍不是完整能力（源的置顶浮窗与真正的跨应用选区捕获未做），但从「BLOCKED 不适用」改为
+**PARTIALLY_MIGRATED**，并写清已实现与未实现两部分。
