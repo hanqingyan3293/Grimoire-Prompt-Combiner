@@ -510,14 +510,21 @@ button:disabled {
 .ui-badge-danger { background: var(--color-danger-surface); color: var(--color-danger); }
 .ui-badge-warning { background: var(--color-warning-surface); color: var(--color-warning); }
 
+/* Panel headers wrap instead of squeezing: at a 210px panel the action buttons left ~60px for the
+ * title block, which turned the description into a one-character-wide column (visual matrix caught it). */
 .ui-content-header {
   display: flex;
   min-height: 48px;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 12px;
+  flex-wrap: wrap;
+  gap: 8px 12px;
   border-bottom: 1px solid var(--color-border);
   padding: 2px 2px 12px;
+}
+
+.ui-content-header > :first-child {
+  min-width: min(100%, 12rem);
 }
 
 .ui-empty-state-icon {
