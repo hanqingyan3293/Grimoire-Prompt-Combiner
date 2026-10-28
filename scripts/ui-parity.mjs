@@ -476,19 +476,24 @@ if (process.argv.includes('--visual-matrix')) {
         // canvas white screen). Text length makes it automatic; the two view-hosting panels are exempt
         // because their content is an iframe / native view that this probe cannot read.
         const textLength = await evaluate(`(() => { const host = document.querySelector('[data-panel-type="' + window.__matrixType + '"] .ui-panel-content') || document.querySelector('[data-panel-type="' + window.__matrixType + '"]'); return host ? (host.innerText || '').trim().length : -1 })()`)
-        run.panels.push({ type, mounted: true, panelWidth: measured?.width ?? null, textLength, shot: await screenshot('w' + width + '-' + type) })
+        // A panel header has a fixed height. Anything inside it that grows (a wrapped row, a taller button)
+        // is silently clipped — that is how the agent mode switcher lost its last three modes.
+        const headerOverflow = await evaluate(`(() => { const header = document.querySelector('[data-panel-type="' + window.__matrixType + '"] [data-ui="panel.header"]'); if (!header) return 0; return Math.max(0, header.scrollHeight - header.clientHeight) })()`)
+        run.panels.push({ type, mounted: true, panelWidth: measured?.width ?? null, textLength, headerOverflow, shot: await screenshot('w' + width + '-' + type) })
       }
       const VIEW_HOSTING = new Set(['canvas', 'browser'])
       const blank = run.panels.filter(panel => panel.mounted && panel.textLength === 0 && !VIEW_HOSTING.has(panel.type)).map(panel => panel.type)
+      const clippedHeaders = run.panels.filter(panel => (panel.headerOverflow ?? 0) > 1).map(panel => panel.type)
       if (blank.length) run.blankPanels = blank
+      if (clippedHeaders.length) run.clippedHeaders = clippedHeaders
       matrix.runs.push({ ...run, panelWidths: [...new Set(run.panels.map(panel => panel.panelWidth).filter(Boolean))].sort((a, b) => a - b) })
     }
     await callWithTimeout('Emulation.clearDeviceMetricsOverride', {}, 10000)
     matrix.passed = matrix.runs.every(run => run.panels.every(panel => panel.mounted))
   } catch (error) { matrix.error = String(error) }
   fs.writeFileSync('artifacts/visual/ui-parity/visual-matrix.json', JSON.stringify(matrix, null, 2))
-  console.log('MATRIX ' + JSON.stringify(matrix.runs.map(run => ({ width: run.width, panelWidths: run.panelWidths, mounted: run.panels.filter(panel => panel.mounted).length + '/' + run.panels.length, blank: run.blankPanels ?? [] }))))
-  const blankShortfall = matrix.runs.some(run => (run.blankPanels ?? []).length > 0)
+  console.log('MATRIX ' + JSON.stringify(matrix.runs.map(run => ({ width: run.width, panelWidths: run.panelWidths, mounted: run.panels.filter(panel => panel.mounted).length + '/' + run.panels.length, blank: run.blankPanels ?? [], clippedHeaders: run.clippedHeaders ?? [] }))))
+  const blankShortfall = matrix.runs.some(run => (run.blankPanels ?? []).length > 0) || matrix.runs.some(run => (run.clippedHeaders ?? []).length > 0)
   if (blankShortfall) process.exitCode = 1
   // Ratchet: a panel that stops mounting at any width is a regression even if every screenshot looks fine.
   let baseline = { minMountedPerWidth: 18 }
@@ -523,6 +528,12 @@ if (process.argv.includes('--tooltip')) {
   fs.writeFileSync('artifacts/visual/ui-parity/tooltip-journey.json', JSON.stringify(report, null, 2))
   console.log('TOOLTIP ' + JSON.stringify({ passed: report.passed, checks: report.checks, text: report.bubble?.text }))
   if (!report.passed) process.exitCode = 1
+}
+
+if (process.argv.some(argument => argument.startsWith('--measure='))) {
+  const selector = process.argv.find(argument => argument.startsWith('--measure=')).slice('--measure='.length)
+  const expression = '(() => { const panel = document.querySelector("[data-panel-type]") || document; return Array.from(panel.querySelectorAll(' + JSON.stringify(selector) + ')).slice(0, 6).map(element => { const rect = element.getBoundingClientRect(); const style = getComputedStyle(element); return { width: Math.round(rect.width), height: Math.round(rect.height), background: style.backgroundColor, border: style.borderColor, role: element.getAttribute("role") || element.type || "" } }) })()'
+  console.log('MEASURE ' + selector + ' ' + JSON.stringify(await evaluate(expression)))
 }
 console.log(JSON.stringify(report, null, 2))
 ws.close()
