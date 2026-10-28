@@ -1,4 +1,4 @@
-import { app, BrowserWindow, dialog, ipcMain, nativeTheme, session, shell, WebContentsView } from 'electron'
+import { app, BrowserWindow, dialog, ipcMain, nativeTheme, session, shell, systemPreferences, WebContentsView } from 'electron'
 import type { WebContents } from 'electron'
 import crypto from 'crypto'
 import fs from 'fs'
@@ -2367,6 +2367,28 @@ async function handleIpcApiRoute(route: string, input: unknown, sender: WebConte
     // these; the browser HOST is still missing, so the page stays read-only for its other controls.
     // Embedded browser host (M3). The renderer reports the rectangle it reserved for the view; main owns
     // the view itself. Every navigation lands in browser_history, so the history dialog has real data.
+    // Routes the mounted source pages actually call. Without a branch they fall through to the generic
+    // "unknown route" error, which the pages catch and log — a button that silently does nothing.
+    if (route === 'app.relaunch') {
+      for (const window of BrowserWindow.getAllWindows()) {
+        if (!window.isDestroyed()) window.webContents.reload()
+      }
+      return ipcOk(true)
+    }
+    if (route === 'system.mac.screen_capture_status') {
+      // Truthful outside macOS: there is no such permission, so the page must not pretend it is denied.
+      return ipcOk(process.platform === 'darwin' ? systemPreferences.getMediaAccessStatus('screen') : 'unavailable')
+    }
+    if (route === 'system.mac.request_screen_capture') {
+      if (process.platform !== 'darwin') return ipcOk('unavailable')
+      void shell.openExternal('x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture')
+      return ipcOk(systemPreferences.getMediaAccessStatus('screen'))
+    }
+    if (route === 'system.mac.open_screen_capture_settings') {
+      if (process.platform !== 'darwin') return ipcError('UNAVAILABLE', '屏幕录制权限仅适用于 macOS')
+      void shell.openExternal('x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture')
+      return ipcOk(true)
+    }
     if (route === 'browser.host.open' || route === 'browser.host.bounds' || route === 'browser.host.navigate' || route === 'browser.host.close' || route === 'browser.host.get') {
       const payload = (value ?? {}) as { id?: unknown; url?: unknown; bounds?: { x?: number; y?: number; width?: number; height?: number } }
       const id = String(payload.id ?? '')
