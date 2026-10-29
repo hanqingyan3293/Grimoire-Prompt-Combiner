@@ -69,6 +69,29 @@ try {
   findings.push({ kind: 'registry-unreadable', file: 'PanelRegistry.tsx', detail: String(error) })
 }
 
+
+// Rule 5: a field that may collapse to zero width — `min-w-0` on an <input>/<textarea> — will collapse
+// exactly when a row has several fixed-width siblings (that is how the browser address bar became 30px and
+// the ComfyUI URL 12px). Give the field a real minimum instead. Checkboxes/radios are exempt: they are not
+// meant to grow, and vendor sources are out of scope.
+const COLLAPSIBLE_FIELD = /<(input|textarea)\b/g
+for (const file of walk(COMPONENTS).filter(item => !EXCLUDED.some(pattern => item.includes(pattern)))) {
+  const relative = path.relative(ROOT, file)
+  if (relative.includes('vendor')) continue
+  const source = fs.readFileSync(file, 'utf8')
+  const lines = source.split('\n')
+  let open = null
+  lines.forEach((line, index) => {
+    if (COLLAPSIBLE_FIELD.test(line)) { COLLAPSIBLE_FIELD.lastIndex = 0; open = { start: index, text: line } }
+    else if (open) open.text += ' ' + line
+    if (!open) return
+    if (!/\/>/.test(open.text) && !/^\s*\}>/.test(line)) return
+    if (/min-w-0/.test(open.text) && !/min-w-\[/.test(open.text) && !/type=['"](checkbox|radio|range|color)['"]/.test(open.text)) {
+      findings.push({ kind: 'collapsible-field', file: relative, line: open.start + 1, detail: open.text.replace(/\s+/g, ' ').slice(0, 80) })
+    }
+    open = null
+  })
+}
 let baseline = { findings: 0, allow: [] }
 try { baseline = JSON.parse(fs.readFileSync(BASELINE, 'utf8')) } catch {}
 const budget = typeof baseline.findings === 'number' ? baseline.findings : 0

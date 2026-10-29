@@ -22,7 +22,7 @@ export function WorkspaceLogsPanel() {
   return (
     <div className="flex h-full min-h-0 flex-col gap-3 overflow-hidden bg-[var(--color-bg-secondary)] p-3">
       <div className="flex shrink-0 items-center gap-2">
-        <input value={query} onChange={event => setQuery(event.target.value)} className="ui-field min-w-0 flex-1" placeholder="搜索诊断日志" aria-label="搜索诊断日志" />
+        <input value={query} onChange={event => setQuery(event.target.value)} className="ui-field min-w-[8rem] flex-1" placeholder="搜索诊断日志" aria-label="搜索诊断日志" />
         <button type="button" onClick={() => void load()} disabled={loading} className="ui-toolbar-button" title="刷新日志" aria-label="刷新日志"><RefreshCw size={15} className={loading ? "ui-spin" : ""} /></button>
       </div>
       <div className="min-h-0 flex-1 space-y-2 overflow-auto">
@@ -59,7 +59,7 @@ export function WorkspaceModelManagerPanel() {
   const models = useMemo(() => providers.filter(Boolean).flatMap(provider => (Array.isArray(provider.models) ? provider.models : []).map(model => ({ model, provider: provider.name, active: provider.is_active }))).filter((item, index, list) => list.findIndex(other => other.model === item.model && other.provider === item.provider) === index).filter(item => !query.trim() || item.model.toLowerCase().includes(query.trim().toLowerCase()) || item.provider.toLowerCase().includes(query.trim().toLowerCase())), [providers, query])
   return (
     <div className="flex h-full min-h-0 flex-col gap-3 overflow-hidden bg-[var(--color-bg-secondary)] p-3">
-      <div className="flex shrink-0 items-center gap-2"><input value={query} onChange={event => setQuery(event.target.value)} className="ui-field min-w-0 flex-1" placeholder="搜索模型或供应商" aria-label="搜索模型" /><button type="button" onClick={() => void loadProviders()} className="ui-toolbar-button" title="刷新模型" aria-label="刷新模型"><RefreshCw size={15} /></button></div>
+      <div className="flex shrink-0 items-center gap-2"><input value={query} onChange={event => setQuery(event.target.value)} className="ui-field min-w-[8rem] flex-1" placeholder="搜索模型或供应商" aria-label="搜索模型" /><button type="button" onClick={() => void loadProviders()} className="ui-toolbar-button" title="刷新模型" aria-label="刷新模型"><RefreshCw size={15} /></button></div>
       {loading ? <div className="ui-empty-state flex-1"><LoaderCircle size={17} className="ui-spin" />正在加载模型</div> : <div className="min-h-0 flex-1 overflow-auto"><div className="grid gap-2 grid-cols-2">{models.map(item => <div key={item.provider + ":" + item.model} className="ui-list-card p-3"><div className="truncate text-sm text-[var(--color-text-primary)]" title={item.model}>{item.model}</div><div className="mt-1 flex items-center gap-2 text-[11px] text-[var(--color-text-secondary)]"><span className="truncate">{item.provider}</span>{item.active && <span className="ui-status-badge ui-status-badge-success">当前供应商</span>}</div></div>)}</div>{models.length === 0 && <div className="ui-empty-state mt-4">暂无模型</div>}</div>}
     </div>
   )

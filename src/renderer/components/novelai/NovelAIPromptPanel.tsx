@@ -178,7 +178,7 @@ export function NovelAIPromptPanel() {
       <div className="flex min-h-0 flex-1 flex-wrap">
         <aside className="flex w-44 min-w-[9rem] shrink-0 flex-col gap-2 border-r border-[var(--color-border)] p-2">
           <div className="flex gap-1">
-            <input value={newWorkName} onChange={event => setNewWorkName(event.target.value)} placeholder="新作品名" className="ui-field min-w-0 flex-1 px-2 py-1 text-xs" />
+            <input value={newWorkName} onChange={event => setNewWorkName(event.target.value)} placeholder="新作品名" className="ui-field min-w-[8rem] flex-1 px-2 py-1 text-xs" />
             <Button size="sm" variant="secondary" onClick={() => void createWork()} disabled={busy || !newWorkName.trim()} aria-label="新建作品"><Plus size={14} /></Button>
           </div>
           <div className="min-h-0 flex-1 overflow-auto">
@@ -199,7 +199,7 @@ export function NovelAIPromptPanel() {
               <div className="flex flex-wrap items-center gap-2 border-b border-[var(--color-border)] px-3 py-2">
                 <span className="text-sm font-medium">{bundle.work.name}</span>
                 <Badge tone="neutral">r{bundle.work.revision}</Badge>
-                <input value={branchName} onChange={event => setBranchName(event.target.value)} placeholder="分支名" className="ui-field w-24 min-w-0 shrink px-2 py-1 text-xs" />
+                <input value={branchName} onChange={event => setBranchName(event.target.value)} placeholder="分支名" className="ui-field w-24 min-w-[5rem] shrink px-2 py-1 text-xs" />
                 <Button size="sm" variant="ghost" onClick={() => void renameBranch()} disabled={busy || !branchName.trim()}>命名分支</Button>
                 {bundle && branches.length > 1 && (
                   <span className="flex flex-wrap items-center gap-1" aria-label="分支列表">

@@ -117,7 +117,7 @@ export function AgentSessionsPanel() {
           <input className='ui-field' value={model} onChange={event => setModel(event.target.value)} placeholder='模型（可选）' />
         </div>
         <div className='flex gap-2'>
-          <input className='ui-field min-w-0 flex-1' value={title} onChange={event => setTitle(event.target.value)} placeholder='会话标题（可选）' />
+          <input className='ui-field min-w-[8rem] flex-1' value={title} onChange={event => setTitle(event.target.value)} placeholder='会话标题（可选）' />
           <Button size='sm' variant='primary' icon={Plus} onClick={() => void create()}>新建</Button>
         </div>
         {message && <div className='ui-inline-note ui-inline-note-info text-xs' role='status'>{message}</div>}
@@ -144,7 +144,7 @@ export function AgentSessionsPanel() {
           {events.length ? events.filter(event => event.type === 'message').map(event => <div key={event.id} className='rounded-md border border-[var(--color-border)] p-2 text-xs leading-5'><span className='mr-2 font-semibold text-[var(--color-accent-text)]'>{String(event.data.role || 'message')}</span>{String(event.data.content || '')}</div>) : <div className='py-5 text-center text-xs text-[var(--color-text-secondary)]'>暂无消息</div>}
         </div>
         <div className='flex gap-2'>
-          <textarea className='ui-field min-h-16 min-w-0 flex-1 resize-y' value={eventText} onChange={event => setEventText(event.target.value)} placeholder='输入消息，发送到当前会话' onKeyDown={event => { if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) { event.preventDefault(); void send() } }} />
+          <textarea className='ui-field min-h-16 min-w-[8rem] flex-1 resize-y' value={eventText} onChange={event => setEventText(event.target.value)} placeholder='输入消息，发送到当前会话' onKeyDown={event => { if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) { event.preventDefault(); void send() } }} />
           <Button size='sm' variant='primary' icon={Send} onClick={() => void send()} disabled={sending || !eventText.trim()}>{sending ? '发送中' : '发送'}</Button>
         </div>
       </section> : null}

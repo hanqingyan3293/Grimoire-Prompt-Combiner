@@ -1377,3 +1377,26 @@ fireEvent.click(await screen.findByRole('button', { name: '刷新模型' }))   /
 复跑截图确认地址栏显示完整的 `https://example.com`，按钮换到下一行。
 
 `npm run journeys` 全量复跑（修复前）：所有旅程 PASS；矩阵三档 18/18、空白 0、裁剪 0。
+
+### G9 第五条规则：可塌陷的输入框（2026-10-27 第八十六轮）
+
+五次真实事故同根：`min-w-0 flex-1` 的字段在固定宽兄弟旁边被压到零。这轮把它变成机器规则：
+
+```text
+<input> / <textarea> 上出现 min-w-0 且没有 min-w-[...]  → 命中
+例外：type=checkbox|radio|range|color（不该拉伸）、src/vendor/**
+```
+
+首轮命中 **11 处**（全部在自家组件，vendor 已排除），逐处给下限：
+
+| 文件 | 处理 |
+|---|---|
+| AgentSessionsPanel 标题输入 / 事件 textarea | `min-w-[8rem]` |
+| AgentWorkspacePanel 会话搜索 | `min-w-[8rem]` |
+| SyntaxQueryBar 语法查询 | `min-w-[10rem]` |
+| TagAssetManagerPanel 搜索 | `min-w-[8rem]` |
+| NovelAIPromptPanel 新作品名 / 分支名（w-24+shrink） | `min-w-[8rem]` / `min-w-[5rem]` |
+| NovelAIAssetPanel 新素材名 | `min-w-[8rem]` |
+| WorkspaceSystemPanels 诊断搜索 ×2 | `min-w-[8rem]` |
+
+命中 11 → **0**，`tsc` 与 `vite build` 通过，G9 全绿。

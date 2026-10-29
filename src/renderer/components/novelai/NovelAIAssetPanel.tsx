@@ -102,7 +102,7 @@ export function NovelAIAssetPanel() {
             ))}
           </div>
           <div className="flex gap-1">
-            <input value={newName} onChange={event => setNewName(event.target.value)} placeholder="新素材名" className="ui-field min-w-0 flex-1 px-2 py-1 text-xs" aria-label="新素材名" />
+            <input value={newName} onChange={event => setNewName(event.target.value)} placeholder="新素材名" className="ui-field min-w-[8rem] flex-1 px-2 py-1 text-xs" aria-label="新素材名" />
             <Button size="sm" variant="secondary" onClick={() => void create()} disabled={busy || !newName.trim()} aria-label="新建素材"><Plus size={14} /></Button>
           </div>
           <div className="min-h-0 flex-1 overflow-auto">
