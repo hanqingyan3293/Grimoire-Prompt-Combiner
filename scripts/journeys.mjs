@@ -15,7 +15,7 @@ const journeys = [
   { flag: '--comfy-persist', label: 'ComfyUI 持久化闭环（5 项）' },
   { flag: '--style-contract', label: '样式契约（24 项）' },
   { flag: '--selection-popup', label: '划词助手浮窗（6 项）' },
-  { flag: '--slim-sweep --width=960', label: '窄面板被挤死控件扫描（960）' },
+  { flag: '--slim-sweep --width=960', label: '被挤死控件扫描（960/1280/1600 均可跑）' },
   { flag: '--visual-matrix', label: '视觉矩阵 18 面板 × 3 宽度' },
   ...(quick ? [] : [{ flag: '--narrow-audit --width=960', label: '窄面板审计（960）' }]),
 ]

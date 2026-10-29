@@ -678,9 +678,13 @@ if (process.argv.includes('--slim')) {
 // 960 measurement kept producing by hand.
 if (process.argv.includes('--slim-sweep')) {
   const width = Number((process.argv.find(argument => argument.startsWith('--width=')) || '--width=960').slice(8))
-  const types = await evaluate(`(() => Array.from(document.querySelectorAll('select.ui-panel-select option')).map(option => option.value))()`)
+  // One select only, deduped: every panel column carries its own copy of the list, so querying all of them
+  // returned 90 "types" and the sweep spent minutes re-switching the same panels (that is why 1280/1600 timed out).
+  const types = await evaluate(`(() => { const select = Array.from(document.querySelectorAll('select.ui-panel-select')).find(element => element.offsetParent !== null); if (!select) return []; return Array.from(new Set(Array.from(select.options).map(option => option.value))) })()`)
   const findings = []
+  console.log('SLIM-START types=' + types.length + ' width=' + width)
   for (const type of types) {
+    console.log('SLIM-STEP ' + type)
     const switched = await evaluate(`(() => { const select = Array.from(document.querySelectorAll('select.ui-panel-select')).find(element => element.offsetParent !== null); if (!select) return false; Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(select, ${JSON.stringify('TYPE')}); select.dispatchEvent(new Event('change', { bubbles: true })); return true })()`.replace('"TYPE"', JSON.stringify(type)))
     await evaluate('window.__slimType = ' + JSON.stringify(type))
     if (!switched) continue
