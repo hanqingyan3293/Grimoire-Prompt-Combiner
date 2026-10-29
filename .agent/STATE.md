@@ -1425,3 +1425,18 @@ fireEvent.click(await screen.findByRole('button', { name: '刷新模型' }))   /
 - 已知限制从 3 条加到 4 条（新增「测量可能漂移」：曾报 995/1245 假宽度，重跑即恢复，已加断言）。
 
 抽检 `w1280-images`（三按钮 2+1 换行正常）与 `w1280-tasks`（空态正常）——无新缺陷。
+
+### 划词助手：动作真的写库（2026-10-27 第八十九轮）
+
+浮窗旅程证明了「窗口能开、按钮能点、IPC 通」，但**没证明动作真的落地**（那时剪贴板是空的）。
+本轮补 `selection-assistant.sink.test.ts`（真 SQLite，不 mock 服务）：
+
+- `applySelectionPlan('to-prompt-asset', '1girl, smile, {{long hair}}', 真实 sink)` → `prompt_assets` 表**多一行**，
+  且权重语法 `{{long hair}}` 原样保留；
+- 空白选区 → 返回 `empty`，且 `createPromptAsset` **一次都没被调用**、表里 0 行。
+
+这条和浮窗旅程是互补的两半：一个证明**能点到**，一个证明**点到了真的有用**。
+
+**遗留观察**：`w1600/w1280-prompt-workbench` 的「输出」行右侧有一个约 8px 宽的浅色竖条，
+像是某个被挤窄的元素（可能是 放大查看 图标按钮或 textarea 滚动条）。未确认成因，下一轮用元素级测量定位，
+不靠猜改样式。
