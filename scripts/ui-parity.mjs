@@ -481,6 +481,13 @@ if (process.argv.includes('--visual-matrix')) {
         const headerOverflow = await evaluate(`(() => { const header = document.querySelector('[data-panel-type="' + window.__matrixType + '"] [data-ui="panel.header"]'); if (!header) return 0; return Math.max(0, header.scrollHeight - header.clientHeight) })()`)
         run.panels.push({ type, mounted: true, panelWidth: measured?.width ?? null, textLength, headerOverflow, shot: await screenshot('w' + width + '-' + type) })
       }
+      // The matrix switches ONE panel's type per step, so every step must be measured in the same column.
+      // A run where the widths disagree means the layout drifted mid-sweep (a panel was maximized, a split
+      // was resized, or restore picked another node) — the screenshots would then show different panels and
+      // the numbers would silently describe a layout nobody asked for. Record it and fail.
+      const widths = run.panels.map(panel => panel.panelWidth).filter(value => typeof value === 'number')
+      const spread = widths.length ? Math.max(...widths) - Math.min(...widths) : 0
+      if (spread > 2) run.layoutDrift = { min: Math.min(...widths), max: Math.max(...widths), spread }
       const VIEW_HOSTING = new Set(['canvas', 'browser'])
       const blank = run.panels.filter(panel => panel.mounted && panel.textLength === 0 && !VIEW_HOSTING.has(panel.type)).map(panel => panel.type)
       const clippedHeaders = run.panels.filter(panel => (panel.headerOverflow ?? 0) > 1).map(panel => panel.type)
@@ -492,8 +499,8 @@ if (process.argv.includes('--visual-matrix')) {
     matrix.passed = matrix.runs.every(run => run.panels.every(panel => panel.mounted))
   } catch (error) { matrix.error = String(error) }
   fs.writeFileSync('artifacts/visual/ui-parity/visual-matrix.json', JSON.stringify(matrix, null, 2))
-  console.log('MATRIX ' + JSON.stringify(matrix.runs.map(run => ({ width: run.width, panelWidths: run.panelWidths, mounted: run.panels.filter(panel => panel.mounted).length + '/' + run.panels.length, blank: run.blankPanels ?? [], clippedHeaders: run.clippedHeaders ?? [] }))))
-  const blankShortfall = matrix.runs.some(run => (run.blankPanels ?? []).length > 0) || matrix.runs.some(run => (run.clippedHeaders ?? []).length > 0)
+  console.log('MATRIX ' + JSON.stringify(matrix.runs.map(run => ({ width: run.width, panelWidths: run.panelWidths, mounted: run.panels.filter(panel => panel.mounted).length + '/' + run.panels.length, blank: run.blankPanels ?? [], clippedHeaders: run.clippedHeaders ?? [], drift: run.layoutDrift ?? null }))))
+  const blankShortfall = matrix.runs.some(run => (run.blankPanels ?? []).length > 0) || matrix.runs.some(run => (run.clippedHeaders ?? []).length > 0) || matrix.runs.some(run => Boolean(run.layoutDrift))
   if (blankShortfall) process.exitCode = 1
   // Ratchet: a panel that stops mounting at any width is a regression even if every screenshot looks fine.
   let baseline = { minMountedPerWidth: 18 }
