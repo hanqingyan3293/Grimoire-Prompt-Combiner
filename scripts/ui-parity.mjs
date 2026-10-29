@@ -672,6 +672,38 @@ if (process.argv.includes('--slim')) {
   const expression = '(() => { const panel = document.querySelector("[data-panel-type]") || document; return Array.from(panel.querySelectorAll("*")).map(element => { const rect = element.getBoundingClientRect(); return { tag: element.tagName.toLowerCase(), cls: (element.className || "").toString().slice(0, 50), w: Math.round(rect.width), h: Math.round(rect.height), x: Math.round(rect.left) } }).filter(item => item.w > 0 && item.w < 20 && item.h > 8).slice(0, 12) })()'
   console.log('SLIM ' + JSON.stringify(await evaluate(expression)))
 }
+
+// `--slim-sweep` walks every panel type at one width and lists INTERACTIVE elements squeezed under 20px.
+// A 1px divider is fine; a 6px button or a 4px input is content the user cannot use — the failure mode the
+// 960 measurement kept producing by hand.
+if (process.argv.includes('--slim-sweep')) {
+  const width = Number((process.argv.find(argument => argument.startsWith('--width=')) || '--width=960').slice(8))
+  const types = await evaluate(`(() => Array.from(document.querySelectorAll('select.ui-panel-select option')).map(option => option.value))()`)
+  const findings = []
+  for (const type of types) {
+    const switched = await evaluate(`(() => { const select = Array.from(document.querySelectorAll('select.ui-panel-select')).find(element => element.offsetParent !== null); if (!select) return false; Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(select, ${JSON.stringify('TYPE')}); select.dispatchEvent(new Event('change', { bubbles: true })); return true })()`.replace('"TYPE"', JSON.stringify(type)))
+    await evaluate('window.__slimType = ' + JSON.stringify(type))
+    if (!switched) continue
+    await sleep(700)
+    // The panel type is passed in as a literal: building the selector inside the page expression broke
+    // when the string was assembled in Node instead (window is not defined there).
+    const slimExpression = "(() => {" +
+      " const panel = document.querySelector('[data-panel-type=\"" + "PLACEHOLDER" + "\"]');" +
+      " if (!panel) return null;" +
+      " return Array.from(panel.querySelectorAll('button, input, textarea, select, a, [role=button]'))" +
+      "  .map(element => { const rect = element.getBoundingClientRect(); return { tag: element.tagName.toLowerCase(), type: element.type || '', label: (element.getAttribute('aria-label') || element.textContent || '').trim().slice(0, 24), w: Math.round(rect.width), h: Math.round(rect.height) } })" +
+      "  .filter(item => { if (item.h <= 4 || item.w >= 20) return false;" +
+      "    if (['checkbox','radio','range','color'].indexOf(item.type) >= 0) return false;" +
+    "    if (item.h > 100 || item.w < 6) return false;" +
+      "    return item.tag === 'input' || item.tag === 'textarea' || item.tag === 'select' || /[\\u4e00-\\u9fa5A-Za-z]{3,}/.test(item.label) })" +
+      "})()"
+    const slim = await evaluate(slimExpression.replace('PLACEHOLDER', type))
+    if (slim && slim.length) findings.push({ type, slim })
+  }
+  fs.writeFileSync('artifacts/visual/ui-parity/slim-sweep.json', JSON.stringify({ width, findings }, null, 2))
+  console.log('SLIM-SWEEP ' + JSON.stringify({ width, panels: findings.length, findings: findings.slice(0, 8) }))
+  if (findings.length) process.exitCode = 1
+}
 console.log(JSON.stringify(report, null, 2))
 ws.close()
 killTree()

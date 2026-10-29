@@ -220,9 +220,11 @@ export function SettingsWindow({ onClose, embedded = false }: { onClose?: () => 
     : SECTIONS
 
   return (
-    <div className={embedded ? "flex h-full min-h-0 overflow-hidden bg-[var(--color-bg-primary)]" : "flex h-screen overflow-hidden bg-[var(--color-bg-primary)]"}>
+    // Embedded in a panel the shell stacks: a 220px fixed sidebar cannot share a 210px panel with content
+    // (the measurement showed inputs collapsed to 7-18px). Sections become a wrapping strip on top instead.
+    <div className={embedded ? "flex h-full min-h-0 flex-col overflow-hidden bg-[var(--color-bg-primary)]" : "flex h-screen overflow-hidden bg-[var(--color-bg-primary)]"}>
       {/* Left nav */}
-      <aside className="ui-app-chrome flex w-[220px] min-w-[220px] flex-col border-r border-[var(--color-border)]">
+      <aside className={"ui-app-chrome flex flex-col " + (embedded ? "w-full min-w-0 shrink-0 border-b border-[var(--color-border)]" : "w-[220px] min-w-[220px] border-r border-[var(--color-border)]")}>
         <div className="flex items-center justify-between border-b border-[var(--color-border)] px-5 py-4">
           <span className="flex items-center gap-2 text-base font-semibold text-[var(--color-text-primary)]"><Settings size={18} className='text-[var(--color-accent-text)]' aria-hidden='true' />设置</span>
           {onClose ? <IconButton icon={X} label='关闭设置' onClick={onClose} /> : null}
@@ -236,7 +238,7 @@ export function SettingsWindow({ onClose, embedded = false }: { onClose?: () => 
             className="ui-field w-full"
           />
         </div>
-        <nav className="flex-1 space-y-1 overflow-y-auto p-2" aria-label='设置分区'>
+        <nav className={embedded ? "flex flex-wrap gap-1 p-2" : "flex-1 space-y-1 overflow-y-auto p-2"} aria-label='设置分区'>
           {filteredSections.length === 0 ? <p className="px-3 py-2 text-xs text-[var(--color-text-secondary)]">没有匹配的设置</p> : null}
           {filteredSections.map(s => (
             <button key={s.key} onClick={() => {
@@ -244,12 +246,12 @@ export function SettingsWindow({ onClose, embedded = false }: { onClose?: () => 
               document.getElementById('settings-section-' + s.key)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
             }}
               aria-current={section === s.key ? 'page' : undefined}
-              className={`ui-settings-nav-item w-full px-3 py-2.5 text-left text-sm ${
+              className={`ui-settings-nav-item px-3 py-2 text-left text-sm ${embedded ? 'w-auto' : 'w-full py-2.5'} ${
                 section === s.key
                   ? "ui-settings-nav-item-active"
                   : "text-[var(--color-text-secondary)]"
               }`}>
-              <s.icon size={16} aria-hidden='true' /><span><span className='block font-medium'>{s.label}</span><span className='mt-0.5 block text-[10px] opacity-70'>{s.description}</span></span>
+              <s.icon size={16} aria-hidden='true' /><span><span className='block font-medium'>{s.label}</span>{embedded ? null : <span className='mt-0.5 block text-[10px] opacity-70'>{s.description}</span>}</span>
             </button>
           ))}
         </nav>
