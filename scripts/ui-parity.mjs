@@ -665,6 +665,13 @@ if (process.argv.includes('--selection-popup')) {
   console.log('SELECTION-POPUP ' + JSON.stringify({ passed: report.passed, checks: report.checks, text: report.popupText }))
   if (!report.passed) process.exitCode = 1
 }
+
+// `--slim` lists the narrowest elements inside the audited panel. It exists because a sliver in a
+// screenshot (the 8px strip beside 输出) cannot be identified by eye and a selector guess may miss it.
+if (process.argv.includes('--slim')) {
+  const expression = '(() => { const panel = document.querySelector("[data-panel-type]") || document; return Array.from(panel.querySelectorAll("*")).map(element => { const rect = element.getBoundingClientRect(); return { tag: element.tagName.toLowerCase(), cls: (element.className || "").toString().slice(0, 50), w: Math.round(rect.width), h: Math.round(rect.height), x: Math.round(rect.left) } }).filter(item => item.w > 0 && item.w < 20 && item.h > 8).slice(0, 12) })()'
+  console.log('SLIM ' + JSON.stringify(await evaluate(expression)))
+}
 console.log(JSON.stringify(report, null, 2))
 ws.close()
 killTree()
