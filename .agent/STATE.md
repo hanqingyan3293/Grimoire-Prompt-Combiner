@@ -1469,3 +1469,11 @@ fireEvent.click(await screen.findByRole('button', { name: '刷新模型' }))   /
 修法（仅内嵌模式）：外壳改 flex-col、侧栏变顶部换行芯片条（宽度自适应、隐藏描述行）、内容区 flex-1 min-h-0。
 截图确认：210px 下两列芯片（通用/外观/API 配置/AI 工作台/无限画布/快捷键/数据），内容在下方可滚动。
 复扫 `--slim-sweep`：**findings 0**（修复前仅 settings 一项就有 10 个被挤死的控件）。
+
+### `--slim-sweep` 进旅程；1280/1600 跑不动（2026-10-27 第九十二轮）
+
+- 已并入 `npm run journeys`：`--slim-sweep --width=960`，960 下 findings 0。
+- **未解决**：同一命令在 1280 / 1600 下超时（300s 与 400s 都试过），日志只留下正常的
+  `FORCED_NAVIGATION`（那是「窗口停在 about:blank，强制导航」的记录，**不是错误**）后就没有下文。
+  下一步要查的是：为什么宽视口下扫描会卡住（怀疑与 `--width` 改变窗口尺寸后等待渲染的条件有关），
+  而不是加长超时——加长只会把问题藏起来。
