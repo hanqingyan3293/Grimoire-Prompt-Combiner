@@ -655,6 +655,7 @@ if (process.argv.includes('--selection-popup')) {
       socket.on('message', raw => { const message = JSON.parse(raw); const settle = pending.get(message.id); if (settle) { pending.delete(message.id); settle(message.result) } })
       const call = (method, params) => new Promise(resolve => { const current = id++; pending.set(current, resolve); socket.send(JSON.stringify({ id: current, method, params })) })
       await call('Runtime.enable', {})
+      await call('Page.enable', {})
       const evalIn = async expression => (await call('Runtime.evaluate', { expression, awaitPromise: true, returnByValue: true, timeout: 15000 })).result?.value
       const bodyText = await evalIn(`document.body.innerText`)
       report.popupText = String(bodyText ?? '').slice(0, 120)
@@ -664,6 +665,10 @@ if (process.argv.includes('--selection-popup')) {
       report.checks.hasThreeActions = (buttons ?? []).filter(label => /复制为标签语法|复制为单行|存为提示词素材/.test(label)).length === 3
       const clicked = await evalIn(`(() => { const button = Array.from(document.querySelectorAll('button')).find(item => /复制为单行/.test(item.textContent || '')); if (!button) return false; button.click(); return true })()`)
       report.checks.actionClicked = clicked === true
+      // The popup is a separate renderer, so CDP CAN photograph it (unlike the iframe and native views).
+      const shot = await call('Page.captureScreenshot', { format: 'png' })
+      if (shot?.data) fs.writeFileSync(path.join(outDir, 'selection-popup.png'), Buffer.from(shot.data, 'base64'))
+      report.checks.popupShot = Boolean(shot?.data)
       socket.close()
       await sleep(1200)
       const after = (await targets()).filter(item => item.url.includes('#selection-assistant'))

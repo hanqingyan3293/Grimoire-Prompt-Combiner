@@ -1540,3 +1540,14 @@ document.querySelectorAll('select.ui-panel-select option')   // 每个面板列�
 
 踩坑记录：第一次把等待循环插到了 narrow-audit 块里（两处都有 `const measured =`），矩阵块引用了未定义的
 `stillLoading`，整个矩阵块抛错、`runs` 为空（输出 `MATRIX []`）——**按锚点字符串改脚本要确认唯一性**。
+
+### 划词助手浮窗第一张真截图（2026-10-30 第九十六轮）
+
+浮窗是**独立渲染器**，所以 CDP 拍得到它（不像 iframe 与原生视图）。旅程里加了一步 `Page.captureScreenshot`：
+
+`artifacts/visual/ui-parity/selection-popup.png`（475×300）：
+- 标题行「划词助手 · 未捕获内容」+ 关闭 ×；
+- 提示文案「先在任意应用里选中文字并复制，再按快捷键」；
+- 三个动作按钮（未捕获内容时呈禁用态——正是设计的降级）。
+
+旅程断言从 6 条升到 **7 条**（新增 `popupShot`），仍全 PASS。
