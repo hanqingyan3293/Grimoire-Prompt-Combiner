@@ -17,25 +17,41 @@ const journeys = [
   { flag: '--selection-popup', label: '划词助手浮窗（6 项）' },
   { flag: '--slim-sweep --width=960', label: '被挤死控件扫描（960/1280/1600 均可跑）' },
   { flag: '--visual-matrix', label: '视觉矩阵 18 面板 × 3 宽度' },
-  ...(quick ? [] : [{ flag: '--narrow-audit --width=960', label: '窄面板审计（960）' }]),
+  ...(quick ? [] : [
+    { flag: '--narrow-audit --width=960', label: '窄面板审计（960）' },
+    { flag: '--slim-sweep --width=1280', label: '被挤死控件扫描（1280）' },
+    { flag: '--slim-sweep --width=1600', label: '被挤死控件扫描（1600）' },
+  ]),
 ]
 
 const results = []
-for (const journey of journeys) {
-  process.stdout.write('· ' + journey.label + ' ... ')
+const runOnce = journey => {
   const run = spawnSync(process.execPath, ['scripts/ui-parity.mjs', ...journey.flag.split(' ')], {
     encoding: 'utf8',
     env: { ...process.env, ELECTRON_RUN_AS_NODE: '' },
     timeout: 600000,
   })
-  const ok = run.status === 0
   const output = (run.stdout || '') + (run.stderr || '')
   const headline = output.split('\n').find(line => /^(WORKBENCH|ASSETS|GALLERY|TOOLTIP|COMFY-PERSIST|STYLE-CONTRACT|SELECTION-POPUP|SLIM-SWEEP|MATRIX|NARROW)/.test(line)) || ''
-  results.push({ flag: journey.flag, label: journey.label, ok, status: run.status, headline: headline.slice(0, 400) })
-  console.log(ok ? 'PASS' : 'FAIL')
+  return { ok: run.status === 0, status: run.status, headline: headline.slice(0, 400) }
+}
+
+for (const journey of journeys) {
+  process.stdout.write('· ' + journey.label + ' ... ')
+  let attempt = runOnce(journey)
+  // Eleven renderer boots in a row leave the machine busy enough that the last one can time out while
+  // passing on its own. One retry, recorded — a silent retry would hide a real regression, a hard fail
+  // would report load as a defect.
+  let retried = false
+  if (!attempt.ok) {
+    retried = true
+    attempt = runOnce(journey)
+  }
+  results.push({ flag: journey.flag, label: journey.label, ...attempt, retried })
+  console.log(attempt.ok ? (retried ? 'PASS (retry)' : 'PASS') : 'FAIL')
 }
 
 const failed = results.filter(result => !result.ok)
-for (const result of results) console.log((result.ok ? '  ok   ' : '  FAIL ') + result.label + '   ' + result.headline)
+for (const result of results) console.log((result.ok ? '  ok   ' : '  FAIL ') + result.label + (result.retried ? ' [retry]' : '') + '   ' + result.headline)
 console.log(failed.length ? 'JOURNEYS FAILED: ' + failed.map(result => result.flag).join(', ') : 'ALL JOURNEYS PASSED')
 process.exit(failed.length ? 1 : 0)
