@@ -1658,3 +1658,18 @@ document.querySelectorAll('select.ui-panel-select option')   // 每个面板列�
 改成顿号分隔才通过。**给 Markdown 表格写证据时，正文里不能出现 `|`。**
 
 缺指向：26 → **20 行**。
+
+### 台账指向补齐 第四批（2026-10-30 第一百零二轮）
+
+补 6 行，全部指向**真实存在的测试文件**（每批都先 `ls`/`grep` 确认）：
+
+| 行 | 指向 |
+|---|---|
+| 57 运行时无关 ChatEngine | `stores/chat.store.test.ts` + `shared/ai-message-reducer.test.ts` |
+| 60 工作区语义适配 | `workspace-document.test.ts`、`editor-types.test.ts`、`stores/workspace.store.test.ts`、`workspace-engine.test.ts` |
+| 108 设置 URL 准入与诊断 | `cherry-navigation.service.test.ts` + `cherry-ipc-admission.test.ts` |
+| 109 AgentPage 菜单与 QuickPanel | `cherry-navigation.service.test.ts` |
+| 166 WD14 候选批处理 | `tag-batch.service.test.ts` |
+| 167 ImagesPanel 批量打标 | `tag-batch.service.test.ts` |
+
+缺指向：20 → **17 行**（有两行的 evidence 里已有 `**evidence:**`，被跳过而非覆盖——这是脚本按预期工作）。
