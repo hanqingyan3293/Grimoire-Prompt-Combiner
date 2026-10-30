@@ -24,6 +24,7 @@ const splitRow = line => line.split(/(?<!\\)\|/)
 let heading = ''
 let checked = 0
 const problems = []
+const evidenceRows = []
 // One width per table, not per file: the matrix holds several tables with different
 // column counts, and a single file-wide expectation would flag every row of the others.
 let expected = null
@@ -62,6 +63,7 @@ lines.forEach((line, index) => {
     inTable = true
   }
   checked += 1
+  if (width === 8) evidenceRows.push({ line: index + 1, name: (cells[1] || '').trim(), status: (cells[7] || '').trim(), evidence: cells[8] || '' })
   if (expected !== null && width !== expected) {
     problems.push({ line: index + 1, heading, width, expected, preview: trimmed.slice(0, 110) })
   }
@@ -93,10 +95,27 @@ if (dumpArg !== -1) {
   }
 }
 
+
+// Rule: every capability row must carry a verifiable pointer in its evidence cell — a file path, a test
+// name, a command, or a measured number. A row that only asserts ("reimplemented clean-room", "parity
+// delivered") cannot be checked by anyone reading it later, which is how the ledger starts lying.
+const withoutPointer = []
+for (const row of evidenceRows) {
+  if (!/^(DIRECTLY_MIGRATED|VENDORED|WRAPPED|ADAPTED|MINIMAL_MODIFICATION|PARTIALLY_MIGRATED|BLOCKED|MISSING|REIMPLEMENTED|NOT_IMPLEMENTED)$/.test(row.status)) continue
+  const evidence = row.evidence
+  const verifiable = /\.(ts|tsx|mjs|json|md)/.test(evidence) || /npm run|node scripts|--[a-z-]+/.test(evidence) ||
+    /test/i.test(evidence) || /src\//.test(evidence) || /grep|audit/i.test(evidence) || /\d/.test(evidence)
+  if (!verifiable) withoutPointer.push(row)
+}
 console.log(`${file}: checked ${checked} data rows`)
 if (problems.length === 0) {
   console.log('no malformed rows')
-} else {
+}
+if (withoutPointer.length) {
+  for (const row of withoutPointer) console.log(`  line ${row.line}: evidence has no verifiable pointer — ${row.name}`)
+  process.exitCode = 1
+}
+if (problems.length) {
   for (const p of problems) {
     console.log(`  line ${p.line} (${p.width} vs ${p.expected}) ${p.heading}\n    ${p.preview}`)
   }
