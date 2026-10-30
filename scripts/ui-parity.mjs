@@ -723,6 +723,14 @@ if (process.argv.includes('--slim-sweep')) {
   console.log('SLIM-SWEEP ' + JSON.stringify({ width, panels: findings.length, findings: findings.slice(0, 8) }))
   if (findings.length) process.exitCode = 1
 }
+
+// `--overflow` names the elements whose content is wider than the box, with their class list.
+if (process.argv.includes('--overflow')) {
+  const expression = '(() => { const panel = document.querySelector("[data-panel-type]") || document; return Array.from(panel.querySelectorAll("*"))' +
+    '.map(element => ({ tag: element.tagName.toLowerCase(), cls: (element.className || "").toString().slice(0, 70), scroll: element.scrollWidth, client: element.clientWidth }))' +
+    '.filter(item => item.client > 0 && item.scroll > item.client + 8).slice(0, 8) })()'
+  console.log('OVERFLOW ' + JSON.stringify(await evaluate(expression)))
+}
 console.log(JSON.stringify(report, null, 2))
 ws.close()
 killTree()
