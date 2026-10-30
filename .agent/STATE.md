@@ -1700,3 +1700,17 @@ document.querySelectorAll('select.ui-panel-select option')   // 每个面板列�
 
 这次踩的坑值得记：**隐藏窗口上的 `Page.captureScreenshot` 不会报错，它会一直挂着**——
 只表现为整条旅程超时。顺序改对就没事了。
+
+### 全量验证快照（2026-10-30 第一百零五轮）
+
+`npm run journeys` 完整跑通，**12 条全 PASS、无 retry**：
+
+| 旅程 | 结果 |
+|---|---|
+| 工作台 8 / 素材库 4 / 图库 3 / 气泡 4 / 持久化 5 / 样式契约 24 | PASS |
+| 划词浮窗 **8**（含 showsCapturedText、popupShot） | PASS，正文「划词助手 · 27 字符」 |
+| 扫描 960 / 1280 / 1600 | 三档 findings 全 0 |
+| 视觉矩阵 18×3 | 挂载 18/18、空 `[]`、裁剪 `[]`、卡加载 `[]`、漂移 `null` |
+| 960 窄面板审计 | 18 = 预算 18 |
+
+抽检 `w960-tag-batch`：筛选/操作/输入框都可读（dry-run 与 应用 按钮在折叠线以下，滚动可达）。
