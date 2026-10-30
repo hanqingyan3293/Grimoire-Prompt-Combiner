@@ -1640,3 +1640,21 @@ document.querySelectorAll('select.ui-panel-select option')   // 每个面板列�
 1. 状态会漂（本轮之前纠了 12 行）；
 2. 证据会失效（这一轮起按机械检查补指向）；
 3. **指向必须现场验证**——上一批差点把不存在的 `tag.service.test.ts` 写进去。
+
+### 台账指向补齐 第三批（2026-10-30 第一百零一轮）
+
+补 6 行，指向都是**现场数出来的**：
+
+| 行 | 指向 |
+|---|---|
+| 34 OpenCode 源码封闭 | `src/vendor/opencode/source` 实测 **73** 个文件，未改动 |
+| 35 Pi 源码封闭 | `src/vendor/pi/source` 实测 **116** 个文件 |
+| 38 Dockview 源码封闭 | `src/vendor/dockview/source` 实测 **273** 个文件；包内无 `dist/`（即 37 行的阻塞） |
+| 41 无限画布源码封闭 | `src/renderer/canvas-vendor` 实测 **176** 个文件；挂载靠读帧 612 字符（CDP 拍不到 iframe） |
+| 37 Docking engine | 指向上轮写的证明文档 |
+| 39 IDE Workspace 交互 | 指向第 80 轮的审计结论（全树搜选择器名只命中 1 处无关组件） |
+
+**踩坑**：第 39 行的证据最初写成 `areaId|regionId|...`，竖线被当成列分隔符，G7 立刻报 `line 39 (13 vs 8)`。
+改成顿号分隔才通过。**给 Markdown 表格写证据时，正文里不能出现 `|`。**
+
+缺指向：26 → **20 行**。
