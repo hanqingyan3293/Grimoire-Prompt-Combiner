@@ -1599,3 +1599,24 @@ document.querySelectorAll('select.ui-panel-select option')   // 每个面板列�
 
 **我在没有批准前不做这三者中的任何一个**——它们都改变可见功能，属于产品行为。
 这条把「960 四栏不可用」从一句结论变成了可测量的原因（头部 50px 溢出 + 固定高度禁止换行）。
+
+### 台账可信度：38 行没有「可验证指向」（2026-10-30 第九十九轮）
+
+写了个机械检查：矩阵 105 个数据行里，evidence 列**是否含可验证指向**（文件路径 / 测试 / 命令 / 参数）。
+结果 **38 行没有**——也就是说这些行只有断言，没有证据，读者无法自查。
+
+本轮先补 6 行（每一条都先去仓库里确认指向真实存在）：
+
+| 行 | 补的指向 |
+|---|---|
+| 30 文件库 | `cherry-file-library.service.test.ts`、`cherry-file-tree.service.test.ts`、`cherry-file-ipc.service.test.ts` |
+| 36 Codex Canvas Agent 桥 | `agent-workspace.service.test.ts`、`cherry-agent-turn.service.test.ts` |
+| 40 无限画布应用 | 读帧 612 字符 + 矩阵三档挂载（CDP 拍不到 iframe，所以写清取证方式） |
+| 46 标签模型与搜索 | `tag-asset-query.service.test.ts`、`tag-batch.service.test.ts`、`tag-group-copy.test.ts` |
+| 68 Topic ResourceList 投影 | `cherry-topic-list.service.test.ts` |
+| 72 外观设置面 | `app-preferences.service.test.ts` + `--settings-wiring-journey` |
+
+**过程中差点写错**：第 46 行最初写的是 `tag.service.test.ts`——那个文件**不存在**，是 `ls` 当场揭穿的，
+随后换成真实存在的三个测试文件。**指向写错比不写更坏**：它会让后来者以为查过了。
+
+剩余 32 行待补。
