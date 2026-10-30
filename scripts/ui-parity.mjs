@@ -471,6 +471,14 @@ if (process.argv.includes('--visual-matrix')) {
         for (let i = 0; i < 20; i++) { if (await evaluate(`!!document.querySelector('[data-panel-type="' + window.__matrixType + '"]')`)) { mounted = true; break } await sleep(200) }
         if (!mounted) { run.panels.push({ type, mounted: false }); continue }
         await sleep(350)
+        // A lazy panel shows "正在载入面板" while its chunk loads, and that fallback text used to satisfy the
+        // "panel has content" check — a slow chunk could be photographed as if it were the finished panel
+        // (the 1600 settings screenshot showed exactly that). Wait for it to leave, then measure.
+        let stillLoading = true
+        for (let wait = 0; wait < 16 && stillLoading; wait += 1) {
+          await sleep(250)
+          stillLoading = await evaluate(`(() => { const host = document.querySelector('[data-panel-type="' + window.__matrixType + '"]'); if (!host) return true; return (host.innerText || '').includes('正在载入面板') })()`)
+        }
         const measured = await evaluate(`(() => { const host = document.querySelector('[data-panel-type="' + window.__matrixType + '"]'); if (!host) return null; return { width: Math.round(host.getBoundingClientRect().width), height: Math.round(host.getBoundingClientRect().height) } })()`)
         // A panel that mounts but shows nothing is the failure mode screenshots caught by hand (the
         // canvas white screen). Text length makes it automatic; the two view-hosting panels are exempt
@@ -479,7 +487,7 @@ if (process.argv.includes('--visual-matrix')) {
         // A panel header has a fixed height. Anything inside it that grows (a wrapped row, a taller button)
         // is silently clipped — that is how the agent mode switcher lost its last three modes.
         const headerOverflow = await evaluate(`(() => { const header = document.querySelector('[data-panel-type="' + window.__matrixType + '"] [data-ui="panel.header"]'); if (!header) return 0; return Math.max(0, header.scrollHeight - header.clientHeight) })()`)
-        run.panels.push({ type, mounted: true, panelWidth: measured?.width ?? null, textLength, headerOverflow, shot: await screenshot('w' + width + '-' + type) })
+        run.panels.push({ type, mounted: true, panelWidth: measured?.width ?? null, textLength, headerOverflow, stillLoading, shot: await screenshot('w' + width + '-' + type) })
       }
       // The matrix switches ONE panel's type per step, so every step must be measured in the same column.
       // A run where the widths disagree means the layout drifted mid-sweep (a panel was maximized, a split
@@ -491,6 +499,8 @@ if (process.argv.includes('--visual-matrix')) {
       const VIEW_HOSTING = new Set(['canvas', 'browser'])
       const blank = run.panels.filter(panel => panel.mounted && panel.textLength === 0 && !VIEW_HOSTING.has(panel.type)).map(panel => panel.type)
       const clippedHeaders = run.panels.filter(panel => (panel.headerOverflow ?? 0) > 1).map(panel => panel.type)
+      const stuckLoading = run.panels.filter(panel => panel.stillLoading === true).map(panel => panel.type)
+      if (stuckLoading.length) run.stuckLoading = stuckLoading
       if (blank.length) run.blankPanels = blank
       if (clippedHeaders.length) run.clippedHeaders = clippedHeaders
       matrix.runs.push({ ...run, panelWidths: [...new Set(run.panels.map(panel => panel.panelWidth).filter(Boolean))].sort((a, b) => a - b) })
@@ -499,8 +509,8 @@ if (process.argv.includes('--visual-matrix')) {
     matrix.passed = matrix.runs.every(run => run.panels.every(panel => panel.mounted))
   } catch (error) { matrix.error = String(error) }
   fs.writeFileSync('artifacts/visual/ui-parity/visual-matrix.json', JSON.stringify(matrix, null, 2))
-  console.log('MATRIX ' + JSON.stringify(matrix.runs.map(run => ({ width: run.width, panelWidths: run.panelWidths, mounted: run.panels.filter(panel => panel.mounted).length + '/' + run.panels.length, blank: run.blankPanels ?? [], clippedHeaders: run.clippedHeaders ?? [], drift: run.layoutDrift ?? null }))))
-  const blankShortfall = matrix.runs.some(run => (run.blankPanels ?? []).length > 0) || matrix.runs.some(run => (run.clippedHeaders ?? []).length > 0) || matrix.runs.some(run => Boolean(run.layoutDrift))
+  console.log('MATRIX ' + JSON.stringify(matrix.runs.map(run => ({ width: run.width, panelWidths: run.panelWidths, mounted: run.panels.filter(panel => panel.mounted).length + '/' + run.panels.length, blank: run.blankPanels ?? [], clippedHeaders: run.clippedHeaders ?? [], stuck: run.stuckLoading ?? [], drift: run.layoutDrift ?? null }))))
+  const blankShortfall = matrix.runs.some(run => (run.blankPanels ?? []).length > 0) || matrix.runs.some(run => (run.clippedHeaders ?? []).length > 0) || matrix.runs.some(run => Boolean(run.layoutDrift)) || matrix.runs.some(run => (run.stuckLoading ?? []).length > 0)
   if (blankShortfall) process.exitCode = 1
   // Ratchet: a panel that stops mounting at any width is a regression even if every screenshot looks fine.
   let baseline = { minMountedPerWidth: 18 }
