@@ -46,7 +46,11 @@ function execute(gate) {
     maxBuffer: 64 * 1024 * 1024,
   })
   const output = (String(run.stdout || '') + String(run.stderr || '')).trim()
-  return { exitCode: run.status, output, tail: output.split(/\r?\n/).filter(Boolean).slice(-8), durationMs: Date.now() - started }
+  // Keep the lines that NAME a failure, not just the last eight: a sharded suite ends with a shard summary,
+  // and eight lines of summary hid which test failed twice in a row (the run had to be repeated by hand).
+  const lines = output.split(/\r?\n/).filter(Boolean)
+  const failureLines = lines.filter(line => /FAIL|✗|✕|AssertionError|Error:|Expected|Received|→/.test(line)).slice(-24)
+  return { exitCode: run.status, output, tail: [...new Set([...failureLines, ...lines.slice(-8)])].slice(-32), durationMs: Date.now() - started }
 }
 
 // Vitest 3.2.7 on this Windows host intermittently reports a worker RPC timeout
