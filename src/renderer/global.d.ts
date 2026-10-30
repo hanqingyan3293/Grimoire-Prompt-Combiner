@@ -126,7 +126,7 @@ export interface GrimoireAPI {
     onChanged: (callback: (palette: { mode: 'light' | 'dark'; vars: Record<string, string> }) => void) => () => void
   }
   selection: {
-    open: () => Promise<boolean>
+    open: (text?: string) => Promise<boolean>
     current: () => Promise<{ text: string; actions: string[] }>
     apply: (action: string) => Promise<{ ok: boolean; error?: string; outcome?: { kind: string; text?: string; assetId?: string } }>
     close: () => Promise<boolean>

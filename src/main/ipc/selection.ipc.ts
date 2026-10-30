@@ -34,7 +34,10 @@ export function selectionSink(): SelectionSink {
 
 export function registerSelectionAssistantIPC(): void {
   // `open` exists so the popup can be exercised without a global shortcut (tests, and the settings page).
-  ipcMain.handle(IPC_CHANNELS.SELECTION_OPEN, () => {
+  ipcMain.handle(IPC_CHANNELS.SELECTION_OPEN, (_event, text?: unknown) => {
+    // Optional text lets a caller (the journey, or a future settings test button) open the popup with real
+    // content instead of whatever happens to be on the clipboard.
+    if (typeof text === 'string') captured = text
     openSelectionAssistant()
     return true
   })

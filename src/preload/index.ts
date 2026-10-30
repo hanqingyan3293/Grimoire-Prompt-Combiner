@@ -153,7 +153,7 @@ const api = {
     capture: () => ipcRenderer.invoke(IPC_CHANNELS.SCREENSHOT_CAPTURE),
   },
   selection: {
-    open: () => ipcRenderer.invoke(IPC_CHANNELS.SELECTION_OPEN),
+    open: (text?: string) => ipcRenderer.invoke(IPC_CHANNELS.SELECTION_OPEN, text),
     current: () => ipcRenderer.invoke(IPC_CHANNELS.SELECTION_CURRENT),
     apply: (action: string) => ipcRenderer.invoke(IPC_CHANNELS.SELECTION_APPLY, action),
     close: () => ipcRenderer.invoke(IPC_CHANNELS.SELECTION_CLOSE),

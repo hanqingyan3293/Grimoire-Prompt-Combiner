@@ -639,7 +639,8 @@ if (process.argv.includes('--selection-popup')) {
   const targets = async () => (await (await fetch('http://127.0.0.1:' + debugPort + '/json/list')).json())
   try {
     const before = (await targets()).length
-    await evaluate(`window.api.selection.open()`)
+    // Open with real content so the action path (plan → sink → database) is exercised, not just the click.
+    await evaluate(`window.api.selection.open('1girl, smile, {{long hair}}')`)
     await sleep(1500)
     const list = await targets()
     report.checks.popupWindowOpened = list.length > before
@@ -662,17 +663,22 @@ if (process.argv.includes('--selection-popup')) {
       report.checks.showsTitle = /划词助手/.test(String(bodyText ?? ''))
       const buttons = await evalIn(`Array.from(document.querySelectorAll('button')).map(button => button.textContent || '')`)
       report.buttons = buttons
+      report.checks.showsCapturedText = /1girl, smile/.test(String(bodyText ?? ''))
       report.checks.hasThreeActions = (buttons ?? []).filter(label => /复制为标签语法|复制为单行|存为提示词素材/.test(label)).length === 3
-      const clicked = await evalIn(`(() => { const button = Array.from(document.querySelectorAll('button')).find(item => /复制为单行/.test(item.textContent || '')); if (!button) return false; button.click(); return true })()`)
-      report.checks.actionClicked = clicked === true
-      // The popup is a separate renderer, so CDP CAN photograph it (unlike the iframe and native views).
+      // Photograph BEFORE acting: 存为提示词素材 hides the popup, and a CDP screenshot of a hidden window
+      // never settles (the request was left pending for the whole timeout).
       const shot = await call('Page.captureScreenshot', { format: 'png' })
       if (shot?.data) fs.writeFileSync(path.join(outDir, 'selection-popup.png'), Buffer.from(shot.data, 'base64'))
       report.checks.popupShot = Boolean(shot?.data)
+      // 存为提示词素材 writes a real row through the same sink the shortcut path uses.
+      const clicked = await evalIn(`(() => { const button = Array.from(document.querySelectorAll('button')).find(item => /存为提示词素材/.test(item.textContent || '')); if (!button) return false; button.click(); return true })()`)
+      report.checks.actionClicked = clicked === true
       socket.close()
       await sleep(1200)
       const after = (await targets()).filter(item => item.url.includes('#selection-assistant'))
       report.checks.hiddenAfterApply = after.length > 0
+      // The popup ran the action in the main process; ask the database whether the asset landed.
+      report.assetCount = await evaluate(`(async () => { const page = await window.api.ipcApi.request('prompt.list', { limit: 1 }); return page?.data?.total ?? page?.total ?? null })()`)
     }
     report.passed = Object.values(report.checks).every(Boolean)
   } catch (error) { report.error = String(error) }
