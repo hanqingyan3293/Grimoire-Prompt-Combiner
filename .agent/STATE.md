@@ -1620,3 +1620,23 @@ document.querySelectorAll('select.ui-panel-select option')   // 每个面板列�
 随后换成真实存在的三个测试文件。**指向写错比不写更坏**：它会让后来者以为查过了。
 
 剩余 32 行待补。
+
+### 台账指向补齐 第二批（2026-10-30 第一百轮）
+
+再补 6 行，同样每条先 `ls` 确认文件存在：
+
+| 行 | 指向 |
+|---|---|
+| 47 AI 图库与元数据 | `gallery-query.service.test.ts` + `novelai-metadata.test.ts` + 三个解析器测试 |
+| 129 原生默认打开文件 | `open-link.service.test.ts`（`resolveOpenTarget`）+ `asset.core.test.ts` |
+| 133 Agent blueprint 读写传输 | `agent-blueprint.service.test.ts` |
+| 141 会话 joined readmodel | `agent-session-read-model.service.test.ts` |
+| 144 Agent 流预留与消息归约 | `cherry-agent-stream.service.test.ts` |
+| 191 在文件夹中显示 | `open-link.service.test.ts` |
+
+缺指向的从 38 → **26 行**。
+
+百轮小结（这一百轮里与「台账」有关的教训）：
+1. 状态会漂（本轮之前纠了 12 行）；
+2. 证据会失效（这一轮起按机械检查补指向）；
+3. **指向必须现场验证**——上一批差点把不存在的 `tag.service.test.ts` 写进去。
