@@ -37,7 +37,9 @@ export async function createImageDerivatives(imageRefId: number): Promise<void> 
       getDatabase().run('INSERT INTO image_derivatives (id,image_ref_id,kind,file_path,asset_hash,width,height,file_size,created_at) VALUES (?,?,?,?,?,?,?,?,?) ON CONFLICT(image_ref_id,kind) DO UPDATE SET file_path=excluded.file_path,asset_hash=excluded.asset_hash,file_size=excluded.file_size', [
         'derivative_' + imageRefId + '_' + item.kind, imageRefId, item.kind, output, inspected.hash, null, null, inspected.size, new Date().toISOString(),
       ])
-    } catch {}
+      // The file exists on disk but the row did not land: without a log this looks like "no thumbnail" with
+      // no explanation anywhere. Keep the flow going, but say what happened.
+    } catch (error) { console.warn('[media] derivative row insert failed for ' + item.kind + ' of ' + imageRefId, error) }
   }
   saveDatabase()
 }

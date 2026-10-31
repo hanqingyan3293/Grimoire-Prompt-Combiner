@@ -30,6 +30,7 @@ const definitions = [
   { id: 'G9', title: '面板布局约定', cmd: 'node', args: ['scripts/check-panel-layout.mjs'] },
   { id: 'G10', title: '路由覆盖', cmd: 'node', args: ['scripts/check-route-coverage.mjs'] },
   // G11 boots the real renderer, so it needs the built main bundle; it runs after G6 for that reason.
+  { id: 'G12', title: '空 catch 棘轮', cmd: 'node', args: ['scripts/check-silent-catches.mjs'] },
   { id: 'G11', title: '样式契约（真实渲染器实测）', cmd: 'node', args: ['scripts/ui-parity.mjs', '--style-contract'], env: { ELECTRON_RUN_AS_NODE: '' } },
 ]
 

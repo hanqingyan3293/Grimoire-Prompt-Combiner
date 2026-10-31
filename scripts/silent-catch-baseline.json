@@ -1,0 +1,4 @@
+{
+  "max": 112,
+  "note": "Empty catch blocks in src (tests excluded). Ratchet down as they are justified or replaced; growth means a new silent failure path."
+}
