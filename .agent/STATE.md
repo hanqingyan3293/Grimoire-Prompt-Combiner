@@ -1799,3 +1799,21 @@ document.querySelectorAll('select.ui-panel-select option')   // 每个面板列�
 取舍：假红比多敲一条命令更糟——它训练人忽略红灯（这条教训第 83 轮 G4 也吃过一次）。
 
 套件本身仍全绿：矩阵三档（spill 0/0/42）、960 竖排 0、三档扫描 0、划词浮窗 8 项。
+
+### M3 五条审计在安静机器上全绿（2026-10-30 第一百一十三轮）
+
+按 `--m3` 的方式**单独顺序**跑五条（机器空闲时）：
+
+| 审计 | 结果 |
+|---|---|
+| `--api-gateway` | PASS |
+| `--websearch` | PASS |
+| `--screenshot` | PASS（captureOk / hasBytes / hasSize / fileOnDisk / pngSignature） |
+| `--browser` | exit 0；`/settings/browser` 与 `/app/browser` 均 `rendered:true, contentVisible:true, routeMatched:true` |
+| `--settings-wiring-journey` | PASS |
+
+结论确认上轮的判断：它们不是坏了，是**套件里跑到第 14 次启动时机器压满**。
+所以 `--m3` 的定位是对的——它是一组「有空时跑」的深层审计，不是每轮必跑的快速门禁。
+
+抽检 `w1600-canvas`：面板正文仍是空白——**这是预期**（CDP 不合成跨文档 iframe），
+画布是否真的渲染仍以读帧的 612 字符 UI 文本为准。
