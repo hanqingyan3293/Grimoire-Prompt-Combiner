@@ -730,6 +730,17 @@ if (process.argv.includes('--style-contract')) {
     { className: 'ui-tooltip', tag: 'div', property: 'paddingTop', expect: '6px' },
     { className: 'ui-nav-tab', tag: 'button', property: 'position', expect: 'relative' },
     { className: 'ui-nav-tab', tag: 'button', property: 'fontWeight', expect: '400' },
+    // Second wave: classes that components use heavily but no assertion covered (audited 2026-10-31 —
+    // 105 ui-* classes in components vs 15 mentioned here). Values read from src/renderer/index.css.
+    { className: 'ui-panel-shell', tag: 'div', property: 'borderRadius', expect: '4px' },
+    { className: 'ui-panel-header', tag: 'div', property: 'minWidth', expect: '0px' },
+    { className: 'ui-button', tag: 'button', property: 'display', expect: 'inline-flex' },
+    { className: 'ui-button', tag: 'button', property: 'borderStyle', expect: 'solid' },
+    { className: 'ui-inline-alert', tag: 'div', property: 'paddingTop', expect: '9px' },
+    { className: 'ui-inline-alert', tag: 'div', property: 'alignItems', expect: 'flex-start' },
+    { className: 'ui-list-card', tag: 'div', property: 'borderRadius', expect: '7px' },
+    { className: 'ui-list-card', tag: 'div', property: 'paddingTop', expect: '12px' },
+    { className: 'ui-segmented-item', tag: 'button', property: 'borderStyle', expect: 'solid' },
   ]
   const measured = await evaluate(`(() => { const contract = ${JSON.stringify('CONTRACT')}; return contract.map(item => { const element = document.createElement(item.tag); element.className = item.className; document.body.appendChild(element); const style = getComputedStyle(element); const value = style[item.property] || ''; element.remove(); return { className: item.className, property: item.property, expected: item.expect, actual: value, ok: value === item.expect } }) })()`.replace('"CONTRACT"', JSON.stringify(contract)))
   const failures = (measured || []).filter(item => !item.ok)

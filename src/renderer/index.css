@@ -354,8 +354,9 @@ button:disabled {
   background: color-mix(in srgb, var(--color-bg-primary) 60%, transparent);
 }
 
+/* Radius lives in ONE place (the later token rule). A second literal here silently lost the cascade and
+ * made the contract report 4px while this line said 6px — the same duplicate-rule trap as .ui-popover-surface. */
 .ui-panel-shell {
-  border-radius: 6px;
   transition: border-color var(--motion-fast) ease, box-shadow var(--motion-fast) ease;
 }
 
