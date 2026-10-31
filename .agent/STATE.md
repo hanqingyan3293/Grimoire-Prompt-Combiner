@@ -2123,3 +2123,20 @@ G11 现在启动时**先跑生成器**，断言不可能过期。
 磁盘上有文件、库里没记录，界面表现为「没有缩略图」，而**任何地方都不会说为什么**。改为 `console.warn` 带上下文。
 
 基线随即收紧 113 → 112。
+
+### G12 扩到 Promise 形态：163 处（try/catch 112 + promise 51）（2026-10-31 第一百三十一轮）
+
+`.catch(() => {})` 和 `.catch(() => null)` 与空 try/catch 一样吞掉失败。把它们并进同一个计数：
+
+```
+silent catches: 163 (baseline 163) {"promise":51,"try/catch":112}
+```
+
+抽两处判一下是否合法：
+
+| 位置 | 判决 |
+|---|---|
+| `agent-runtime-lease.service.ts:90` `await entry.pending.catch(() => undefined)` | **合法**：释放租约时等待被 abort 的 promise，拒绝是预期结果 |
+| `comfy-client.ts:74-77` 四个 `.catch(() => null)` | **合法**：探测可选节点类型（CheckpointLoaderSimple / UNETLoader / LoraLoader…），404 属正常 |
+
+输出现在带形态拆分，增长时还会打印最后 8 处位置——**下一个新增的人能看到自己加了什么**。

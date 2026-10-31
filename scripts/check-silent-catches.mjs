@@ -20,15 +20,21 @@ for (const file of walk('src')) {
   lines.forEach((line, index) => {
     const inline = /catch\s*(\([^)]*\))?\s*\{\s*\}/.test(line)
     const block = /catch\s*(\([^)]*\))?\s*\{\s*$/.test(line) && (lines[index + 1] || '').trim() === '}'
-    if (inline || block) hits.push(file + ':' + (index + 1))
+    // Same idea for the promise form: `.catch(() => {})` and `.catch(() => null)` swallow a rejection just as
+    // quietly as an empty try/catch, so they count toward the same ratchet.
+    const promiseSilent = /\.catch\s*\(\s*\(?[^)]*\)?\s*=>\s*(\{\s*\}|null|undefined|0|false|''|"")\s*\)/.test(line)
+    if (inline || block) hits.push({ where: file + ':' + (index + 1), form: 'try/catch' })
+    else if (promiseSilent) hits.push({ where: file + ':' + (index + 1), form: 'promise' })
   })
 }
 
 let baseline = { max: 0 }
 try { baseline = JSON.parse(fs.readFileSync('scripts/silent-catch-baseline.json', 'utf8')) } catch {}
 const max = baseline.max ?? 0
-console.log('silent catches: ' + hits.length + ' (baseline ' + max + ')')
+const forms = hits.reduce((acc, hit) => { acc[hit.form] = (acc[hit.form] || 0) + 1; return acc }, {})
+console.log('silent catches: ' + hits.length + ' (baseline ' + max + ') ' + JSON.stringify(forms))
 if (hits.length > max) {
-  console.log('SILENT-CATCH-GROWTH: ' + (hits.length - max) + ' new empty catch block(s)')
+  console.log('SILENT-CATCH-GROWTH: ' + (hits.length - max) + ' new silent failure path(s)')
+  for (const hit of hits.slice(-8)) console.log('  ' + hit.form + ' ' + hit.where)
   process.exitCode = 1
 }

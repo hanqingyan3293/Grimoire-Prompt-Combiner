@@ -1,4 +1,4 @@
 {
-  "max": 112,
-  "note": "Empty catch blocks in src (tests excluded). Ratchet down as they are justified or replaced; growth means a new silent failure path."
+  "max": 163,
+  "note": "Silent failure paths in src (tests excluded): empty try/catch plus `.catch(() => {})` / `.catch(() => null|undefined|0|false|'')`. Ratchet down as they are justified or replaced; growth means a new silent path."
 }
