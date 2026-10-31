@@ -14,6 +14,7 @@ import { spawn, spawnSync } from 'node:child_process'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
+import { execFileSync } from 'node:child_process'
 
 const root = process.cwd()
 const devPort = 5200 + Math.floor(Math.random() * 60)
@@ -757,6 +758,10 @@ if (process.argv.includes('--style-contract')) {
   ]
   // Generated assertions (scripts/build-style-contract.mjs) are merged in: hand-written ones stay authoritative
   // for anything measured in a real element, generated ones keep geometric values from drifting.
+  // Regenerate first so the assertions can never be stale relative to index.css.
+  // NOTE: this module is ESM — `require` is not defined here, so it must be the imported execFileSync.
+  // (The first version silently no-op'd inside a try/catch and left the assertions stale.)
+  try { execFileSync(process.execPath, [path.join(root, 'scripts', 'build-style-contract.mjs')], { cwd: root, stdio: 'ignore' }) } catch {}
   try {
     const extra = JSON.parse(fs.readFileSync(path.join(root, 'scripts', 'style-contract-extra.json'), 'utf8'))
     const known = new Set(contract.map(item => item.className + '|' + item.property))

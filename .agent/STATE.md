@@ -2085,3 +2085,20 @@ STYLE-CONTRACT {"passed":true,"total":43,"coverage":{"used":105,"assertedClasses
 改为：只收 `px` 字面量与裸 `0`（并归一成 `0px`），rem 一律跳过——**比较单位不同会造成假红**。
 
 生成 69 条 + 手写 26 条 = 95 条，全过。基线棘轮到 `minCovered: 48`。
+
+### 断言自动重生成 + 重复规则对照（2026-10-31 第一百二十九轮）
+
+G11 现在启动时**先跑生成器**，断言不可能过期。
+
+第一版用 `require('node:child_process')` —— **这个文件是 ESM，没有 `require`**，异常被 try/catch 吞掉，
+断言静默保持旧值。用「改 CSS 6px→7px」的对照暴露了它（报告 expected 6px / actual 7px）。
+改成顶部 `import { execFileSync }` 后恢复。
+
+然后用**重复规则**做对照（就是我们踩过两次的那类坑）：
+```
+
+临时加 `.ui-progress { height: 20px }` → STYLE-CONTRACT 红：expected 6px, actual 20px。
+移除后复跑 95 条全过。
+
+这条对照证明：**自动重生成不会让守护失效**——它抓的不是「CSS 改了」，而是「声明与计算值不一致」，
+也就是规则丢失/被覆盖/类名写错这一类真实事故。
