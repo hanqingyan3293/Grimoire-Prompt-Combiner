@@ -1780,3 +1780,22 @@ document.querySelectorAll('select.ui-panel-select option')   // 每个面板列�
 复跑：**960 竖排命中 0**，基线从 18 收紧到 **0**（三档全 0）。
 
 顺带把「提示词资产卡」的竖排也修了（行动作组是 `shrink-0`，把文字列压到 57px → 行 `flex-wrap` + 文字列 `min-w-[9rem]`）。
+
+### M3 页面审计：单独能过，塞进套件会假红（2026-10-30 第一百一十二轮）
+
+先把三条 M3 审计单独跑一遍确认它们还活着：
+
+```
+--api-gateway  → API gateway journey: PASS
+--websearch    → Web search journey: PASS
+--screenshot   → Screenshot journey: PASS {captureOk, hasBytes, hasSize, fileOnDisk, pngSignature}
+```
+
+然后把这五条（含 --browser / --settings-wiring-journey）加进 `npm run journeys` 默认序列——**五条全红**，
+而几分钟前它们单独全绿。原因：套件里前 9 条已经启动过 9 次渲染器，加到第 14 次时机器被压满，
+这五条各自要 boots + 等页面，超时。
+
+处理：**改为 `--m3` 显式开启**，并在代码里写明原因。
+取舍：假红比多敲一条命令更糟——它训练人忽略红灯（这条教训第 83 轮 G4 也吃过一次）。
+
+套件本身仍全绿：矩阵三档（spill 0/0/42）、960 竖排 0、三档扫描 0、划词浮窗 8 项。

@@ -13,6 +13,17 @@ const journeys = [
   { flag: '--gallery', label: '图库筛选（3 项）' },
   { flag: '--tooltip', label: '提示气泡（4 项）' },
   { flag: '--comfy-persist', label: 'ComfyUI 持久化闭环（5 项）' },
+  // The five M3 page audits are OPT-IN (`--m3`): each one boots its own renderer, and running them after
+  // The five M3 page audits are OPT-IN (`--m3`): each boots its own renderer, and running them after the
+  // nine above saturates the machine — all five failed inside a full run while passing standalone minutes
+  // earlier. A false red trains people to ignore red.
+  ...(process.argv.includes('--m3') ? [
+    { script: 'scripts/audit-cherry-routes.mjs', flag: '--api-gateway', label: 'M3 API 网关页' },
+    { script: 'scripts/audit-cherry-routes.mjs', flag: '--websearch', label: 'M3 联网搜索页' },
+    { script: 'scripts/audit-cherry-routes.mjs', flag: '--screenshot', label: 'M3 截图页' },
+    { script: 'scripts/audit-cherry-routes.mjs', flag: '--browser', label: 'M3 浏览器页' },
+    { script: 'scripts/audit-cherry-routes.mjs', flag: '--settings-wiring-journey', label: 'M3 常规页接线' },
+  ] : []),
   { flag: '--style-contract', label: '样式契约（24 项）' },
   { flag: '--selection-popup', label: '划词助手浮窗（6 项）' },
   { flag: '--slim-sweep --width=960', label: '被挤死控件扫描（960/1280/1600 均可跑）' },
@@ -26,13 +37,14 @@ const journeys = [
 
 const results = []
 const runOnce = journey => {
-  const run = spawnSync(process.execPath, ['scripts/ui-parity.mjs', ...journey.flag.split(' ')], {
+  const script = journey.script || 'scripts/ui-parity.mjs'
+  const run = spawnSync(process.execPath, [script, ...journey.flag.split(' ')], {
     encoding: 'utf8',
     env: { ...process.env, ELECTRON_RUN_AS_NODE: '' },
     timeout: 600000,
   })
   const output = (run.stdout || '') + (run.stderr || '')
-  const headline = output.split('\n').find(line => /^(WORKBENCH|ASSETS|GALLERY|TOOLTIP|COMFY-PERSIST|STYLE-CONTRACT|SELECTION-POPUP|SLIM-SWEEP|MATRIX|NARROW)/.test(line)) || ''
+  const headline = output.split('\n').find(line => /^(WORKBENCH|ASSETS|GALLERY|TOOLTIP|COMFY-PERSIST|STYLE-CONTRACT|SELECTION-POPUP|SLIM-SWEEP|MATRIX|NARROW|API|Web|Screenshot|Settings|Browser)/i.test(line)) || ''
   return { ok: run.status === 0, status: run.status, headline: headline.slice(0, 400) }
 }
 
