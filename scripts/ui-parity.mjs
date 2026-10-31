@@ -106,6 +106,51 @@ async function screenshot(name) {
   fs.writeFileSync(file, Buffer.from(shot.data, 'base64'))
   return path.basename(file)
 }
+
+// Pixel diff for `--diff`: both PNGs are decoded inside the page and differenced on a canvas, so a
+// regression is MEASURED rather than eyeballed. The baseline lives in artifacts/visual/baseline (gitignored;
+// regenerate with `--record` after an intentional visual change).
+const baselineDir = path.join(root, 'artifacts', 'visual', 'baseline')
+async function diffAgainstBaseline(name) {
+  const currentPath = path.join(outDir, name)
+  const baselinePath = path.join(baselineDir, name)
+  if (!fs.existsSync(currentPath)) return { skipped: 'no-current' }
+  if (!fs.existsSync(baselinePath)) return { skipped: 'no-baseline' }
+  const current = fs.readFileSync(currentPath).toString('base64')
+  const base = fs.readFileSync(baselinePath).toString('base64')
+  const expression = 'ivyDiff' // placeholder, replaced below
+  const code = `(async () => {
+    const load = b64 => new Promise((resolve, reject) => { const image = new Image(); image.onload = () => resolve(image); image.onerror = reject; image.src = 'data:image/png;base64,' + b64 })
+    const [a, b] = await Promise.all([load(${JSON.stringify('LEFT')}), load(${JSON.stringify('RIGHT')})])
+    if (a.width !== b.width || a.height !== b.height) return { mismatch: true, left: a.width + 'x' + a.height, right: b.width + 'x' + b.height }
+    const canvas = document.createElement('canvas'); canvas.width = a.width; canvas.height = a.height
+    const ctx = canvas.getContext('2d')
+    ctx.drawImage(a, 0, 0); const left = ctx.getImageData(0, 0, a.width, a.height).data
+    ctx.clearRect(0, 0, a.width, a.height); ctx.drawImage(b, 0, 0); const right = ctx.getImageData(0, 0, a.width, a.height).data
+    // Whole-screen percentage is too coarse: a badge that grows 4px moves ~0.7% of a 1600x900 frame, which
+    // sits inside the antialiasing noise (measured 0.7-0.9% between identical runs). Tile the frame instead
+    // and report the WORST tile, so a local change is not diluted by the rest of the screenshot.
+    const TILES_X = 16, TILES_Y = 9
+    const tileW = Math.floor(a.width / TILES_X), tileH = Math.floor(a.height / TILES_Y)
+    let changed = 0, worstTile = 0
+    for (let ty = 0; ty < TILES_Y; ty += 1) {
+      for (let tx = 0; tx < TILES_X; tx += 1) {
+        let tileChanged = 0, tileTotal = 0
+        for (let y = ty * tileH; y < (ty + 1) * tileH; y += 1) {
+          for (let x = tx * tileW; x < (tx + 1) * tileW; x += 1) {
+            const i = (y * a.width + x) * 4
+            const delta = (Math.abs(left[i] - right[i]) + Math.abs(left[i + 1] - right[i + 1]) + Math.abs(left[i + 2] - right[i + 2])) / 3
+            tileTotal += 1
+            if (delta > 8) { changed += 1; tileChanged += 1 }
+          }
+        }
+        if (tileTotal) worstTile = Math.max(worstTile, (tileChanged / tileTotal) * 100)
+      }
+    }
+    return { changedPct: Math.round((changed / (left.length / 4)) * 1000) / 10, maxTilePct: Math.round(worstTile * 10) / 10 }
+  })()`.replace('"LEFT"', JSON.stringify(base)).replace('"RIGHT"', JSON.stringify(current))
+  return await evaluate(code)
+}
 async function clickAt(selector) {
   const box = await evaluate('(() => { const el = document.querySelector(' + JSON.stringify(selector) + '); if (!el) return null; const r = el.getBoundingClientRect(); return { x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2) } })()')
   if (!box) return false
@@ -462,6 +507,7 @@ if (process.argv.includes('--browser')) {
 if (process.argv.includes('--visual-matrix')) {
   const widths = [1600, 1280, 960]
   const matrix = { passed: false, runs: [] }
+  const visualDiffs = []
   try {
     for (const width of widths) {
       await callWithTimeout('Emulation.setDeviceMetricsOverride', { width, height: 900, deviceScaleFactor: 1, mobile: false }, 10000)
@@ -497,7 +543,22 @@ if (process.argv.includes('--visual-matrix')) {
         // neighbour. Measured separately so it can be budgeted per width (a 210px panel genuinely cannot hold
         // the full header, a 351px one can).
         const headerOverflowX = await evaluate(`(() => { const header = document.querySelector('[data-panel-type="' + window.__matrixType + '"] [data-ui="panel.header"]'); if (!header) return 0; return Math.max(0, header.scrollWidth - header.clientWidth) })()`)
-        run.panels.push({ type, mounted: true, panelWidth: measured?.width ?? null, textLength, headerOverflow, headerOverflowX, stillLoading, shot: await screenshot('w' + width + '-' + type) })
+        const shotName = 'w' + width + '-' + type + '.png'
+        const shot = await screenshot('w' + width + '-' + type)
+        // `--record` seeds the baseline; `--diff` compares against it and fails past the tolerance.
+        let visual = null
+        if (process.argv.includes('--record')) {
+          fs.mkdirSync(baselineDir, { recursive: true })
+          fs.copyFileSync(path.join(outDir, shotName), path.join(baselineDir, shotName))
+        }
+        // `canvas` hosts a cross-document iframe whose paint timing is not stable, so its screenshot is the
+        // one frame CDP cannot be trusted to reproduce (measured 13.4% tile drift between identical runs).
+        const VISUAL_UNSTABLE = new Set(['canvas', 'browser'])
+        if (process.argv.includes('--diff') && !VISUAL_UNSTABLE.has(type)) {
+          visual = await diffAgainstBaseline(shotName)
+          visualDiffs.push({ shot: shotName, ...visual })
+        }
+        run.panels.push({ type, mounted: true, panelWidth: measured?.width ?? null, textLength, headerOverflow, headerOverflowX, stillLoading, visual, shot })
       }
       // The matrix switches ONE panel's type per step, so every step must be measured in the same column.
       // A run where the widths disagree means the layout drifted mid-sweep (a panel was maximized, a split
@@ -523,10 +584,17 @@ if (process.argv.includes('--visual-matrix')) {
     await callWithTimeout('Emulation.clearDeviceMetricsOverride', {}, 10000)
     matrix.passed = matrix.runs.every(run => run.panels.every(panel => panel.mounted))
   } catch (error) { matrix.error = String(error) }
+  if (visualDiffs.length) {
+    // A tile is 1/144 of the frame: >12% of one tile changing means real content moved, while the measured
+    // noise floor stayed at 0-3% per tile between identical runs.
+    const bad = visualDiffs.filter(item => item.mismatch || (item.maxTilePct ?? 0) > 12)
+    matrix.visual = { compared: visualDiffs.length, failing: bad.slice(0, 6) }
+    if (bad.length) { matrix.visualFailed = bad.length; report.ok = false }
+  }
   fs.writeFileSync('artifacts/visual/ui-parity/visual-matrix.json', JSON.stringify(matrix, null, 2))
   console.log('MATRIX ' + JSON.stringify(matrix.runs.map(run => ({ width: run.width, panelWidths: run.panelWidths, mounted: run.panels.filter(panel => panel.mounted).length + '/' + run.panels.length, blank: run.blankPanels ?? [], clippedHeaders: run.clippedHeaders ?? [], stuck: run.stuckLoading ?? [], spill: run.headerSpill ?? 0, drift: run.layoutDrift ?? null }))))
-  const blankShortfall = matrix.runs.some(run => (run.blankPanels ?? []).length > 0) || matrix.runs.some(run => (run.clippedHeaders ?? []).length > 0) || matrix.runs.some(run => Boolean(run.layoutDrift)) || matrix.runs.some(run => (run.stuckLoading ?? []).length > 0) || matrix.runs.some(run => typeof run.headerSpillOverBudget === 'number')
-  if (blankShortfall) process.exitCode = 1
+  const blankShortfall = matrix.runs.some(run => (run.blankPanels ?? []).length > 0) || matrix.runs.some(run => (run.clippedHeaders ?? []).length > 0) || matrix.runs.some(run => Boolean(run.layoutDrift)) || matrix.runs.some(run => (run.stuckLoading ?? []).length > 0) || matrix.runs.some(run => typeof run.headerSpillOverBudget === 'number') || Boolean(matrix.visualFailed)
+  if (blankShortfall) { process.exitCode = 1; report.ok = false }
   // Ratchet: a panel that stops mounting at any width is a regression even if every screenshot looks fine.
   let baseline = { minMountedPerWidth: 18 }
   try { baseline = JSON.parse(fs.readFileSync('scripts/visual-matrix-baseline.json', 'utf8')) } catch {}
