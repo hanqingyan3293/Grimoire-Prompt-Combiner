@@ -1911,3 +1911,16 @@ Errors 1 error
 连跑两次全量门禁：**G1–G11 全绿**（第二次 G3 只用 368s，负载明显更低）。
 
 判断依据：绿的时候这些等待从不触发，红的时候全是等待放弃——调大等待不会掩盖逻辑错误，只会让负载抖动不再变成红灯。
+
+### 主题旅程 + 51 条源路由全渲染（2026-10-30 第一百一十八轮）
+
+`node scripts/audit-cherry-routes.mjs --theme-journey`：
+
+- **Theme journey: PASS**（发布两套调色板 → 同机位截图 → 页内 canvas diff 判定差异）；
+- 顺带跑完整路由扫描：**all 51 routes rendered**，每条都 `rendered:true, contentVisible:true, routeMatched:true`、
+  没有 `unimplemented` 或边界兜底页。
+
+这是 M1/M2「源页面是否真的都在」的最强证据：不是逐个人工看，而是**51 条一次性机器扫**。
+截图落在 `artifacts/visual/cherry-routes`。
+
+抽检 `w960-tag-sidebar`：标签库/收藏页签、搜索、标签组下拉、树节点计数与图标均正常。
