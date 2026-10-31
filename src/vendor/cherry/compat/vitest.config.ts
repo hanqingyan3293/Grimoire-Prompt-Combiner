@@ -20,7 +20,7 @@ export default defineConfig({
     // G4 runs alongside G3 (the whole root suite) on the same machine. Under that load the default 1s
     // `findBy*` budget expires and a passing test goes red — the panel test passes alone but failed inside
     // the gate. These are jsdom UI tests; a few seconds of slack removes the flake without hiding a hang.
-    testTimeout: 20000,
-    hookTimeout: 20000,
+    testTimeout: 30000,
+    hookTimeout: 30000,
   }
 })

@@ -2,7 +2,9 @@ import { configure } from '@testing-library/dom'
 
 // Wait longer than the 1s default: these tests share a machine with the whole root suite (G3), and under
 // that load `findBy*` times out on assertions that pass in isolation.
-configure({ asyncUtilTimeout: 5000 })
+// 5s was still not enough when G4 runs right after G3 (≈500s of CPU): the failure was always a `findBy*`
+// giving up, never a wrong value. 15s costs nothing on green runs and absorbs the cumulative load.
+configure({ asyncUtilTimeout: 15000 })
 
 import '@testing-library/jest-dom/vitest'
 import { afterEach, beforeAll } from 'vitest'
