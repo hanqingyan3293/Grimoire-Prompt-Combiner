@@ -29,6 +29,9 @@ const journeys = [
   // One boot, 51 source routes checked for rendered/contentVisible/routeMatched: cheap insurance that a page
   // did not silently regress to the "unimplemented" boundary.
   { script: 'scripts/audit-cherry-routes.mjs', flag: '--routes-only', label: '51 条源路由全渲染' },
+  // Proves the screenshot guard actually sees a change (it injects one and expects a red). A watchdog nobody
+  // has watched fail is a watchdog nobody can trust.
+  { flag: '--visual-matrix --diff --diff-selftest', label: '截图守护自检（必须检出注入的改动）' },
   { flag: '--slim-sweep --width=960', label: '被挤死控件扫描（960/1280/1600 均可跑）' },
   { flag: '--visual-matrix', label: '视觉矩阵 18 面板 × 3 宽度' },
   ...(quick ? [] : [

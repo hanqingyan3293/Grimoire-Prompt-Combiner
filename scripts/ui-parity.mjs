@@ -553,6 +553,11 @@ if (process.argv.includes('--visual-matrix')) {
         // Animations are the main source of diff noise (measured 5.9-8.5% tile drift between identical runs).
         // Freeze them and let the frame settle before the screenshot instead of widening the threshold.
         await evaluate(`(() => { if (document.getElementById('__no_anim')) return true; const style = document.createElement('style'); style.id = '__no_anim'; style.textContent = '*,*::before,*::after{animation:none!important;transition:none!important;caret-color:transparent!important}'; document.head.appendChild(style); return true })()`)
+        if (process.argv.includes('--diff-selftest')) {
+          // A guard nobody has seen fail is a guard nobody can trust. This injects a real (page-local) change
+          // so `--diff` must turn red; the run then succeeds only if it DID.
+          await evaluate(`(() => { if (document.getElementById('__selftest')) return true; const style = document.createElement('style'); style.id = '__selftest'; style.textContent = '.ui-badge,.ui-chip,.ui-tag{padding-left:11px!important}'; document.head.appendChild(style); return true })()`)
+        }
         await sleep(260)
         const shot = await screenshot('w' + width + '-' + type)
         // `--record` seeds the baseline; `--diff` compares against it and fails past the tolerance.
@@ -601,7 +606,14 @@ if (process.argv.includes('--visual-matrix')) {
     // doubles the safety margin while halving the smallest detectable change.
     const bad = visualDiffs.filter(item => item.mismatch || (item.maxContentTilePct ?? 0) > 6)
     matrix.visual = { compared: visualDiffs.length, failing: bad.slice(0, 6) }
-    if (bad.length) { matrix.visualFailed = bad.length; report.ok = false }
+    const selftest = process.argv.includes('--diff-selftest')
+    if (selftest) {
+      // Success for a selftest is the opposite: the guard must have DETECTED the injected change.
+      console.log('DIFF-SELFTEST ' + JSON.stringify({ detected: bad.length, compared: visualDiffs.length, sample: bad.slice(0, 3) }))
+      if (bad.length === 0) { report.ok = false; console.log('DIFF-SELFTEST FAILED: the injected change was not detected') }
+      matrix.visualSelftest = { detected: bad.length }
+      matrix.visualFailed = undefined
+    } else if (bad.length) { matrix.visualFailed = bad.length; report.ok = false }
   }
   fs.writeFileSync('artifacts/visual/ui-parity/visual-matrix.json', JSON.stringify(matrix, null, 2))
   console.log('MATRIX ' + JSON.stringify(matrix.runs.map(run => ({ width: run.width, panelWidths: run.panelWidths, mounted: run.panels.filter(panel => panel.mounted).length + '/' + run.panels.length, blank: run.blankPanels ?? [], clippedHeaders: run.clippedHeaders ?? [], stuck: run.stuckLoading ?? [], spill: run.headerSpill ?? 0, drift: run.layoutDrift ?? null }))))
