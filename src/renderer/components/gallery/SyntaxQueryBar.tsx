@@ -67,7 +67,7 @@ export function SyntaxQueryBar({ className }: { className?: string }) {
 
   return (
     <div className={`space-y-1.5 p-2 ${className || ''}`}>
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         <span className="inline-flex items-center gap-1 text-[10px] text-[var(--color-text-secondary)]"><ListFilter size={12} aria-hidden="true" />语法查询</span>
         <input
           className="ui-field min-w-[10rem] flex-1"

@@ -1,6 +1,6 @@
 {
   "offenders": 0,
-  "offendersAt960": 18,
-  "offendersAt1280": 1,
-  "note": "Per-width ratchet for --narrow-audit. Default width must be 0. The 960/1280 numbers are known structural debt of the four-column layout (panel width 210px / 280px); they may only go down."
+  "offendersAt960": 0,
+  "offendersAt1280": 0,
+  "note": "Vertical-text offenders (readability defects) only — horizontal overflow is tracked by the visual matrix as `spill`."
 }

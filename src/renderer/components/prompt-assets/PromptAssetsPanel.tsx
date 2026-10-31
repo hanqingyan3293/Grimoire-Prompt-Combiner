@@ -214,8 +214,10 @@ function SourceBadge({ item }: { item: PromptAssetItem }) {
 function AssetCard({ item, tagLabels = [], onPreview, onCopy, onApply, onDragStart }: { item: PromptAssetItem; tagLabels?: string[]; onPreview: () => void; onCopy: () => void; onApply: () => void; onDragStart?: (event: React.DragEvent) => void }) {
   return (
     <div className='min-w-0 p-3' draggable={Boolean(onDragStart)} onDragStart={onDragStart}>
-      <div className='flex min-w-0 items-start justify-between gap-2'>
-        <div className='min-w-0 flex-1'>
+      {/* The action group is shrink-0, so in a 210px panel it squeezed the text column to 57px and every
+          character stacked vertically. Wrap the row and give the text a floor instead. */}
+      <div className='flex min-w-0 flex-wrap items-start justify-between gap-2'>
+        <div className='min-w-[9rem] flex-1'>
           <h3 className='min-w-0 break-words text-sm font-medium leading-5 text-[var(--color-text-primary)] line-clamp-2' title={item.name || '未命名资产'}>{item.name || '未命名资产'}</h3>
           <div className='mt-1 flex min-w-0 flex-wrap items-center gap-1.5'><SourceBadge item={item} />{item.nsfw && <Badge tone='danger'>NSFW</Badge>}</div>
           {item.detail && <div className='mt-1 truncate text-[11px] text-[var(--color-text-secondary)]' title={item.detail}>{item.detail}</div>}

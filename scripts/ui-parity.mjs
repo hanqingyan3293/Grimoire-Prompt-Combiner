@@ -387,9 +387,15 @@ if (process.argv.includes('--narrow-audit')) {
       const widthTag = report.viewportWidth ? 'w' + report.viewportWidth + '-' : ''
       report.panels.push({ type, mounted: true, ...measured, shot: await screenshot(widthTag + 'narrow-' + type) })
     }
-    const offenders = report.panels.filter(panel => panel.vertical?.length || panel.overflow?.length)
+    // The budget counts VERTICAL text only. Characters stacking one per line is a defect no panel width
+    // excuses; horizontal overflow is a width problem the visual matrix already tracks as `spill`, so
+    // counting it twice here would keep this number at 18 forever and hide real regressions.
+    const offenders = report.panels.filter(panel => (panel.vertical?.length ?? 0) > 0)
+    const overflowing = report.panels.filter(panel => (panel.overflow?.length ?? 0) > 0)
     report.offenderCount = offenders.length
     report.offenders = offenders.map(panel => panel.type)
+    report.overflowPanelCount = overflowing.length
+    report.overflowing = overflowing.map(panel => panel.type)
     report.passed = true
   } catch (error) { report.error = String(error) }
   fs.writeFileSync('artifacts/visual/ui-parity/narrow-audit.json', JSON.stringify(report, null, 2))
