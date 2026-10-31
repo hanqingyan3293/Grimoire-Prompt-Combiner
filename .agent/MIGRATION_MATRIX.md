@@ -233,5 +233,19 @@ Rows may move only with evidence. No row may be changed to a completion state be
  VENDOR（只读挂载） 
  VENDOR（只读挂载） 
  PARTIALLY_MIGRATED 
- Updated 2026-10-27 第 81 轮: the full source behaviour stays BLOCKED on the native `selection-hook` addon (absent from node_modules/pnpm store/package.json, needs a per-platform binary matching the Electron ABI), but the fallback now EXISTS: `selection-assistant.service.ts` applies a global shortcut from `cherry_pref.feature.selection.enabled` + `shortcut.selection.assistant`, reads `clipboard.readText()` at press time, and plans one of three actions (copy-as-tags / copy-normalized / to-prompt-asset) — the third writes a real row through `createPromptAsset`. Registration policy is tested without a display (5 tests: enable/disable, accelerator swap, conflict, throw, whitespace refusal, weight-grammar preservation). Not yet done: the source floating toolbar (a separate always-on-top window with action buttons) and true cross-app selection capture. 
+ Updated 2026-10-27 第 81 轮: the full source behaviour stays BLOCKED on the native `selection-hook` addon (absent from node_modules/pnpm store/package.json, needs a per-platform binary matching the Electron ABI), but the fallback now EXISTS: `selection-assistant.service.ts` applies a global shortcut from `cherry_pref.feature.selection.enabled` + `shortcut.selection.assistant`, reads `clipboard.readText()` at press time, and plans one of three actions (copy-as-tags / copy-normalized / to-prompt-asset) — the third writes a real row through `createPromptAsset`. Registration policy is tested without a display (5 tests: enable/disable, accelerator swap, conflict, throw, whitespace refusal, weight-grammar preservation). Not yet done: the source floating toolbar (a separate always-on-top window with action buttons) and true cross-app selection capture.
 
+## M1.5 组件与样式基线（2026-10-31 建档，来源：STATE 第 4.1 节与第 26/31/60 轮记录）
+
+| # | 能力 | 状态 | 证据 |
+|---|---|---|---|
+| 1 | 设计令牌（圆角/间距/字号/阴影/动效/密度 + 共享类） | DIRECTLY_MIGRATED | `src/renderer/styles/tokens.css`；令牌被 G11 的 95 条断言间接验证 |
+| 2 | 主题桥（计算样式 → `theme:publish` → 广播 → 子窗口写变量并切 `.dark`） | ADAPTED | `--theme-journey`：发布两套调色板 → 同机位截图 → canvas diff 判定差异（PASS） |
+| 3 | 设置面板渲染完整设置页 + 搜索与分区过滤 | ADAPTED | `settings` 面板旅程（`--settings-wiring-journey`）与矩阵 18×3 |
+| 4 | 面板可弹出为独立窗口（`show:false` + 主题底色 + `ready-to-show`） | ADAPTED | `src/main/index.ts` 的弹窗路径；`--settings-wiring-journey` 覆盖接线 |
+| 5 | 品牌（Cherry 窗口标题与关于页） | MINIMAL_MODIFICATION | `src/vendor/cherry/compat/src/CompatAbout.tsx`（保留 AGPL 归属） |
+| 6 | 组件基线：字段 / 对话框 / 表格 / 开关 / 徽标 / 分段 / 复选框 / 单选 / 提示气泡 / 导航页签 | ADAPTED | G11 95 条 computed-style 断言（类覆盖 48/105 = 45.7%，棘轮 `style-contract-baseline.json`） |
+| 7 | 窄面板可读性（竖排文字 / 被挤死控件 / 表头溢出） | ADAPTED | 矩阵六类检测 + `--narrow-audit`（竖排预算 0）+ `--slim-sweep` 三档；表头溢出 960 = 42px 已登记 |
+| 8 | 视觉回归基线（截图对比） | ADAPTED | `--visual-matrix --record/--diff`：16×9 分块、排除外壳首行与 canvas/browser、噪声 1.7–2.8%、阈值 6%、`--diff-selftest` 自检 |
+| 9 | 面板布局约定（5 条规则） | ADAPTED | `scripts/check-panel-layout.mjs`（G9），规则来源见 `.agent/GATES.md` |
+| 10 | 路由覆盖（mounted 页调用的路由必须有处理分支） | ADAPTED | `scripts/check-route-coverage.mjs`（G10，9/9） |
