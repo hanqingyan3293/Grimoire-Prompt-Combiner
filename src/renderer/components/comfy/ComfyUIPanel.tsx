@@ -91,8 +91,12 @@ export function ComfyUIPanel() {
     try {
       await window.api.settings.set('comfyui_base_url', baseUrlDraft.trim())
       setBaseUrl(baseUrlDraft.trim())
-      showMessage('ComfyUI 地址已保存', 'success')
       await refresh()
+      // Saving the address and successfully connecting are different outcomes. Reporting only "已保存" left a
+      // failed connect looking like a success — the status badge still said 未连接 and nothing explained why.
+      const status = await window.api.comfy.status()
+      if (status.online) showMessage('ComfyUI 地址已保存，连接成功', 'success')
+      else showMessage('ComfyUI 地址已保存，但连接失败：未检测到 ' + baseUrlDraft.trim() + ' 上的服务', 'danger')
     } catch (error) { showMessage(error instanceof Error ? error.message : 'ComfyUI 地址保存失败', 'danger') }
   }
 

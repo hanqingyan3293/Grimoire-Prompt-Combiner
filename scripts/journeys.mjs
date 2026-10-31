@@ -26,6 +26,7 @@ const journeys = [
   ] : []),
   { flag: '--style-contract', label: '样式契约（24 项）' },
   { flag: '--selection-popup', label: '划词助手浮窗（6 项）' },
+  { flag: '--error-paths', label: '失败路径（ComfyUI 连接失败要可见）' },
   { flag: '--slim-sweep --width=960', label: '被挤死控件扫描（960/1280/1600 均可跑）' },
   { flag: '--visual-matrix', label: '视觉矩阵 18 面板 × 3 宽度' },
   ...(quick ? [] : [
@@ -44,7 +45,7 @@ const runOnce = journey => {
     timeout: 600000,
   })
   const output = (run.stdout || '') + (run.stderr || '')
-  const headline = output.split('\n').find(line => /^(WORKBENCH|ASSETS|GALLERY|TOOLTIP|COMFY-PERSIST|STYLE-CONTRACT|SELECTION-POPUP|SLIM-SWEEP|MATRIX|NARROW|API|Web|Screenshot|Settings|Browser)/i.test(line)) || ''
+  const headline = output.split('\n').find(line => /^(WORKBENCH|ASSETS|GALLERY|TOOLTIP|COMFY-PERSIST|STYLE-CONTRACT|ERROR-PATHS|SELECTION-POPUP|SLIM-SWEEP|MATRIX|NARROW|API|Web|Screenshot|Settings|Browser)/i.test(line)) || ''
   return { ok: run.status === 0, status: run.status, headline: headline.slice(0, 400) }
 }
 

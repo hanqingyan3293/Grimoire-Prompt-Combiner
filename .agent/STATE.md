@@ -1817,3 +1817,26 @@ document.querySelectorAll('select.ui-panel-select option')   // 每个面板列�
 
 抽检 `w1600-canvas`：面板正文仍是空白——**这是预期**（CDP 不合成跨文档 iframe），
 画布是否真的渲染仍以读帧的 612 字符 UI 文本为准。
+
+### 失败路径旅程：抓到一个「假成功」（2026-10-30 第一百一十四轮）
+
+新增 `--error-paths`：把 ComfyUI 地址设为死端口（`127.0.0.1:9`）并点「保存并连接」，断言失败**必须可见**。
+
+第一次跑就红了：`errorSurfaced: false`。
+
+查 `ComfyUIPanel.saveBaseUrl`：
+```ts
+await window.api.settings.set('comfyui_base_url', ...)
+setBaseUrl(...)
+showMessage('ComfyUI 地址已保存', 'success')   // ← 不管连没连上，都说成功
+await refresh()
+```
+
+**地址保存成功 ≠ 连接成功**，但界面只报前者。用户看到绿色「已保存」，状态徽标仍是「未连接」，没人告诉他为什么。
+
+修法：保存后重新取一次 `comfy.status()`，连上就报「已保存，连接成功」，没连上就报**「已保存，但连接失败：未检测到 … 上的服务」**（danger）。
+
+复跑：`{fieldTyped:true, errorSurfaced:true, stillInteractive:true}`，`surfaced: 连接失败`。已并入 `npm run journeys`。
+
+踩坑记录：写这条断言时反复被「模板字符串里的 `\n`」咬到——`split('\n')` 在 Node 模板里会被解释成真换行，注入到页面就成了语法错误。
+最后改用 `indexOf('连接失败') >= 0`，不需要拆行。**断言越简单越不容易自伤。**

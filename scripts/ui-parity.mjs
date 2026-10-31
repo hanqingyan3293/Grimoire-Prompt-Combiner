@@ -752,6 +752,38 @@ if (process.argv.includes('--overflow')) {
     '.filter(item => item.client > 0 && item.scroll > item.client + 8).slice(0, 8) })()'
   console.log('OVERFLOW ' + JSON.stringify(await evaluate(expression)))
 }
+
+// `--error-paths` checks that a failing network action SURFACES, not hangs. A panel that keeps showing its
+// spinner after a failed connect is indistinguishable from a slow one, and the user retries forever.
+if (process.argv.includes('--error-paths')) {
+  const report = { passed: false, checks: {} }
+  const waitForLocal = async (expression, attempts = 80) => { for (let index = 0; index < attempts; index += 1) { const value = await evaluate(expression); if (value) return value; await sleep(250) } return null }
+  try {
+    await waitForLocal(`!!document.querySelector('select.ui-panel-select')`)
+    await evaluate(`(() => { const select = Array.from(document.querySelectorAll('select.ui-panel-select')).find(el => el.offsetParent !== null); Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(select, 'comfyui'); select.dispatchEvent(new Event('change', { bubbles: true })) })()`)
+    await sleep(1200)
+    const typed = await evaluate(`(() => { const input = document.querySelector('[data-panel-type="comfyui"] input.ui-field'); if (!input) return false; Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(input, 'http://127.0.0.1:9'); input.dispatchEvent(new Event('input', { bubbles: true })); return true })()`)
+    report.checks.fieldTyped = typed === true
+    await evaluate(`(() => { const panel = document.querySelector('[data-panel-type="comfyui"]'); const button = Array.from(panel.querySelectorAll('button')).find(el => (el.textContent || '').includes('保存')); if (button) button.click(); return Boolean(button) })()`)
+    // A pre-existing 「未连接」 badge would satisfy a naive regex, so require the text to CHANGE: compare
+    // against what the panel showed before the click and look for new error wording.
+    const before = await evaluate(`(() => { const panel = document.querySelector('[data-panel-type="comfyui"]'); return panel ? (panel.innerText || '') : '' })()`)
+    await evaluate('window.__beforeText = ' + JSON.stringify(String(before ?? '')))
+    // The panel may already show a 「未连接」 badge, so assert on the NEW wording this flow adds
+    // (「已保存，但连接失败…」) instead of any error-ish word.
+    const surfaced = await waitForLocal(`(() => { const panel = document.querySelector('[data-panel-type="comfyui"]'); if (!panel) return false; const text = panel.innerText || ''; return text.indexOf('连接失败') >= 0 ? '连接失败' : false })()`, 60)
+    report.surfaced = surfaced || null
+    report.panelTextAfter = await evaluate(`(() => { const panel = document.querySelector('[data-panel-type="comfyui"]'); return panel ? (panel.innerText || '').slice(0, 300) : null })()`)
+    report.checks.errorSurfaced = Boolean(surfaced)
+    // The panel must stay usable: a stuck busy flag would leave every control disabled.
+    const interactive = await evaluate(`(() => { const panel = document.querySelector('[data-panel-type="comfyui"]'); const buttons = Array.from(panel.querySelectorAll('button')); return buttons.some(button => !button.disabled) })()`)
+    report.checks.stillInteractive = interactive === true
+    report.passed = Object.values(report.checks).every(Boolean)
+  } catch (error) { report.error = String(error) }
+  fs.writeFileSync('artifacts/visual/ui-parity/error-paths.json', JSON.stringify(report, null, 2))
+  console.log('ERROR-PATHS ' + JSON.stringify({ passed: report.passed, checks: report.checks, surfaced: report.surfaced }))
+  if (!report.passed) process.exitCode = 1
+}
 console.log(JSON.stringify(report, null, 2))
 ws.close()
 killTree()
