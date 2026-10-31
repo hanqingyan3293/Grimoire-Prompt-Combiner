@@ -1731,3 +1731,24 @@ document.querySelectorAll('select.ui-panel-select option')   // 每个面板列�
 恶化会立刻变红，改善会自动可见。**
 
 抽检 `w1280-agent`（模式三行）、`w1600-tasks`（空态）——无新缺陷。
+
+### 面板头压缩：50px → 42px（纯 CSS，无功能损失）（2026-10-30 第一百零七轮）
+
+用**容器查询**（`@container (max-width: 260px)`，按面板宽度而非视口）做压缩：
+
+```css
+.ui-panel-shell { container-type: inline-size; }
+@container (max-width: 260px) {
+  .ui-panel-header { gap: 3px; padding-inline: 5px; }
+  .ui-panel-header .ui-panel-select { max-width: 124px; }
+}
+```
+
+实测溢出 **50px → 42px**（矩阵 `spill` 字段可逐轮观察）。**没有隐藏任何控件**，只是收紧间距并让类型选择器提前截断。
+
+尝试过把 `--panel-control-size` 调到 24px 进一步压缩——**无效**，因为那些控件的尺寸是内联样式读变量，
+没有跟着容器查询变化。剩下 42px 要再降只能：改 JS 量宽后渲染，或隐藏头部控件——**两者都是产品决定**，
+在没有批准前不做。
+
+顺带修一处副作用：`tag-asset-manager` 的搜索行在 210px 下把「搜索」按钮挤成两行（竖排），
+行加 `flex-wrap` 后按钮换行而不是被压。

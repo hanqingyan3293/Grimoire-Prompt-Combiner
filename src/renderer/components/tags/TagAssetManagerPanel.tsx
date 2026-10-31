@@ -155,7 +155,7 @@ export function TagAssetManagerPanel() {
     </div>
     <div className='min-h-0 flex-1 overflow-auto p-3 space-y-3'>
       {tab === 'search' && <>
-        <div className='flex gap-2'><input className='ui-field min-w-[8rem] flex-1' value={query} onChange={event => setQuery(event.target.value)} onKeyDown={event => { if (event.key === 'Enter') void search() }} placeholder='搜索中文、英文或别名' /><Button size='sm' icon={Search} onClick={() => void search()}>搜索</Button></div>
+        <div className='flex flex-wrap gap-2'><input className='ui-field min-w-[8rem] flex-1' value={query} onChange={event => setQuery(event.target.value)} onKeyDown={event => { if (event.key === 'Enter') void search() }} placeholder='搜索中文、英文或别名' /><Button size='sm' icon={Search} onClick={() => void search()}>搜索</Button></div>
         <div className='space-y-1'>{results.map(item => {
           // 消歧义：同名（显示名相同）的命中高亮并显示分类归属，避免选错标签。
           const isAmbiguous = ambiguousNames.has((item.tag.zh || item.tag.en).toLowerCase())

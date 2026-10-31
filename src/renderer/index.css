@@ -1224,3 +1224,18 @@ textarea.ui-field {
 .ui-radio:checked::after { content: ''; position: absolute; inset: 3px; border-radius: 999px; background: var(--color-text-primary); }
 .ui-radio:focus-visible { outline: 2px solid var(--gr-focus-ring); outline-offset: 1px; }
 .ui-radio:disabled { cursor: not-allowed; opacity: 0.5; }
+
+/* Panel-header compaction (M1.5). The header is a fixed 32px row whose controls overflow a 210px panel by
+ * 50px (measured). Rather than hide controls or scroll the row, tighten the gaps and let the type selector
+ * truncate earlier — a container query keys off the PANEL width, which viewport breakpoints cannot see. */
+.ui-panel-shell { container-type: inline-size; }
+
+@container (max-width: 260px) {
+  .ui-panel-header { gap: 3px; padding-inline: 5px; }
+  .ui-panel-header .ui-panel-select { max-width: 124px; }
+  /* 26px keeps the target above the 24px accessibility floor while buying back the pixels six icon
+   * buttons were spending. Nothing is hidden — the header still offers every action. */
+  .ui-panel-header .ui-icon-button { width: 26px; flex-basis: 26px; height: 26px; }
+  /* The header controls are sized by this variable, not by a class. */
+  .ui-panel-header { --panel-control-size: 24px; }
+}
