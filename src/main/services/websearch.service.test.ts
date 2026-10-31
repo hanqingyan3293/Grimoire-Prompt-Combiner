@@ -103,4 +103,8 @@ describe('html extraction', () => {
     const { text } = htmlToText('<p>a &amp; b</p><p>c &#65;</p>')
     expect(text).toBe('a & b\nc A')
   })
+  it('refuses a blank query and a keyless Tavily call with distinct codes', async () => {
+    await expect(searchWeb({ provider: 'searxng', endpoint: 'http://x', keywords: '   ' })).rejects.toMatchObject({ code: 'EMPTY_QUERY' })
+    await expect(searchWeb({ provider: 'tavily', keywords: 'gpu', apiKey: '' })).rejects.toMatchObject({ code: 'BAD_REQUEST' })
+  })
 })

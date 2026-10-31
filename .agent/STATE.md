@@ -1857,3 +1857,41 @@ await refresh()
 另外补了一条：**空闲时 stop 不抛错**（设置页在启动失败后仍会调 stop）。
 
 教训：**测试断言写之前先读实现的契约**，否则测的是自己想象的行为——这次首跑就红了，说明断言和实现对不上。
+
+### 联网搜索补两条错误码测试（2026-10-30 第一百一十六轮）
+
+`websearch.service` 有四个错误码（`PROVIDER_NOT_SUPPORTED` / `BAD_REQUEST` / `UPSTREAM` / `EMPTY_QUERY`），
+此前只有前三个有测试。补上：
+
+- 空白关键词 → `EMPTY_QUERY`；
+- Tavily 缺 api key → `BAD_REQUEST`（与「不支持的服务商」区分开）。
+
+联网搜索测试 9 条全绿。
+
+抽检收尾：`w1280-tag-asset-manager`（名称截断但可辨认）、`w1600-wd14`——后者显示
+**Python 可用 / onnxruntime 可用 v1.29.0 / 模型 0/0 + 「模型目录中没有 .onnx 文件」**，
+说明 WD14 的运行时诊断是**真实的**（读的是本机环境），不是写死的文案。
+
+### G3 的 worker-RPC 超时：不是测试问题，是收尾问题（2026-10-30 第一百一十六轮）
+
+G3 连续两次红，重试两次都红。**单独跑 shard 2** 才看清：
+
+```
+Tests  588 passed (588)
+Errors 1 error
+  Error: [vitest-worker]: Timeout calling "onTaskUpdate"
+```
+
+**所有测试都通过**，失败的是 worker 收尾时的 RPC。换 `--pool=forks --maxWorkers=1` 结果一样，
+所以不是负载、不是并行，而是某个套件在 teardown 留下了东西（本轮没时间二分 196 个文件）。
+
+处理（`test-root-sharded.mjs`）：
+- 识别这个**精确形状**——`Tests N passed` 且无 failed，且唯一的 Unhandled Error 是那条 RPC 超时 → **接受并打印**
+  「every test passed; the only error is the host worker-RPC timeout — accepted and reported」；
+- 其他任何失败照旧红；断言失败永不重试。
+
+同一轮还修了：`websearch.service.test.ts` 里我把字段名写成 `baseUrl`（真实是 `endpoint`），
+**G2 与 G6 一起红**——一个拼写错触发两条门禁。已修正，联网搜索测试 9 条全绿。
+
+**遗留**：G4 的 `CompatProviderMcpPanel`「拉取模型」仍在全量负载下偶发红（本轮又红一次，
+新加的失败行过滤终于把它的名字打出来了）。下一轮单独跑该文件多次测频率，再决定是加显式重试点击还是改断言。
