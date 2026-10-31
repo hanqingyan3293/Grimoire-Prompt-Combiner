@@ -1924,3 +1924,16 @@ Errors 1 error
 截图落在 `artifacts/visual/cherry-routes`。
 
 抽检 `w960-tag-sidebar`：标签库/收藏页签、搜索、标签组下拉、树节点计数与图标均正常。
+
+### 51 路由扫描并入旅程套件（2026-10-30 第一百一十九轮）
+
+`npm run journeys` 新增一条默认项：`51 条源路由全渲染`（`--routes-only`，一次启动，逐条断言
+`rendered/contentVisible/routeMatched` 且无 `unimplemented`）。
+
+实测输出：`all 51 routes rendered`。
+
+成本约 60–90 秒，换来的是**每次跑套件都确认没有页面退回「unimplemented」兜底**——
+这正是 M1/M2 里最容易悄悄退化的一类。
+
+（`--routes-only` 是显式标记：脚本在没有旅程标志时本来就做全量扫描，写出来是为了让调用方表达意图，
+而不是传空参数。）

@@ -13,7 +13,6 @@ const journeys = [
   { flag: '--gallery', label: '图库筛选（3 项）' },
   { flag: '--tooltip', label: '提示气泡（4 项）' },
   { flag: '--comfy-persist', label: 'ComfyUI 持久化闭环（5 项）' },
-  // The five M3 page audits are OPT-IN (`--m3`): each one boots its own renderer, and running them after
   // The five M3 page audits are OPT-IN (`--m3`): each boots its own renderer, and running them after the
   // nine above saturates the machine — all five failed inside a full run while passing standalone minutes
   // earlier. A false red trains people to ignore red.
@@ -27,6 +26,9 @@ const journeys = [
   { flag: '--style-contract', label: '样式契约（24 项）' },
   { flag: '--selection-popup', label: '划词助手浮窗（6 项）' },
   { flag: '--error-paths', label: '失败路径（ComfyUI 连接失败要可见）' },
+  // One boot, 51 source routes checked for rendered/contentVisible/routeMatched: cheap insurance that a page
+  // did not silently regress to the "unimplemented" boundary.
+  { script: 'scripts/audit-cherry-routes.mjs', flag: '--routes-only', label: '51 条源路由全渲染' },
   { flag: '--slim-sweep --width=960', label: '被挤死控件扫描（960/1280/1600 均可跑）' },
   { flag: '--visual-matrix', label: '视觉矩阵 18 面板 × 3 宽度' },
   ...(quick ? [] : [

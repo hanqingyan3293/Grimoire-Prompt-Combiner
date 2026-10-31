@@ -327,6 +327,8 @@ for (const route of [...DIAGNOSTIC_PATHS, '/settings/skills/fixture-skill', '/se
 }
 const catalogDirectory = path.join(root, 'artifacts/cherry-ui-catalog')
 const catalogFile = path.join(catalogDirectory, '截图清单.json')
+// `--routes-only` is an explicit marker for the 51-route sweep (which is what the script does when no
+// journey flag is passed). It exists so callers can name the intent instead of passing an empty flag.
 const catalog = process.argv.includes('--catalog-diagnostics') ? JSON.parse(fs.readFileSync(catalogFile, 'utf8')) : null
 if (catalog) {
   const info = await evaluate(`window.api.ipcApi.request('app.get_info')`)
