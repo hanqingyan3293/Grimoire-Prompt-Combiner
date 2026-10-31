@@ -117,4 +117,26 @@ describe('local OpenAI gateway (M3)', () => {
     expect(first.port).toBeGreaterThan(0)
     expect((await post('/v1/chat/completions', { model: 'fake-model', messages: [] }, 'b')).status).toBe(200)
   })
+  it('is idempotent while running, and rejects a port already taken by another listener', async () => {
+    const first = await startGateway({ apiKey: 'a' })
+    // Starting twice must NOT bind a second listener: the published endpoint stays the first one.
+    const again = await startGateway({ apiKey: 'b', port: first.port })
+    expect(again.port).toBe(first.port)
+    expect(again.apiKeyConfigured).toBe(first.apiKeyConfigured)
+    await stopGateway()
+    expect(getGatewayStatus().running).toBe(false)
+    // Now hold the port with a foreign listener: the gateway must fail loudly rather than bind elsewhere,
+    // because a silently different port would make the configured endpoint wrong.
+    const squatter = http.createServer((_request, response) => response.end('x'))
+    await new Promise<void>(resolve => squatter.listen(0, '127.0.0.1', () => resolve()))
+    const address = squatter.address()
+    const busyPort = typeof address === 'object' && address ? address.port : 0
+    const conflict = await startGateway({ apiKey: 'c', port: busyPort }).then(value => ({ ok: true, value }), error => ({ ok: false, error: String(error) }))
+    expect(conflict.ok).toBe(false)
+    expect(String((conflict as { error?: string }).error)).toMatch(/EADDRINUSE|EACCES/i)
+    expect(getGatewayStatus().running).toBe(false)
+    await new Promise<void>(resolve => squatter.close(() => resolve()))
+    // Stopping an idle gateway must not throw: the settings page can call stop after a failed start.
+    await expect(stopGateway()).resolves.not.toThrow()
+  })
 })
