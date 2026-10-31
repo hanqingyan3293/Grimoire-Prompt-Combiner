@@ -249,3 +249,15 @@ Rows may move only with evidence. No row may be changed to a completion state be
 | 8 | 视觉回归基线（截图对比） | ADAPTED | `--visual-matrix --record/--diff`：16×9 分块、排除外壳首行与 canvas/browser、噪声 1.7–2.8%、阈值 6%、`--diff-selftest` 自检 |
 | 9 | 面板布局约定（5 条规则） | ADAPTED | `scripts/check-panel-layout.mjs`（G9），规则来源见 `.agent/GATES.md` |
 | 10 | 路由覆盖（mounted 页调用的路由必须有处理分支） | ADAPTED | `scripts/check-route-coverage.mjs`（G10，9/9） |
+
+## M6 提示词工作台（2026-10-31 建档，来源：第 74–82 轮开发记录与旅程断言）
+
+| # | 能力 | 状态 | 证据 |
+|---|---|---|---|
+| 1 | 作品与版本持久化（`novelai_work` / `novelai_version` / `novelai_branch_name` / `novelai_version_image`） | ADAPTED | `src/main/database.ts` 建表；`--workbench` 断言 createdWork / savedVersion |
+| 2 | 版本生命周期：软删、恢复、从旧版本开分支 | ADAPTED | `--workbench` 断言 deletedVersion / restoredVersion / branchedFromVersion；`novelai-lifecycle.test.ts` |
+| 3 | 块视图编辑（多块提示词结构） | ADAPTED | `--workbench` 断言 blockView；`src/renderer/components/novelai/NovelAIPromptPanel.tsx` |
+| 4 | 版本 ↔ 素材双向联动（任一方向建链，反查可读） | ADAPTED | `--workbench` 断言 linkageNeedsBothSides / versionAssetLinkage；`novelai-version.service.test.ts` + `novelai-asset.service.test.ts` |
+| 5 | 素材与生成图关联（`imageId` 维度，显示「这版用到的素材」） | ADAPTED | `NovelAIPromptPanel.tsx` 的 versionAssets 列表；`novelai-version-image` 表关联 |
+| 6 | 元数据文件读写（`novelai-metadata.ts` / `novelai-metadata-file.service.ts`） | ADAPTED | 两个 `.test.ts` 覆盖解析与写回 |
+| 7 | 面板 UI 在 18 面板矩阵中可渲染（三宽度） | ADAPTED | `--visual-matrix` 的 `novelai-workbench` / `novelai-assets` 两列；spill 与竖排预算均通过 |
