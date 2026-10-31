@@ -2065,3 +2065,23 @@ STYLE-CONTRACT {"passed":true,"total":43,"coverage":{"used":105,"assertedClasses
 **常量要量，不要算。**
 
 当我把基线误设成 26 时，门禁立刻报 `coverageShortfall: true`——说明这条棘轮真的会咬。
+
+### 覆盖率靠「从 CSS 生成断言」推到 45.7%（2026-10-31 第一百二十八轮）
+
+手工抄值一次只能补 10 条。改成生成：`scripts/build-style-contract.mjs` 直接读 `index.css`，
+把几何属性（height / min-* / width / border-radius / padding-* / gap / font-size / font-weight）
+**有字面 px 值**的规则抽成断言，G11 启动时合并进契约。
+
+| 指标 | 上一轮 | 现在 |
+|---|---|---|
+| 断言条数 | 43 | **95** |
+| 覆盖类 | 22 | **48** |
+| 覆盖率 | 21% | **45.7%** |
+
+生成器第一版有两处**单位错**，当场红给我看：
+- `min-width: 0` 我原样写 `0`，计算值是 `0px`；
+- `font-size: 0.78rem` 计算值已转成 px。
+
+改为：只收 `px` 字面量与裸 `0`（并归一成 `0px`），rem 一律跳过——**比较单位不同会造成假红**。
+
+生成 69 条 + 手写 26 条 = 95 条，全过。基线棘轮到 `minCovered: 48`。

@@ -1,0 +1,416 @@
+[
+  {
+    "className": "ui-popover-surface",
+    "tag": "div",
+    "property": "borderRadius",
+    "expect": "8px"
+  },
+  {
+    "className": "ui-popover-panel",
+    "tag": "div",
+    "property": "width",
+    "expect": "288px"
+  },
+  {
+    "className": "ui-utility-panel",
+    "tag": "div",
+    "property": "minWidth",
+    "expect": "0px"
+  },
+  {
+    "className": "ui-utility-panel",
+    "tag": "div",
+    "property": "minHeight",
+    "expect": "0px"
+  },
+  {
+    "className": "ui-menu-item",
+    "tag": "div",
+    "property": "borderRadius",
+    "expect": "6px"
+  },
+  {
+    "className": "ui-menu-direction-group",
+    "tag": "div",
+    "property": "paddingLeft",
+    "expect": "6px"
+  },
+  {
+    "className": "ui-menu-direction-button",
+    "tag": "div",
+    "property": "height",
+    "expect": "22px"
+  },
+  {
+    "className": "ui-menu-direction-button",
+    "tag": "div",
+    "property": "width",
+    "expect": "22px"
+  },
+  {
+    "className": "ui-menu-direction-button",
+    "tag": "div",
+    "property": "borderRadius",
+    "expect": "5px"
+  },
+  {
+    "className": "ui-menu-direction-button",
+    "tag": "div",
+    "property": "fontSize",
+    "expect": "9px"
+  },
+  {
+    "className": "ui-toolbar-button",
+    "tag": "div",
+    "property": "borderRadius",
+    "expect": "6px"
+  },
+  {
+    "className": "ui-workspace-bar",
+    "tag": "div",
+    "property": "gap",
+    "expect": "6px"
+  },
+  {
+    "className": "ui-workspace-tab",
+    "tag": "div",
+    "property": "minWidth",
+    "expect": "0px"
+  },
+  {
+    "className": "ui-workspace-tab",
+    "tag": "div",
+    "property": "borderRadius",
+    "expect": "5px"
+  },
+  {
+    "className": "ui-panel-header",
+    "tag": "div",
+    "property": "minWidth",
+    "expect": "0px"
+  },
+  {
+    "className": "ui-panel-select",
+    "tag": "div",
+    "property": "borderRadius",
+    "expect": "4px"
+  },
+  {
+    "className": "ui-workspace-splitter",
+    "tag": "div",
+    "property": "borderRadius",
+    "expect": "2px"
+  },
+  {
+    "className": "ui-panel-corner",
+    "tag": "div",
+    "property": "borderRadius",
+    "expect": "3px"
+  },
+  {
+    "className": "ui-status-pill",
+    "tag": "div",
+    "property": "gap",
+    "expect": "4px"
+  },
+  {
+    "className": "ui-status-pill",
+    "tag": "div",
+    "property": "borderRadius",
+    "expect": "999px"
+  },
+  {
+    "className": "ui-subtle-button",
+    "tag": "div",
+    "property": "borderRadius",
+    "expect": "7px"
+  },
+  {
+    "className": "ui-icon-button",
+    "tag": "div",
+    "property": "height",
+    "expect": "30px"
+  },
+  {
+    "className": "ui-icon-button",
+    "tag": "div",
+    "property": "width",
+    "expect": "30px"
+  },
+  {
+    "className": "ui-badge",
+    "tag": "div",
+    "property": "minHeight",
+    "expect": "20px"
+  },
+  {
+    "className": "ui-badge",
+    "tag": "div",
+    "property": "gap",
+    "expect": "4px"
+  },
+  {
+    "className": "ui-badge",
+    "tag": "div",
+    "property": "borderRadius",
+    "expect": "999px"
+  },
+  {
+    "className": "ui-content-header",
+    "tag": "div",
+    "property": "minHeight",
+    "expect": "48px"
+  },
+  {
+    "className": "ui-empty-state-icon",
+    "tag": "div",
+    "property": "height",
+    "expect": "34px"
+  },
+  {
+    "className": "ui-empty-state-icon",
+    "tag": "div",
+    "property": "width",
+    "expect": "34px"
+  },
+  {
+    "className": "ui-status-badge",
+    "tag": "div",
+    "property": "gap",
+    "expect": "5px"
+  },
+  {
+    "className": "ui-status-dot",
+    "tag": "div",
+    "property": "width",
+    "expect": "6px"
+  },
+  {
+    "className": "ui-status-dot",
+    "tag": "div",
+    "property": "height",
+    "expect": "6px"
+  },
+  {
+    "className": "ui-progress",
+    "tag": "div",
+    "property": "height",
+    "expect": "6px"
+  },
+  {
+    "className": "ui-progress",
+    "tag": "div",
+    "property": "borderRadius",
+    "expect": "999px"
+  },
+  {
+    "className": "ui-inline-alert",
+    "tag": "div",
+    "property": "gap",
+    "expect": "8px"
+  },
+  {
+    "className": "ui-inline-note",
+    "tag": "div",
+    "property": "gap",
+    "expect": "8px"
+  },
+  {
+    "className": "ui-settings-nav-item",
+    "tag": "div",
+    "property": "minHeight",
+    "expect": "48px"
+  },
+  {
+    "className": "ui-settings-nav-item",
+    "tag": "div",
+    "property": "gap",
+    "expect": "10px"
+  },
+  {
+    "className": "ui-segmented",
+    "tag": "div",
+    "property": "gap",
+    "expect": "3px"
+  },
+  {
+    "className": "ui-theme-accent-preview",
+    "tag": "div",
+    "property": "height",
+    "expect": "42px"
+  },
+  {
+    "className": "ui-theme-accent-preview",
+    "tag": "div",
+    "property": "gap",
+    "expect": "4px"
+  },
+  {
+    "className": "ui-theme-preview-choice",
+    "tag": "div",
+    "property": "minWidth",
+    "expect": "0px"
+  },
+  {
+    "className": "ui-theme-preview-choice",
+    "tag": "div",
+    "property": "gap",
+    "expect": "5px"
+  },
+  {
+    "className": "ui-toast",
+    "tag": "div",
+    "property": "minHeight",
+    "expect": "40px"
+  },
+  {
+    "className": "ui-toast",
+    "tag": "div",
+    "property": "gap",
+    "expect": "8px"
+  },
+  {
+    "className": "ui-prompt-chip",
+    "tag": "div",
+    "property": "minHeight",
+    "expect": "30px"
+  },
+  {
+    "className": "ui-list-card",
+    "tag": "div",
+    "property": "borderRadius",
+    "expect": "7px"
+  },
+  {
+    "className": "ui-empty-state",
+    "tag": "div",
+    "property": "minHeight",
+    "expect": "96px"
+  },
+  {
+    "className": "ui-empty-state",
+    "tag": "div",
+    "property": "borderRadius",
+    "expect": "8px"
+  },
+  {
+    "className": "ui-tree-card",
+    "tag": "div",
+    "property": "borderRadius",
+    "expect": "7px"
+  },
+  {
+    "className": "ui-count-badge",
+    "tag": "div",
+    "property": "minWidth",
+    "expect": "22px"
+  },
+  {
+    "className": "ui-count-badge",
+    "tag": "div",
+    "property": "borderRadius",
+    "expect": "999px"
+  },
+  {
+    "className": "ui-switch",
+    "tag": "div",
+    "property": "width",
+    "expect": "32px"
+  },
+  {
+    "className": "ui-switch",
+    "tag": "div",
+    "property": "height",
+    "expect": "18px"
+  },
+  {
+    "className": "ui-switch",
+    "tag": "div",
+    "property": "borderRadius",
+    "expect": "9999px"
+  },
+  {
+    "className": "ui-switch-sm",
+    "tag": "div",
+    "property": "width",
+    "expect": "26px"
+  },
+  {
+    "className": "ui-switch-sm",
+    "tag": "div",
+    "property": "height",
+    "expect": "15px"
+  },
+  {
+    "className": "ui-switch-thumb",
+    "tag": "div",
+    "property": "width",
+    "expect": "14px"
+  },
+  {
+    "className": "ui-switch-thumb",
+    "tag": "div",
+    "property": "height",
+    "expect": "14px"
+  },
+  {
+    "className": "ui-switch-thumb",
+    "tag": "div",
+    "property": "borderRadius",
+    "expect": "9999px"
+  },
+  {
+    "className": "ui-checkbox",
+    "tag": "input",
+    "property": "width",
+    "expect": "16px"
+  },
+  {
+    "className": "ui-checkbox",
+    "tag": "input",
+    "property": "height",
+    "expect": "16px"
+  },
+  {
+    "className": "ui-checkbox",
+    "tag": "input",
+    "property": "borderRadius",
+    "expect": "4px"
+  },
+  {
+    "className": "ui-tooltip",
+    "tag": "div",
+    "property": "borderRadius",
+    "expect": "6px"
+  },
+  {
+    "className": "ui-tooltip-arrow",
+    "tag": "div",
+    "property": "width",
+    "expect": "12px"
+  },
+  {
+    "className": "ui-tooltip-arrow",
+    "tag": "div",
+    "property": "height",
+    "expect": "6px"
+  },
+  {
+    "className": "ui-radio",
+    "tag": "input",
+    "property": "width",
+    "expect": "16px"
+  },
+  {
+    "className": "ui-radio",
+    "tag": "input",
+    "property": "height",
+    "expect": "16px"
+  },
+  {
+    "className": "ui-radio",
+    "tag": "input",
+    "property": "borderRadius",
+    "expect": "999px"
+  }
+]

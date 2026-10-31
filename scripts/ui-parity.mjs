@@ -755,6 +755,13 @@ if (process.argv.includes('--style-contract')) {
     { className: 'ui-tag-card', tag: 'div', property: 'cursor', expect: 'pointer' },
     { className: 'ui-dialog-surface', tag: 'div', property: 'borderTopWidth', expect: '0px' },
   ]
+  // Generated assertions (scripts/build-style-contract.mjs) are merged in: hand-written ones stay authoritative
+  // for anything measured in a real element, generated ones keep geometric values from drifting.
+  try {
+    const extra = JSON.parse(fs.readFileSync(path.join(root, 'scripts', 'style-contract-extra.json'), 'utf8'))
+    const known = new Set(contract.map(item => item.className + '|' + item.property))
+    for (const item of extra) if (!known.has(item.className + '|' + item.property)) contract.push(item)
+  } catch {}
   const measured = await evaluate(`(() => { const contract = ${JSON.stringify('CONTRACT')}; return contract.map(item => { const element = document.createElement(item.tag); element.className = item.className; document.body.appendChild(element); const style = getComputedStyle(element); const value = style[item.property] || ''; element.remove(); return { className: item.className, property: item.property, expected: item.expect, actual: value, ok: value === item.expect } }) })()`.replace('"CONTRACT"', JSON.stringify(contract)))
   const failures = (measured || []).filter(item => !item.ok)
   // Coverage, not just pass/fail: 105 ui-* classes are used in components but only a fraction are asserted.
