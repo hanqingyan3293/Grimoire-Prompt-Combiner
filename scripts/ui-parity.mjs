@@ -741,12 +741,47 @@ if (process.argv.includes('--style-contract')) {
     { className: 'ui-list-card', tag: 'div', property: 'borderRadius', expect: '7px' },
     { className: 'ui-list-card', tag: 'div', property: 'paddingTop', expect: '12px' },
     { className: 'ui-segmented-item', tag: 'button', property: 'borderStyle', expect: 'solid' },
+    // Third wave (coverage ratchet): properties copied from src/renderer/index.css so a rule that loses its
+    // value (typo, later override, cascade order) fails here instead of shipping.
+    { className: 'ui-status-badge', tag: 'span', property: 'gap', expect: '5px' },
+    { className: 'ui-empty-state', tag: 'div', property: 'minHeight', expect: '96px' },
+    { className: 'ui-empty-state', tag: 'div', property: 'borderTopStyle', expect: 'dashed' },
+    { className: 'ui-empty-state', tag: 'div', property: 'borderRadius', expect: '8px' },
+    { className: 'ui-progress', tag: 'div', property: 'height', expect: '6px' },
+    { className: 'ui-progress', tag: 'div', property: 'borderRadius', expect: '999px' },
+    // 0.78rem with a 14px root (not 16px): measured, not assumed.
+    { className: 'ui-section-label', tag: 'div', property: 'fontSize', expect: '10.92px' },
+    { className: 'ui-section-label', tag: 'div', property: 'fontWeight', expect: '600' },
+    { className: 'ui-tag-card', tag: 'div', property: 'cursor', expect: 'pointer' },
+    { className: 'ui-dialog-surface', tag: 'div', property: 'borderTopWidth', expect: '0px' },
   ]
   const measured = await evaluate(`(() => { const contract = ${JSON.stringify('CONTRACT')}; return contract.map(item => { const element = document.createElement(item.tag); element.className = item.className; document.body.appendChild(element); const style = getComputedStyle(element); const value = style[item.property] || ''; element.remove(); return { className: item.className, property: item.property, expected: item.expect, actual: value, ok: value === item.expect } }) })()`.replace('"CONTRACT"', JSON.stringify(contract)))
   const failures = (measured || []).filter(item => !item.ok)
-  fs.writeFileSync('artifacts/visual/ui-parity/style-contract.json', JSON.stringify({ passed: failures.length === 0, measured, failures }, null, 2))
-  console.log('STYLE-CONTRACT ' + JSON.stringify({ passed: failures.length === 0, total: (measured || []).length, failures }))
-  if (failures.length) process.exitCode = 1
+  // Coverage, not just pass/fail: 105 ui-* classes are used in components but only a fraction are asserted.
+  // Reporting the number (and ratcheting it) keeps the blind spot visible instead of "24 checks passed".
+  const walkComponents = (dir, out = []) => {
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      const full = path.join(dir, entry.name)
+      if (entry.isDirectory()) walkComponents(full, out)
+      else if (/\.tsx?$/.test(entry.name)) out.push(full)
+    }
+    return out
+  }
+  const usedClasses = new Set()
+  for (const file of walkComponents(path.join(root, 'src', 'renderer', 'components'))) {
+    for (const match of fs.readFileSync(file, 'utf8').matchAll(/ui-[a-z][a-z0-9-]+/g)) usedClasses.add(match[0])
+  }
+  const assertedClasses = new Set(contract.map(item => String(item.className).split(' ')[0]))
+  const covered = [...assertedClasses].filter(name => usedClasses.has(name))
+  const coverage = { used: usedClasses.size, assertedClasses: assertedClasses.size, covered: covered.length, pct: Math.round((covered.length / usedClasses.size) * 1000) / 10 }
+  let coverageBaseline = { minCovered: 0 }
+  const baselineFile = path.join(root, 'scripts', 'style-contract-baseline.json')
+  try { coverageBaseline = JSON.parse(fs.readFileSync(baselineFile, 'utf8')) } catch {}
+  const coverageShortfall = coverage.covered < (coverageBaseline.minCovered ?? 0)
+  const passedAll = failures.length === 0 && !coverageShortfall
+  fs.writeFileSync('artifacts/visual/ui-parity/style-contract.json', JSON.stringify({ passed: passedAll, total: (measured || []).length, measured, failures, coverage }, null, 2))
+  console.log('STYLE-CONTRACT ' + JSON.stringify({ passed: passedAll, total: (measured || []).length, coverage, coverageShortfall: coverageShortfall || undefined, failures }))
+  if (!passedAll) process.exitCode = 1
 }
 
 // `--selection-popup` drives the floating selection assistant end to end: open it through IPC, find the

@@ -2047,3 +2047,21 @@ DIFF-SELFTEST {"detected":6,"compared":48}
 复跑：**33 条全过**。
 
 结论：**契约的盲区不在灵敏度，在覆盖面**。断言写得再准，没覆盖到的类等于没有契约。
+
+### G11 现在报告覆盖率，并且会「掉覆盖就红」（2026-10-31 第一百二十七轮）
+
+上轮发现 105 个类只有 16 个被断言。这轮把这件事变成**门禁能看见的数字**：
+
+```
+STYLE-CONTRACT {"passed":true,"total":43,"coverage":{"used":105,"assertedClasses":23,"covered":22,"pct":21}}
+```
+
+- 覆盖率写进 JSON 与日志；
+- `scripts/style-contract-baseline.json` 记 `minCovered`，**掉下来就失败**（只许升）。
+
+本轮断言 33 → **43 条**，覆盖类 16 → **22**（21%）。补的过程中又抓到一个「我以为的值」：
+
+`ui-section-label` 的 `font-size: 0.78rem` 我按 16px 根字号算成 12.48px，实测 **10.92px** —— 根字号是 14px。
+**常量要量，不要算。**
+
+当我把基线误设成 26 时，门禁立刻报 `coverageShortfall: true`——说明这条棘轮真的会咬。

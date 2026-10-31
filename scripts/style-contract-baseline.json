@@ -1,0 +1,4 @@
+{
+  "minCovered": 22,
+  "note": "Asserted ui-* classes that components actually use. Ratchet: raise after adding assertions, never lower."
+}
