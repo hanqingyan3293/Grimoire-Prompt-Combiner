@@ -597,7 +597,9 @@ if (process.argv.includes('--visual-matrix')) {
   if (visualDiffs.length) {
     // A tile is 1/144 of the frame: >12% of one tile changing means real content moved, while the measured
     // noise floor stayed at 0-3% per tile between identical runs.
-    const bad = visualDiffs.filter(item => item.mismatch || (item.maxContentTilePct ?? 0) > 12)
+    // Threshold 6%: the measured noise floor (animations frozen, chrome row excluded) is <=2.8%, so 6%
+    // doubles the safety margin while halving the smallest detectable change.
+    const bad = visualDiffs.filter(item => item.mismatch || (item.maxContentTilePct ?? 0) > 6)
     matrix.visual = { compared: visualDiffs.length, failing: bad.slice(0, 6) }
     if (bad.length) { matrix.visualFailed = bad.length; report.ok = false }
   }
