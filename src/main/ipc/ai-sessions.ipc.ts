@@ -291,7 +291,9 @@ export async function handleAiSessionSend(_event: { sender: Electron.WebContents
     const userMessage = appendAiMessage({ sessionId, role: "user", content: toAiMessagePartsContent({ parts: userParts }, 'user'), attachments: inputAttachments })
     for (const attachment of inputAttachments) {
       if (attachment && typeof attachment === 'object' && typeof (attachment as Record<string, unknown>).attachmentId === 'string') {
-        try { linkAiAttachment(String((attachment as Record<string, unknown>).attachmentId), userMessage.id) } catch {}
+        // A silently skipped link leaves an attachment nothing points to; the message still sends, so the
+        // only symptom is a missing thumbnail later. Say which attachment id failed.
+        try { linkAiAttachment(String((attachment as Record<string, unknown>).attachmentId), userMessage.id) } catch (error) { console.warn('[ai-sessions] attachment link failed for ' + String((attachment as Record<string, unknown>).attachmentId), error) }
       }
     }
     broadcast({ kind: "message", record: userMessage })

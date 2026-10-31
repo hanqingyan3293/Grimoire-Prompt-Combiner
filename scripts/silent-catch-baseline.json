@@ -1,4 +1,4 @@
 {
-  "max": 163,
+  "max": 154,
   "note": "Silent failure paths in src (tests excluded): empty try/catch plus `.catch(() => {})` / `.catch(() => null|undefined|0|false|'')`. Ratchet down as they are justified or replaced; growth means a new silent path."
 }

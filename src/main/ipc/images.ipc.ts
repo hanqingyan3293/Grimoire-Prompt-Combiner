@@ -67,7 +67,7 @@ export function registerImagesIPC(): void {
       const registered = await registerManagedImage(sourcePath)
       const media = ensureMediaAsset(registered.id, 'imported-reference', registered.original_name)
       void createImageDerivatives(registered.id)
-      void parseMediaMetadata(media.id).catch(() => {})
+      void parseMediaMetadata(media.id).catch(error => console.warn('[images] metadata parse failed for ' + media.id, error))
       return registered
     }
 
@@ -79,7 +79,7 @@ export function registerImagesIPC(): void {
     const id = idResult[0]?.values?.[0]?.[0] as number
     const externalMedia = ensureMediaAsset(id, 'external-link', inspection.originalName)
     void createImageDerivatives(id)
-    void parseMediaMetadata(externalMedia.id).catch(() => {})
+    void parseMediaMetadata(externalMedia.id).catch(error => console.warn('[images] metadata parse failed for ' + externalMedia.id, error))
     return { id, file_path: filePath, storage_mode: mode }
   })
 
@@ -102,7 +102,7 @@ export function registerImagesIPC(): void {
       const registered = await registerManagedImage(tempPath, typeof originalName === 'string' ? originalName : undefined)
       const importedMedia = ensureMediaAsset(registered.id, 'imported-reference', registered.original_name)
       void createImageDerivatives(registered.id)
-      void parseMediaMetadata(importedMedia.id).catch(() => {})
+      void parseMediaMetadata(importedMedia.id).catch(error => console.warn('[images] metadata parse failed for ' + importedMedia.id, error))
       return registered
     } finally {
       await fs.promises.rm(tempRoot, { recursive: true, force: true })

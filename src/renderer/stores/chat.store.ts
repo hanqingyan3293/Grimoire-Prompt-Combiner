@@ -73,14 +73,20 @@ function toast(msg: string, type: 'success' | 'error' | 'info' = 'info') {
   window.dispatchEvent(new CustomEvent('grimoire:toast', { detail: { message: msg, type } }))
 }
 
+// A failed refresh used to be swallowed: the list simply stayed empty and looked like "no conversations".
+// Report it once per refresh so the failure is visible in the console next to its cause.
+const reportRefreshFailure = (what: string) => (error: unknown) => {
+  console.warn('[chat] refresh failed while loading ' + what, error)
+}
+
 // 跨窗口刷新监听
 if (typeof window !== 'undefined') {
   window.addEventListener('grimoire:refresh', () => {
     const state = useChatStore.getState()
-    state.loadConversations().catch(() => {})
-    state.loadGroups().catch(() => {})
+    state.loadConversations().catch(reportRefreshFailure('conversations'))
+    state.loadGroups().catch(reportRefreshFailure('groups'))
     if (state.activeConversationId) {
-      state.loadMessages(state.activeConversationId).catch(() => {})
+      state.loadMessages(state.activeConversationId).catch(reportRefreshFailure('messages'))
     }
   })
 }
@@ -92,8 +98,8 @@ if (typeof window !== 'undefined') {
     clearTimeout(refreshTimer)
     refreshTimer = setTimeout(() => {
       const s = useChatStore.getState()
-      s.loadConversations().catch(() => {})
-      s.loadGroups().catch(() => {})
+      s.loadConversations().catch(reportRefreshFailure('conversations'))
+      s.loadGroups().catch(reportRefreshFailure('groups'))
     }, 200) // debounce 200ms
   })
 }
