@@ -544,6 +544,10 @@ if (process.argv.includes('--visual-matrix')) {
         // the full header, a 351px one can).
         const headerOverflowX = await evaluate(`(() => { const header = document.querySelector('[data-panel-type="' + window.__matrixType + '"] [data-ui="panel.header"]'); if (!header) return 0; return Math.max(0, header.scrollWidth - header.clientWidth) })()`)
         const shotName = 'w' + width + '-' + type + '.png'
+        // Animations are the main source of diff noise (measured 5.9-8.5% tile drift between identical runs).
+        // Freeze them and let the frame settle before the screenshot instead of widening the threshold.
+        await evaluate(`(() => { if (document.getElementById('__no_anim')) return true; const style = document.createElement('style'); style.id = '__no_anim'; style.textContent = '*,*::before,*::after{animation:none!important;transition:none!important;caret-color:transparent!important}'; document.head.appendChild(style); return true })()`)
+        await sleep(260)
         const shot = await screenshot('w' + width + '-' + type)
         // `--record` seeds the baseline; `--diff` compares against it and fails past the tolerance.
         let visual = null
