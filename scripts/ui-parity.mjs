@@ -132,7 +132,7 @@ async function diffAgainstBaseline(name) {
     // and report the WORST tile, so a local change is not diluted by the rest of the screenshot.
     const TILES_X = 16, TILES_Y = 9
     const tileW = Math.floor(a.width / TILES_X), tileH = Math.floor(a.height / TILES_Y)
-    let changed = 0, worstTile = 0
+    let changed = 0, worstTile = 0, worstAt = null, worstContentTile = 0
     for (let ty = 0; ty < TILES_Y; ty += 1) {
       for (let tx = 0; tx < TILES_X; tx += 1) {
         let tileChanged = 0, tileTotal = 0
@@ -144,10 +144,16 @@ async function diffAgainstBaseline(name) {
             if (delta > 8) { changed += 1; tileChanged += 1 }
           }
         }
-        if (tileTotal) worstTile = Math.max(worstTile, (tileChanged / tileTotal) * 100)
+        if (tileTotal) {
+          const pct = (tileChanged / tileTotal) * 100
+          if (pct > worstTile) { worstTile = pct; worstAt = { x: tx * tileW, y: ty * tileH } }
+          // Row 0 is app chrome (window buttons, tab strip); it is time dependent and is not panel content,
+          // so it is reported separately instead of deciding pass/fail.
+          if (ty >= 1 && pct > worstContentTile) worstContentTile = pct
+        }
       }
     }
-    return { changedPct: Math.round((changed / (left.length / 4)) * 1000) / 10, maxTilePct: Math.round(worstTile * 10) / 10 }
+    return { changedPct: Math.round((changed / (left.length / 4)) * 1000) / 10, maxTilePct: Math.round(worstTile * 10) / 10, worstAt, maxContentTilePct: Math.round(worstContentTile * 10) / 10 }
   })()`.replace('"LEFT"', JSON.stringify(base)).replace('"RIGHT"', JSON.stringify(current))
   return await evaluate(code)
 }
@@ -591,7 +597,7 @@ if (process.argv.includes('--visual-matrix')) {
   if (visualDiffs.length) {
     // A tile is 1/144 of the frame: >12% of one tile changing means real content moved, while the measured
     // noise floor stayed at 0-3% per tile between identical runs.
-    const bad = visualDiffs.filter(item => item.mismatch || (item.maxTilePct ?? 0) > 12)
+    const bad = visualDiffs.filter(item => item.mismatch || (item.maxContentTilePct ?? 0) > 12)
     matrix.visual = { compared: visualDiffs.length, failing: bad.slice(0, 6) }
     if (bad.length) { matrix.visualFailed = bad.length; report.ok = false }
   }
