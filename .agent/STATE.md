@@ -2472,3 +2472,25 @@ ComfyUI 删除的实现要点：
 
 剩下 17 项按上轮结论分类：多数是协议层事件（`cache.*Sync`、`dataApi.onDataChanged`、`tasks.onSnapshot`）
 或暂无场景（`application.relaunch`、`workspace.focusPopout`）、或已有等价能力（`wd14.switchModel` 预热）。
+
+### 文件库页面：注释说「没接数据」，其实接了（2026-11-01 第一百五十轮）
+
+`cherry-chat-shell-entry.tsx` 原注释：
+
+> Mounted with its data gap VISIBLE. `/files/entries` and `/files/entries/stats` are **not bridged**, so the page's own error state renders…
+
+查证：三条路由**都在** `cherry-data-api.ipc.ts` 里，
+并接到 `cherry-file-library.service.ts`（`ai_attachments` ∪ 可用 `image_refs`，10 条测试）：
+
+| 路由 | 实现 |
+|---|---|
+| `/files/entries` | `queryFileLibrary`（origin/fileType/search/sort/limit/cursor） |
+| `/files/entries/stats` | `fileLibraryStats` |
+| `/files/entries/:id` | `findFileLibraryEntry` |
+
+唯一诚实的缺口是回收站：`inTrash=true` 明确回 `NOT_IMPLEMENTED`，而不是把在线列表冒充成回收站。
+
+注释已改。**这是第三次遇到「记录在低估自己」**（前两次：划词助手浮动工具栏、M1.5/M6 未进台账）。
+
+遗留问题：路由扫描时 `/app/files` 只有 `chars:177`。可能是快照拍在加载态，也可能是页面拿到数据后仍显示空态，
+下轮用数据级探针确认——**先量再结论**。

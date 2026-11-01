@@ -83,9 +83,11 @@ const NotesPage = lazy(() => import('../../source/src/renderer/pages/notes/Notes
 const CodeCliPage = lazy(() => import('../../source/src/renderer/pages/code/CodeCliPage'))
 const TranslatePage = lazy(() => import('../../source/src/renderer/pages/translate/TranslatePage'))
 const PaintingPage = lazy(() => import('../../source/src/renderer/pages/paintings/PaintingPage'))
-// Mounted with its data gap VISIBLE. `/files/entries` and `/files/entries/stats` are not bridged,
-// so the page's own error state renders rather than an empty library that would read as "you have
-// no files". The launchpad's 文件 tile navigates here, so it must not be 路由未实现.
+// Mounted on a REAL data source: `/files/entries`, `/files/entries/stats` and `/files/entries/:id` are all
+// bridged in cherry-data-api.ipc.ts to cherry-file-library.service.ts (the union of ai_attachments and
+// image_refs). The one honest gap is the trash query (`inTrash=true` answers NOT_IMPLEMENTED instead of
+// pretending the live list is the trash). This comment used to say the routes were not bridged at all — that
+// was true before the service landed and is stale now.
 const FilesPage = lazy(() => import('../../source/src/renderer/pages/files/FilesPage'))
 const FilePreviewPage = lazy(() => import('./CompatFilePreviewPage'))
 // The source GeneralSettings page is NOT mounted: its controls (tray, launch-on-boot,
