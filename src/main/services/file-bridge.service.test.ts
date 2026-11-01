@@ -4,7 +4,14 @@ import path from 'path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 let testRoot = ''
-vi.mock('electron', () => ({ app: { getPath: (name: string) => name === 'temp' ? path.join(testRoot, 'temp') : testRoot } }))
+// The save path talks to the OS dialog, so the dialog is stubbed here: what CAN be automated is our own
+// contract (cancel → null, no path → null, managed-storage refusal, bytes written verbatim). Whether the
+// dialog looks right is the remaining manual step recorded on the matrix row.
+const dialogResult: { canceled: boolean; filePath?: string } = { canceled: false }
+vi.mock('electron', () => ({
+  app: { getPath: (name: string) => name === 'temp' ? path.join(testRoot, 'temp') : testRoot },
+  dialog: { showSaveDialog: async () => dialogResult },
+}))
 
 import {
   createBridgeTempFile,
@@ -12,6 +19,7 @@ import {
   getBridgeFileInfo,
   getBridgePhysicalMetadata,
   readBridgeTextFile,
+  saveBridgeFile,
   writeBridgeTempFile
 } from './file-bridge.service'
 
@@ -70,5 +78,36 @@ describe('composer file bridge', () => {
     const outside = path.join(testRoot, 'elsewhere.txt')
     expect(() => writeBridgeTempFile(outside, 'nope')).toThrow('FILE_BRIDGE_TEMP_ONLY')
     expect(fs.existsSync(outside)).toBe(false)
+  })
+  it('returns null when the user cancels, and never writes', async () => {
+    dialogResult.canceled = true
+    dialogResult.filePath = path.join(testRoot, 'unused.txt')
+    const target = await saveBridgeFile({} as never, 'a.txt', 'hello')
+    expect(target).toBeNull()
+    expect(fs.existsSync(path.join(testRoot, 'unused.txt'))).toBe(false)
+  })
+
+  it('writes the exact bytes to the chosen path', async () => {
+    // Must be OUTSIDE the mocked userData root (testRoot), otherwise the managed-storage guard correctly
+    // refuses — the first version of this test placed it inside and failed for the right reason.
+    const chosen = path.join(os.tmpdir(), 'grimoire-save-' + Date.now() + '.txt')
+    dialogResult.canceled = false
+    dialogResult.filePath = chosen
+    try {
+      const target = await saveBridgeFile({} as never, 'b.txt', '你好\n世界')
+      expect(target).toBe(chosen)
+      expect(fs.readFileSync(chosen, 'utf8')).toBe('你好\n世界')
+    } finally { fs.rmSync(chosen, { force: true }) }
+  })
+
+  it('refuses to overwrite a file inside the app-managed userData root', async () => {
+    dialogResult.canceled = false
+    dialogResult.filePath = path.join(testRoot, 'managed.txt')
+    await expect(saveBridgeFile({} as never, 'c.txt', 'x')).rejects.toThrow(/FILE_SAVE_MANAGED_STORAGE/)
+    expect(fs.existsSync(path.join(testRoot, 'managed.txt'))).toBe(false)
+  })
+
+  it('rejects content that is neither a string nor bytes before opening any dialog', async () => {
+    await expect(saveBridgeFile({} as never, 'd.txt', 42)).rejects.toThrow(/FILE_SAVE_INVALID_CONTENT/)
   })
 })
