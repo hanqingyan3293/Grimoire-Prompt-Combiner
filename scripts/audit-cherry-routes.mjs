@@ -355,6 +355,11 @@ for (const route of ROUTES) {
     // is captured too: it distinguishes "the registry rejected the path we asked for" from
     // "the navigation never landed", which look identical from the byte count alone.
     const unimplemented = body.includes('路由未实现')
+    // Recorded, NOT failed: 「尚未接入」 in the compat pages is an honest disclosure ("this part is not wired,
+    // here is why"), which is the opposite of a stub pretending to work. Five settings routes carry one and
+    // they should. The strict stub check lives in the panel matrix, where the registry fallback says
+    // 「面板尚未接入」 and nothing else — that one IS a defect when it appears.
+    const stubPhrase = ['即将支持', '尚未接入', '敬请期待', '施工中'].find(phrase => body.includes(phrase)) || null
     // The source error boundary renders 「似乎出现了一些问题…」 with 打开调试面板 / 重新加载.
     // The original regex did NOT match that text, so a route whose component threw was
     // reported OK — verified on /settings/shortcut, which crashed with
@@ -383,6 +388,7 @@ for (const route of ROUTES) {
     return {
       rendered: routeMatched && contentVisible && !unimplemented && !boundary && contentText.length > 0 && missingSignals.length === 0 && missingSelectors.length === 0,
       unimplemented,
+      stubPhrase,
       ...(errorText ? { errorText } : {}),
       boundary,
       ...(missingSignals.length ? { missingSignals } : {}),

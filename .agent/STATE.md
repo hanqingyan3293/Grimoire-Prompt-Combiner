@@ -2960,3 +2960,41 @@ ALL JOURNEYS PASSED   （24 条 ok，无 FAIL、无 retry）
 | 把 `case "images"` 改名 | **有效**：`stub:["images"]`（三个宽度全部命中）且 exit=1 |
 
 第一次对照失败本身也是收获：**对照必须作用在被测对象上**，否则「没红」什么都不能证明。
+
+### 「尚未接入」有两种，不能一律算缺陷（2026-11-01 第一百八十轮）
+
+给路由扫描加「占位话」检测，结果 **5 条设置路由失败**：
+
+```
+/settings/local-models  /settings/model  /settings/system  /settings/general  /app/mini-app
+```
+
+去读渲染源码才发现，这些是**诚实披露**，不是桩：
+
+> 源本地模型设置已挂载；local_model.list 和加速能力服务尚未接入。下方无模型卡片表示目录未能读取，
+> 不表示没有已安装模型。
+
+也就是说：
+
+| 形态 | 判断 |
+|---|---|
+| **桩**：假装能用，实际什么都不做 | 缺陷 |
+| **披露**：明确说这块没接、并说明为什么 | **正相反，是好实践** |
+
+于是改成：路由扫描**记录** `stubPhrase` 但不判失败（5 条如实记录）；严格的 stub 判定留在矩阵——
+那里命中的是 `PanelRegistry` 的 `默认分支「面板尚未接入」`，那才是真缺陷。
+
+复跑：51 条全渲染，exit=0，其中 5 条带披露标记。
+
+### G11 又因残留进程假红一次——这次让 verify 自己先清理（2026-11-01 第一百八十轮补充）
+
+全量门禁里 G11 跑了 **2865 秒**后 `WINDOW_NOT_RENDERED`。清掉 2 个残留 electron 后，
+G11 单跑 **80 秒 PASS**。
+
+第二次踩同一个坑，就不再靠人记得：`npm run verify` 现在**先执行 `npm run clean:electron`**。
+
+```
+verify = npm run clean:electron && node scripts/gates.mjs && npm run journeys
+```
+
+规律：**只要本体反复起渲染器，就要在跑门禁前清理**；把它写进脚本比写进文档可靠。
