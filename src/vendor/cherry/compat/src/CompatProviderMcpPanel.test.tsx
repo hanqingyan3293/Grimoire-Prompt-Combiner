@@ -111,7 +111,10 @@ describe('CompatProviderMcpPanel', () => {
   it('surfaces pull failures with a retry action', async () => {
     host.providers.fetchModelsForProvider.mockResolvedValueOnce({ success: false, error: 'HTTP 503' })
     render(<CompatProviderMcpPanel onProviderSettings={vi.fn()} />)
-    fireEvent.click(await screen.findByRole('button', { name: '刷新模型' }))
+    // Same disabled-button trap as the test above: 刷新模型 needs base_url + a key before it can be clicked.
+    const refreshButton = await screen.findByRole('button', { name: '刷新模型' })
+    await waitFor(() => expect(refreshButton).not.toBeDisabled())
+    fireEvent.click(refreshButton)
     expect(await screen.findByText('HTTP 503')).toBeTruthy()
     expect(screen.getByRole('button', { name: '重试' })).toBeTruthy()
   })

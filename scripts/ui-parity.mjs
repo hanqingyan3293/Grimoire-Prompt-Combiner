@@ -614,7 +614,17 @@ if (process.argv.includes('--panel-smoke')) {
       if (!(await selectType(type))) continue
       await sleep(500)
       const entry = { type }
-      entry.clicked = await evaluate(`(() => { const panel = document.querySelector('[data-panel-type="' + ${JSON.stringify('T')} + '"]'); if (!panel) return 'NO_PANEL'; const unsafe = ${JSON.stringify('UNSAFE')}; const button = Array.from(panel.querySelectorAll('button')).filter(el => !el.closest('[data-ui="panel.header"]')).find(el => { if (el.disabled) return false; const label = String(el.textContent || '') + ' ' + String(el.title || '') + ' ' + String(el.getAttribute('aria-label') || ''); return !unsafe.some(word => label.includes(word)) }); if (!button) return 'NO_SAFE_BUTTON'; const label = String(button.textContent || button.title || button.getAttribute('aria-label') || '').trim().slice(0, 16); button.click(); return label })()`.replace('"T"', JSON.stringify(type)).replace('"UNSAFE"', JSON.stringify(UNSAFE)))
+      // Up to three safe buttons per panel: one click proves it is not dead, three catches most ordering and
+      // state assumptions. Escape between clicks so an opened menu cannot swallow the next one.
+      entry.clicked = []
+      for (let round = 0; round < 3; round += 1) {
+        const label = await evaluate(`(() => { const panel = document.querySelector('[data-panel-type="' + ${JSON.stringify('T')} + '"]'); if (!panel) return 'NO_PANEL'; const unsafe = ${JSON.stringify('UNSAFE')}; const used = ${JSON.stringify('ROUND')}; const buttons = Array.from(panel.querySelectorAll('button')).filter(el => !el.closest('[data-ui="panel.header"]')).filter(el => { if (el.disabled) return false; const label = String(el.textContent || '') + ' ' + String(el.title || '') + ' ' + String(el.getAttribute('aria-label') || ''); return !unsafe.some(word => label.includes(word)) }); const button = buttons[used]; if (!button) return false; const text = String(button.textContent || button.title || button.getAttribute('aria-label') || '').trim().slice(0, 16); button.click(); return text })()`.replace('"T"', JSON.stringify(type)).replace('"UNSAFE"', JSON.stringify(UNSAFE)).replace('"ROUND"', String(round)))
+        if (!label || label === 'NO_PANEL') break
+        entry.clicked.push(label)
+        await call('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Escape', code: 'Escape', windowsVirtualKeyCode: 27 })
+        await call('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Escape', code: 'Escape', windowsVirtualKeyCode: 27 })
+        await sleep(450)
+      }
       await sleep(700)
       // A click can open a menu or a dialog; Escape closes menus so the next panel starts clean.
       await call('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Escape', code: 'Escape', windowsVirtualKeyCode: 27 })
@@ -627,7 +637,7 @@ if (process.argv.includes('--panel-smoke')) {
   const bad = report.panels.filter(entry => entry.state !== 'OK')
   report.passed = bad.length === 0 && !report.error
   fs.writeFileSync('artifacts/visual/ui-parity/panel-smoke.json', JSON.stringify(report, null, 2))
-  console.log('PANEL-SMOKE-SUMMARY ' + JSON.stringify({ panels: report.panels.length, clicked: report.panels.filter(e => e.clicked && e.clicked !== 'NO_SAFE_BUTTON' && e.clicked !== 'NO_PANEL').length, bad, error: report.error }))
+  console.log('PANEL-SMOKE-SUMMARY ' + JSON.stringify({ panels: report.panels.length, clicked: report.panels.reduce((sum, entry) => sum + (Array.isArray(entry.clicked) ? entry.clicked.length : 0), 0), bad, error: report.error }))
   if (!report.passed) process.exitCode = 1
 }
 
