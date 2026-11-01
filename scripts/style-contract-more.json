@@ -1,0 +1,146 @@
+[
+  {
+    "className": "ui-app-chrome",
+    "tag": "div",
+    "property": "display",
+    "expect": "block"
+  },
+  {
+    "className": "ui-dialog-overlay",
+    "tag": "div",
+    "property": "display",
+    "expect": "block"
+  },
+  {
+    "className": "ui-fav-path-label",
+    "tag": "div",
+    "property": "display",
+    "expect": "block"
+  },
+  {
+    "className": "ui-fav-tag-row",
+    "tag": "div",
+    "property": "display",
+    "expect": "block"
+  },
+  {
+    "className": "ui-image-preview",
+    "tag": "div",
+    "property": "display",
+    "expect": "block"
+  },
+  {
+    "className": "ui-image-preview",
+    "tag": "div",
+    "property": "borderRadius",
+    "expect": "6px"
+  },
+  {
+    "className": "ui-layout-menu-trigger",
+    "tag": "div",
+    "property": "display",
+    "expect": "block"
+  },
+  {
+    "className": "ui-menu-divider",
+    "tag": "div",
+    "property": "display",
+    "expect": "block"
+  },
+  {
+    "className": "ui-menu-muted",
+    "tag": "div",
+    "property": "display",
+    "expect": "block"
+  },
+  {
+    "className": "ui-prompt-section",
+    "tag": "div",
+    "property": "display",
+    "expect": "block"
+  },
+  {
+    "className": "ui-settings-content",
+    "tag": "div",
+    "property": "display",
+    "expect": "block"
+  },
+  {
+    "className": "ui-settings-content",
+    "tag": "div",
+    "property": "borderRadius",
+    "expect": "8px"
+  },
+  {
+    "className": "ui-settings-content",
+    "tag": "div",
+    "property": "paddingTop",
+    "expect": "24px"
+  },
+  {
+    "className": "ui-spin",
+    "tag": "div",
+    "property": "display",
+    "expect": "block"
+  },
+  {
+    "className": "ui-status-error",
+    "tag": "div",
+    "property": "display",
+    "expect": "block"
+  },
+  {
+    "className": "ui-theme-swatch",
+    "tag": "div",
+    "property": "display",
+    "expect": "block"
+  },
+  {
+    "className": "ui-theme-swatch",
+    "tag": "div",
+    "property": "borderRadius",
+    "expect": "6px"
+  },
+  {
+    "className": "ui-toolbar",
+    "tag": "div",
+    "property": "display",
+    "expect": "block"
+  },
+  {
+    "className": "ui-tree-header",
+    "tag": "div",
+    "property": "display",
+    "expect": "block"
+  },
+  {
+    "className": "ui-tree-row",
+    "tag": "div",
+    "property": "display",
+    "expect": "block"
+  },
+  {
+    "className": "ui-utility-popover",
+    "tag": "div",
+    "property": "display",
+    "expect": "block"
+  },
+  {
+    "className": "ui-utility-popover",
+    "tag": "div",
+    "property": "paddingTop",
+    "expect": "6px"
+  },
+  {
+    "className": "ui-workspace-add",
+    "tag": "div",
+    "property": "display",
+    "expect": "block"
+  },
+  {
+    "className": "ui-workspace-tabs",
+    "tag": "div",
+    "property": "display",
+    "expect": "block"
+  }
+]

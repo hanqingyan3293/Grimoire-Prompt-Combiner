@@ -1,4 +1,11 @@
 {
   "ui-spin-icon": "no rule on the element itself: the animation is declared on `.ui-spin-icon > svg`, which a same-element comparison cannot observe",
-  "ui-status-badge-success": "removed from the markup on 2026-10-31: it had no CSS rule at all (dead class). Re-add together with a real rule if the \"current\" badge should be emphasised."
+  "ui-status-badge-success": "removed from the markup on 2026-10-31: it had no CSS rule at all (dead class). Re-add together with a real rule if the \"current\" badge should be emphasised.",
+  "ui-button-": "template prefix (`ui-button-${variant}`), not a class",
+  "ui-inline-note-": "template prefix (`ui-inline-note-${tone}`), not a class",
+  "ui-prompt-chip-": "template prefix (`ui-prompt-chip-${state}`), not a class",
+  "ui-toast-": "template prefix (`ui-toast-${tone}`), not a class",
+  "ui-embedded": "structural marker with no CSS rule; used to scope embedded layouts in markup only",
+  "ui-grimoire": "root marker with no CSS rule; theming goes through data attributes, not this class",
+  "ui-settings-scroll": "scroll container marker with no CSS rule; scrolling behaviour comes from utility classes"
 }

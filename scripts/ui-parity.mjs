@@ -701,6 +701,23 @@ if (process.argv.includes('--comfy-persist')) {
 // stylesheet. It builds throwaway elements with each class, reads computed styles, and compares against the
 // values the vendored primitives dictate. A class that exists but lost its rule (typo, later override,
 // cascade order) passes a grep and fails this.
+// `--record-style-more`: the classes in scripts/style-contract-more.json are measured instead of hand-written.
+// Recording computed values is the only honest option when a rule uses design tokens rather than literals.
+if (process.argv.includes('--record-style-more')) {
+  const names = ['ui-app-chrome','ui-dialog-overlay','ui-fav-path-label','ui-fav-tag-row','ui-image-preview','ui-layout-menu-trigger','ui-menu-divider','ui-menu-muted','ui-prompt-section','ui-settings-content','ui-spin','ui-status-error','ui-theme-swatch','ui-toolbar','ui-tree-header','ui-tree-row','ui-utility-popover','ui-workspace-add','ui-workspace-tabs']
+  const props = ['display', 'borderRadius', 'minHeight', 'paddingTop']
+  const values = await evaluate(`(() => { const out = {}; for (const name of ${JSON.stringify('NAMES')}) { const element = document.createElement('div'); element.className = name; document.body.appendChild(element); const style = getComputedStyle(element); out[name] = ${JSON.stringify('PROPS')}.map(prop => style[prop]); element.remove() } return out })()`.replace('"NAMES"', JSON.stringify(names)).replace('"PROPS"', JSON.stringify(props)))
+  const rows = []
+  for (const name of names) for (const [index, prop] of props.entries()) {
+    const value = values?.[name]?.[index]
+    // Skip values that carry a default nobody chose (auto/normal/0px on a div) — asserting those adds noise.
+    if (!value || value === 'auto' || value === 'normal' || value === '0px') continue
+    rows.push({ className: name, tag: 'div', property: prop, expect: value })
+  }
+  fs.writeFileSync(path.join(root, 'scripts', 'style-contract-more.json'), JSON.stringify(rows, null, 2) + '\n')
+  console.log('STYLE-RECORD ' + JSON.stringify({ rows: rows.length, classes: new Set(rows.map(row => row.className)).size }))
+}
+
 if (process.argv.includes('--style-contract')) {
   const contract = [
     // Badge (source: rounded-full border px-2 py-0.5 text-xs gap-1 shrink-0 w-fit whitespace-nowrap)
@@ -766,6 +783,10 @@ if (process.argv.includes('--style-contract')) {
     const extra = JSON.parse(fs.readFileSync(path.join(root, 'scripts', 'style-contract-extra.json'), 'utf8'))
     const known = new Set(contract.map(item => item.className + '|' + item.property))
     for (const item of extra) if (!known.has(item.className + '|' + item.property)) contract.push(item)
+    try {
+      const more = JSON.parse(fs.readFileSync(path.join(root, 'scripts', 'style-contract-more.json'), 'utf8'))
+      for (const item of more) if (!known.has(item.className + '|' + item.property)) { contract.push(item); known.add(item.className + '|' + item.property) }
+    } catch {}
   } catch {}
   const measured = await evaluate(`(() => { const contract = ${JSON.stringify('CONTRACT')};
 return contract.filter(item => !item.differsFrom).map(item => { const element = document.createElement(item.tag); element.className = item.className; document.body.appendChild(element); const style = getComputedStyle(element); const value = style[item.property] || ''; element.remove(); return { className: item.className, property: item.property, expected: item.expect, actual: value, ok: value === item.expect } }) })()`.replace('"CONTRACT"', JSON.stringify(contract)))
