@@ -2633,3 +2633,26 @@ THEME-SWEEP-UNAVAILABLE: the harness could not switch themes (1/7 applied)…
 真要覆盖主题轴，得驱动设置界面上的主题选择器——那是下一步。
 
 这一轮的价值不在「加了主题测试」，而在**没让一个假绿过关**。
+
+### 主题轴接上了：7 主题 × 18 面板全绿（2026-11-01 第一百五十九轮）
+
+上轮结论是「控件层改不动主题」。这轮换成**走用户的真实路径**：打开设置面板 → 点第 N 个 `.ui-theme-swatch`。
+
+```
+neon     #a855f7   clean  #3b82f6   gold    #f59e0b   midnight #6366f1
+sakura   #ec4899   forest #22c55e   sunset  #f97316
+```
+
+七个主题 accent **各不相同**，`themeApplied` 全为 true——这才算真的换了主题。
+
+结果：
+
+| 指标 | 七个主题 |
+|---|---|
+| 挂载 | 18/18（每个主题） |
+| 空白 / 卡加载 / 表头裁剪 | 全为 `[]` |
+| 表头横向溢出 | 0 |
+
+合计 **7 × 18 = 126 个格子**，全绿。这是「交叉矩阵」里此前缺的那一维。
+
+命令：`npm run verify:themes`（或 `--theme-sweep --width=1600`）。

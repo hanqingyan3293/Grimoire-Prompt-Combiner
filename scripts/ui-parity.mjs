@@ -524,13 +524,15 @@ if (process.argv.includes('--theme-sweep')) {
     await callWithTimeout('Emulation.setDeviceMetricsOverride', { width, height: 900, deviceScaleFactor: 1, mobile: false }, 10000)
     await sleep(600)
     await evaluate(`(() => { if (document.getElementById('__no_anim')) return true; const style = document.createElement('style'); style.id = '__no_anim'; style.textContent = '*,*::before,*::after{animation:none!important;transition:none!important}'; document.head.appendChild(style); return true })()`)
-    for (const theme of themes) {
-      // The theme cannot be switched by setting the attribute alone: `applyAccent` writes `--color-accent` as an
-      // INLINE style on <html>, which beats the [data-theme] rule (measured 2026-11-01: seven themes all reported
-      // the same accent). Go through the app's own setter, then verify the accent actually moved.
-      await evaluate(`(async () => { try { await window.api.settings.set('theme', ${JSON.stringify('THEME')}); return true } catch (error) { return String(error) } })()`.replace('"THEME"', JSON.stringify(theme)))
-      await evaluate(`window.dispatchEvent(new Event('grimoire:refresh'))`).catch(() => null)
+    for (const [themeIndex, theme] of themes.entries()) {
+      // The attribute alone cannot switch themes (`applyAccent` writes --color-accent as an INLINE style on
+      // <html>, which beats [data-theme]), and the settings IPC path did not re-apply either. So drive the real
+      // control: the settings panel's theme swatches are the path a user takes.
+      await evaluate(`(() => { const select = Array.from(document.querySelectorAll('select.ui-panel-select')).find(element => element.offsetParent !== null); if (!select) return false; Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(select, 'settings'); select.dispatchEvent(new Event('change', { bubbles: true })); return true })()`)
+      await sleep(500)
+      const clickedSwatch = await evaluate(`(() => { const swatches = Array.from(document.querySelectorAll('.ui-theme-swatch')); const target = swatches[${JSON.stringify('INDEX')}]; if (!target) return false; target.click(); return true })()`.replace('"INDEX"', String(themeIndex)))
       await sleep(700)
+      if (!clickedSwatch) console.log('THEME-SWEEP-NOTE: theme swatch ' + themeIndex + ' not found; theme unchanged')
       const accent = await evaluate(`getComputedStyle(document.documentElement).getPropertyValue('--color-accent').trim()`)
       const types = await evaluate(`Array.from(new Set(Array.from(document.querySelectorAll('select.ui-panel-select option')).map(option => option.value)))`)
       const entry = { theme, accent, themeApplied: null, panels: types.length, blank: [], clipped: [], stuck: [], spill: 0, minMounted: 0 }
@@ -538,11 +540,12 @@ if (process.argv.includes('--theme-sweep')) {
       for (const type of types) {
         await evaluate(`(() => { const select = Array.from(document.querySelectorAll('select.ui-panel-select')).find(element => element.offsetParent !== null); if (!select) return false; Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(select, ${JSON.stringify('TYPE')}); select.dispatchEvent(new Event('change', { bubbles: true })); return true })()`.replace('"TYPE"', JSON.stringify(type)))
         await sleep(420)
-        const measured = await evaluate(`(() => { const panel = document.querySelector('[data-panel-type="' + ${JSON.stringify('TYPE')} + '"]'); if (!panel) return null; const rect = panel.getBoundingClientRect(); const header = panel.querySelector('[data-ui="panel.header"]'); return { width: Math.round(rect.width), text: (panel.innerText || '').trim().length, spill: header ? Math.max(0, header.scrollWidth - header.clientWidth) : 0 } })()`.replace('"TYPE"', JSON.stringify(type)))
+        const measured = await evaluate(`(() => { const panel = document.querySelector('[data-panel-type="' + ${JSON.stringify('TYPE')} + '"]'); if (!panel) return null; const rect = panel.getBoundingClientRect(); const header = panel.querySelector('[data-ui="panel.header"]'); return { width: Math.round(rect.width), text: (panel.innerText || '').trim().length, spill: header ? Math.max(0, header.scrollWidth - header.clientWidth) : 0, clip: header ? Math.max(0, header.scrollHeight - header.clientHeight) : 0 } })()`.replace('"TYPE"', JSON.stringify(type)))
         if (!measured) { entry.blank.push(type); continue }
         mounted += 1
         entry.spill = Math.max(entry.spill, measured.spill || 0)
         if (!measured.text) entry.blank.push(type)
+        if ((measured.clip || 0) > 2) entry.clipped.push(type)
         if (/正在载入面板/.test(await evaluate(`(() => { const panel = document.querySelector('[data-panel-type="' + ${JSON.stringify('TYPE')} + '"]'); return panel ? panel.innerText : '' })()`.replace('"TYPE"', JSON.stringify(type))))) entry.stuck.push(type)
       }
       entry.minMounted = mounted

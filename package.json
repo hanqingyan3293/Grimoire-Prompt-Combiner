@@ -47,7 +47,8 @@
     "report:unused-bridge": "node scripts/report-unused-bridge.mjs",
     "check:silent-catches": "node scripts/check-silent-catches.mjs",
     "check:ipc-coverage": "node scripts/check-ipc-coverage.mjs",
-    "audit:claims": "node scripts/audit-claims.mjs"
+    "audit:claims": "node scripts/audit-claims.mjs",
+    "verify:themes": "node scripts/ui-parity.mjs --theme-sweep --width=1600"
   },
   "keywords": [
     "grimoire",
