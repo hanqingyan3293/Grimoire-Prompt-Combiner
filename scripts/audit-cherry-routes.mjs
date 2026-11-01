@@ -563,6 +563,10 @@ if (process.argv.includes('--chat-journey')) {
     const provider = await evaluate(`(async () => { try { const saved = await window.api.providers.save({ name: '点击验收供应商', access_mode: 'api', protocol: 'chat_completions', base_url: 'http://127.0.0.1:${chatPort}/v1', api_key: 'audit-key', default_model: 'audit-model', models: ['audit-model'] }); return { saved, apiKeys: Object.keys(window.api.providers) } } catch (error) { return { error: String(error) } } })()`)
     if (!provider?.saved?.id) throw new Error('provider save failed: ' + JSON.stringify(provider))
     await evaluate(`window.api.providers.setActive('` + provider.saved.id + `')`)
+    // The chat shell picks `selectedModel || models[0]`, which on a populated profile is somebody else's
+    // model (measured: jamba-1-5-large). Pin the session to the audit provider explicitly so the send,
+    // stream and persist assertions actually exercise the fake SSE server.
+    await evaluate(`(async () => { try { return await window.api.ai.sessions.create({ kind: 'chat', runtime: 'openai-compatible', providerId: '` + provider.saved.id + `', modelId: 'audit-model', title: '点击验收会话' }) } catch (error) { return { error: String(error) } } })()`).then(result => chatReport.observations.push({ pinnedSession: result && (result.id || result.error) }))
     await evaluate(`window.location.hash = '#/app/chat'`)
     await waitFor(`location.hash.includes('/app/chat')`)
     await waitFor(`!!document.querySelector('[data-ui="part:composer-input"]')`)
@@ -610,6 +614,11 @@ if (process.argv.includes('--chat-journey')) {
     const expected = ['realTyping', 'realSendKey', 'streamedText', 'persisted']
     console.log('CHAT-JOURNEY ' + JSON.stringify({ passed: false, checks: chatReport.checks, missing: expected.filter(key => !chatReport.checks[key]) }))
     if (!chatReport.checks.realSendKey) console.log('[chat-journey] reached typing only: no provider/model is configured for this profile, so send/stream/persist were never exercised')
+    // The chat shell resolves its model as `selectedModel || models[0]`, so on a profile that already has
+    // providers the fake provider we just saved may not be the one used. Report what actually got picked
+    // instead of leaving the next reader to guess why the answer never arrived.
+    const usedByShell = await evaluate(`(async () => { try { const latest = await window.api.ai.sessions.latest({ kind: 'chat' }); if (!latest) return null; const list = await window.api.ai.sessions.list(); const row = (list?.data || list || []).find(item => item.id === latest.id); return row ? { providerId: row.provider_id || row.providerId || null, modelId: row.model_id || row.modelId || null } : null } catch (error) { return { error: String(error) } } })()`).catch(() => null)
+    if (usedByShell) console.log('[chat-journey] last chat session used ' + JSON.stringify(usedByShell) + ' — the audit provider must be the one this profile resolves to for send/stream/persist to be exercised')
     process.exitCode = 1
   }
 }

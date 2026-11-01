@@ -2262,3 +2262,29 @@ chat-journey.json: {"passed": false, "checks": {"realTyping": true}}
 修完复跑：`run=1`，`missing:['realSendKey','streamedText','persisted']`。
 
 **重要副产品：台账第 102 行说的是实话**——Electron 侧验收确实没跑通。我差点因为「有这个旅程」就写成已覆盖。
+
+### chat 旅程为什么跑不通：模型解析绕过了会话（2026-10-31 第一百三十九轮）
+
+给 `--chat-journey` 加上诊断后，原因被**测出来**了：
+
+```
+[chat-journey] last chat session used {"providerId":"pvd_6edfb696","modelId":"jamba-1-5-large"}
+```
+
+即使我先用 `ai.sessions.create` 建了一个**钉死**在审计 provider 上的会话（`ai_session_63690c…`），
+聊天壳仍然用别的 provider 发消息。
+
+根因在 `cherry-chat-shell-entry.tsx`：
+
+```ts
+const selected = selectedModel || models[0]
+await host.chat.send({ sessionId, content, modelId: modelIdForSession(selectedModel), ... })
+```
+
+**会话自己的 `modelId` 不参与发送决策**——`models[0]` 是谁就用谁。所以只要这个 profile 里已经有别的
+provider，审计用的假 provider 永远不会被调用，发送/流式/落库三项断言自然到不了。
+
+这是**行为发现**，不是我能擅自改的产品逻辑（改「新建会话用谁家的模型」属于产品决定）。已记在台账第 102 行，
+并让旅程把实际使用的 provider/model 打出来。
+
+现在的状态：`--chat-journey` **会红并且说明原因**，不再假绿。
