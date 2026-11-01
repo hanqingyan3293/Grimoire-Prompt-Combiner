@@ -1,8 +1,11 @@
 import fs from 'node:fs'
 import path from 'node:path'
-// Anti-filler audit, third layer: a service function that returns a constant without touching the
-// database or any port is either a stub or a deliberate empty result. Both look identical from the UI,
-// so list the candidates and let a human justify each one.
+// REPORT ONLY — this prints candidates, it never fails a build and it is not part of any gate.
+//
+// Heuristic: a service function that returns a constant without touching the database or any port is either
+// a stub or a deliberate empty result. From the UI both look identical, so the honest move is to list them
+// and justify each one by hand. Treating this as a pass/fail test would be wrong in both directions:
+// some hits are legitimate empty results, and a real stub can be written to avoid every pattern below.
 const dir = 'src/main/services'
 const files = fs.readdirSync(dir).filter(name => name.endsWith('.ts') && !name.includes('.test.'))
 const REAL_CALL = /db\.|getDatabase\(|saveDatabase\(|await |fetch\(|ipcMain|spawn\(|sqlite|prepare\(/

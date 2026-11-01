@@ -3273,3 +3273,22 @@ COMFY-PERSIST {"passed":false, ... "storedInDatabase":false, "restoredFromDataba
 修后再跑同一变异：**exit=1** ✓；还原后：**exit=0、5 项全 true** ✓。
 
 这条比检测器本身更重要：**一个会吞掉失败的测试套件，比没有测试更危险**。
+
+### 全脚本 exit 审计 + 清理临时脚本（2026-11-01 第一百九十五轮）
+
+顺着上轮的「假绿」把所有脚本的 `process.exit(` 扫了一遍：
+
+| 脚本 | 退出方式 | 判定 |
+|---|---|---|
+| `ui-parity` | `report.ok === false ? 1 : (exitCode ?? 0)` | 上轮已修 |
+| `audit-cherry-panels` / `audit-cherry-routes` | `process.exit(exitCode ?? 0)` | 正确（注释里写明原因） |
+| `gates` / `journeys` / `test-root-sharded` / `visual-*` / `check-compat-types` | `failed ? 1 : 0` | 正确 |
+| `check-panel-layout` `exit(0)` | 仅在 `--write-baseline` 分支 | 正确 |
+| `generate-cherry-file-type-map` `exit(0)` | 生成完成后 | 正确 |
+
+顺带清掉两个遗留临时文件：
+
+- `scripts/tmp-probe5.mjs`（我的调试探针）→ **删除**；
+- `scripts/tmp-stub-audit.mjs` → 其实是**有值的东西**，改名为 `list-suspicious-functions.mjs`，
+  并写明「仅供参考、永不判失败、不属于任何门禁」——它列的是「可疑函数」，两头都可能错：
+  有的命中是合法空结果，真桩也可能绕开全部模式。新增 `npm run report:suspicious`。
