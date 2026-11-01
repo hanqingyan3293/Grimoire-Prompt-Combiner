@@ -1387,4 +1387,7 @@ if (process.argv.includes('--error-paths')) {
 console.log(JSON.stringify(report, null, 2))
 ws.close()
 killTree()
-process.exit(report.ok ? 0 : 1)
+// A journey that failed sets process.exitCode = 1, and this line used to overwrite it with 0 — a failing
+// journey then reported success to the runner (found by mutating the ComfyUI save key: the report said
+// passed:false while the process exited 0). Honour a set exitCode before falling back to the report verdict.
+process.exit(report.ok === false ? 1 : (process.exitCode ?? 0))

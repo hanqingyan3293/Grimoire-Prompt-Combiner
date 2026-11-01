@@ -3252,3 +3252,24 @@ exit=1
 顺带记录：`clippedHeaders` 在验证过程中被发现**读了一个从不赋值的字段**，从存在起就不可能红——已修。
 
 教训重复了两次：**变异必须真的作用在被测对象上**（宽度那处第一次被后一个同名 style 覆盖，等于没改）。
+
+### 变异对照又挖出「假绿」：旅程失败但进程 exit 0（2026-11-01 第一百九十四轮）
+
+变异：把 ComfyUI 保存的键改成 `comfyui_base_url_MUTATION`（保存看似成功但没写对地方）。
+
+旅程如实报了失败：
+
+```
+COMFY-PERSIST {"passed":false, ... "storedInDatabase":false, "restoredFromDatabase":false}
+```
+
+**但进程 exit=0。**
+
+原因：`ui-parity.mjs` 末尾有一行 `process.exit(report.ok ? 0 : 1)`，而旅程块里设的 `process.exitCode = 1`
+被这一行**覆盖成 0**。于是 `npm run journeys` 会把失败当作通过——这正是我在记录里列过的「假绿」形态。
+
+修法：`process.exit(report.ok === false ? 1 : (process.exitCode ?? 0))`。
+
+修后再跑同一变异：**exit=1** ✓；还原后：**exit=0、5 项全 true** ✓。
+
+这条比检测器本身更重要：**一个会吞掉失败的测试套件，比没有测试更危险**。
