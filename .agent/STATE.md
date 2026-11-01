@@ -2998,3 +2998,18 @@ verify = npm run clean:electron && node scripts/gates.mjs && npm run journeys
 ```
 
 规律：**只要本体反复起渲染器，就要在跑门禁前清理**；把它写进脚本比写进文档可靠。
+
+### `npm run verify` 一次跑通（2026-11-01 第一百八十一轮）
+
+清理残留进程写进脚本之后的第一跑：
+
+```
+ALL SELECTED GATES PASSED      （G1–G14）
+ALL JOURNEYS PASSED            （24 条 ok，含 51 路由 + M3 五条页面审计）
+exit=0
+```
+
+这是当前工程的**单条命令总验收**：类型、测试、构建、台账、样式契约、IPC 接线、静默失败、证据路径、
+以及 24 条真机旅程（点击、落库、矩阵、扫描、截图对比）。
+
+此前 G11 会因为残留 electron 假红；现在 verify 先清理，不再需要人记得。
