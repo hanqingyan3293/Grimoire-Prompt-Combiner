@@ -46,7 +46,8 @@
     "probe:route": "node scripts/audit-cherry-routes.mjs --probe-route=app/files",
     "report:unused-bridge": "node scripts/report-unused-bridge.mjs",
     "check:silent-catches": "node scripts/check-silent-catches.mjs",
-    "check:ipc-coverage": "node scripts/check-ipc-coverage.mjs"
+    "check:ipc-coverage": "node scripts/check-ipc-coverage.mjs",
+    "audit:claims": "node scripts/audit-claims.mjs"
   },
   "keywords": [
     "grimoire",
