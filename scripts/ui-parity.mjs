@@ -719,7 +719,13 @@ if (process.argv.includes('--visual-matrix')) {
       if (spread > 2) run.layoutDrift = { min: Math.min(...widths), max: Math.max(...widths), spread }
       const VIEW_HOSTING = new Set(['canvas', 'browser'])
       const blank = run.panels.filter(panel => panel.mounted && panel.textLength === 0 && !VIEW_HOSTING.has(panel.type)).map(panel => panel.type)
-      const clippedHeaders = run.panels.filter(panel => (panel.headerOverflow ?? 0) > 1).map(panel => panel.type)
+      // `headerOverflow` is never assigned — the field that is actually measured is `headerOverflowX`. Filtering
+      // on the empty one made this detector impossible to trip (found by mutation: a 800px header child produced
+      // spill 699 and clippedHeaders [] at the same time). Read both, preferring the measured one.
+      // Width-aware budget, same numbers as the spill check (60 at 960, 8 above). The old `> 1` was a strict
+      // zero-tolerance rule that could never fire because it read an unassigned field.
+      const headerBudget = run.width <= 960 ? 60 : 8
+      const clippedHeaders = run.panels.filter(panel => (panel.headerOverflowX ?? panel.headerOverflow ?? 0) > headerBudget).map(panel => panel.type)
       const stuckLoading = run.panels.filter(panel => panel.stillLoading === true).map(panel => panel.type)
       if (stuckLoading.length) run.stuckLoading = stuckLoading
       const widestHeaderSpill = Math.max(0, ...run.panels.map(panel => panel.headerOverflowX ?? 0))
