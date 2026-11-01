@@ -2432,3 +2432,15 @@ export function saveMarkdownExport(title, markdown, dialog = window.api.dialog) 
 导出到应用数据目录会直接报错而不是静默覆盖。补 1 条测试（15 条全绿）。
 
 教训：**测试覆盖 ≠ 生效路径**。先问「谁会调用它」，再决定为它加多少测试。
+
+### 四例续查：全部先看调用方再下结论（2026-11-01 第一百四十七轮）
+
+| 方法 | 现场 | 判决 |
+|---|---|---|
+| `tasks.onSnapshot` | `TasksPanel.tsx:95` 用 `tasks.onUpdated` 刷新 | **被同类替代**，死面 |
+| `media.relocate` | `GalleryCard.tsx:116` 会显示「文件缺失」徽标，**无任何修复入口** | **缺口成立**：文件搬走后只能看着红标。修复需要「选择图片文件」对话框，而当前只暴露 `openText` / `openDirectory` |
+| `application.relaunch` | 有实现，渲染层 0 调用 | 暂无场景（设置项都不需要重启） |
+| `workspace.focusPopout` | 同上 | 便利性缺口：双击已弹出面板无法聚焦其窗口 |
+
+这轮特别克制的点：**没有像上一轮那样从「没被调用」直接推断「功能缺失」**，
+而是每条都先找调用方或等价能力。结果四条里只有一条（`media.relocate`）是真的用户可见缺口。

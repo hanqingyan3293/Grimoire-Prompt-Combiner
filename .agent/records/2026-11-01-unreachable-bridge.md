@@ -16,6 +16,15 @@
 > 第 144 轮我写的是「wd14.switchModel：用户选不了反推模型」——**这句是错的**。我只看到「方法没被调用」就推断了后果，
 > 没去看面板本身有没有模型选择。第 145 轮核对代码后更正。
 
+## 第 147 轮续查（四例，全部先看调用方再下结论）
+
+| 方法 | 现场 | 判决 |
+|---|---|---|
+| `tasks.onSnapshot` | `TasksPanel.tsx:95` 用的是 `tasks.onUpdated` 做实时刷新 | **被同类替代**，`onSnapshot` 是死面 |
+| `media.relocate` | `GalleryCard.tsx:116` 会显示「文件缺失」徽标，但**没有任何修复入口** | **缺口成立**：文件搬走后用户只能看着红标。修复需要一个「选择图片文件」对话框通道，而当前只暴露 `openText` / `openDirectory` |
+| `application.relaunch` | 声明与 preload 有，主进程有实现，渲染层 0 调用 | 暂无场景（设置项都不需要重启） |
+| `workspace.focusPopout` | 同上 | 便利性缺口：双击已弹出的面板无法聚焦其窗口 |
+
 ## 其余多数是「协议层」
 
 - `cache.*Sync` / `dataApi.onDataChanged` / `tasks.onSnapshot`：主进程 → 渲染层事件；
