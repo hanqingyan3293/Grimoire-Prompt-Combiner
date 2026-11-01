@@ -511,6 +511,60 @@ if (process.argv.includes('--browser')) {
 // Visual matrix: the same panel set at several viewport widths, in ONE session so the comparisons are
 // taken against the same layout state. Output is per-width offender counts plus per-panel screenshots,
 // which is what a "did the layout regress" review needs.
+
+// `--theme-sweep`: the matrix only ever runs on the default theme, so a panel that breaks under `midnight`
+// (contrast, borders, a hard-coded colour) is invisible. This walks every theme at one width and applies the
+// same blank/clipped/stuck/spill checks, plus proof the theme really applied (the accent variable moved).
+if (process.argv.includes('--theme-sweep')) {
+  const width = Number((process.argv.find(argument => argument.startsWith('--width=')) || '--width=1600').slice(8))
+  const themes = ['neon', 'clean', 'gold', 'midnight', 'sakura', 'forest', 'sunset']
+  const report = { width, themes: [] }
+  let previousAccent = null
+  try {
+    await callWithTimeout('Emulation.setDeviceMetricsOverride', { width, height: 900, deviceScaleFactor: 1, mobile: false }, 10000)
+    await sleep(600)
+    await evaluate(`(() => { if (document.getElementById('__no_anim')) return true; const style = document.createElement('style'); style.id = '__no_anim'; style.textContent = '*,*::before,*::after{animation:none!important;transition:none!important}'; document.head.appendChild(style); return true })()`)
+    for (const theme of themes) {
+      // The theme cannot be switched by setting the attribute alone: `applyAccent` writes `--color-accent` as an
+      // INLINE style on <html>, which beats the [data-theme] rule (measured 2026-11-01: seven themes all reported
+      // the same accent). Go through the app's own setter, then verify the accent actually moved.
+      await evaluate(`(async () => { try { await window.api.settings.set('theme', ${JSON.stringify('THEME')}); return true } catch (error) { return String(error) } })()`.replace('"THEME"', JSON.stringify(theme)))
+      await evaluate(`window.dispatchEvent(new Event('grimoire:refresh'))`).catch(() => null)
+      await sleep(700)
+      const accent = await evaluate(`getComputedStyle(document.documentElement).getPropertyValue('--color-accent').trim()`)
+      const types = await evaluate(`Array.from(new Set(Array.from(document.querySelectorAll('select.ui-panel-select option')).map(option => option.value)))`)
+      const entry = { theme, accent, themeApplied: null, panels: types.length, blank: [], clipped: [], stuck: [], spill: 0, minMounted: 0 }
+      let mounted = 0
+      for (const type of types) {
+        await evaluate(`(() => { const select = Array.from(document.querySelectorAll('select.ui-panel-select')).find(element => element.offsetParent !== null); if (!select) return false; Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(select, ${JSON.stringify('TYPE')}); select.dispatchEvent(new Event('change', { bubbles: true })); return true })()`.replace('"TYPE"', JSON.stringify(type)))
+        await sleep(420)
+        const measured = await evaluate(`(() => { const panel = document.querySelector('[data-panel-type="' + ${JSON.stringify('TYPE')} + '"]'); if (!panel) return null; const rect = panel.getBoundingClientRect(); const header = panel.querySelector('[data-ui="panel.header"]'); return { width: Math.round(rect.width), text: (panel.innerText || '').trim().length, spill: header ? Math.max(0, header.scrollWidth - header.clientWidth) : 0 } })()`.replace('"TYPE"', JSON.stringify(type)))
+        if (!measured) { entry.blank.push(type); continue }
+        mounted += 1
+        entry.spill = Math.max(entry.spill, measured.spill || 0)
+        if (!measured.text) entry.blank.push(type)
+        if (/正在载入面板/.test(await evaluate(`(() => { const panel = document.querySelector('[data-panel-type="' + ${JSON.stringify('TYPE')} + '"]'); return panel ? panel.innerText : '' })()`.replace('"TYPE"', JSON.stringify(type))))) entry.stuck.push(type)
+      }
+      entry.minMounted = mounted
+      entry.themeApplied = entry.accent !== previousAccent || theme === 'neon'
+      previousAccent = entry.accent
+      report.themes.push(entry)
+      console.log('THEME-SWEEP ' + JSON.stringify(entry))
+    }
+  } catch (error) { report.error = String(error) }
+  fs.writeFileSync('artifacts/visual/ui-parity/theme-sweep.json', JSON.stringify(report, null, 2))
+  // A theme that never applied means the sweep measured the same palette seven times. That is a LIMIT of this
+  // harness (the app writes --color-accent inline, so the attribute alone cannot switch themes and the settings
+  // IPC path does not re-apply it here), not a product failure. Say so instead of reporting either a fake red
+  // or a fake green.
+  const applied = report.themes.filter(entry => entry.themeApplied !== false).length
+  report.themeSwitching = applied > 1 ? 'working' : 'unavailable'
+  if (applied <= 1) console.log('THEME-SWEEP-UNAVAILABLE: the harness could not switch themes (' + applied + '/' + report.themes.length + ' applied). Panel checks below are therefore one palette repeated; drive the Settings UI to cover the theme axis.')
+  const failing = applied > 1 ? report.themes.filter(entry => entry.blank.length || entry.stuck.length || entry.minMounted < 18 || entry.themeApplied === false) : []
+  console.log('THEME-SWEEP-SUMMARY ' + JSON.stringify({ themes: report.themes.length, failing: failing.map(entry => entry.theme) }))
+  if (failing.length || report.error) process.exitCode = 1
+}
+
 if (process.argv.includes('--visual-matrix')) {
   const widths = [1600, 1280, 960]
   const matrix = { passed: false, runs: [] }

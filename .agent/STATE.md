@@ -2613,3 +2613,23 @@ claims checked: 18, missing: 0
 2. 第二次对照：把 `2026-11-01-empty-states.md` 临时改名 → `missing: 1`，`exit 1`，打印出具体缺失项。
 
 定位：这是**取证/自检工具**，不是门禁（claim 会随重构改名，硬拦会变成噪音）。
+
+### 主题轴没做成，但工具诚实地说了（2026-11-01 第一百五十八轮）
+
+给矩阵加第二根轴：`--theme-sweep`（7 个主题 × 18 面板，同一宽度）。两次都不对：
+
+1. 直接设 `documentElement[data-theme]` → 七个主题的 `--color-accent` **全是 #a855f7**。
+   原因：`applyAccent` 把 `--color-accent` 写成 `<html>` 的**内联样式**，内联样式赢过 `[data-theme]` 规则。
+2. 改走 `window.api.settings.set('theme', …)` + 派发 `grimoire:refresh` → 仍然不变。
+
+于是给每一轮加了 `themeApplied` 判定（accent 有没有变），结果**六轮为 false**——
+也就是说这份报告如果直接输出「七个主题全绿」，那是**同一个主题量了七次**。
+
+处理：检测到主题切不动时打印
+```
+THEME-SWEEP-UNAVAILABLE: the harness could not switch themes (1/7 applied)…
+```
+并且**不计失败**（不制造假红），同时在报告里写 `themeSwitching: 'unavailable'`。
+真要覆盖主题轴，得驱动设置界面上的主题选择器——那是下一步。
+
+这一轮的价值不在「加了主题测试」，而在**没让一个假绿过关**。
