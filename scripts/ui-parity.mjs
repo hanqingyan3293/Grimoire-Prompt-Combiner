@@ -637,6 +637,10 @@ if (process.argv.includes('--visual-matrix')) {
         // Horizontal overflow is a different defect: the header is wider than the panel and spills into the
         // neighbour. Measured separately so it can be budgeted per width (a 210px panel genuinely cannot hold
         // the full header, a 351px one can).
+        // A panel can render real text and still be a placeholder: the registry's default branch says 「面板尚未接入」.
+        // Blank-detection cannot see it (there IS text), so it gets its own flag.
+        const stubText = await evaluate(`(() => { const panel = document.querySelector('[data-panel-type="' + window.__matrixType + '"]'); if (!panel) return null; const text = panel.innerText || ''; return /面板尚未接入|即将支持|敬请期待/.test(text) ? text.slice(0, 40) : null })()`)
+        if (stubText) run.stubs = [...(run.stubs || []), type]
         const headerOverflowX = await evaluate(`(() => { const header = document.querySelector('[data-panel-type="' + window.__matrixType + '"] [data-ui="panel.header"]'); if (!header) return 0; return Math.max(0, header.scrollWidth - header.clientWidth) })()`)
         const shotName = 'w' + width + '-' + type + '.png'
         // Animations are the main source of diff noise (measured 5.9-8.5% tile drift between identical runs).
@@ -705,8 +709,8 @@ if (process.argv.includes('--visual-matrix')) {
     } else if (bad.length) { matrix.visualFailed = bad.length; report.ok = false }
   }
   fs.writeFileSync('artifacts/visual/ui-parity/visual-matrix.json', JSON.stringify(matrix, null, 2))
-  console.log('MATRIX ' + JSON.stringify(matrix.runs.map(run => ({ width: run.width, panelWidths: run.panelWidths, mounted: run.panels.filter(panel => panel.mounted).length + '/' + run.panels.length, blank: run.blankPanels ?? [], clippedHeaders: run.clippedHeaders ?? [], stuck: run.stuckLoading ?? [], spill: run.headerSpill ?? 0, drift: run.layoutDrift ?? null }))))
-  const blankShortfall = matrix.runs.some(run => (run.blankPanels ?? []).length > 0) || matrix.runs.some(run => (run.clippedHeaders ?? []).length > 0) || matrix.runs.some(run => Boolean(run.layoutDrift)) || matrix.runs.some(run => (run.stuckLoading ?? []).length > 0) || matrix.runs.some(run => typeof run.headerSpillOverBudget === 'number') || Boolean(matrix.visualFailed)
+  console.log('MATRIX ' + JSON.stringify(matrix.runs.map(run => ({ width: run.width, panelWidths: run.panelWidths, mounted: run.panels.filter(panel => panel.mounted).length + '/' + run.panels.length, blank: run.blankPanels ?? [], clippedHeaders: run.clippedHeaders ?? [], stuck: run.stuckLoading ?? [], stub: run.stubs ?? [], spill: run.headerSpill ?? 0, drift: run.layoutDrift ?? null }))))
+  const blankShortfall = matrix.runs.some(run => (run.blankPanels ?? []).length > 0) || matrix.runs.some(run => (run.clippedHeaders ?? []).length > 0) || matrix.runs.some(run => Boolean(run.layoutDrift)) || matrix.runs.some(run => (run.stuckLoading ?? []).length > 0) || matrix.runs.some(run => typeof run.headerSpillOverBudget === 'number') || matrix.runs.some(run => (run.stubs ?? []).length > 0) || Boolean(matrix.visualFailed)
   if (blankShortfall) { process.exitCode = 1; report.ok = false }
   // Ratchet: a panel that stops mounting at any width is a regression even if every screenshot looks fine.
   let baseline = { minMountedPerWidth: 18 }
