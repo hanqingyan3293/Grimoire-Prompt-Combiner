@@ -2241,3 +2241,24 @@ silent catches: 163 (baseline 163) {"promise":51,"try/catch":112}
 补 4 条（file-bridge 测试 10 → 14）：安全路径真走到 shell.openPath；.exe/.SH/.bat/.js/evil.exe. 全被
 OPEN_BLOCKED_UNSAFE_TYPE 拒绝；相对/空白/含 NUL 在碰 shell 之前就 INVALID_PATH；文件不存在报 NOT_FOUND。
 后两条都断言 opened 数组为空——被拒绝的路径根本没碰到系统 shell。
+
+### `--chat-journey` 一直是「假绿」（2026-10-31 第一百三十八轮）
+
+想用 `--chat-journey` 去补台账第 102 行「Electron 人工验收未跑」的缺口，结果发现：
+
+```
+chat-journey.json: {"passed": false, "checks": {"realTyping": true}}
+进程退出码：0
+```
+
+**断言失败了，脚本却返回成功。** 任何把它当门禁用的地方都会看到绿灯。
+
+原因：失败分支只写 JSON + 打一行日志，从没设 `process.exitCode`。已修：
+
+- 失败时 `process.exitCode = 1`；
+- 打印 `CHAT-JOURNEY {...missing:[...]}`，按**期望**的四项（realTyping / realSendKey / streamedText / persisted）列出缺哪些；
+- 停在「只走到输入」时额外提示：该 profile 没配 provider/model，发送/流式/落库根本没被跑到。
+
+修完复跑：`run=1`，`missing:['realSendKey','streamedText','persisted']`。
+
+**重要副产品：台账第 102 行说的是实话**——Electron 侧验收确实没跑通。我差点因为「有这个旅程」就写成已覆盖。

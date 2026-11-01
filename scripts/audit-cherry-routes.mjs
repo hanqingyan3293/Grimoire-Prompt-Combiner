@@ -604,6 +604,14 @@ if (process.argv.includes('--chat-journey')) {
   }
   fs.writeFileSync(path.join(outDir, 'chat-journey.json'), JSON.stringify(chatReport, null, 2))
   console.log('Chat click journey:', chatReport.passed ? 'PASS' : 'FAIL', chatReport.error || '')
+  // Failing this journey used to leave the exit code at 0, so any caller saw green. Report the missing
+  // checks explicitly — "realTyping only" almost always means no provider/model is configured.
+  if (!chatReport.passed) {
+    const expected = ['realTyping', 'realSendKey', 'streamedText', 'persisted']
+    console.log('CHAT-JOURNEY ' + JSON.stringify({ passed: false, checks: chatReport.checks, missing: expected.filter(key => !chatReport.checks[key]) }))
+    if (!chatReport.checks.realSendKey) console.log('[chat-journey] reached typing only: no provider/model is configured for this profile, so send/stream/persist were never exercised')
+    process.exitCode = 1
+  }
 }
 
 // Settings wiring journey: the read-only banner must state which switches are live, and the
