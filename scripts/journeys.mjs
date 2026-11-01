@@ -26,6 +26,9 @@ const journeys = [
   { flag: '--style-contract', label: '样式契约（24 项）' },
   { flag: '--selection-popup', label: '划词助手浮窗（6 项）' },
   { flag: '--error-paths', label: '失败路径（ComfyUI 连接失败要可见）' },
+  // Header chrome was never clicked by any journey. This opens the add-panel menu and closes it with Escape:
+  // real clicks, zero persistent mutation.
+  { flag: '--panel-menu', label: '面板头菜单（开/关，零副作用）' },
   // One boot, 51 source routes checked for rendered/contentVisible/routeMatched: cheap insurance that a page
   // did not silently regress to the "unimplemented" boundary.
   { script: 'scripts/audit-cherry-routes.mjs', flag: '--routes-only', label: '51 条源路由全渲染' },

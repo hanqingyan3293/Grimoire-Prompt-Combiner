@@ -1010,6 +1010,32 @@ if (process.argv.includes('--overflow')) {
 
 // `--error-paths` checks that a failing network action SURFACES, not hangs. A panel that keeps showing its
 // spinner after a failed connect is indistinguishable from a slow one, and the user retries forever.
+
+// `--panel-menu`: the journeys never touch the panel CHROME. Opening the add-panel menu and closing it with
+// Escape exercises real header clicks with zero persistent mutation (no panel is added, nothing is closed),
+// which is exactly the property a smoke test of the chrome needs.
+if (process.argv.includes('--panel-menu')) {
+  const report = { passed: false, checks: {} }
+  try {
+    const trigger = `(() => { const header = document.querySelector('[data-ui="panel.header"]'); if (!header) return false; const button = Array.from(header.querySelectorAll('button')).find(element => element.title === '添加面板'); if (!button) return false; button.click(); return true })()`
+    report.checks.triggerFound = await evaluate(trigger)
+    await sleep(400)
+    const menu = `(() => { const surface = document.querySelector('.ui-menu, [role="menu"], .ui-popover-surface'); if (!surface) return null; const items = Array.from(surface.querySelectorAll('.ui-menu-item, [role="menuitem"]')); return { visible: true, items: items.length, first: items[0] ? String(items[0].textContent || '').trim().slice(0, 24) : '' } })()`
+    report.menu = await evaluate(menu)
+    report.checks.menuOpened = Boolean(report.menu && report.menu.items > 0)
+    // Escape must close it: a menu that cannot be dismissed traps the panel.
+    await call('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Escape', code: 'Escape', windowsVirtualKeyCode: 27 })
+    await call('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Escape', code: 'Escape', windowsVirtualKeyCode: 27 })
+    await sleep(350)
+    report.checks.menuClosed = await evaluate(`(() => { const surface = document.querySelector('.ui-menu, [role="menu"], .ui-popover-surface'); return !surface || !surface.getBoundingClientRect().width })()`)
+    report.checks.panelStillMounted = await evaluate(`Boolean(document.querySelector('[data-ui="panel.shell"]'))`)
+    report.passed = Object.values(report.checks).every(Boolean)
+  } catch (error) { report.error = String(error) }
+  fs.writeFileSync('artifacts/visual/ui-parity/panel-menu.json', JSON.stringify(report, null, 2))
+  console.log('PANEL-MENU ' + JSON.stringify({ passed: report.passed, checks: report.checks, menu: report.menu, error: report.error }))
+  if (!report.passed) process.exitCode = 1
+}
+
 if (process.argv.includes('--error-paths')) {
   const report = { passed: false, checks: {} }
   const waitForLocal = async (expression, attempts = 80) => { for (let index = 0; index < attempts; index += 1) { const value = await evaluate(expression); if (value) return value; await sleep(250) } return null }

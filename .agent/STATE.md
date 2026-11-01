@@ -2705,3 +2705,22 @@ npm scripts cited: 0 unknown
 
 （第一次验证时我写的是 `node … | tail -4; echo run=$?`，读到的是 `tail` 的退出码——**管道会吞掉退出码**。
 改成重定向到文件再 echo 才是真的。）
+
+### 面板头菜单：旅程从没点过的地方（2026-11-01 第一百六十四轮）
+
+翻 PanelShell 发现面板头有 8 个 title 标注的按钮（添加面板 / 加入标签组 / 左右分割 / 上下分割 /
+最大化 / 浮动 / 弹出窗口 / 关闭），**15 条旅程一条都没点过它们**。
+
+其中多半会改布局或弹窗口——在用户的真实 profile 上点「关闭面板」是破坏性的。
+所以只做**零副作用**的那一个：
+
+打开「添加面板」菜单 → 断言 16 个条目出现（首项「标签侧栏」）→ Esc 关闭 → 断言菜单消失且面板仍在。
+
+```
+PANEL-MENU {"passed":true,"checks":{"triggerFound":true,"menuOpened":true,"menuClosed":true,"panelStillMounted":true},
+            "menu":{"visible":true,"items":16,"first":"标签侧栏"}}
+```
+
+已并入 `npm run journeys`（第 16 条）。
+
+顺带说明为什么不做其余 7 个按钮：它们会改布局/开窗口/关面板，**在没有状态恢复机制前不碰真实 profile**。
