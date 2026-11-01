@@ -737,7 +737,9 @@ if (process.argv.includes('--comfy-persist')) {
     const typed = await evaluate(`(() => { const input = document.querySelector('[data-panel-type="comfyui"] input.ui-field'); if (!input) return false; Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(input, ${JSON.stringify(target)}); input.dispatchEvent(new Event('input', { bubbles: true })); return true })()`)
     report.checks.fieldTyped = typed === true
     await sleep(400)
-    const clicked = await evaluate(`(() => { const panel = document.querySelector('[data-panel-type="comfyui"]'); if (!panel) return false; const button = Array.from(panel.querySelectorAll('button')).find(element => (element.textContent || '').includes('保存')); if (!button) return false; button.click(); return true })()`)
+    // 保存并连接 is disabled while busy; a click on a disabled button is a silent no-op (lesson from G4).
+    await evaluate(`(async () => { const panel = document.querySelector('[data-panel-type="comfyui"]'); if (!panel) return false; const find = () => Array.from(panel.querySelectorAll('button')).find(el => (el.textContent || '').includes('保存')); for (let index = 0; index < 40; index += 1) { const button = find(); if (button && !button.disabled) return true; await new Promise(resolve => setTimeout(resolve, 150)) } return false })()`)
+    const clicked = await evaluate(`(() => { const panel = document.querySelector('[data-panel-type="comfyui"]'); if (!panel) return false; const button = Array.from(panel.querySelectorAll('button')).find(el => (el.textContent || '').includes('保存')); if (button && !button.disabled) { button.click(); return true } return false })()`)
     report.checks.saveClicked = clicked === true
     await sleep(1200)
     const stored = await evaluate(`(async () => { const all = await window.api.settings.getAll(); return all.comfyui_base_url })()`)
