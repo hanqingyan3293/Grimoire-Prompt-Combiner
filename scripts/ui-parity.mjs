@@ -1171,6 +1171,20 @@ if (process.argv.includes('--settings-toggle')) {
     report.checks.storedCompact = report.stored === 'compact'
     report.densityAttribute = await evaluate(`document.documentElement.getAttribute('data-ui-density')`)
     report.checks.domApplied = report.densityAttribute === 'compact'
+    // Second control: appearance mode. The settings page writes `data-appearance-mode` and `data-appearance`,
+    // so flipping it to dark and back proves the second apply path works too.
+    const appearanceBefore = await evaluate(`(async () => (await window.api.settings.getAll()).appearance_mode || 'system')()`)
+    await evaluate(`(() => { const button = Array.from(document.querySelectorAll('button')).find(el => (el.textContent || '').trim() === '深色'); if (!button || button.disabled) return false; button.click(); return true })()`)
+    await sleep(500)
+    report.appearance = {
+      before: appearanceBefore,
+      stored: await evaluate(`(async () => (await window.api.settings.getAll()).appearance_mode)()`),
+      attribute: await evaluate(`document.documentElement.getAttribute('data-appearance-mode')`),
+    }
+    report.checks.appearanceApplied = report.appearance.stored === 'dark' && report.appearance.attribute === 'dark'
+    await evaluate(`(async () => { await window.api.settings.set('appearance_mode', ${JSON.stringify('APP')}); return true })()`.replace('"APP"', JSON.stringify(appearanceBefore)))
+    await sleep(300)
+
     // Restore whatever was there before, through the same API the UI uses.
     await evaluate(`(async () => { await window.api.settings.set('ui_density', ${JSON.stringify('ORIG')}); return true })()`.replace('"ORIG"', JSON.stringify(original)))
     await sleep(400)

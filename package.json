@@ -49,7 +49,8 @@
     "check:ipc-coverage": "node scripts/check-ipc-coverage.mjs",
     "audit:claims": "node scripts/audit-claims.mjs",
     "verify:themes": "node scripts/ui-parity.mjs --theme-sweep --width=1600",
-    "verify:themes:all": "node scripts/ui-parity.mjs --theme-sweep --width=1600 && node scripts/ui-parity.mjs --theme-sweep --width=1280 && node scripts/ui-parity.mjs --theme-sweep --width=960"
+    "verify:themes:all": "node scripts/ui-parity.mjs --theme-sweep --width=1600 && node scripts/ui-parity.mjs --theme-sweep --width=1280 && node scripts/ui-parity.mjs --theme-sweep --width=960",
+    "clean:electron": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/clean-electron.ps1"
   },
   "keywords": [
     "grimoire",

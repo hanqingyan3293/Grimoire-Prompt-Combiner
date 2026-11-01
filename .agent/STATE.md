@@ -2853,3 +2853,17 @@ original: normal → stored: compact / density: compact → restored: normal   �
    （我这一串旅程反复起应用，退出不干净）。清掉带 `remote-debugging-port` 的 42 个后，G11 单跑 **80 秒 PASS**。
 
 记一条：**跑大量旅程后要清理残留进程**，否则门禁会因为机器被自己拖垮而假红。
+
+### 设置页第二条「改值→生效」断言 + clean:electron（2026-11-01 第一百七十三轮）
+
+`--settings-toggle` 现在覆盖两条真实写入路径：
+
+| 控件 | 断言 |
+|---|---|
+| 密度「紧凑」 | 库值 `compact` + DOM `data-ui-density=compact` |
+| 外观「深色」 | 库值 `dark` + DOM `data-appearance-mode=dark` |
+
+两条都在断言后**还原原值**，7 项全 PASS。
+
+另外把上轮的手工清理做成脚本：`npm run clean:electron`（只杀带 `remote-debugging-port` 且路径含 grimoire 的
+进程，不碰正常开发实例）。刚才清掉 6 个残留。
