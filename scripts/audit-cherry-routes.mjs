@@ -907,20 +907,31 @@ console.log(
 if (failed.length) process.exitCode = 1
 
 
-// `--files-probe`: the route sweep only counts characters, which cannot tell a loading state from an empty
-// library from a rendered list. Runs BEFORE the socket closes, and reports what the page actually says.
-if (process.argv.includes('--files-probe')) {
-  const probe = {}
+
+// `--probe-route=<hash>`: the sweep only counts characters, which cannot tell a loading state from an empty
+// database from a rendered list. This prints what the page actually says, so "is this page empty because it is
+// broken" stops being a guess. The audit runs on a fresh temp profile, so a data page SHOULD be empty here.
+// (Kept the old `--files-probe` spelling working: it is just this with the default route.)
+const probeArg = process.argv.find(argument => argument.startsWith('--probe-route='))
+if (probeArg || process.argv.includes('--files-probe')) {
+  // Git-bash rewrites arguments that start with `/` into Windows paths, so accept both spellings:
+  // `--probe-route=app/chat` (safe everywhere) and `--probe-route=/app/chat` (when the shell leaves it alone).
+  const rawTarget = probeArg ? probeArg.slice('--probe-route='.length) : '/app/files'
+  const target = rawTarget.startsWith('/') ? rawTarget : '/' + rawTarget.replace(/^app\//, 'app/')
+  const probe = { route: target }
   const settle = async (expression, attempts = 80) => { for (let index = 0; index < attempts; index += 1) { const value = await evaluate(expression); if (value) return value; await sleep(250) } return null }
   try {
-    await evaluate(`window.location.hash = '#/app/files'`)
+    await evaluate(`window.location.hash = '#' + ${JSON.stringify('ROUTE')}`.replace('"ROUTE"', JSON.stringify(target)))
+    await settle(`location.hash.includes(${JSON.stringify('ROUTE')})`.replace('"ROUTE"', JSON.stringify(target)))
     await settle(`(() => { const text = document.body.innerText || ''; return text.length > 120 && !/正在加载|加载中/.test(text) ? text : null })()`, 120)
     probe.text = String(await evaluate(`document.body.innerText`) || '').slice(0, 900)
     probe.rows = await evaluate(`document.querySelectorAll('tbody tr, [role=row], .ui-list-card').length`)
+    probe.emptyMarker = await evaluate(`(() => { const text = document.body.innerText || ''; const found = ['暂无文件','暂无会话','暂无任务','还没有','空空如也'].find(word => text.includes(word)); return found || null })()`)
   } catch (error) { probe.error = String(error) }
-  fs.writeFileSync(path.join(outDir, 'files-probe.json'), JSON.stringify(probe, null, 2))
-  console.log('FILES-PROBE ' + JSON.stringify({ rows: probe.rows, text: String(probe.text || '').slice(0, 220), error: probe.error }))
+  fs.writeFileSync(path.join(outDir, 'route-probe.json'), JSON.stringify(probe, null, 2))
+  console.log('ROUTE-PROBE ' + JSON.stringify({ route: probe.route, rows: probe.rows, empty: probe.emptyMarker, text: String(probe.text || '').slice(0, 200), error: probe.error }))
 }
+
 
 ws.close()
 await teardown(child, userData)
