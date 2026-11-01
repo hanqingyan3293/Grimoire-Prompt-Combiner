@@ -1018,6 +1018,69 @@ if (process.argv.includes('--overflow')) {
 // `--panel-maximize`: the destructive-ish header controls were never clicked by any journey. Maximize is the one
 // that is fully self-reversible (the same button becomes 还原面板), so it can be exercised on a real profile:
 // measure the panel, maximize, measure again, restore, measure a third time and require the original size back.
+
+// Layout snapshot/restore. Splitting, closing and popping out all mutate the PERSISTED workspace layout, so they
+// are only safe to click if the previous state can be put back. The layout lives in localStorage, so a snapshot
+// is a copy of those keys; restoring writes them back and reloads the window.
+const SNAPSHOT_FILE = path.join(root, 'artifacts', 'layout-snapshot.json')
+const snapshotLayout = () => evaluate(`(() => { const out = {}; for (let index = 0; index < localStorage.length; index += 1) { const key = localStorage.key(index); if (key) out[key] = localStorage.getItem(key) } return out })()`)
+const restoreLayout = async snapshot => {
+  await evaluate(`(() => { const snapshot = ${JSON.stringify('SNAP')}; for (const key of Object.keys(localStorage)) localStorage.removeItem(key); for (const [key, value] of Object.entries(snapshot)) localStorage.setItem(key, value); return true })()`.replace('"SNAP"', JSON.stringify(snapshot)))
+  await evaluate('location.reload()')
+  await sleep(3500)
+}
+
+// NOTE: this flag mutates the PERSISTED layout and cannot reliably restore it inside the same session — the store
+// writes its in-memory layout while the page unloads and re-hydrates after the reload, so a single pass leaves the
+// extra panel behind (measured 2026-11-01: 5 -> 6 -> still 6; a fresh `--layout-restore` process put it back).
+// Kept for manual use only; run `--layout-restore` afterwards. Do NOT add it to the journeys suite.
+if (process.argv.includes('--panel-split')) {
+  const report = { passed: false, checks: {} }
+  const countPanels = () => evaluate(`document.querySelectorAll('[data-ui="panel.shell"]').length`)
+  const clickTitle = wanted => evaluate(`(() => { const header = document.querySelector('[data-ui="panel.header"]'); if (!header) return false; const button = Array.from(header.querySelectorAll('button')).find(element => element.title === ${JSON.stringify('WANTED')}); if (!button) return false; button.click(); return true })()`.replace('"WANTED"', JSON.stringify(wanted)))
+  let snapshot = null
+  try {
+    snapshot = await snapshotLayout()
+    fs.mkdirSync(path.dirname(SNAPSHOT_FILE), { recursive: true })
+    fs.writeFileSync(SNAPSHOT_FILE, JSON.stringify(snapshot, null, 2))
+    report.snapshotKeys = Object.keys(snapshot || {}).length
+    const before = await countPanels()
+    report.checks.foundPanels = before > 0
+    report.checks.clickedSplit = await clickTitle('左右分割')
+    await sleep(700)
+    const after = await countPanels()
+    report.panels = { before, after }
+    report.checks.splitAddedPanel = after === before + 1
+  } catch (error) { report.error = String(error) }
+  // Restore no matter what: the click above mutated persisted layout.
+  try {
+    // The store persists its in-memory layout while the page unloads, which can overwrite the snapshot during
+    // the same reload. Restoring twice converges (measured: one pass left 6 panels, two passes left 5).
+    const saved = snapshot || JSON.parse(fs.readFileSync(SNAPSHOT_FILE, 'utf8'))
+    await restoreLayout(saved)
+    let restoredCount = await countPanels()
+    if (restoredCount !== report.panels.before) { await restoreLayout(saved); restoredCount = await countPanels() }
+    report.panels.restored = restoredCount
+    report.checks.restoredCount = restoredCount === report.panels.before
+  } catch (error) { report.restoreError = String(error); console.log('LAYOUT-RESTORE-FAILED see ' + SNAPSHOT_FILE) }
+  report.passed = Object.values(report.checks).every(Boolean)
+  fs.writeFileSync('artifacts/visual/ui-parity/panel-split.json', JSON.stringify(report, null, 2))
+  console.log('PANEL-SPLIT ' + JSON.stringify({ passed: report.passed, checks: report.checks, panels: report.panels, error: report.error, restoreError: report.restoreError }))
+  if (!report.passed) process.exitCode = 1
+}
+
+if (process.argv.includes('--layout-restore')) {
+  try {
+    const snapshot = JSON.parse(fs.readFileSync(SNAPSHOT_FILE, 'utf8'))
+    await restoreLayout(snapshot)
+    const count = await evaluate(`document.querySelectorAll('[data-ui="panel.shell"]').length`)
+    console.log('LAYOUT-RESTORED ' + JSON.stringify({ keys: Object.keys(snapshot).length, panels: count }))
+  } catch (error) {
+    console.log('LAYOUT-RESTORE-FAILED ' + String(error))
+    process.exitCode = 1
+  }
+}
+
 if (process.argv.includes('--panel-maximize')) {
   const report = { passed: false, checks: {} }
   const rectOf = () => evaluate(`(() => { const shell = document.querySelector('[data-ui="panel.shell"]'); if (!shell) return null; const rect = shell.getBoundingClientRect(); return { w: Math.round(rect.width), h: Math.round(rect.height) } })()`)
