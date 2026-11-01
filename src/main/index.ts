@@ -1,5 +1,6 @@
 // 魔导书 Grimoire v7 — Electron 主进程入口
 import { app, BrowserWindow, WebContentsView, ipcMain, Menu, dialog, shell, nativeTheme, screen } from "electron"
+import { assertNotManagedTarget } from './services/file-bridge.service'
 import path from "path"
 import fs from "fs"
 import { initDatabase, closeDatabase, getDatabase, importDefaultTags, saveDatabase, exportDatabase, importDatabase } from "./database"
@@ -597,6 +598,9 @@ async function registerAllIPC(): Promise<void> {
       ],
     })
     if (r.canceled || !r.filePath) return false
+    // Same invariant as the file bridge: a text export must not overwrite files inside the app's own data
+    // directory. This handler predates the guard and had no check at all.
+    assertNotManagedTarget(r.filePath)
     fs.writeFileSync(r.filePath, content, "utf-8")
     return true
   })

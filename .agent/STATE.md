@@ -2405,3 +2405,30 @@ await window.api.wd14.createTask({ imageId, modelId: modelId || undefined, … }
 `comfy.deleteWorkflow` 的结论**维持成立**：工作流有列表、有提交，**没有删除控件**。
 
 教训：**「方法没被调用」不等于「功能缺失」**——必须再看界面本身有没有等价能力，否则就是用自己的想象替代阅读。
+
+### 发现的真问题：被测试的路径不是被使用的路径（2026-11-01 第一百四十六轮）
+
+继续核实「桥接未调用」清单，发现：**`window.api.file.*` 在渲染层与 compat 里 0 次调用**。
+
+那 Markdown 导出走哪条路？`markdown-save.ts`：
+```ts
+export function saveMarkdownExport(title, markdown, dialog = window.api.dialog) {
+  return dialog.save(markdown, title + '.md')
+}
+```
+
+对比两条保存路径：
+
+| | `file.save`（我前几轮加了 14 条测试） | `dialog.save`（**实际在用**） |
+|---|---|---|
+| 父窗口（模态） | 有 | **无** |
+| 管理区覆盖保护 | **有** | **完全没检查** |
+| filters | 来自 options | 写死 JSON/TXT/* |
+| 返回 | path/null | boolean |
+
+也就是说：**用户点导出时走的路径没有保护**，而我花两轮加固的那条没人用。管理区守卫存在的理由正是「别让导出覆盖应用自己的数据」。
+
+修法（最小）：把守卫抽成 `assertNotManagedTarget(path)`，`saveBridgeFile` 与 `DIALOG_SAVE_TEXT` 共用；
+导出到应用数据目录会直接报错而不是静默覆盖。补 1 条测试（15 条全绿）。
+
+教训：**测试覆盖 ≠ 生效路径**。先问「谁会调用它」，再决定为它加多少测试。

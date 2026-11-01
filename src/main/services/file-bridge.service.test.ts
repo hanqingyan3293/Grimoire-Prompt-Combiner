@@ -21,6 +21,7 @@ import {
   getBridgeFileInfo,
   getBridgePhysicalMetadata,
   readBridgeTextFile,
+  assertNotManagedTarget,
   openBridgePath,
   saveBridgeFile,
   writeBridgeTempFile
@@ -140,5 +141,10 @@ describe('composer file bridge', () => {
   it('reports a missing file instead of shelling out', async () => {
     await expect(openBridgePath(path.join(testRoot, 'nope.txt'))).rejects.toThrow(/NOT_FOUND/)
     expect(opened).toEqual([])
+  })
+  it('shares the managed-storage guard with the text-dialog save path', () => {
+    // DIALOG_SAVE_TEXT writes user-chosen paths; before this guard it could overwrite the app's own data.
+    expect(() => assertNotManagedTarget(path.join(testRoot, 'inside.json'))).toThrow(/FILE_SAVE_MANAGED_STORAGE/)
+    expect(() => assertNotManagedTarget(path.join(os.tmpdir(), 'outside.json'))).not.toThrow()
   })
 })

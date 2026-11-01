@@ -185,6 +185,22 @@ function existingRealPath(target: string): string {
   }
 }
 
+/**
+ * Adapt the source managed-storage mutation guard to Grimoire's data ownership. Exported because the simpler
+ * text-dialog save (DIALOG_SAVE_TEXT) writes user-chosen paths too and must apply the same invariant — it
+ * did not, so an export could overwrite files inside the app's own data directory.
+ */
+export function assertNotManagedTarget(filePath: string): void {
+  const root = path.resolve(app.getPath('userData'))
+  const target = path.resolve(filePath)
+  for (const [base, candidate] of [[root, target], [existingRealPath(root), existingRealPath(target)]]) {
+    const relative = path.relative(base, candidate)
+    if (!relative || (!relative.startsWith(`..${path.sep}`) && relative !== '..' && !path.isAbsolute(relative))) {
+      throw new Error('FILE_SAVE_MANAGED_STORAGE: 不能覆盖应用管理的数据')
+    }
+  }
+}
+
 export async function saveBridgeFile(
   parent: BrowserWindow,
   fileName: unknown,
@@ -197,15 +213,7 @@ export async function saveBridgeFile(
   const data = typeof content === 'string' ? content : Buffer.from(content)
   const result = await dialog.showSaveDialog(parent, dialogOptions)
   if (result.canceled || !result.filePath) return null
-  // Adapt the source managed-storage mutation guard to Grimoire's data ownership.
-  const root = path.resolve(app.getPath('userData'))
-  const target = path.resolve(result.filePath)
-  for (const [base, candidate] of [[root, target], [existingRealPath(root), existingRealPath(target)]]) {
-    const relative = path.relative(base, candidate)
-    if (!relative || (!relative.startsWith(`..${path.sep}`) && relative !== '..' && !path.isAbsolute(relative))) {
-      throw new Error('FILE_SAVE_MANAGED_STORAGE: 不能覆盖应用管理的数据')
-    }
-  }
+  assertNotManagedTarget(result.filePath)
   await fs.promises.writeFile(result.filePath, data, { encoding: 'utf-8' })
   return result.filePath
 }
