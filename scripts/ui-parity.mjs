@@ -1220,6 +1220,33 @@ if (process.argv.includes('--settings-toggle')) {
     await sleep(300)
     report.checks.languageRestored = (await evaluate(`(async () => (await window.api.settings.getAll()).language)()`)) === languageBefore
 
+    // Fifth control: a keyboard shortcut. Clicking the row opens a capture input; a real key event is then
+    // dispatched at it, and the stored setting proves the capture wrote through.
+    const shortcutBefore = await evaluate(`(async () => (await window.api.settings.getAll())['shortcut_chat.send'] || 'Enter')()`)
+    // The shortcut section is collapsed by default, so its rows do not exist until the card header is clicked.
+    await evaluate(`(() => { const card = document.getElementById('shortcuts'); if (!card) return false; const toggle = card.querySelector('button'); if (toggle) { toggle.click(); return true } return false })()`)
+    await sleep(400)
+    const openedRow = await evaluate(`(() => { if (document.querySelector('[aria-label="设置发送消息快捷键"]')) return true; const row = Array.from(document.querySelectorAll('div')).find(el => (el.textContent || '').trim() === '发送消息'); if (!row || !row.parentElement) return false; const button = row.parentElement.querySelector('button'); if (button) { button.click(); return true } return false })()`)
+    report.shortcutRowOpened = openedRow
+    await sleep(300)
+    const captured = await evaluate(`Boolean(document.querySelector('[aria-label="设置发送消息快捷键"]'))`)
+    if (captured) {
+      await call('Input.dispatchKeyEvent', { type: 'keyDown', key: 'F9', code: 'F9', windowsVirtualKeyCode: 120, modifiers: 2 })
+      await call('Input.dispatchKeyEvent', { type: 'keyUp', key: 'F9', code: 'F9', windowsVirtualKeyCode: 120, modifiers: 2 })
+      await sleep(500)
+    }
+    report.shortcut = {
+      captureOpened: captured,
+      before: shortcutBefore,
+      stored: await evaluate(`(async () => (await window.api.settings.getAll())['shortcut_chat.send'])()`),
+    }
+    // Honest split: if the row could not even be opened, that is a LIMIT of this journey (unknown DOM shape),
+    // not a product failure — record it as skipped instead of inventing a red or a green.
+    if (!report.shortcutRowOpened) report.shortcutSkipped = 'row not found after expanding #shortcuts'
+    else report.checks.shortcutCaptured = captured && typeof report.shortcut.stored === 'string' && report.shortcut.stored.length > 0 && report.shortcut.stored !== shortcutBefore
+    await evaluate(`(async () => { await window.api.settings.set('shortcut_chat.send', ${JSON.stringify('SC')}); return true })()`.replace('"SC"', JSON.stringify(shortcutBefore)))
+    await sleep(200)
+
     // Restore whatever was there before, through the same API the UI uses.
     await evaluate(`(async () => { await window.api.settings.set('ui_density', ${JSON.stringify('ORIG')}); return true })()`.replace('"ORIG"', JSON.stringify(original)))
     await sleep(400)
