@@ -2385,3 +2385,23 @@ provider，审计用的假 provider 永远不会被调用，发送/流式/落库
 
 **这个脚本是报告不是门禁**：名字扫描看不到解构调用——`file.save`、`canvas.delete` 就曾被列为「未使用」，
 实际分别被调用 8 次与 7 次。先核实再动手。
+
+### 更正：我上一轮的判断是错的（2026-11-01 第一百四十五轮）
+
+第 144 轮我写：`wd14.switchModel`「界面无控件 → **用户选不了反推模型**」。
+
+这轮去读代码，事实是：
+
+```tsx
+<select id='wd14-model' value={modelId} onChange={…}>   // 面板本来就有模型下拉
+await window.api.wd14.createTask({ imageId, modelId: modelId || undefined, … })  // 每次都带上所选模型
+```
+
+`switchModel` 是往 Python worker 发 `POST /switch`（超时 **10 分钟**）的**预热**调用。
+界面不调用它，是因为每次任务都传 `modelId` 已经能选模型——接上它只是提前付掉加载时间。
+
+**结论从「缺陷」改判为「可选优化」**，记录已更正。
+
+`comfy.deleteWorkflow` 的结论**维持成立**：工作流有列表、有提交，**没有删除控件**。
+
+教训：**「方法没被调用」不等于「功能缺失」**——必须再看界面本身有没有等价能力，否则就是用自己的想象替代阅读。
