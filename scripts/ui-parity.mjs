@@ -767,8 +767,26 @@ if (process.argv.includes('--style-contract')) {
     const known = new Set(contract.map(item => item.className + '|' + item.property))
     for (const item of extra) if (!known.has(item.className + '|' + item.property)) contract.push(item)
   } catch {}
-  const measured = await evaluate(`(() => { const contract = ${JSON.stringify('CONTRACT')}; return contract.map(item => { const element = document.createElement(item.tag); element.className = item.className; document.body.appendChild(element); const style = getComputedStyle(element); const value = style[item.property] || ''; element.remove(); return { className: item.className, property: item.property, expected: item.expect, actual: value, ok: value === item.expect } }) })()`.replace('"CONTRACT"', JSON.stringify(contract)))
-  const failures = (measured || []).filter(item => !item.ok)
+  const measured = await evaluate(`(() => { const contract = ${JSON.stringify('CONTRACT')};
+return contract.filter(item => !item.differsFrom).map(item => { const element = document.createElement(item.tag); element.className = item.className; document.body.appendChild(element); const style = getComputedStyle(element); const value = style[item.property] || ''; element.remove(); return { className: item.className, property: item.property, expected: item.expect, actual: value, ok: value === item.expect } }) })()`.replace('"CONTRACT"', JSON.stringify(contract)))
+  // Variant assertions run in Node against values read from the page: a class like .ui-badge-success must
+  // differ from .ui-badge in at least one visual property, otherwise it is a dead class that only looks like
+  // a variant.
+  const variantItems = contract.filter(item => item.differsFrom)
+  const styleProps = ['color', 'backgroundColor', 'borderColor']
+  const variantResults = []
+  if (variantItems.length) {
+    const names = [...new Set(variantItems.flatMap(item => [item.className, item.differsFrom]))]
+    const values = await evaluate(`(() => { const out = {}; for (const name of ${JSON.stringify('NAMES')}) { const element = document.createElement('div'); element.className = name; document.body.appendChild(element); const style = getComputedStyle(element); out[name] = ${JSON.stringify('PROPS')}.map(prop => style[prop]); element.remove() } return out })()`.replace('"NAMES"', JSON.stringify(names)).replace('"PROPS"', JSON.stringify(styleProps)))
+    for (const item of variantItems) {
+      const base = values?.[item.differsFrom] || []
+      const variant = values?.[item.className] || []
+      const differing = styleProps.find((prop, index) => base[index] !== variant[index])
+      variantResults.push({ className: item.className, property: 'differs-from:' + item.differsFrom, expected: 'a visual difference', actual: differing ? 'differs in ' + differing : 'identical in all ' + styleProps.length + ' properties', ok: Boolean(differing) })
+    }
+  }
+  const allMeasured = [...(measured || []), ...variantResults]
+  const failures = allMeasured.filter(item => !item.ok)
   // Coverage, not just pass/fail: 105 ui-* classes are used in components but only a fraction are asserted.
   // Reporting the number (and ratcheting it) keeps the blind spot visible instead of "24 checks passed".
   const walkComponents = (dir, out = []) => {
@@ -791,8 +809,8 @@ if (process.argv.includes('--style-contract')) {
   try { coverageBaseline = JSON.parse(fs.readFileSync(baselineFile, 'utf8')) } catch {}
   const coverageShortfall = coverage.covered < (coverageBaseline.minCovered ?? 0)
   const passedAll = failures.length === 0 && !coverageShortfall
-  fs.writeFileSync('artifacts/visual/ui-parity/style-contract.json', JSON.stringify({ passed: passedAll, total: (measured || []).length, measured, failures, coverage }, null, 2))
-  console.log('STYLE-CONTRACT ' + JSON.stringify({ passed: passedAll, total: (measured || []).length, coverage, coverageShortfall: coverageShortfall || undefined, failures }))
+  fs.writeFileSync('artifacts/visual/ui-parity/style-contract.json', JSON.stringify({ passed: passedAll, total: allMeasured.length, measured: allMeasured, failures, coverage }, null, 2))
+  console.log('STYLE-CONTRACT ' + JSON.stringify({ passed: passedAll, total: allMeasured.length, coverage, coverageShortfall: coverageShortfall || undefined, failures }))
   if (!passedAll) process.exitCode = 1
 }
 

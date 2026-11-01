@@ -412,5 +412,180 @@
     "tag": "input",
     "property": "borderRadius",
     "expect": "999px"
+  },
+  {
+    "className": "ui-workspace-tab-active",
+    "differsFrom": "ui-workspace-tab",
+    "tag": "div"
+  },
+  {
+    "className": "ui-button-sm",
+    "differsFrom": "ui-button",
+    "tag": "div"
+  },
+  {
+    "className": "ui-button-md",
+    "differsFrom": "ui-button",
+    "tag": "div"
+  },
+  {
+    "className": "ui-button-lg",
+    "differsFrom": "ui-button",
+    "tag": "div"
+  },
+  {
+    "className": "ui-button-primary",
+    "differsFrom": "ui-button",
+    "tag": "div"
+  },
+  {
+    "className": "ui-button-secondary",
+    "differsFrom": "ui-button",
+    "tag": "div"
+  },
+  {
+    "className": "ui-button-ghost",
+    "differsFrom": "ui-button",
+    "tag": "div"
+  },
+  {
+    "className": "ui-button-danger",
+    "differsFrom": "ui-button",
+    "tag": "div"
+  },
+  {
+    "className": "ui-badge-neutral",
+    "differsFrom": "ui-badge",
+    "tag": "div"
+  },
+  {
+    "className": "ui-badge-accent",
+    "differsFrom": "ui-badge",
+    "tag": "div"
+  },
+  {
+    "className": "ui-badge-success",
+    "differsFrom": "ui-badge",
+    "tag": "div"
+  },
+  {
+    "className": "ui-badge-danger",
+    "differsFrom": "ui-badge",
+    "tag": "div"
+  },
+  {
+    "className": "ui-badge-warning",
+    "differsFrom": "ui-badge",
+    "tag": "div"
+  },
+  {
+    "className": "ui-progress-fill",
+    "differsFrom": "ui-progress",
+    "tag": "div"
+  },
+  {
+    "className": "ui-inline-note-success",
+    "differsFrom": "ui-inline-note",
+    "tag": "div"
+  },
+  {
+    "className": "ui-inline-note-danger",
+    "differsFrom": "ui-inline-note",
+    "tag": "div"
+  },
+  {
+    "className": "ui-inline-note-warning",
+    "differsFrom": "ui-inline-note",
+    "tag": "div"
+  },
+  {
+    "className": "ui-inline-note-info",
+    "differsFrom": "ui-inline-note",
+    "tag": "div"
+  },
+  {
+    "className": "ui-settings-nav-item-active",
+    "differsFrom": "ui-settings-nav-item",
+    "tag": "div"
+  },
+  {
+    "className": "ui-segmented-item",
+    "differsFrom": "ui-segmented",
+    "tag": "div"
+  },
+  {
+    "className": "ui-segmented-item-active",
+    "differsFrom": "ui-segmented-item",
+    "tag": "div"
+  },
+  {
+    "className": "ui-theme-swatch-active",
+    "differsFrom": "ui-theme-swatch",
+    "tag": "div"
+  },
+  {
+    "className": "ui-theme-preview-choice-active",
+    "differsFrom": "ui-theme-preview-choice",
+    "tag": "div"
+  },
+  {
+    "className": "ui-toast-success",
+    "differsFrom": "ui-toast",
+    "tag": "div"
+  },
+  {
+    "className": "ui-toast-error",
+    "differsFrom": "ui-toast",
+    "tag": "div"
+  },
+  {
+    "className": "ui-toast-info",
+    "differsFrom": "ui-toast",
+    "tag": "div"
+  },
+  {
+    "className": "ui-prompt-chip-positive",
+    "differsFrom": "ui-prompt-chip",
+    "tag": "div"
+  },
+  {
+    "className": "ui-prompt-chip-negative",
+    "differsFrom": "ui-prompt-chip",
+    "tag": "div"
+  },
+  {
+    "className": "ui-tag-card-positive",
+    "differsFrom": "ui-tag-card",
+    "tag": "div"
+  },
+  {
+    "className": "ui-tag-card-negative",
+    "differsFrom": "ui-tag-card",
+    "tag": "div"
+  },
+  {
+    "className": "ui-tag-card-mixed-bar",
+    "differsFrom": "ui-tag-card",
+    "tag": "div"
+  },
+  {
+    "className": "ui-tag-card-implied",
+    "differsFrom": "ui-tag-card",
+    "tag": "div"
+  },
+  {
+    "className": "ui-nav-tab-active",
+    "differsFrom": "ui-nav-tab",
+    "tag": "div"
+  },
+  {
+    "className": "ui-tree-row-active",
+    "differsFrom": "ui-tree-row",
+    "tag": "div"
+  },
+  {
+    "className": "ui-switch-on",
+    "differsFrom": "ui-switch",
+    "tag": "div"
   }
 ]

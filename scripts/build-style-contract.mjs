@@ -24,5 +24,19 @@ for (const match of css.matchAll(ruleRe)) {
     rows.push({ className: name, tag: TAG(name), property: property.replace(/-(\w)/g, (_, c) => c.toUpperCase()), expect: value === '0' ? '0px' : value })
   }
 }
-fs.writeFileSync('scripts/style-contract-extra.json', JSON.stringify(rows, null, 2) + '\n')
-console.log('generated', rows.length, 'assertions for', new Set(rows.map(r => r.className)).size, 'classes')
+// Variant classes (ui-X-suffix where ui-X exists) get a "must differ from its base" assertion: a variant that
+// computes identically to the base is a dead class that only looks like one.
+const declared = new Set([...css.matchAll(/(^|\n)\.(ui-[a-z0-9-]+)\s*\{/g)].map(match => match[2]))
+const variants = []
+for (const name of declared) {
+  const parts = name.split('-')
+  for (let cut = parts.length - 1; cut >= 2; cut -= 1) {
+    const base = parts.slice(0, cut).join('-')
+    if (declared.has(base)) { variants.push({ className: name, differsFrom: base, tag: 'div' }); break }
+  }
+}
+const covered = new Set(rows.map(row => row.className))
+const uniqueVariants = variants.filter(item => !covered.has(item.className))
+fs.writeFileSync('scripts/style-contract-extra.json', JSON.stringify([...rows, ...uniqueVariants], null, 2) + '\n')
+console.log('generated', rows.length, 'property assertions and', uniqueVariants.length, 'variant assertions')
+
