@@ -26,6 +26,7 @@ const claims = [
   ['managed-target guard shared', 'src/main/index.ts', 'assertNotManagedTarget'],
   ['G4 waits for providers before clicking', 'src/vendor/cherry/compat/src/CompatProviderMcpPanel.test.tsx', 'providers.list).toHaveBeenCalled()'],
   ['empty-state table recorded', '.agent/records/2026-11-01-empty-states.md', 'mini-app'],
+  ['cross matrix table recorded', '.agent/records/2026-11-01-cross-matrix.md', '378'],
   ['one-command workflow documented', '.agent/records/2026-10-31-overview.md', 'verify:full'],
   ['style coverage ratchet exists', 'scripts/style-contract-baseline.json', 'minCovered'],
   ['silent-catch baseline exists', 'scripts/silent-catch-baseline.json', 'max'],

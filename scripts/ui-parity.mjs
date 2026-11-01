@@ -563,7 +563,11 @@ if (process.argv.includes('--theme-sweep')) {
   const applied = report.themes.filter(entry => entry.themeApplied !== false).length
   report.themeSwitching = applied > 1 ? 'working' : 'unavailable'
   if (applied <= 1) console.log('THEME-SWEEP-UNAVAILABLE: the harness could not switch themes (' + applied + '/' + report.themes.length + ' applied). Panel checks below are therefore one palette repeated; drive the Settings UI to cover the theme axis.')
-  const failing = applied > 1 ? report.themes.filter(entry => entry.blank.length || entry.stuck.length || entry.minMounted < 18 || entry.themeApplied === false) : []
+  // Same spill budget as the width matrix: the header genuinely cannot fit a 210px panel (measured 42px), but a
+  // wide viewport has no excuse, and this must not depend on which theme is active.
+  const spillBudget = width >= 1280 ? 8 : 60
+  const failing = applied > 1 ? report.themes.filter(entry => entry.blank.length || entry.stuck.length || entry.clipped.length || entry.minMounted < 18 || entry.themeApplied === false || entry.spill > spillBudget) : []
+  report.spillBudget = spillBudget
   console.log('THEME-SWEEP-SUMMARY ' + JSON.stringify({ themes: report.themes.length, failing: failing.map(entry => entry.theme) }))
   if (failing.length || report.error) process.exitCode = 1
 }
