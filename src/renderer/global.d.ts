@@ -232,6 +232,7 @@ export interface GrimoireAPI {
   dialog: {
     save: (content: string, defaultName: string) => Promise<boolean>
     open: () => Promise<string | null>
+      openImage: () => Promise<string | null>
     openDirectory: () => Promise<string | null>
   }
   ai: {

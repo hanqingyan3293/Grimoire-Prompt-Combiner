@@ -2444,3 +2444,17 @@ export function saveMarkdownExport(title, markdown, dialog = window.api.dialog) 
 
 这轮特别克制的点：**没有像上一轮那样从「没被调用」直接推断「功能缺失」**，
 而是每条都先找调用方或等价能力。结果四条里只有一条（`media.relocate`）是真的用户可见缺口。
+
+### 补上「文件缺失」的修复入口（2026-11-01 第一百四十八轮）
+
+上轮确认 `media.relocate` 是**用户可见的真缺口**：图库卡片会显示「文件缺失」，然后什么也做不了。
+这轮把入口补上（不新增功能，只接通已存在的通道）：
+
+1. 新增 `dialog:openImage`——只选一张图片（png/jpg/jpeg/webp/gif/bmp/avif）。
+   原有对话框只有 `openText`（文本）与 `openDirectory`（目录），表达不了「选一张图」。
+2. preload + `global.d.ts` + `shared/types.ts` 同步。
+3. `InspectorPanel`：仅当 `!item.available` 时出现「重新定位」按钮 → 选文件 → `media.relocate({ id: mediaId, filePath })` → 刷新。
+
+过程里修了两处自己的错：`item` 可能为 null（补 guard）、`id` 字段真实名字是 `mediaId`（TypeScript 直接指出来）。
+
+门禁后 `report-unused-bridge` 的 19 项里，`media.relocate` 应当消失——下轮复核。

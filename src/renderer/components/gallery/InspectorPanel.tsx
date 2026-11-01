@@ -132,6 +132,18 @@ export function InspectorPanel({ item, className, onOpenSimilar }: { item: Galle
     }).catch(() => {})
     return () => { disposed = true }
   }, [item?.mediaId, item?.imageRefId])
+  const relocateFile = async () => {
+    if (!item) return
+    const picked = await window.api.dialog.openImage()
+    if (!picked) return
+    setBusy(true)
+    try {
+      await window.api.media.relocate({ id: item.mediaId, filePath: picked })
+      await refreshLinks()
+    } catch (error) { setMessage(error instanceof Error ? error.message : '重新定位失败') }
+    finally { setBusy(false) }
+  }
+
 
   const refreshLinks = async () => {
     if (!item) return
@@ -244,6 +256,8 @@ export function InspectorPanel({ item, className, onOpenSimilar }: { item: Galle
           <Button size="sm" icon={FolderOpen} onClick={revealFile}>定位文件</Button>
           <Button size="sm" icon={ScanSearch} onClick={() => void requestTagging()} disabled={busy}>反推</Button>
           <Button size="sm" icon={Images} onClick={() => void findSimilar()} disabled={busy || !item.available}>相似图</Button>
+          {/* A moved file left the card stuck on 「文件缺失」 with no way out; this is the repair path. */}
+          {!item.available && <Button size="sm" icon={FolderOpen} onClick={() => void relocateFile()} disabled={busy}>重新定位</Button>}
         </div>
 
         {/* 相似图：优先 CLIP 语义（有 embedding 时），否则回落感知哈希并如实标注。

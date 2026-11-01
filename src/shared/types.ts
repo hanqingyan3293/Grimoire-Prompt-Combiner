@@ -327,6 +327,7 @@ export const IPC_CHANNELS = {
 
   // File dialog
   DIALOG_SAVE_TEXT: "dialog:saveText",
+  DIALOG_OPEN_IMAGE: "dialog:openImage",
   DIALOG_OPEN_TEXT: "dialog:openText",
 
   // Providers

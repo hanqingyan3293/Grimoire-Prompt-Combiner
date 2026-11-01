@@ -603,7 +603,18 @@ async function registerAllIPC(): Promise<void> {
     assertNotManagedTarget(r.filePath)
     fs.writeFileSync(r.filePath, content, "utf-8")
     return true
+  })
+  // Picking a single existing image is needed by the gallery repair path (a moved file); the text and
+  // directory dialogs cannot express an image filter.
+  ipcMain.handle(IPC_CHANNELS.DIALOG_OPEN_IMAGE, async () => {
+    const picked = await dialog.showOpenDialog({
+      properties: ["openFile"],
+      filters: [{ name: "图片", extensions: ["png", "jpg", "jpeg", "webp", "gif", "bmp", "avif"] }],
+    })
+    if (picked.canceled || !picked.filePaths.length) return null
+    return picked.filePaths[0]
   })
+
 
   ipcMain.handle(IPC_CHANNELS.DIALOG_OPEN_TEXT, async () => {
     const r = await dialog.showOpenDialog({
