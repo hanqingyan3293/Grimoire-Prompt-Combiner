@@ -2367,3 +2367,21 @@ provider，审计用的假 provider 永远不会被调用，发送/流式/落库
 
 处置：进 `ipc-coverage-baseline.json` 白名单并写明原因（要么补发送，要么整块删掉——产品决定），
 同时门禁会报「STALE ALLOWANCE」如果这条豁免哪天不再成立。
+
+### 「桥接有、入口无」的两个能力（2026-11-01 第一百四十四轮）
+
+接着 G13 的线索继续问：**preload 暴露的方法里，有多少渲染层根本没调用？**
+
+196 个桥接方法，排除 `api.ns.method` 形式、再排除裸 `.method`（解构/包装）之后，剩 **19 个哪儿都没调用**。
+逐条核实了两个真的：
+
+| 方法 | 主进程 | 界面 | 后果 |
+|---|---|---|---|
+| `wd14.switchModel` | 有实现 | **无控件**（面板只调 diagnostics/models/history/createTask） | 用户选不了反推模型 |
+| `comfy.deleteWorkflow` | 有实现 | **无入口**（只能导入和使用） | 导入错了删不掉 |
+
+其余多是协议层（`cache.*Sync`、`dataApi.onDataChanged`、`tasks.onSnapshot`）或暂未接按钮的批量操作。
+完整清单与复核方式写在 `.agent/records/2026-11-01-unreachable-bridge.md`。
+
+**这个脚本是报告不是门禁**：名字扫描看不到解构调用——`file.save`、`canvas.delete` 就曾被列为「未使用」，
+实际分别被调用 8 次与 7 次。先核实再动手。
