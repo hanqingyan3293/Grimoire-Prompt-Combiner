@@ -33,7 +33,9 @@ const journeys = [
   { flag: '--panel-menu', label: '面板头菜单（开/关，零副作用）' },
   { flag: '--panel-maximize', label: '面板最大化/还原（可逆）' },
   { flag: '--layout-menu', label: '布局管理菜单（开/关，零副作用）' },
-  { flag: '--settings-toggle', label: '设置项真的落库并生效（密度，自动还原）' },
+  { flag: '--settings-toggle', label: '设置项真的落库并生效（五项，自动还原）' },
+  // Clicks the first SAFE body button in every panel: the matrix only proves they render.
+  { flag: '--panel-smoke', label: '18 面板交互冒烟（点体内首个安全按钮）' },
   // One boot, 51 source routes checked for rendered/contentVisible/routeMatched: cheap insurance that a page
   // did not silently regress to the "unimplemented" boundary.
   // Proves the screenshot guard actually sees a change (it injects one and expects a red). A watchdog nobody

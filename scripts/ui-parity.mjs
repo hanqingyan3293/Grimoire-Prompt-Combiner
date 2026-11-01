@@ -599,6 +599,38 @@ if (process.argv.includes('--theme-sweep')) {
   if (failing.length || report.error) process.exitCode = 1
 }
 
+
+// `--panel-smoke`: the matrix proves every panel RENDERS; nothing has ever CLICKED inside most of them. This
+// visits all panel types, clicks the first SAFE button in each (blocklist below), and asserts the panel is still
+// mounted with no error boundary afterwards. It is a crash/exception sweep, not a behaviour test.
+if (process.argv.includes('--panel-smoke')) {
+  // Native pickers block the main process, and apply/delete buttons mutate real data. Excluded on purpose.
+  const UNSAFE = ['删除', '移除', '清空', '重置', '退出', '关闭', '卸载', '覆盖', '导入', '应用', '选择', '打开', 'Drop', 'drop']
+  const report = { passed: false, panels: [] }
+  try {
+    const types = await evaluate(`Array.from(new Set(Array.from(document.querySelectorAll('select.ui-panel-select option')).map(option => option.value)))`)
+    const selectType = async type => evaluate(`(() => { const select = Array.from(document.querySelectorAll('select.ui-panel-select')).find(element => element.offsetParent !== null); if (!select) return false; Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(select, ${JSON.stringify('T')}); select.dispatchEvent(new Event('change', { bubbles: true })); return true })()`.replace('"T"', JSON.stringify(type)))
+    for (const type of types) {
+      if (!(await selectType(type))) continue
+      await sleep(500)
+      const entry = { type }
+      entry.clicked = await evaluate(`(() => { const panel = document.querySelector('[data-panel-type="' + ${JSON.stringify('T')} + '"]'); if (!panel) return 'NO_PANEL'; const unsafe = ${JSON.stringify('UNSAFE')}; const button = Array.from(panel.querySelectorAll('button')).filter(el => !el.closest('[data-ui="panel.header"]')).find(el => { if (el.disabled) return false; const label = String(el.textContent || '') + ' ' + String(el.title || '') + ' ' + String(el.getAttribute('aria-label') || ''); return !unsafe.some(word => label.includes(word)) }); if (!button) return 'NO_SAFE_BUTTON'; const label = String(button.textContent || button.title || button.getAttribute('aria-label') || '').trim().slice(0, 16); button.click(); return label })()`.replace('"T"', JSON.stringify(type)).replace('"UNSAFE"', JSON.stringify(UNSAFE)))
+      await sleep(700)
+      // A click can open a menu or a dialog; Escape closes menus so the next panel starts clean.
+      await call('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Escape', code: 'Escape', windowsVirtualKeyCode: 27 })
+      await call('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Escape', code: 'Escape', windowsVirtualKeyCode: 27 })
+      entry.state = await evaluate(`(() => { const panel = document.querySelector('[data-panel-type="' + ${JSON.stringify('T')} + '"]'); if (!panel) return 'UNMOUNTED'; const text = panel.innerText || ''; if (/似乎出现了一些问题|渲染失败|Something went wrong/.test(text)) return 'ERROR_BOUNDARY'; return 'OK' })()`.replace('"T"', JSON.stringify(type)))
+      report.panels.push(entry)
+      console.log('PANEL-SMOKE ' + JSON.stringify(entry))
+    }
+  } catch (error) { report.error = String(error) }
+  const bad = report.panels.filter(entry => entry.state !== 'OK')
+  report.passed = bad.length === 0 && !report.error
+  fs.writeFileSync('artifacts/visual/ui-parity/panel-smoke.json', JSON.stringify(report, null, 2))
+  console.log('PANEL-SMOKE-SUMMARY ' + JSON.stringify({ panels: report.panels.length, clicked: report.panels.filter(e => e.clicked && e.clicked !== 'NO_SAFE_BUTTON' && e.clicked !== 'NO_PANEL').length, bad, error: report.error }))
+  if (!report.passed) process.exitCode = 1
+}
+
 if (process.argv.includes('--visual-matrix')) {
   const widths = [1600, 1280, 960]
   const matrix = { passed: false, runs: [] }
