@@ -2812,3 +2812,14 @@ ComfyUI 的「保存并连接」在面板 busy 时是禁用的，之前是直接
 复跑 COMFY-PERSIST 5 项全 PASS（stored/showed 都是 `http://127.0.0.1:8199`）。
 
 规律沉淀成一句：**旅程里凡是可能被禁用的按钮，都要先等可用再点**；否则「没反应」与「反应慢」在日志里无法区分。
+
+### 工作台的「保存为新版本」也加了可用前置（2026-11-01 第一百七十轮）
+
+`保存为新版本` 的条件是 `disabled={busy || !dirty}`——不脏就点不动。旅程此前直接点，
+一旦前置状态没达成，表现就是「保存没发生」。
+
+现在点击前轮询等待 `!disabled`（最多 6 秒）。复跑 WORKBENCH 8 项全 PASS：
+createdWork / blockView / savedVersion / deletedVersion / restoredVersion / branchedFromVersion /
+linkageNeedsBothSides / versionAssetLinkage。
+
+至此三处「可能被禁用」的点击都加了前置：G4 的单测按钮、ComfyUI 保存、工作台保存。

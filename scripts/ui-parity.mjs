@@ -253,6 +253,9 @@ if (process.argv.includes('--workbench')) {
     await waitFor(`document.body.innerText.includes('随机块')`)
     journey.checks.blockView = true
     journey.shots.push(await screenshot('wb-02-blocks'))
+    // 保存为新版本 is disabled={busy || !dirty}: wait until it is clickable, otherwise a no-op click is
+    // indistinguishable from a missing save.
+    await evaluate(`(async () => { const panel = document.querySelector('[data-panel-type="novelai-workbench"]'); if (!panel) return false; const find = () => Array.from(panel.querySelectorAll('button')).find(el => (el.textContent || '').includes('保存为新版本')); for (let index = 0; index < 40; index += 1) { const button = find(); if (button && !button.disabled) return true; await new Promise(resolve => setTimeout(resolve, 150)) } return false })()`)
     await evaluate(`Array.from(document.querySelectorAll('button')).find(el => el.textContent.includes('保存为新版本')).click()`)
     await waitFor(`Array.from(document.querySelectorAll('button')).filter(el => el.textContent.trim().startsWith('v')).length >= 2`)
     journey.checks.savedVersion = true
@@ -275,6 +278,9 @@ if (process.argv.includes('--workbench')) {
     journey.observations.branchFrom = branchFrom
     await waitFor(`(() => { const panel = document.querySelector('[data-panel-type="novelai-workbench"]'); return !!panel && panel.innerText.indexOf('将从 v1 开新分支') >= 0 })()`, 40)
     await evaluate(`(() => { const panel = document.querySelector('[data-panel-type="novelai-workbench"]'); const area = panel && panel.querySelector('textarea'); if (!area) return 'NO_AREA'; Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value').set.call(area, '1girl, {{long hair}}, 分支线'); area.dispatchEvent(new Event('input', { bubbles: true })); return 'OK' })()`)
+    // 保存为新版本 is disabled={busy || !dirty}: wait until it is clickable, otherwise a no-op click is
+    // indistinguishable from a missing save.
+    await evaluate(`(async () => { const panel = document.querySelector('[data-panel-type="novelai-workbench"]'); if (!panel) return false; const find = () => Array.from(panel.querySelectorAll('button')).find(el => (el.textContent || '').includes('保存为新版本')); for (let index = 0; index < 40; index += 1) { const button = find(); if (button && !button.disabled) return true; await new Promise(resolve => setTimeout(resolve, 150)) } return false })()`)
     await evaluate(`(() => { const panel = document.querySelector('[data-panel-type="novelai-workbench"]'); const button = Array.from(panel.querySelectorAll('button')).find(el => el.textContent.includes('保存为新版本')); if (!button) return 'NO_SAVE'; button.click(); return 'OK' })()`)
     const branched = await waitFor(`(async () => { const works = await window.api.novelai.listWorks(); if (!works.length) return null; const branches = await window.api.novelai.listBranches(works[0].id); return branches.length === 2 ? branches.map(branch => branch.size) : null })()`, 60)
     journey.observations.branches = branched
