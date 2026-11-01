@@ -124,6 +124,8 @@ describe('CompatProviderMcpPanel', () => {
     const connect = (await screen.findAllByRole('button', { name: '连接' }))[0]
     fireEvent.click(connect)
     await waitFor(() => expect(host.mcp.connect).toHaveBeenCalledWith('m1'))
+    // disabled={busyServerId === ...} or a selection guard: wait for enabled before clicking.
+    await waitFor(() => expect(screen.getAllByRole('button', { name: '删除 Docs' })[0]).not.toBeDisabled())
     fireEvent.click(screen.getAllByRole('button', { name: '删除 Docs' })[0])
     await waitFor(() => expect(host.mcp.delete).toHaveBeenCalledWith('m1'))
   })
@@ -134,6 +136,8 @@ describe('CompatProviderMcpPanel', () => {
     expect(await screen.findByText('search_docs')).toBeTruthy()
     fireEvent.change(screen.getAllByRole('textbox', { name: '搜索 MCP 工具' })[0], { target: { value: 'search_docs' } })
     expect(await screen.findByText('search_docs')).toBeTruthy()
+    // disabled={busyServerId === ...} or a selection guard: wait for enabled before clicking.
+    await waitFor(() => expect(screen.getByRole('button', { name: '启用' })).not.toBeDisabled())
     fireEvent.click(screen.getByRole('button', { name: '启用' }))
     await waitFor(() => expect(host.mcp.save).toHaveBeenCalledWith({ id: 'm1', enabled_tools: ['search_docs'] }))
     expect(host.mcp.callTool).not.toHaveBeenCalled()
