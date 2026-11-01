@@ -1224,9 +1224,12 @@ if (process.argv.includes('--settings-toggle')) {
     // dispatched at it, and the stored setting proves the capture wrote through.
     const shortcutBefore = await evaluate(`(async () => (await window.api.settings.getAll())['shortcut_chat.send'] || 'Enter')()`)
     // The shortcut section is collapsed by default, so its rows do not exist until the card header is clicked.
-    await evaluate(`(() => { const card = document.getElementById('shortcuts'); if (!card) return false; const toggle = card.querySelector('button'); if (toggle) { toggle.click(); return true } return false })()`)
+    // Real ids and labels (read from SettingsSectionCard + the row markup): the section is
+    // `#settings-section-shortcuts`, the row opens through `[aria-label="修改发送消息快捷键"]`, and the capture
+    // input is `[aria-label="设置发送消息快捷键"]`.
+    await evaluate(`(() => { const card = document.getElementById('settings-section-shortcuts'); if (!card) return false; if (card.querySelector('[aria-label="修改发送消息快捷键"]')) return true; const toggle = card.querySelector('button'); if (toggle) { toggle.click(); return true } return false })()`)
     await sleep(400)
-    const openedRow = await evaluate(`(() => { if (document.querySelector('[aria-label="设置发送消息快捷键"]')) return true; const row = Array.from(document.querySelectorAll('div')).find(el => (el.textContent || '').trim() === '发送消息'); if (!row || !row.parentElement) return false; const button = row.parentElement.querySelector('button'); if (button) { button.click(); return true } return false })()`)
+    const openedRow = await evaluate(`(() => { if (document.querySelector('[aria-label="设置发送消息快捷键"]')) return true; const button = document.querySelector('[aria-label="修改发送消息快捷键"]'); if (!button) return false; button.click(); return true })()`)
     report.shortcutRowOpened = openedRow
     await sleep(300)
     const captured = await evaluate(`Boolean(document.querySelector('[aria-label="设置发送消息快捷键"]'))`)
