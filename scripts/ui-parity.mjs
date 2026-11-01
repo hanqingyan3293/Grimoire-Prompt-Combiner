@@ -1148,6 +1148,41 @@ if (process.argv.includes('--panel-maximize')) {
 
 // `--layout-menu`: the workspace bar's 布局管理 menu was never opened by any journey. Opening and closing it has
 // no side effect (the actions inside are separate buttons), so it is safe on a real profile.
+
+// `--settings-toggle`: the settings panel is our own page and no journey ever changed a value in it. This clicks
+// the 紧凑 density option, proves the setting reached the database AND the DOM (`data-ui-density`), then puts the
+// previous value back.
+if (process.argv.includes('--settings-toggle')) {
+  const report = { passed: false, checks: {} }
+  try {
+    const original = await evaluate(`(async () => (await window.api.settings.getAll()).ui_density || 'normal')()`)
+    report.original = original
+    report.checks.sawOriginal = Boolean(original)
+    await evaluate(`(() => { const select = Array.from(document.querySelectorAll('select.ui-panel-select')).find(element => element.offsetParent !== null); if (!select) return false; Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(select, 'settings'); select.dispatchEvent(new Event('change', { bubbles: true })); return true })()`)
+    await sleep(600)
+    // The settings page mounts lazily; a fixed sleep was not enough (measured: 0 theme swatches after 600ms,
+    // while the same panel was warm during the theme sweep). Poll for the control instead.
+    const ready = await evaluate(`(async () => { for (let index = 0; index < 50; index += 1) { const found = Array.from(document.querySelectorAll('button')).some(el => (el.textContent || '').trim() === '紧凑'); if (found) return true; await new Promise(resolve => setTimeout(resolve, 200)) } return false })()`)
+    report.checks.settingsReady = ready
+    const clicked = await evaluate(`(() => { const button = Array.from(document.querySelectorAll('button')).find(el => (el.textContent || '').trim() === '紧凑'); if (!button || button.disabled) return false; button.click(); return true })()`)
+    report.checks.clickedCompact = clicked
+    await sleep(500)
+    report.stored = await evaluate(`(async () => (await window.api.settings.getAll()).ui_density)()`)
+    report.checks.storedCompact = report.stored === 'compact'
+    report.densityAttribute = await evaluate(`document.documentElement.getAttribute('data-ui-density')`)
+    report.checks.domApplied = report.densityAttribute === 'compact'
+    // Restore whatever was there before, through the same API the UI uses.
+    await evaluate(`(async () => { await window.api.settings.set('ui_density', ${JSON.stringify('ORIG')}); return true })()`.replace('"ORIG"', JSON.stringify(original)))
+    await sleep(400)
+    report.restored = await evaluate(`(async () => (await window.api.settings.getAll()).ui_density)()`)
+    report.checks.restored = report.restored === original
+  } catch (error) { report.error = String(error) }
+  report.passed = Object.values(report.checks).every(Boolean)
+  fs.writeFileSync('artifacts/visual/ui-parity/settings-toggle.json', JSON.stringify(report, null, 2))
+  console.log('SETTINGS-TOGGLE ' + JSON.stringify({ labels: report.labels, passed: report.passed, checks: report.checks, original: report.original, stored: report.stored, density: report.densityAttribute, restored: report.restored, error: report.error }))
+  if (!report.passed) process.exitCode = 1
+}
+
 if (process.argv.includes('--layout-menu')) {
   const report = { passed: false, checks: {} }
   const trigger = `document.querySelector('.ui-layout-menu-trigger')`

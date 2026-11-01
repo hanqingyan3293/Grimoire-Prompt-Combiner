@@ -2837,3 +2837,19 @@ linkageNeedsBothSides / versionAssetLinkage。
 两条教训：
 1. **助手的 `evaluate` 绑定在哪个页面，决定了它能点到什么**——跨窗口场景不能复用主窗口的助手；
 2. 两次失败都不是表达式写错，而是**作用域错**；先确认「在哪个窗口」，再查表达式。
+
+### 设置旅程做成了，但先踩到「84 个残留 Electron」（2026-11-01 第一百七十二轮）
+
+新旅程 `--settings-toggle`：打开设置面板 → 点「紧凑」→ 断言**写进数据库**且 DOM 有 `data-ui-density=compact`
+→ 还原原值。
+
+```
+original: normal → stored: compact / density: compact → restored: normal   （6 项全 PASS）
+```
+
+过程中两个坑：
+1. 设置页**懒挂载**，固定等 600ms 不够（测得此时 swatches=0）；改为轮询最多 10 秒等控件出现。
+2. 全量门禁里 G11 跑了 **2368 秒**后报 `WINDOW_NOT_RENDERED`——查进程发现**残留了 84 个 electron.exe**
+   （我这一串旅程反复起应用，退出不干净）。清掉带 `remote-debugging-port` 的 42 个后，G11 单跑 **80 秒 PASS**。
+
+记一条：**跑大量旅程后要清理残留进程**，否则门禁会因为机器被自己拖垮而假红。
