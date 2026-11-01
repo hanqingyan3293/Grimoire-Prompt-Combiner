@@ -58,6 +58,10 @@ describe('CompatProviderMcpPanel', () => {
 
   it('pulls models with the saved key, previews via the source sync view, and applies explicitly', async () => {
     render(<CompatProviderMcpPanel onProviderSettings={vi.fn()} />)
+    // Clicking before the panel's first `providers.list()` resolves leaves the refresh a no-op, and the only
+    // symptom is a missing test id 15s later. Wait for the loaded state, not just for the button to exist.
+    await waitFor(() => expect(host.providers.list).toHaveBeenCalled())
+    await screen.findByText(/OpenAI/)
     fireEvent.click(await screen.findByRole('button', { name: '刷新模型' }))
     expect(await screen.findByTestId('provider-model-sync')).toBeTruthy()
     expect((await screen.findAllByText('a-model')).length).toBeGreaterThan(0)
