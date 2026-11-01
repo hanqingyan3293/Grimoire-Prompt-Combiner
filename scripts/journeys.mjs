@@ -13,6 +13,9 @@ const journeys = [
   { flag: '--gallery', label: '图库筛选（3 项）' },
   { flag: '--tooltip', label: '提示气泡（4 项）' },
   { flag: '--comfy-persist', label: 'ComfyUI 持久化闭环（5 项）' },
+  // Runs EARLY: it boots its own renderer, and at the end of the suite the machine is saturated enough that it
+  // failed twice in a row on 2026-11-01 while passing standalone.
+  { script: 'scripts/audit-cherry-routes.mjs', flag: '--routes-only', label: '51 条源路由全渲染' },
   // The five M3 page audits are OPT-IN (`--m3`): each boots its own renderer, and running them after the
   // nine above saturates the machine — all five failed inside a full run while passing standalone minutes
   // earlier. A false red trains people to ignore red.
@@ -34,7 +37,6 @@ const journeys = [
   { flag: '--settings-toggle', label: '设置项真的落库并生效（密度，自动还原）' },
   // One boot, 51 source routes checked for rendered/contentVisible/routeMatched: cheap insurance that a page
   // did not silently regress to the "unimplemented" boundary.
-  { script: 'scripts/audit-cherry-routes.mjs', flag: '--routes-only', label: '51 条源路由全渲染' },
   // Proves the screenshot guard actually sees a change (it injects one and expects a red). A watchdog nobody
   // has watched fail is a watchdog nobody can trust.
   { flag: '--visual-matrix --diff --diff-selftest', label: '截图守护自检（必须检出注入的改动）' },
