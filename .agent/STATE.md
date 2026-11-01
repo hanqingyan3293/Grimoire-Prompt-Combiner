@@ -2689,3 +2689,19 @@ sakura   #ec4899   forest #22c55e   sunset  #f97316
 | `preload/global.d.ts` | **真的不存在**：它是「preload + 全局声明」的简写 → 改成两条真实路径 |
 
 现在 **204 条引用、0 条无法解析**，并成为 **G14**（0.2 秒）。
+
+### G14 扩到「被引用的 npm 脚本必须存在」（2026-11-01 第一百六十三轮）
+
+文档里写 `npm run x` 当复现步骤，而那个脚本早删了——和指向不存在的文件一样，都说不上是证据。
+G14 现在同时检查：
+
+```
+paths cited: 204, unresolved: 0
+npm scripts cited: 0 unknown
+```
+
+否定对照：往 cross-matrix 记录里塞一句 `npm run definitely-not-a-script` → 打印
+`UNKNOWN SCRIPT … (cited in …)` 且 **exit=1**。
+
+（第一次验证时我写的是 `node … | tail -4; echo run=$?`，读到的是 `tail` 的退出码——**管道会吞掉退出码**。
+改成重定向到文件再 echo 才是真的。）

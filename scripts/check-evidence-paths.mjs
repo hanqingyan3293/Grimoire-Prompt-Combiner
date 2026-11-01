@@ -42,6 +42,22 @@ for (const candidate of candidates) {
   for (const file of index) { if (file === candidate || file.endsWith(suffix)) { found = true; break } }
   if (!found) missing.push(candidate)
 }
+// Commands cited as evidence must also be runnable: a `npm run x` that no longer exists reads as a repro step
+// and wastes the reader's time.
+const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'))
+const docs = ['.agent/MIGRATION_MATRIX.md', '.agent/records/2026-10-31-overview.md', '.agent/records/2026-11-01-cross-matrix.md', '.agent/records/2026-11-01-empty-states.md', '.agent/records/2026-11-01-unreachable-bridge.md']
+const badScripts = new Set()
+for (const doc of docs) {
+  let docText = ''
+  try { docText = fs.readFileSync(doc, 'utf8') } catch { continue }
+  for (const match of docText.matchAll(/npm run ([\w:-]+)/g)) {
+    if (!pkg.scripts[match[1]]) badScripts.add(match[1] + '  (cited in ' + doc + ')')
+  }
+}
+
 console.log('paths cited: ' + candidates.size + ', unresolved: ' + missing.length)
+console.log('npm scripts cited: ' + badScripts.size + ' unknown')
+for (const item of badScripts) console.log('  UNKNOWN SCRIPT ' + item)
+if (badScripts.size) process.exitCode = 1
 for (const item of missing.sort()) console.log('  UNRESOLVED ' + item)
 if (missing.length) process.exitCode = 1
