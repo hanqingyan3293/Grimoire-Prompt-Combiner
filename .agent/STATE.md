@@ -3207,3 +3207,20 @@ clippedHeaders: []  ← 但裁剪检测为空
 修完再变异：18 个面板全部被列入 `clippedHeaders`；还原后 exit=0、三宽度全空。
 
 结论：**「检测器存在」和「检测器会红」是两件事**，而只有变异能区分它们。
+
+### 第四次变异：mounted 检测（2026-11-01 第一百九十二轮）
+
+让 `images` 面板**整个不渲染**（`PanelShell` 里 `if (type === 'images') return null`）：
+
+```
+MATRIX    mounted: "17/18"   （三个宽度都是 17）
+MATRIX-FAIL [{"width":1600,"mounted":17},{"width":1280,"mounted":17},{"width":960,"mounted":17}]
+exit=1
+```
+
+检测器准确报出少了一个面板，并且**说出是哪个宽度**。还原后门禁全绿。
+
+矩阵检测器现在已验证 4 个：`stub` / `blank` / `stuck` / `mounted`（外加样式契约）。
+
+还剩 `spill` 与 `drift` 未做主动变异——`spill` 在上轮变异里其实已经自然触发过（699/769/…），
+所以真正没验证过的只剩 `drift`。
