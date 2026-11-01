@@ -1185,6 +1185,21 @@ if (process.argv.includes('--settings-toggle')) {
     await evaluate(`(async () => { await window.api.settings.set('appearance_mode', ${JSON.stringify('APP')}); return true })()`.replace('"APP"', JSON.stringify(appearanceBefore)))
     await sleep(300)
 
+    // Third control: UI scale (a number input). Typed through the native setter so React sees the change.
+    const scaleBefore = await evaluate(`(async () => (await window.api.settings.getAll()).ui_scale || '14')()`)
+    const typedScale = await evaluate(`(() => { const input = Array.from(document.querySelectorAll('input[type=number]')).find(el => Number(el.max) === 20 && Number(el.min) === 12); if (!input) return false; Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(input, '16'); input.dispatchEvent(new Event('input', { bubbles: true })); input.dispatchEvent(new Event('change', { bubbles: true })); return true })()`)
+    await sleep(500)
+    report.scale = {
+      typed: typedScale,
+      before: scaleBefore,
+      stored: await evaluate(`(async () => (await window.api.settings.getAll()).ui_scale)()`),
+      fontVar: await evaluate(`getComputedStyle(document.documentElement).getPropertyValue('--ui-font-size').trim()`),
+      attribute: await evaluate(`document.documentElement.getAttribute('data-ui-scale')`),
+    }
+    report.checks.scaleApplied = report.scale.stored === '16' && report.scale.fontVar === '16px' && report.scale.attribute === '16'
+    await evaluate(`(async () => { await window.api.settings.set('ui_scale', ${JSON.stringify('SC')}); return true })()`.replace('"SC"', JSON.stringify(scaleBefore)))
+    await sleep(300)
+
     // Restore whatever was there before, through the same API the UI uses.
     await evaluate(`(async () => { await window.api.settings.set('ui_density', ${JSON.stringify('ORIG')}); return true })()`.replace('"ORIG"', JSON.stringify(original)))
     await sleep(400)

@@ -2867,3 +2867,18 @@ original: normal → stored: compact / density: compact → restored: normal   �
 
 另外把上轮的手工清理做成脚本：`npm run clean:electron`（只杀带 `remote-debugging-port` 且路径含 grimoire 的
 进程，不碰正常开发实例）。刚才清掉 6 个残留。
+
+### 设置页第三条：UI 缩放（2026-11-01 第一百七十四轮）
+
+`--settings-toggle` 现在覆盖三条真实写入路径，8 项断言全 PASS：
+
+| 控件 | 断言 |
+|---|---|
+| 密度「紧凑」 | 库 `compact` + `data-ui-density` |
+| 外观「深色」 | 库 `dark` + `data-appearance-mode` |
+| **UI 缩放 14→16** | 库 `16` + `--ui-font-size: 16px` + `data-ui-scale=16` |
+
+缩放这条用原生 setter 触发 React 的 onChange（范围输入直接 `input.value=` 不会触发）——这也是之前几处
+「输入框写了值但没生效」的同一个坑，现在是标准写法。
+
+三条都在断言后还原原值。
