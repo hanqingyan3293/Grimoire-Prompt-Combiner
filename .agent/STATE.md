@@ -2194,3 +2194,19 @@ silent catches: 163 (baseline 163) {"promise":51,"try/catch":112}
 顺带发现 M6 的旅程断言名本身就很好用：
 `createdWork / savedVersion / deletedVersion / restoredVersion / branchedFromVersion / linkageNeedsBothSides / versionAssetLinkage`
 ——台账直接引用这些名字，读者跑一次旅程就能对上。
+
+### 划词助手那行的证据已经过期（2026-10-31 第一百三十五轮）
+
+查 M3 覆盖时发现：台账第 229 行的证据写着「**Not yet done: the source floating toolbar**」。
+
+但浮动工具栏**早就建好了**（第 99–104 轮）：`SelectionAssistantView.tsx` + `#selection-assistant` 路由 +
+380×240 无边框置顶窗口 + hide-on-blur + 8 项旅程断言。
+
+也就是说这条记录在**低估自己**——比高估更少被注意，但同样是记录失真。已重写该证据：
+
+- 状态仍是 PARTIALLY_MIGRATED（跨应用原生捕获确实缺，`selection-hook` 不在依赖里）；
+- 但明确写出「浮动工具栏已存在」并列出证据：5 服务测试 + 4 jsdom 视图测试 + `--selection-popup` 8 项；
+- 「Still missing」只保留真正的缺口。
+
+顺带记下这个文件的排版：该章节是**每个单元格一行**，不是每行一条记录——改单元格要按行替换，
+不能按 `split('|')` 定位（我第一次就撞上了）。
