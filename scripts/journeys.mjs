@@ -30,6 +30,7 @@ const journeys = [
   // real clicks, zero persistent mutation.
   { flag: '--panel-menu', label: '面板头菜单（开/关，零副作用）' },
   { flag: '--panel-maximize', label: '面板最大化/还原（可逆）' },
+  { flag: '--layout-menu', label: '布局管理菜单（开/关，零副作用）' },
   // One boot, 51 source routes checked for rendered/contentVisible/routeMatched: cheap insurance that a page
   // did not silently regress to the "unimplemented" boundary.
   { script: 'scripts/audit-cherry-routes.mjs', flag: '--routes-only', label: '51 条源路由全渲染' },

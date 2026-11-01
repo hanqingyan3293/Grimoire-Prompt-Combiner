@@ -62,7 +62,11 @@ describe('CompatProviderMcpPanel', () => {
     // symptom is a missing test id 15s later. Wait for the loaded state, not just for the button to exist.
     await waitFor(() => expect(host.providers.list).toHaveBeenCalled())
     await screen.findByText(/OpenAI/)
-    fireEvent.click(await screen.findByRole('button', { name: '刷新模型' }))
+    // 刷新模型 is DISABLED without base_url + a key, and a click on a disabled button is a no-op — the
+    // element then never appears and the failure reads as a mystery timeout. Wait for enabled, then click.
+    const refresh = await screen.findByRole('button', { name: '刷新模型' })
+    await waitFor(() => expect(refresh).not.toBeDisabled())
+    fireEvent.click(refresh)
     expect(await screen.findByTestId('provider-model-sync')).toBeTruthy()
     expect((await screen.findAllByText('a-model')).length).toBeGreaterThan(0)
     expect(screen.getAllByText('z-model').length).toBeGreaterThan(0)

@@ -2784,3 +2784,20 @@ restored  304 × 403   ← 与初始完全一致（容差 2px）
 - 用户布局确认仍是 **5 面板**。
 
 教训：**能单独成立的步骤，串起来不一定成立**。编排失败时要敢于裁掉，而不是把不稳的东西留在仓库里假装能用。
+
+### G4 那次偶发红，真正原因是「点了禁用按钮」（2026-11-01 第一百六十八轮）
+
+加了 15 秒等待之后 G4 又红了。这轮读组件源码才发现：
+
+```tsx
+<button ... disabled={modelsLoading || !selectedProvider.base_url || (!providerApiKey && !selectedProvider.has_api_key)}
+        onClick={() => void fetchProviderModels()}>刷新模型</button>
+```
+
+**按钮在缺少 base_url 或密钥时是 disabled 的**；对 disabled 按钮 `fireEvent.click` 是**空操作**，
+于是 `provider-model-sync` 永远不出现——症状长得像超时，其实一次点击都没发生。
+
+改法：先等按钮 **not.toBeDisabled()**，再点。连跑 5 次全绿。
+
+顺带记下这轮的另一件事：给「布局管理」菜单做了旅程（开→断言 aria-expanded 与 12 个菜单项→再点关闭），
+零副作用，已并入 journeys（第 18 条）。

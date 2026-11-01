@@ -1114,6 +1114,32 @@ if (process.argv.includes('--panel-maximize')) {
   if (!report.passed) process.exitCode = 1
 }
 
+
+// `--layout-menu`: the workspace bar's 布局管理 menu was never opened by any journey. Opening and closing it has
+// no side effect (the actions inside are separate buttons), so it is safe on a real profile.
+if (process.argv.includes('--layout-menu')) {
+  const report = { passed: false, checks: {} }
+  const trigger = `document.querySelector('.ui-layout-menu-trigger')`
+  const state = () => evaluate(`(() => { const button = document.querySelector('.ui-layout-menu-trigger'); if (!button) return null; const menu = document.querySelector('.ui-popover-menu'); const items = menu ? Array.from(menu.querySelectorAll('.ui-menu-item')).map(element => String(element.textContent || '').trim().slice(0, 12)) : []; return { expanded: button.getAttribute('aria-expanded'), menu: Boolean(menu), items } })()`)
+  try {
+    report.checks.triggerFound = await evaluate(`Boolean(${trigger})`)
+    report.before = await evaluate(`document.querySelector('.ui-layout-menu-trigger').getAttribute('aria-expanded')`)
+    await evaluate(`(() => { const button = document.querySelector('.ui-layout-menu-trigger'); if (!button) return false; button.click(); return true })()`)
+    await sleep(350)
+    report.opened = await state()
+    report.checks.opened = Boolean(report.opened && report.opened.expanded === 'true' && report.opened.menu && report.opened.items.length >= 2)
+    await evaluate(`(() => { const button = document.querySelector('.ui-layout-menu-trigger'); if (!button) return false; button.click(); return true })()`)
+    await sleep(350)
+    report.closed = await state()
+    report.checks.closedAgain = Boolean(report.closed && report.closed.expanded === 'false' && !report.closed.menu)
+    report.checks.workspaceIntact = await evaluate(`Boolean(document.querySelector('[data-ui="panel.shell"]'))`)
+    report.passed = Object.values(report.checks).every(Boolean)
+  } catch (error) { report.error = String(error) }
+  fs.writeFileSync('artifacts/visual/ui-parity/layout-menu.json', JSON.stringify(report, null, 2))
+  console.log('LAYOUT-MENU ' + JSON.stringify({ passed: report.passed, checks: report.checks, items: report.opened && report.opened.items, error: report.error }))
+  if (!report.passed) process.exitCode = 1
+}
+
 if (process.argv.includes('--panel-menu')) {
   const report = { passed: false, checks: {} }
   try {
