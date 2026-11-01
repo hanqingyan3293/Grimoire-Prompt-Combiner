@@ -2231,3 +2231,13 @@ silent catches: 163 (baseline 163) {"promise":51,"try/catch":112}
 测试写错反而证明了守卫有效。改成写到系统临时目录后通过，10 条全绿。
 
 于是第 128 行的缺口缩小为：**只剩「真人看一眼对话框长什么样」**。
+
+### 原生打开路径补齐契约测试（2026-10-31 第一百三十七轮）
+
+台账第 129 行写着「Actual OS opening manual acceptance remains pending」，
+但 `openBridgePath` 一条测试都没有——而它的逻辑很厚：路径校验、`~` 展开、尾部点/空格剥离、
+50 个危险扩展名拦截、存在性、shell 失败上报。
+
+补 4 条（file-bridge 测试 10 → 14）：安全路径真走到 shell.openPath；.exe/.SH/.bat/.js/evil.exe. 全被
+OPEN_BLOCKED_UNSAFE_TYPE 拒绝；相对/空白/含 NUL 在碰 shell 之前就 INVALID_PATH；文件不存在报 NOT_FOUND。
+后两条都断言 opened 数组为空——被拒绝的路径根本没碰到系统 shell。

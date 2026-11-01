@@ -8,9 +8,11 @@ let testRoot = ''
 // contract (cancel → null, no path → null, managed-storage refusal, bytes written verbatim). Whether the
 // dialog looks right is the remaining manual step recorded on the matrix row.
 const dialogResult: { canceled: boolean; filePath?: string } = { canceled: false }
+const opened: string[] = []
 vi.mock('electron', () => ({
   app: { getPath: (name: string) => name === 'temp' ? path.join(testRoot, 'temp') : testRoot },
   dialog: { showSaveDialog: async () => dialogResult },
+  shell: { openPath: async (target: string) => { opened.push(target); return '' } },
 }))
 
 import {
@@ -19,12 +21,13 @@ import {
   getBridgeFileInfo,
   getBridgePhysicalMetadata,
   readBridgeTextFile,
+  openBridgePath,
   saveBridgeFile,
   writeBridgeTempFile
 } from './file-bridge.service'
 
 beforeEach(() => { testRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'grimoire-file-bridge-')) })
-afterEach(() => { fs.rmSync(testRoot, { recursive: true, force: true }) })
+afterEach(() => { fs.rmSync(testRoot, { recursive: true, force: true }); opened.length = 0 })
 
 describe('composer file bridge', () => {
   it('resolves file info with the source FileMetadata shape', () => {
@@ -109,5 +112,33 @@ describe('composer file bridge', () => {
 
   it('rejects content that is neither a string nor bytes before opening any dialog', async () => {
     await expect(saveBridgeFile({} as never, 'd.txt', 42)).rejects.toThrow(/FILE_SAVE_INVALID_CONTENT/)
+  })
+  it('opens a safe absolute path through the system default app', async () => {
+    const file = path.join(testRoot, 'note.txt')
+    fs.writeFileSync(file, 'x')
+    await openBridgePath(file)
+    expect(opened).toEqual([file])
+  })
+
+  it('refuses scripts and executables, including disguised and case-varied names', async () => {
+    const cases = ['evil.exe', 'EVIL.SH', 'run.bat', 'evil.exe.', 'payload.js']
+    for (const name of cases) {
+      const file = path.join(testRoot, name)
+      fs.writeFileSync(file, 'x')
+      await expect(openBridgePath(file)).rejects.toThrow(/OPEN_BLOCKED_UNSAFE_TYPE/)
+    }
+    expect(opened).toEqual([])
+  })
+
+  it('rejects relative, blank and NUL-bearing paths before touching the shell', async () => {
+    await expect(openBridgePath('relative.txt')).rejects.toThrow(/INVALID_PATH/)
+    await expect(openBridgePath('   ')).rejects.toThrow(/INVALID_PATH/)
+    await expect(openBridgePath('/tmp/a\0b')).rejects.toThrow(/INVALID_PATH/)
+    expect(opened).toEqual([])
+  })
+
+  it('reports a missing file instead of shelling out', async () => {
+    await expect(openBridgePath(path.join(testRoot, 'nope.txt'))).rejects.toThrow(/NOT_FOUND/)
+    expect(opened).toEqual([])
   })
 })
