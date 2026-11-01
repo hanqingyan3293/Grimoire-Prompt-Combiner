@@ -100,6 +100,17 @@ export function ComfyUIPanel() {
     } catch (error) { showMessage(error instanceof Error ? error.message : 'ComfyUI 地址保存失败', 'danger') }
   }
 
+  const deleteWorkflow = async (workflow: WorkflowItem) => {
+    setBusy(true); setMessage('')
+    try {
+      const removed = await window.api.comfy.deleteWorkflow(workflow.id)
+      if (removed) showMessage('工作流已删除', 'success')
+      else showMessage('工作流删除失败', 'danger')
+      await refresh()
+    } catch (error) { showMessage(error instanceof Error ? error.message : '工作流删除失败', 'danger') }
+    finally { setBusy(false) }
+  }
+
   const importWorkflow = async () => {
     setBusy(true); setMessage('')
     try {
@@ -201,14 +212,17 @@ export function ComfyUIPanel() {
 
       <div className='flex items-center justify-between gap-2'><div><h3 className='text-sm font-semibold text-[var(--color-text-primary)]'>导入工作流</h3><p className='mt-1 text-[11px] text-[var(--color-text-secondary)]'>保留原始节点，仅编辑已识别的绑定字段</p></div><Button size='sm' icon={Upload} onClick={() => void importWorkflow()} disabled={busy}>导入 API JSON</Button></div>
       {message && <div className={'ui-inline-note ui-inline-note-' + messageTone} role={messageTone === 'danger' ? 'alert' : 'status'}>{messageTone === 'success' ? <Check size={15} aria-hidden='true' /> : <CircleAlert size={15} aria-hidden='true' />}<span>{message}</span></div>}
-      {workflows.length === 0 ? <EmptyState icon={Upload} title='尚未导入工作流' description='导入 ComfyUI API JSON 后，可在这里编辑绑定字段并提交任务' /> : <div className='space-y-2'>{workflows.map(workflow => <WorkflowCard key={workflow.id} workflow={workflow} values={workflowValues[workflow.id] || defaultWorkflowValues(workflow.bindings, workflow.defaults, quickForm.prompt)} busy={busy} onChange={(key, value) => updateWorkflowValue(workflow.id, key, value)} onSubmit={() => void createWorkflowTask(workflow)} />)}</div>}
+      {workflows.length === 0 ? <EmptyState icon={Upload} title='尚未导入工作流' description='导入 ComfyUI API JSON 后，可在这里编辑绑定字段并提交任务' /> : <div className='space-y-2'>{workflows.map(workflow => <WorkflowCard key={workflow.id} workflow={workflow} values={workflowValues[workflow.id] || defaultWorkflowValues(workflow.bindings, workflow.defaults, quickForm.prompt)} busy={busy} onChange={(key, value) => updateWorkflowValue(workflow.id, key, value)} onSubmit={() => void createWorkflowTask(workflow)} onDelete={() => void deleteWorkflow(workflow)} />)}</div>}
     </div>
   )
 }
 
-function WorkflowCard({ workflow, values, busy, onChange, onSubmit }: { workflow: WorkflowItem; values: Record<string, unknown>; busy: boolean; onChange: (key: string, value: unknown) => void; onSubmit: () => void }) {
+function WorkflowCard({ workflow, values, busy, onChange, onSubmit, onDelete }: { workflow: WorkflowItem; values: Record<string, unknown>; busy: boolean; onChange: (key: string, value: unknown) => void; onSubmit: () => void; onDelete: () => void }) {
+  // Deleting a workflow throws away the user's field bindings, so it takes a second click on the same control
+  // rather than a browser confirm() (which blocks the whole renderer).
+  const [confirming, setConfirming] = useState(false)
   const canSubmit = workflow.bindings.some(binding => binding.key === 'prompt')
-  return <article className='ui-list-card p-3'><div className='flex items-start justify-between gap-2'><div className='min-w-0'><div className='truncate text-sm font-medium text-[var(--color-text-primary)]'>{workflow.name}</div><div className='mt-2 flex flex-wrap gap-1.5'><Badge>{workflow.analysis?.nodeCount || 0} 个节点</Badge><Badge>{workflow.bindings.length} 个可映射字段</Badge></div></div><Button size='sm' icon={ImagePlus} onClick={onSubmit} disabled={busy || !canSubmit}>加入队列</Button></div>{workflow.bindings.length > 0 && <div className='mt-3 grid gap-2 grid-cols-2'>{workflow.bindings.map(binding => <BindingField key={`${binding.key}-${binding.nodeId}-${binding.field}`} binding={binding} value={values[binding.key]} onChange={value => onChange(binding.key, value)} />)}</div>}{workflow.analysis?.warnings?.map(warning => <div key={warning} className='ui-inline-note ui-inline-note-warning mt-3 text-xs' role='status'><AlertTriangle size={14} aria-hidden='true' /><span>{warning}</span></div>)}</article>
+  return <article className='ui-list-card p-3'><div className='flex items-start justify-between gap-2'><div className='min-w-0'><div className='truncate text-sm font-medium text-[var(--color-text-primary)]'>{workflow.name}</div><div className='mt-2 flex flex-wrap gap-1.5'><Badge>{workflow.analysis?.nodeCount || 0} 个节点</Badge><Badge>{workflow.bindings.length} 个可映射字段</Badge></div></div><div className='flex shrink-0 items-center gap-1'><Button size='sm' icon={ImagePlus} onClick={onSubmit} disabled={busy || !canSubmit}>加入队列</Button><Button size='sm' variant={confirming ? 'primary' : 'ghost'} onClick={() => { if (confirming) onDelete(); else setConfirming(true) }} disabled={busy}>{confirming ? '确认删除' : '删除'}</Button></div></div>{workflow.bindings.length > 0 && <div className='mt-3 grid gap-2 grid-cols-2'>{workflow.bindings.map(binding => <BindingField key={`${binding.key}-${binding.nodeId}-${binding.field}`} binding={binding} value={values[binding.key]} onChange={value => onChange(binding.key, value)} />)}</div>}{workflow.analysis?.warnings?.map(warning => <div key={warning} className='ui-inline-note ui-inline-note-warning mt-3 text-xs' role='status'><AlertTriangle size={14} aria-hidden='true' /><span>{warning}</span></div>)}</article>
 }
 
 function BindingField({ binding, value, onChange }: { binding: ComfyBinding; value: unknown; onChange: (value: unknown) => void }) {

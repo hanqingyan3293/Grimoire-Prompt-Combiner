@@ -2458,3 +2458,17 @@ export function saveMarkdownExport(title, markdown, dialog = window.api.dialog) 
 过程里修了两处自己的错：`item` 可能为 null（补 guard）、`id` 字段真实名字是 `mediaId`（TypeScript 直接指出来）。
 
 门禁后 `report-unused-bridge` 的 19 项里，`media.relocate` 应当消失——下轮复核。
+
+### 两个死面接通，17 项 vs 18 项（2026-11-01 第一百四十九轮）
+
+上轮接上 `media.relocate` 后复核脚本：清单从 19 → **18**（`media.relocate` 消失）。
+这轮接上 `comfy.deleteWorkflow` → **17**。两个都验证过「接通即消失」，说明脚本确实在测真实调用。
+
+ComfyUI 删除的实现要点：
+
+- 不用 `window.confirm`（会阻塞整个渲染器）；改为**同一控件二次点击确认**（「删除」→「确认删除」）；
+- 删除后 `refresh()` 重列；成功/失败都有提示；
+- 理由写进注释：删除会丢掉用户的字段绑定，所以需要二次确认。
+
+剩下 17 项按上轮结论分类：多数是协议层事件（`cache.*Sync`、`dataApi.onDataChanged`、`tasks.onSnapshot`）
+或暂无场景（`application.relaunch`、`workspace.focusPopout`）、或已有等价能力（`wd14.switchModel` 预热）。
