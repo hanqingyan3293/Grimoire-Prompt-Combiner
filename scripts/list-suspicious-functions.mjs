@@ -1,39 +1,43 @@
+// REPORT ONLY — prints candidates, never fails a build, not part of any gate.
+//
+// v2 heuristic. v1 listed 35 functions, but sampling showed the noise came from a narrow call-pattern list
+// (read(store, id), readPinnedRows(), fs.readFileSync() did not match it). Precision rule now: a candidate is
+// a function whose body contains NO call expression at all and returns a literal — the shape of a real stub.
 import fs from 'node:fs'
 import path from 'node:path'
-// REPORT ONLY — this prints candidates, it never fails a build and it is not part of any gate.
-//
-// Heuristic: a service function that returns a constant without touching the database or any port is either
-// a stub or a deliberate empty result. From the UI both look identical, so the honest move is to list them
-// and justify each one by hand. Treating this as a pass/fail test would be wrong in both directions:
-// some hits are legitimate empty results, and a real stub can be written to avoid every pattern below.
+
 const dir = 'src/main/services'
 const files = fs.readdirSync(dir).filter(name => name.endsWith('.ts') && !name.includes('.test.'))
-const REAL_CALL = /db\.|getDatabase\(|saveDatabase\(|await |fetch\(|ipcMain|spawn\(|sqlite|prepare\(/
-const CONSTANT_RETURN = /return (\[\]|\{\}|null|undefined|0|''|"")/
+const FUNCTION_START = /export (?:async )?function ([A-Za-z0-9_]+)[ ]*[(]/
+const LITERAL_RETURN = /return[ ]+(\[\]|\{\}|null|undefined|0|''|""|false|true)[ ]*;?[ ]*$/m
+const CALL = /[A-Za-z_$][A-Za-z0-9_$]*[ ]*[(]/g
+const KEYWORD_CALL = /^[ ]*(if|for|while|switch|catch)[ ]*[(][ ]*$/
 const hits = []
+
 for (const file of files) {
   const source = fs.readFileSync(path.join(dir, file), 'utf8')
-  const lines = source.split('\n')
-  lines.forEach((line, index) => {
-    if (!/^export function [a-zA-Z0-9_]+/.test(line)) return
-    const name = line.match(/^export function ([a-zA-Z0-9_]+)/)[1]
+  const lines = source.split(/\r?\n/)
+  for (let index = 0; index < lines.length; index += 1) {
+    const match = lines[index].match(FUNCTION_START)
+    if (!match) continue
+    const body = []
     let depth = 0
     let started = false
-    const body = []
-    for (let cursor = index; cursor < Math.min(lines.length, index + 80); cursor += 1) {
-      const current = lines[cursor]
-      body.push(current)
-      for (const char of current) {
-        if (char === '{') { depth += 1; started = true }
-        else if (char === '}') depth -= 1
-      }
+    for (let cursor = index; cursor < lines.length; cursor += 1) {
+      const line = lines[cursor]
+      body.push(line)
+      depth += (line.match(/[{]/g) || []).length - (line.match(/[}]/g) || []).length
+      if (line.indexOf('{') >= 0) started = true
       if (started && depth <= 0) break
     }
     const text = body.join('\n')
-    if (REAL_CALL.test(text)) return
-    if (!CONSTANT_RETURN.test(text)) return
-    hits.push({ file, name, line: index + 1, body: text.split('\n').slice(0, 6).join(' | ') })
-  })
+    const withoutSignature = text.slice(text.indexOf('(') + 1)
+    const calls = (withoutSignature.match(CALL) || []).filter(call => !KEYWORD_CALL.test(call))
+    if (calls.length > 0) continue
+    if (!LITERAL_RETURN.test(text)) continue
+    hits.push({ file, line: index + 1, name: match[1] })
+  }
 }
+
 console.log('candidates:' + hits.length)
-for (const hit of hits) console.log(hit.file + ':' + hit.line + '  ' + hit.name + '   ' + hit.body.slice(0, 120))
+for (const hit of hits) console.log(hit.file + ':' + hit.line + '  ' + hit.name)

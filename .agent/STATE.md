@@ -3292,3 +3292,20 @@ COMFY-PERSIST {"passed":false, ... "storedInDatabase":false, "restoredFromDataba
 - `scripts/tmp-stub-audit.mjs` → 其实是**有值的东西**，改名为 `list-suspicious-functions.mjs`，
   并写明「仅供参考、永不判失败、不属于任何门禁」——它列的是「可疑函数」，两头都可能错：
   有的命中是合法空结果，真桩也可能绕开全部模式。新增 `npm run report:suspicious`。
+
+### 「有没有简易版凑数」的一个可验证答案（2026-11-01 第一百九十六轮）
+
+`report:suspicious` 第一版列出 35 个候选，抽读 7 个后发现**全是误报**——
+它们都有真实调用（`readPinnedRows()`、`fs.readFileSync()`、`read(store, id)`），只是不在那份很窄的调用模式表里。
+
+第二版把判据收紧成：**函数体里一条调用表达式都没有，且直接返回字面量**——这才是桩的形状。
+
+```
+candidates:0
+```
+
+**否定对照**：临时放一个 `export function controlStub() { return [] }` 进 `src/main/services`，
+扫描立刻报 `candidates:1  zz-control-probe.ts:2 controlStub`；删掉后回到 0。
+
+结论（有边界）：主进程服务层**没有**「不调用任何东西、只返回字面量」的函数。
+这不等于「没有桩」——一个调用了别的空函数的桩仍会漏过；但这是目前能自动给出证据的最强判据。
