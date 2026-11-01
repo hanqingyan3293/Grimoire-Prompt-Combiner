@@ -16,16 +16,15 @@ const journeys = [
   // Runs EARLY: it boots its own renderer, and at the end of the suite the machine is saturated enough that it
   // failed twice in a row on 2026-11-01 while passing standalone.
   { script: 'scripts/audit-cherry-routes.mjs', flag: '--routes-only', label: '51 条源路由全渲染' },
-  // The five M3 page audits are OPT-IN (`--m3`): each boots its own renderer, and running them after the
-  // nine above saturates the machine — all five failed inside a full run while passing standalone minutes
-  // earlier. A false red trains people to ignore red.
-  ...(process.argv.includes('--m3') ? [
-    { script: 'scripts/audit-cherry-routes.mjs', flag: '--api-gateway', label: 'M3 API 网关页' },
-    { script: 'scripts/audit-cherry-routes.mjs', flag: '--websearch', label: 'M3 联网搜索页' },
-    { script: 'scripts/audit-cherry-routes.mjs', flag: '--screenshot', label: 'M3 截图页' },
-    { script: 'scripts/audit-cherry-routes.mjs', flag: '--browser', label: 'M3 浏览器页' },
-    { script: 'scripts/audit-cherry-routes.mjs', flag: '--settings-wiring-journey', label: 'M3 常规页接线' },
-  ] : []),
+  // The five M3 page audits used to be opt-in (`--m3`) because they all failed inside a full run while passing
+  // standalone. That diagnosis was wrong: the journeys runner exported ELECTRON_RUN_AS_NODE='' to every child,
+  // and an audit that spawns its own electron then starts as Node with no window (NO_TARGET). With the variable
+  // deleted for script-bearing journeys they belong in the default suite.
+  { script: 'scripts/audit-cherry-routes.mjs', flag: '--api-gateway', label: 'M3 API 网关页' },
+  { script: 'scripts/audit-cherry-routes.mjs', flag: '--websearch', label: 'M3 联网搜索页' },
+  { script: 'scripts/audit-cherry-routes.mjs', flag: '--screenshot', label: 'M3 截图页' },
+  { script: 'scripts/audit-cherry-routes.mjs', flag: '--browser', label: 'M3 浏览器页' },
+  { script: 'scripts/audit-cherry-routes.mjs', flag: '--settings-wiring-journey', label: 'M3 常规页接线' },
   { flag: '--style-contract', label: '样式契约（24 项）' },
   { flag: '--selection-popup', label: '划词助手浮窗（6 项）' },
   { flag: '--error-paths', label: '失败路径（ComfyUI 连接失败要可见）' },
