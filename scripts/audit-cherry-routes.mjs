@@ -926,10 +926,13 @@ if (probeArg || process.argv.includes('--files-probe')) {
     await settle(`(() => { const text = document.body.innerText || ''; return text.length > 120 && !/正在加载|加载中/.test(text) ? text : null })()`, 120)
     probe.text = String(await evaluate(`document.body.innerText`) || '').slice(0, 900)
     probe.rows = await evaluate(`document.querySelectorAll('tbody tr, [role=row], .ui-list-card').length`)
-    probe.emptyMarker = await evaluate(`(() => { const text = document.body.innerText || ''; const found = ['暂无文件','暂无会话','暂无任务','还没有','空空如也'].find(word => text.includes(word)); return found || null })()`)
+    // The session rail says 「暂无会话」 on every page, so a body-wide single match is meaningless. Report every
+    // empty-state word WITH the class of its nearest ancestor, so a page-level empty state can be told apart
+    // from the sidebar's (measured 2026-11-01: the first version reported the sidebar for three routes).
+    probe.matches = await evaluate(`(() => { const words = ['暂无文件','暂无会话','暂无任务','暂无图片','暂无内容','还没有','空空如也']; const out = []; const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT); const seen = new Set(); let node; while ((node = walker.nextNode())) { const text = (node.textContent || '').trim(); const word = words.find(item => text.includes(item)); if (!word || seen.has(word)) continue; seen.add(word); const parent = node.parentElement; out.push({ word, cls: parent ? String(parent.className).split(' ').filter(Boolean).slice(0, 3).join('.') : '' }) } return out })()`)
   } catch (error) { probe.error = String(error) }
   fs.writeFileSync(path.join(outDir, 'route-probe.json'), JSON.stringify(probe, null, 2))
-  console.log('ROUTE-PROBE ' + JSON.stringify({ route: probe.route, rows: probe.rows, empty: probe.emptyMarker, text: String(probe.text || '').slice(0, 200), error: probe.error }))
+  console.log('ROUTE-PROBE ' + JSON.stringify({ route: probe.route, rows: probe.rows, matches: probe.matches, text: String(probe.text || '').slice(0, 200), error: probe.error }))
 }
 
 
