@@ -1204,6 +1204,22 @@ if (process.argv.includes('--settings-toggle')) {
     await evaluate(`(async () => { await window.api.settings.set('ui_scale', ${JSON.stringify('SC')}); return true })()`.replace('"SC"', JSON.stringify(scaleBefore)))
     await sleep(300)
 
+    // Fourth control: language (a select). Effect is the `data-lang` attribute; a full i18n switch would also
+    // change every label, so the assertion stays on the attribute plus the stored value.
+    const languageBefore = await evaluate(`(async () => (await window.api.settings.getAll()).language || 'zh')()`)
+    const switched = await evaluate(`(() => { const select = Array.from(document.querySelectorAll('select')).find(el => Array.from(el.options).some(option => option.value === 'en')); if (!select) return false; Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(select, 'en'); select.dispatchEvent(new Event('change', { bubbles: true })); return true })()`)
+    await sleep(500)
+    report.language = {
+      switched,
+      before: languageBefore,
+      stored: await evaluate(`(async () => (await window.api.settings.getAll()).language)()`),
+      attribute: await evaluate(`document.documentElement.getAttribute('data-lang')`),
+    }
+    report.checks.languageApplied = report.language.stored === 'en' && report.language.attribute === 'en'
+    await evaluate(`(async () => { await window.api.settings.set('language', ${JSON.stringify('LANG')}); return true })()`.replace('"LANG"', JSON.stringify(languageBefore)))
+    await sleep(300)
+    report.checks.languageRestored = (await evaluate(`(async () => (await window.api.settings.getAll()).language)()`)) === languageBefore
+
     // Restore whatever was there before, through the same API the UI uses.
     await evaluate(`(async () => { await window.api.settings.set('ui_density', ${JSON.stringify('ORIG')}); return true })()`.replace('"ORIG"', JSON.stringify(original)))
     await sleep(400)
