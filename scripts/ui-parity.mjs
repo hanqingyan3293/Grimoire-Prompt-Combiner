@@ -1034,6 +1034,11 @@ const restoreLayout = async snapshot => {
 // writes its in-memory layout while the page unloads and re-hydrates after the reload, so a single pass leaves the
 // extra panel behind (measured 2026-11-01: 5 -> 6 -> still 6; a fresh `--layout-restore` process put it back).
 // Kept for manual use only; run `--layout-restore` afterwards. Do NOT add it to the journeys suite.
+if (process.argv.includes('--panel-count')) {
+  const count = await evaluate(`document.querySelectorAll('[data-ui="panel.shell"]').length`)
+  console.log('PANEL-COUNT ' + JSON.stringify({ panels: count }))
+}
+
 if (process.argv.includes('--panel-split')) {
   const report = { passed: false, checks: {} }
   const countPanels = () => evaluate(`document.querySelectorAll('[data-ui="panel.shell"]').length`)
@@ -1060,10 +1065,14 @@ if (process.argv.includes('--panel-split')) {
     await restoreLayout(saved)
     let restoredCount = await countPanels()
     if (restoredCount !== report.panels.before) { await restoreLayout(saved); restoredCount = await countPanels() }
-    report.panels.restored = restoredCount
-    report.checks.restoredCount = restoredCount === report.panels.before
+    report.panels.restoredInSession = restoredCount
+    // The in-session restore is informational only: the store re-persists its in-memory layout on unload, so it
+    // is expected to stay at the split count here. The real restore runs as a separate process afterwards
+    // (`--layout-restore`, see `npm run verify:panel-split`).
+    report.checks.inlineRestoreWorks = null
   } catch (error) { report.restoreError = String(error); console.log('LAYOUT-RESTORE-FAILED see ' + SNAPSHOT_FILE) }
-  report.passed = Object.values(report.checks).every(Boolean)
+  report.passed = [report.checks.foundPanels, report.checks.clickedSplit, report.checks.splitAddedPanel].every(Boolean)
+  console.log('PANEL-SPLIT-NOTE: the layout is now mutated; run `node scripts/ui-parity.mjs --layout-restore` (separate process) to put it back')
   fs.writeFileSync('artifacts/visual/ui-parity/panel-split.json', JSON.stringify(report, null, 2))
   console.log('PANEL-SPLIT ' + JSON.stringify({ passed: report.passed, checks: report.checks, panels: report.panels, error: report.error, restoreError: report.restoreError }))
   if (!report.passed) process.exitCode = 1
