@@ -1,0 +1,5 @@
+{
+  "allowed": {
+    "CHERRY_AGENT_STREAM_EVENT": "preload exposes agent.stream.onEvent and main handles open/attach/abort/close, but no main code ever sends this event and no renderer code subscribes to it (checked 2026-10-31). Either wire the emitter or drop the surface — flagged for a decision, not silently tolerated."
+  }
+}

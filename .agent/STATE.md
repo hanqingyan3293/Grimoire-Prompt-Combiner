@@ -2345,3 +2345,25 @@ provider，审计用的假 provider 永远不会被调用，发送/流式/落库
 | `ui-embedded` / `ui-grimoire` / `ui-settings-scroll` | 结构性标记，`index.css` 里没有规则；主题走 data 属性、滚动走工具类 |
 
 于是 105 个类**每一个都有归宿**：95 个被断言 + 7 个说明理由豁免 + 3 个不存在（前缀）。
+
+### 新门禁 G13：IPC 双端接线（抓「只接了一端」）（2026-10-31 第一百四十三轮）
+
+渲染层调用一个没有主进程处理器的通道，只会在点击时变成「什么都没发生」——正是「看着完成其实是桩」的形状。
+
+第一版静态检查按「preload 的 `invoke/on` vs main 的 `handle/send`」比对，报出 8 处缺失——**全是误报**：
+
+| 形态 | 例子 |
+|---|---|
+| 字面量而非常量 | `ipcMain.handle('wd14:diagnostics', …)` |
+| 数组循环注册 | `for (const channel of [OPEN, ATTACH, ABORT, CLOSE]) ipcMain.handle(channel, …)` |
+| 通道当参数传给 helper | `permissions.request({ channel: IPC_CHANNELS.AGENT_PERMISSION_REQUEST })` |
+
+改成「main 是否**提到**这个通道（常量或字面量）」后，误报清零，只剩一处**真的只接了一端**：
+
+`CHERRY_AGENT_STREAM_EVENT`（`cherry:agent:stream:event`）：
+- preload 暴露了 `agent.stream.onEvent(...)` 并在监听；
+- main 有 open/attach/abort/close 四个处理器；
+- **但没有任何 main 代码发送这个事件，也没有任何渲染层代码订阅它**。
+
+处置：进 `ipc-coverage-baseline.json` 白名单并写明原因（要么补发送，要么整块删掉——产品决定），
+同时门禁会报「STALE ALLOWANCE」如果这条豁免哪天不再成立。
