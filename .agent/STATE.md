@@ -2882,3 +2882,31 @@ original: normal → stored: compact / density: compact → restored: normal   �
 「输入框写了值但没生效」的同一个坑，现在是标准写法。
 
 三条都在断言后还原原值。
+
+### 两轮前那个「负载导致失败」的诊断是错的（2026-11-01 第一百七十六轮）
+
+「51 条源路由」在套件里连续失败，我先后判断为「机器被压满」（第 175 轮把条目挪到前段），**挪了仍然失败**。
+
+这轮做了个直接对照：
+
+```
+ELECTRON_RUN_AS_NODE='' node scripts/audit-cherry-routes.mjs --routes-only
+→ exit=1  NO_TARGET: 未找到 Cherry 兼容窗口
+```
+
+**真因是环境变量**：`journeys.mjs` 给每个子进程设了 `ELECTRON_RUN_AS_NODE: ''`（空串）。
+ui-parity 吃这一套没问题，但审计脚本会**自己再 spawn 一个 electron**，空串让它以 Node 模式启动——
+没有窗口，于是 `NO_TARGET`。
+
+改法：自带 `script` 的旅程**删除**该变量而不是设空串。
+
+对照验证（模拟 journeys 的 spawn）：
+```
+status: 0
+all 51 routes rendered
+```
+
+**重要更正**：第 112/113 轮把 M3 五条审计的失败也归因为「机器压满」——同一根因，同一处错误判断。
+那五条其实也能进套件。
+
+.join('')

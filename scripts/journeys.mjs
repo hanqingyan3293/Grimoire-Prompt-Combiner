@@ -54,7 +54,10 @@ const runOnce = journey => {
   const script = journey.script || 'scripts/ui-parity.mjs'
   const run = spawnSync(process.execPath, [script, ...journey.flag.split(' ')], {
     encoding: 'utf8',
-    env: { ...process.env, ELECTRON_RUN_AS_NODE: '' },
+    // ELECTRON_RUN_AS_NODE='' (empty string) is enough for ui-parity, but the audit script spawns its OWN
+    // electron and an empty value makes that child run as Node — no window, so `NO_TARGET`. Delete the
+    // variable for journeys that bring their own script instead of clearing it.
+    env: journey.script ? (() => { const env = { ...process.env }; delete env.ELECTRON_RUN_AS_NODE; return env })() : { ...process.env, ELECTRON_RUN_AS_NODE: '' },
     timeout: 600000,
   })
   const output = (run.stdout || '') + (run.stderr || '')
