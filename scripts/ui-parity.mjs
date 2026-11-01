@@ -773,12 +773,17 @@ return contract.filter(item => !item.differsFrom).map(item => { const element = 
   // differ from .ui-badge in at least one visual property, otherwise it is a dead class that only looks like
   // a variant.
   const variantItems = contract.filter(item => item.differsFrom)
-  const styleProps = ['color', 'backgroundColor', 'borderColor']
+  // Some variants cannot be judged on the element itself (their rule targets a child). Those are exempted
+  // with a written reason instead of being silently dropped.
+  let exempt = {}
+  try { exempt = JSON.parse(fs.readFileSync(path.join(root, 'scripts', 'style-contract-exempt.json'), 'utf8')) } catch {}
+  const styleProps = ['color', 'backgroundColor', 'borderColor', 'animationName', 'fontWeight', 'width']
   const variantResults = []
   if (variantItems.length) {
     const names = [...new Set(variantItems.flatMap(item => [item.className, item.differsFrom]))]
     const values = await evaluate(`(() => { const out = {}; for (const name of ${JSON.stringify('NAMES')}) { const element = document.createElement('div'); element.className = name; document.body.appendChild(element); const style = getComputedStyle(element); out[name] = ${JSON.stringify('PROPS')}.map(prop => style[prop]); element.remove() } return out })()`.replace('"NAMES"', JSON.stringify(names)).replace('"PROPS"', JSON.stringify(styleProps)))
     for (const item of variantItems) {
+      if (exempt[item.className]) continue
       const base = values?.[item.differsFrom] || []
       const variant = values?.[item.className] || []
       const differing = styleProps.find((prop, index) => base[index] !== variant[index])

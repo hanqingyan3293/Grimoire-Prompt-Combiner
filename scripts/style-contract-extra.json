@@ -587,5 +587,25 @@
     "className": "ui-switch-on",
     "differsFrom": "ui-switch",
     "tag": "div"
+  },
+  {
+    "className": "ui-spin-icon",
+    "differsFrom": "ui-spin",
+    "tag": "div"
+  },
+  {
+    "className": "ui-icon-button-danger",
+    "differsFrom": "ui-icon-button",
+    "tag": "div"
+  },
+  {
+    "className": "ui-list-card-no-hover",
+    "differsFrom": "ui-list-card",
+    "tag": "div"
+  },
+  {
+    "className": "ui-status-badge-success",
+    "differsFrom": "ui-status-badge",
+    "tag": "div"
   }
 ]
