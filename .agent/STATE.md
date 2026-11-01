@@ -2823,3 +2823,17 @@ createdWork / blockView / savedVersion / deletedVersion / restoredVersion / bran
 linkageNeedsBothSides / versionAssetLinkage。
 
 至此三处「可能被禁用」的点击都加了前置：G4 的单测按钮、ComfyUI 保存、工作台保存。
+
+### 一个通用助手差点变成坑：「在哪个窗口点」（2026-11-01 第一百七十一轮）
+
+把「先等可用再点」抽成 `clickWhenEnabled(scope, label)` 助手，第一次接到划词浮窗就翻车：
+`actionClicked: false`，而且改成更朴素的表达式后**仍然 false**。
+
+真正原因：**浮窗是另一个 BrowserWindow**，而我用的是主窗口的 `evaluate`——
+它在主页面上找不到那个按钮，自然点不到。原代码用的是 `evalIn`（跑在浮窗自己的会话里）。
+
+改成 `evalIn` + 内联的可用等待后：8 项全 PASS。
+
+两条教训：
+1. **助手的 `evaluate` 绑定在哪个页面，决定了它能点到什么**——跨窗口场景不能复用主窗口的助手；
+2. 两次失败都不是表达式写错，而是**作用域错**；先确认「在哪个窗口」，再查表达式。

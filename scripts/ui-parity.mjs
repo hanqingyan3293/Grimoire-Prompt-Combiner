@@ -158,6 +158,27 @@ async function diffAgainstBaseline(name) {
   })()`.replace('"LEFT"', JSON.stringify(base)).replace('"RIGHT"', JSON.stringify(current))
   return await evaluate(code)
 }
+// A click on a disabled button is a silent no-op, and the failure then reads as "nothing happened" or
+// "it timed out". Every journey click on a potentially-disabled control should come through here.
+//   scope: CSS selector of the container (or '' for document)
+//   label: substring of the button text
+async function clickWhenEnabled(scope, label, attempts = 40) {
+  // Built with plain concatenation on purpose: nested template literals produced an expression that
+  // silently evaluated to a string instead of a DOM root (the click then returned false forever).
+  const code =
+    '(async () => {' +
+    ' const root = document.querySelector(' + JSON.stringify(scope || 'body') + ') || document;' +
+    ' const find = () => Array.from(root.querySelectorAll("button")).find(el => (el.textContent || "").includes(' + JSON.stringify(label) + '));' +
+    ' for (let index = 0; index < ' + String(attempts) + '; index += 1) {' +
+    '  const button = find();' +
+    '  if (button && !button.disabled) { button.click(); return true }' +
+    '  await new Promise(resolve => setTimeout(resolve, 150));' +
+    ' }' +
+    ' return false;' +
+    '})()'
+  return evaluate(code)
+}
+
 async function clickAt(selector) {
   const box = await evaluate('(() => { const el = document.querySelector(' + JSON.stringify(selector) + '); if (!el) return null; const r = el.getBoundingClientRect(); return { x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2) } })()')
   if (!box) return false
@@ -949,7 +970,9 @@ if (process.argv.includes('--selection-popup')) {
       if (shot?.data) fs.writeFileSync(path.join(outDir, 'selection-popup.png'), Buffer.from(shot.data, 'base64'))
       report.checks.popupShot = Boolean(shot?.data)
       // 存为提示词素材 writes a real row through the same sink the shortcut path uses.
-      const clicked = await evalIn(`(() => { const button = Array.from(document.querySelectorAll('button')).find(item => /存为提示词素材/.test(item.textContent || '')); if (!button) return false; button.click(); return true })()`)
+      // Action buttons are disabled={busy || !text}; wait for enabled so a no-op click cannot pass as success.
+      // The popup is a separate window: this must run inside ITS session (evalIn), with the enabled-wait inline.
+      const clicked = await evalIn(`(async () => { const find = () => Array.from(document.querySelectorAll('button')).find(el => (el.textContent || '').includes('存为提示词素材')); for (let index = 0; index < 40; index += 1) { const button = find(); if (button && !button.disabled) { button.click(); return true } await new Promise(resolve => setTimeout(resolve, 150)) } return false })()`)
       report.checks.actionClicked = clicked === true
       socket.close()
       await sleep(1200)
