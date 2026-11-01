@@ -1014,6 +1014,34 @@ if (process.argv.includes('--overflow')) {
 // `--panel-menu`: the journeys never touch the panel CHROME. Opening the add-panel menu and closing it with
 // Escape exercises real header clicks with zero persistent mutation (no panel is added, nothing is closed),
 // which is exactly the property a smoke test of the chrome needs.
+
+// `--panel-maximize`: the destructive-ish header controls were never clicked by any journey. Maximize is the one
+// that is fully self-reversible (the same button becomes 还原面板), so it can be exercised on a real profile:
+// measure the panel, maximize, measure again, restore, measure a third time and require the original size back.
+if (process.argv.includes('--panel-maximize')) {
+  const report = { passed: false, checks: {} }
+  const rectOf = () => evaluate(`(() => { const shell = document.querySelector('[data-ui="panel.shell"]'); if (!shell) return null; const rect = shell.getBoundingClientRect(); return { w: Math.round(rect.width), h: Math.round(rect.height) } })()`)
+  const clickTitle = wanted => evaluate(`(() => { const header = document.querySelector('[data-ui="panel.header"]'); if (!header) return false; const button = Array.from(header.querySelectorAll('button')).find(element => element.title === ${JSON.stringify('WANTED')}); if (!button) return false; button.click(); return true })()`.replace('"WANTED"', JSON.stringify(wanted)))
+  try {
+    const before = await rectOf()
+    report.checks.foundPanel = Boolean(before)
+    report.checks.clickedMaximize = await clickTitle('最大化面板')
+    await sleep(600)
+    const maximized = await rectOf()
+    report.checks.grew = Boolean(before && maximized && maximized.w >= before.w && maximized.h > before.h)
+    report.sizes = { before, maximized }
+    report.checks.clickedRestore = await clickTitle('还原面板')
+    await sleep(600)
+    const restored = await rectOf()
+    report.checks.backToOriginal = Boolean(before && restored && Math.abs(restored.w - before.w) <= 2 && Math.abs(restored.h - before.h) <= 2)
+    report.sizes.restored = restored
+    report.passed = Object.values(report.checks).every(Boolean)
+  } catch (error) { report.error = String(error) }
+  fs.writeFileSync('artifacts/visual/ui-parity/panel-maximize.json', JSON.stringify(report, null, 2))
+  console.log('PANEL-MAXIMIZE ' + JSON.stringify({ passed: report.passed, checks: report.checks, sizes: report.sizes, error: report.error }))
+  if (!report.passed) process.exitCode = 1
+}
+
 if (process.argv.includes('--panel-menu')) {
   const report = { passed: false, checks: {} }
   try {
