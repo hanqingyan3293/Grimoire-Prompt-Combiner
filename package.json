@@ -51,7 +51,8 @@
     "verify:themes": "node scripts/ui-parity.mjs --theme-sweep --width=1600",
     "verify:themes:all": "node scripts/ui-parity.mjs --theme-sweep --width=1600 && node scripts/ui-parity.mjs --theme-sweep --width=1280 && node scripts/ui-parity.mjs --theme-sweep --width=960",
     "clean:electron": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/clean-electron.ps1",
-    "report:suspicious": "node scripts/list-suspicious-functions.mjs"
+    "report:suspicious": "node scripts/list-suspicious-functions.mjs",
+    "report:static-renderers": "node scripts/list-static-renderers.mjs"
   },
   "keywords": [
     "grimoire",
