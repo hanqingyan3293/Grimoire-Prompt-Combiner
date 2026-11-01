@@ -906,6 +906,22 @@ console.log(
 )
 if (failed.length) process.exitCode = 1
 
+
+// `--files-probe`: the route sweep only counts characters, which cannot tell a loading state from an empty
+// library from a rendered list. Runs BEFORE the socket closes, and reports what the page actually says.
+if (process.argv.includes('--files-probe')) {
+  const probe = {}
+  const settle = async (expression, attempts = 80) => { for (let index = 0; index < attempts; index += 1) { const value = await evaluate(expression); if (value) return value; await sleep(250) } return null }
+  try {
+    await evaluate(`window.location.hash = '#/app/files'`)
+    await settle(`(() => { const text = document.body.innerText || ''; return text.length > 120 && !/正在加载|加载中/.test(text) ? text : null })()`, 120)
+    probe.text = String(await evaluate(`document.body.innerText`) || '').slice(0, 900)
+    probe.rows = await evaluate(`document.querySelectorAll('tbody tr, [role=row], .ui-list-card').length`)
+  } catch (error) { probe.error = String(error) }
+  fs.writeFileSync(path.join(outDir, 'files-probe.json'), JSON.stringify(probe, null, 2))
+  console.log('FILES-PROBE ' + JSON.stringify({ rows: probe.rows, text: String(probe.text || '').slice(0, 220), error: probe.error }))
+}
+
 ws.close()
 await teardown(child, userData)
 // `process.exitCode`, not `process.exit(0)` — the latter discards the failure set above.
