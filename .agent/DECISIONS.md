@@ -775,3 +775,22 @@
 - **字体名校验必须严**：白名单只放行 `字母/数字/空格/点/下划线/连字符/加号`，括号也不放行（`url(evil)` 这类值必须被拒）。设置是可手改的 JSON，直接拼进 style 就是注入。
 - **命名冲突教训**：`index.ts` 已有一个本地 `registerSystemIPC`（管 openExternal / showItem），新模块最初同名导致 import 被静默跳过、handler 从未注册（现象是 `No handler registered for 'system:listFonts'`）。改为 `registerSystemFontsIPC`。同一文件里出现同名本地函数时，插入 import 不会报错但会被本地声明覆盖——`grep` 编译产物比读源码更可靠。
 - **「朋友项目迁移」→「提示词索引（JSON）导入」**：功能保留（写 `prompt_assets` + `migration_runs`），只是名字换成用户能懂的词；P2 建好导入弹窗后并入统一入口。
+
+### D-PERF-01 首屏性能：实测归因与三处修复（2026-11-27，P3 第一批）
+
+实测（spawn → 首帧，临时 profile）：温启动 0.78s、冷启动 7.24s、首次运行 22s。归因不是"渲染慢"，而是三件不同的事：
+
+1. **标签种子没有事务**：`importDefaultTags` 逐条 INSERT 4589 次，每次都 fsync。打点显示 `app-ready 271ms → tags-seeded 3311ms`。包进 `BEGIN/COMMIT` 后降到 **528ms**。这是本轮最划算的一处，零行为变化。
+2. **首次运行的资产导入与首屏查询抢同一个 SQLite 写锁**：导入 1862 条的写事务与渲染层首批查询并发，把首帧推到 5–24s。改为「等首帧信号（`afterFirstPaint`）再写库」，首帧后广播 `broadcastDatabaseReload` 刷新面板。无头/测试环境用 4s 兜底定时器，保证数据仍会导入。
+3. **资产面板一次性渲染 1862 张卡片 = 75,930 DOM 节点**（P1 为了修「空类目」改成全量加载导致的）。修法不是退回分页（会让类目计数失真），而是**数据全量、渲染分批**：`ProgressiveGrid` 每组先渲染 60 张 + 「显示全部 (N)」，并让 `ResourceGroup` 支持 `defaultCollapsed`（条目 > 40 的组默认收起）。
+
+**实测结果**（同一台机、全新 profile）
+
+| 指标 | 修复前 | 修复后 |
+|---|---|---|
+| 全页 DOM 节点 | 75,930 | **1,096**（-98.6%） |
+| 资产面板 DOM | 14,781 | **157**（展开一个大组后 5,415，按需） |
+| 首次运行到首帧 | ~22s | **1.107s** |
+| tags-seeded 阶段 | 3,311ms | **857ms**（含事务 + 更早的 db 阶段） |
+
+**首帧口径踩坑**：最初用 `performance.now()` 上报，窗口被遮挡时 rAF 被节流，回调晚跑 30s 就把首帧记成 35s。改成 `performance.timeOrigin + first-contentful-paint` 还原绝对时刻，`totalMs` 不再随查询时间漂移；无历史时回落到「最大 mark」而不是 `Date.now()`。

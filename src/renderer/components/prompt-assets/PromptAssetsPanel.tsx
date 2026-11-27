@@ -9,6 +9,7 @@ import { Button, IconButton } from '../ui/Button'
 import { EmptyState, PanelHeader } from '../ui/Feedback'
 import { Modal } from '../ui/Modal'
 import { ResourceCard, ResourceGroup } from '../ui/ResourceCards'
+import { ProgressiveGrid } from './ProgressiveGrid'
 import { FloatingPreview } from '../ui/FloatingPreview'
 
 const BROWSE_LIMIT = 2000
@@ -207,7 +208,7 @@ export function PromptAssetsPanel() {
             return <ResourceGroup key={group} id={`prompt-assets:${group}`} title={title} count={items.length} empty={!items.length} forceOpen={Boolean(query)} contentClassName='col-span-full block'>
               <div className='col-span-full min-w-0 space-y-2'>
                 {roots.map(category => <PromptAssetCategoryBranch key={category.id} category={category} categoriesByParent={categoriesByParent} items={items} onAssign={async (categoryId, itemId) => { await window.api.promptAssets.categories.assign({ assetId: itemId, categoryId }); await refreshAfterCategoryChange() }} renderCard={renderCard} forceOpen={Boolean(query)} />)}
-                {uncategorized.length > 0 && <ResourceGroup id={`prompt-assets:uncategorized:${group}`} title='未分类' count={uncategorized.length} forceOpen={Boolean(query)}>{uncategorized.map(renderCard)}</ResourceGroup>}
+                {uncategorized.length > 0 && <ResourceGroup id={`prompt-assets:uncategorized:${group}`} title='未分类' count={uncategorized.length} forceOpen={Boolean(query)}><ProgressiveGrid items={uncategorized} renderCard={renderCard} /></ResourceGroup>}
               </div>
             </ResourceGroup>
           })}
@@ -259,9 +260,9 @@ function PromptAssetCategoryBranch({ category, categoriesByParent, items, onAssi
 }) {
   const children = categoriesByParent.get(category.id) || []
   const categoryItems = items.filter(item => item.categoryIds?.includes(category.id))
-  return <ResourceGroup id={`prompt-assets:category:${category.id}`} title={category.name} count={categoryItems.length} empty={!categoryItems.length && !children.length} forceOpen={forceOpen} contentClassName='col-span-full block'>
+  return <ResourceGroup id={`prompt-assets:category:${category.id}`} title={category.name} count={categoryItems.length} empty={!categoryItems.length && !children.length} forceOpen={forceOpen} defaultCollapsed={!forceOpen && categoryItems.length > 40} contentClassName='col-span-full block'>
     <div className='col-span-full min-w-0 space-y-2' style={{ marginLeft: Math.min(depth, 4) * 10 }} onDragOver={event => event.preventDefault()} onDrop={event => { const assetId = event.dataTransfer.getData('text/prompt-asset-id'); if (assetId) void onAssign(category.id, assetId) }}>
-      {categoryItems.length > 0 && <div className='grid min-w-0 gap-2 [grid-template-columns:repeat(auto-fill,minmax(148px,1fr))]'>{categoryItems.map(renderCard)}</div>}
+      {categoryItems.length > 0 && <ProgressiveGrid items={categoryItems} renderCard={renderCard} />}
       {children.map(child => <PromptAssetCategoryBranch key={child.id} category={child} categoriesByParent={categoriesByParent} items={items} onAssign={onAssign} renderCard={renderCard} forceOpen={forceOpen} depth={depth + 1} />)}
     </div>
   </ResourceGroup>

@@ -10,6 +10,7 @@ import type { CherryCacheEntry, CherryCacheSyncMessage, CherryDataApiDataChangeE
 import type { AgentSessionAttachment, AgentSessionEventRecord, AgentSessionRecord, AgentSessionSnapshot, AgentSessionWorkspace, McpServerRecord } from '../shared/agent-types'
 import type { AiAssistantRecord, AiEventRecord, AiMessageRecord, AiResourceOrderAnchor, AiSessionRecord, AiTopicRecord } from '../shared/ai-types'
 import type { StorageInventory } from '../shared/storage-types'
+import type { BootMetrics } from '../main/services/boot-metrics.service'
 
 /** NovelAI generation parameters embedded in the PNG Comment block (M6.6). */
 export interface NovelaiMetadataParams {
@@ -437,6 +438,10 @@ export interface GrimoireAPI {
   error: {
     getAll: () => Promise<Array<{ id: number; message: string; stack: string; context: string; created_at: string }>>
     log: (message: string, stack?: string, context?: string) => Promise<boolean>
+  }
+  boot: {
+    painted: (payload: { timeOrigin: number; paintMs: number }) => Promise<BootMetrics>
+    metrics: () => Promise<BootMetrics>
   }
   storage: {
     inventory: (options?: { force?: boolean }) => Promise<StorageInventory>

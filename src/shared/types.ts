@@ -335,6 +335,8 @@ export const IPC_CHANNELS = {
   STORAGE_INVENTORY: "storage:inventory",
   STORAGE_SCAN_SIZES: "storage:scanSizes",
   SYSTEM_LIST_FONTS: "system:listFonts",
+  BOOT_RENDERER_PAINTED: "boot:rendererPainted",
+  BOOT_METRICS: "boot:metrics",
 
   // File dialog
   DIALOG_SAVE_TEXT: "dialog:saveText",

@@ -14,6 +14,7 @@ import { ChevronDown, ChevronRight, Copy, FolderOpen, HardDrive, LoaderCircle, R
 import { Button, IconButton } from '../ui/Button'
 import { StorageEntryCard } from './StorageEntryCard'
 import { formatStorageBytes, type StorageDomain, type StorageEntry, type StorageInventory } from '../../../shared/storage-types'
+import type { BootMetrics } from '../../../main/services/boot-metrics.service'
 
 const DOMAIN_ACCENT: Record<StorageDomain, string> = {
   tags: 'var(--color-accent)',
@@ -28,6 +29,16 @@ const DOMAIN_ACCENT: Record<StorageDomain, string> = {
 
 const HOVER_DELAY_MS = 400
 
+/** 启动阶段的中文名；顺序即 index.ts 里的打点顺序。 */
+const BOOT_PHASE_LABELS: Record<string, string> = {
+  'app-ready': '应用就绪',
+  'db-ready': '数据库',
+  'ipc-ready': '接口',
+  'tags-seeded': '标签种子',
+  'window-created': '窗口',
+  'renderer-paint': '首帧',
+}
+
 export function StorageDataSection() {
   const [inventory, setInventory] = useState<StorageInventory | null>(null)
   const [loading, setLoading] = useState(false)
@@ -38,6 +49,7 @@ export function StorageDataSection() {
   const [compact, setCompact] = useState(false)
   const [copied, setCopied] = useState<string | null>(null)
   const [hover, setHover] = useState<{ entry: StorageEntry; x: number; y: number } | null>(null)
+  const [boot, setBoot] = useState<BootMetrics | null>(null)
   const containerRef = useRef<HTMLDivElement | null>(null)
   const hoverTimer = useRef<number | null>(null)
 
@@ -59,6 +71,13 @@ export function StorageDataSection() {
   }, [])
 
   useEffect(() => { void load('load') }, [load])
+
+  // 启动耗时是诊断信息：拿不到就整行不显示，不留「—」占位。
+  useEffect(() => {
+    let disposed = false
+    void window.api?.boot?.metrics?.().then((value) => { if (!disposed) setBoot(value) }).catch(() => {})
+    return () => { disposed = true }
+  }, [])
 
   // 依赖 inventory：首帧是 loading 早退（没有容器 ref），只在挂载时观察会永远拿不到元素。
   useEffect(() => {
@@ -168,6 +187,13 @@ export function StorageDataSection() {
           <div className="ui-inline-note ui-inline-note-warning text-[11px]" role="status">
             有 {inventory.unmappedTables.length} 张表未归入任何分类：{inventory.unmappedTables.slice(0, 6).join('、')}
             {inventory.unmappedTables.length > 6 ? ' 等' : ''}
+          </div>
+        )}
+
+        {boot && boot.marks.length > 0 && (
+          <div className="text-[10px] leading-4 text-[var(--color-text-secondary)]" title={boot.marks.map((mark) => `${mark.name} ${mark.ms}ms`).join('\n')}>
+            上次启动 {boot.totalMs}ms
+            {boot.marks.map((mark) => ` · ${BOOT_PHASE_LABELS[mark.name] ?? mark.name} ${mark.ms}ms`).join('')}
           </div>
         )}
       </section>

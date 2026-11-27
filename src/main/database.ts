@@ -1619,16 +1619,26 @@ export async function importDefaultTags(tagsData: string): Promise<void> {
     `INSERT OR REPLACE INTO tags (id, group_id, subcategory_id, en, zh, sort_order, source) VALUES (?,'default', ?, ?, ?, ?, ?)`
   )
   
-  for (const cat of categories) {
-    insertCat.run([cat.id, cat.en, cat.zh, cat.sort_order])
-    for (const sub of cat.subcategories) {
-      insertSub.run([sub.id, cat.id, sub.en, sub.zh, sub.sort_order])
-      for (const tag of sub.tags) {
-        insertTag.run([tag.id, sub.id, tag.en, tag.zh, tag.sort_order, tag.source || 'builtin'])
+  // 4589 条标签逐条 INSERT 各自是一个隐式事务，每条都要 fsync —— 实测首次启动有 2.86s 花在这里
+  // （2026-11-27 打点：app-ready 271ms → tags-seeded 3311ms）。包进一个事务后只写一次 WAL，
+  // 这是「首次运行慢」里最划算的一处修复，且不改变任何数据内容。
+  database.run('BEGIN')
+  try {
+    for (const cat of categories) {
+      insertCat.run([cat.id, cat.en, cat.zh, cat.sort_order])
+      for (const sub of cat.subcategories) {
+        insertSub.run([sub.id, cat.id, sub.en, sub.zh, sub.sort_order])
+        for (const tag of sub.tags) {
+          insertTag.run([tag.id, sub.id, tag.en, tag.zh, tag.sort_order, tag.source || 'builtin'])
+        }
       }
     }
+    database.run('COMMIT')
+  } catch (error) {
+    database.run('ROLLBACK')
+    throw error
   }
-  
+
   insertCat.free()
   insertSub.free()
   insertTag.free()

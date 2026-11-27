@@ -30,6 +30,18 @@ window.addEventListener('unhandledrejection', event => {
   )
 })
 
+// 首帧上报：双 rAF 之后才是「真的画出来了」，比 DOMContentLoaded 更接近用户感知。
+// 只上报一次；失败不影响任何功能（打点是诊断用的）。
+requestAnimationFrame(() => {
+  try {
+    const fcp = performance.getEntriesByType('paint').find((entry) => entry.name === 'first-contentful-paint')
+    const paintMs = Math.round(fcp?.startTime ?? performance.now())
+    void window.api?.boot?.painted({ timeOrigin: Math.round(performance.timeOrigin), paintMs })?.catch?.(() => {})
+  } catch {
+    // 桥未就绪时忽略
+  }
+})
+
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     {window.location.hash.startsWith('#selection-assistant')

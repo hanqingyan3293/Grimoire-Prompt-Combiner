@@ -10,8 +10,9 @@ function readState(): CollapseState {
   try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}') as CollapseState } catch { return {} }
 }
 
-export function ResourceGroup({ id, title, count, children, empty = false, forceOpen = false, className = '', contentClassName = '' }: { id: string; title: string; count?: number; children: React.ReactNode; empty?: boolean; forceOpen?: boolean; className?: string; contentClassName?: string }) {
-  const [collapsed, setCollapsed] = useState(() => readState()[id] ?? false)
+export function ResourceGroup({ id, title, count, children, empty = false, forceOpen = false, defaultCollapsed = false, className = '', contentClassName = '' }: { id: string; title: string; count?: number; children: React.ReactNode; empty?: boolean; forceOpen?: boolean; defaultCollapsed?: boolean; className?: string; contentClassName?: string }) {
+  // defaultCollapsed：条目多的组默认收起。资产面板一组 60+ 张卡片，全展开会让首屏 DOM 上万。
+  const [collapsed, setCollapsed] = useState(() => readState()[id] ?? defaultCollapsed)
   useEffect(() => {
     const state = readState()
     state[id] = collapsed

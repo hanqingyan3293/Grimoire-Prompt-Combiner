@@ -10,6 +10,8 @@ import { registerHistoryIPC } from "./ipc/history.ipc"
 import { registerSettingsIPC } from "./ipc/settings.ipc"
 import { registerStorageIPC } from "./ipc/storage.ipc"
 import { registerSystemFontsIPC } from "./ipc/system.ipc"
+import { registerBootIPC } from "./ipc/boot.ipc"
+import { markBootPhase, getBootMetrics, afterFirstPaint } from './services/boot-metrics.service'
 import { registerSelectionAssistantIPC, setSelectionWindowOpener } from "./ipc/selection.ipc"
 import { registerThemeIPC } from "./ipc/theme.ipc"
 import { registerImagesIPC } from "./ipc/images.ipc"
@@ -611,6 +613,7 @@ async function registerAllIPC(): Promise<void> {
   registerSettingsIPC()
   registerStorageIPC()
   registerSystemFontsIPC()
+  registerBootIPC()
   registerSelectionAssistantIPC()
   registerThemeIPC()
   registerImagesIPC()
@@ -808,12 +811,17 @@ const bootConfig = applyBootConfig({ databasePath: defaultDatabasePathFor(app.ge
 app.whenReady().then(async () => {
   try {
     logEvent('info', 'application', 'Application startup', { context: JSON.stringify(bootConfig) })
+    markBootPhase('app-ready')
     await initDatabase()
+    markBootPhase('db-ready')
     await registerAllIPC()
+    markBootPhase('ipc-ready')
     await initDefaultTags()
+    markBootPhase('tags-seeded')
     const defaultPromptAssetDirectory = defaultPromptAssetRoot({ isPackaged: app.isPackaged, appPath: app.getAppPath(), dirname: __dirname })
     registerLocalAssetProtocol(defaultPromptAssetDirectory)
     createWindow()
+    markBootPhase('window-created')
     if ((process.env.GRIMOIRE_VISUAL_CAPTURE === '1' || process.env.GRIMOIRE_UI_CATALOG_CAPTURE === '1') && process.env.GRIMOIRE_VISUAL_CAPTURE_EMPTY !== '1') {
       // Seed before the Cherry window loads so the renderer's initial fetch sees the
       // fixture. A non-empty database means this user-data-dir was already captured;
@@ -836,16 +844,26 @@ app.whenReady().then(async () => {
     if (process.env.GRIMOIRE_OPEN_CHERRY === '1' || process.env.GRIMOIRE_VISUAL_CAPTURE === '1' || process.env.GRIMOIRE_UI_CATALOG_CAPTURE === '1') {
       setTimeout(() => createCherryWindow(), 700)
     }
-    void importDefaultPromptAssets(defaultPromptAssetDirectory).then((added) => {
-      const linked = seedDefaultPromptAssetCategories(defaultPromptAssetDirectory)
-      if (added > 0) {
-        logEvent('info', 'prompt-assets', 'Imported ' + added + ' built-in prompt assets')
-        broadcastDatabaseReload()
-      }
-      if (linked > 0) broadcastDatabaseReload()
-    }).catch((error) => {
-      console.warn('Built-in prompt asset import deferred:', error)
+    // 先出界面再写库：首帧之前做导入会和渲染层的查询抢同一个写锁（实测把首帧推到 5–24s）。
+    afterFirstPaint(() => {
+      void importDefaultPromptAssets(defaultPromptAssetDirectory).then((added) => {
+        const linked = seedDefaultPromptAssetCategories(defaultPromptAssetDirectory)
+        if (added > 0) {
+          logEvent('info', 'prompt-assets', 'Imported ' + added + ' built-in prompt assets')
+          broadcastDatabaseReload()
+        }
+        if (linked > 0) broadcastDatabaseReload()
+      }).catch((error) => {
+        console.warn('Built-in prompt asset import deferred:', error)
+      })
     })
+    try {
+      const metrics = getBootMetrics()
+      getDatabase().run('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value', ['boot.metrics.last', JSON.stringify(metrics)])
+      logEvent('info', 'boot', 'Boot totals', { context: metrics.marks.map((mark) => mark.name + '=' + mark.ms + 'ms').join(' ') })
+    } catch (error) {
+      console.warn('Boot metrics persist skipped:', error)
+    }
     logEvent('info', 'application', 'Application ready')
   } catch (err) {
     logError("启动失败: " + (err instanceof Error ? err.message : "未知错误"), err instanceof Error ? err.stack || "" : "")
