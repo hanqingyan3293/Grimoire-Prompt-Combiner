@@ -53,3 +53,4 @@
 - 保留tag/prompt/image/WD14/Canvas/provider/session/workspace；数据备份只承诺现数据库，不扩云备份/完整媒体备份、NAI官方生成、外来词典、MOSS全量、内置Comfy、第二库或新runtime。
 - OpenCode/Pi原生recovery/replay/prewarm缺实现保持unavailable/blocked；attach回放不冒称durable replay，Pi RPC默认、SDK gated，许可once/deny/session边界保持。
 - 冷启动≤5s、4000+标签搜索≤150ms、10万资产筛选≤500ms、1000节点Canvas≥45FPS及100–200%缩放仍待最终实测。
+- 11/27 数据存储控制台 P1（只读面板）已落地：`src/shared/storage-registry.ts` 映射 70 张表 / 8 个域 + 11 条路径项，运行时与 `sqlite_master` 交叉校验（首测即抓到漏映射的 `wd14_history`）；`storage-inventory.service.ts` 用 `dbstat` 给表字节（索引页归并回表），`storage-size.service.ts` 异步遍历目录（并发 8 / 3s 预算 / 10 万文件上限 / 5 分钟缓存）；设置「数据」分区渲染 `StorageDataSection`（总览构成条 + 域折叠 + 每项 名称/行数或文件数/大小/路径/打开目录/复制路径，窄容器两行布局）。实测本机 527MB userData：迁移备份 20 份 145MB、Chromium 缓存 348MB、真实库 9.3MB。完整 G1–G14 全绿（complete=true / failed=[] / buildStable=true / 625762ms，根测试 242 files / 2492 passed / 2 skipped），回执 `commands/storage-p1-full-gates-2026-11-27T18-19-17-555Z.json`。P2–P5（导出 / 导入 / 迁移 / 清理 / 备份）未开始。

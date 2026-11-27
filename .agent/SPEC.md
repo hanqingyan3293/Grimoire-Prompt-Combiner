@@ -67,3 +67,32 @@ Grimoire SQLite and business stores remain the source of truth. Vendored source 
 ## Completion language
 
 The project may only be called complete when all required rows are verified and every remaining external blocker is explicitly accepted by the user. Otherwise report DONE, PARTIAL, BLOCKED, MISSING, and REIMPLEMENTED separately.
+
+## 数据存储控制台（0.7.4 起）
+
+设置「数据」分区的单一事实源是 `src/shared/storage-registry.ts`：
+
+- `STORAGE_TABLES`：每张表 → `{ label, domain, exportable }`。运行时与 `sqlite_master` 交叉校验，未映射表进 `other` 域并告警。
+- `STORAGE_PATHS`：userData / 包内资源的路径项，带 `exportable` / `migratable` / `cleanable` 三个能力位。
+
+合同（`src/shared/storage-types.ts`）：
+
+```ts
+interface StorageEntry {
+  id: string; kind: 'table' | 'directory' | 'file' | 'package'
+  domain: StorageDomain; label: string; location: string
+  bytes: number | null; rows?: number; files?: number; lastWrite?: string
+  exportable: boolean; importable: boolean; migratable: boolean; cleanable: boolean; note?: string
+}
+interface StorageInventory { generatedAt: string; totalBytes: number; groups: StorageGroup[]; unmappedTables: string[]; approximate: boolean }
+```
+
+规则：
+
+1. `bytes === null` 表示未统计，UI 必须显示「—」；0 与未知是两件事。
+2. 只读操作（inventory / diagnose / backup）不得写入用户库；备份用 `VACUUM INTO`，因为 `DatabaseSync` 没有 `backup()`。
+3. 删除一律先进 `userData/trash/`，24 小时或手动确认才真删；有引用的数据拒删并说明原因。
+4. 数据库只能冷迁移：写 boot 配置 → 退出 → 复制校验 → 切换 → 重启自检 → 失败回退。
+5. 新增表必须同时更新注册表；`storage-registry.test.ts` 与运行时交叉校验共同兜底。
+
+IPC 分期：P1 已有 `storage:inventory`、`storage:scanSizes`；`exportItem` / `importItem` / `migrate` / `cleanup` / `diagnose` / `backup*` 见 DECISIONS 的 D-STO-01 分期表。

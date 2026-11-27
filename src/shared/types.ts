@@ -326,6 +326,8 @@ export const IPC_CHANNELS = {
   // Database
   DB_EXPORT: "db:export",
   DB_IMPORT: "db:import",
+  STORAGE_INVENTORY: "storage:inventory",
+  STORAGE_SCAN_SIZES: "storage:scanSizes",
 
   // File dialog
   DIALOG_SAVE_TEXT: "dialog:saveText",

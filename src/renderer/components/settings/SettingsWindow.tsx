@@ -15,6 +15,7 @@ import { AppConfigPanel } from "@canvas/components/layout/app-config-modal"
 import { useAgentStore } from "@canvas/stores/use-agent-store"
 import { useOptionalWorkspaceEditorState } from '../workspace/WorkspaceEditorHost'
 import { captureSettingsView, validateSettingsView } from './settings-editor-view'
+import { StorageDataSection } from './StorageDataSection'
 
 const THEMES = [
   { key: "neon", zh: "霓虹", color: "#a855f7" },
@@ -574,6 +575,7 @@ export function SettingsWindow({ onClose, embedded = false }: { onClose?: () => 
           <SettingsSectionCard id="data" title="数据" collapsed={collapsedSections["data"] === true} onToggle={() => toggleSection("data")}>
           <div className="space-y-5">
             <PanelHeader icon={Database} title='数据管理' description='备份和恢复数据库，迁移朋友项目提示词并查看诊断记录' />
+            <StorageDataSection />
             <Field label="数据库" desc="备份和恢复全部数据">
               <div className="flex gap-3">
                 <Button icon={Download} onClick={() => void runDatabaseAction('export')} disabled={dataBusy !== null} className='flex-1'>导出数据库</Button>

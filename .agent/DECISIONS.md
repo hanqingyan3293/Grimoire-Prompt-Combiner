@@ -755,3 +755,13 @@
 - 设置「关于」补一句定位文案，技术栈更正为 `node:sqlite`（原写 SQLite，实际用 `DatabaseSync`）。
 - GitHub Release 标题去掉括号说明，改回纯版本号 `v0.7.3-alpha`（`gh release edit --title` 只改元数据，不重传资产）。
 - 已上传的 0.7.3-alpha 二进制仍是改文案前的构建（about 面板显示旧技术栈行）；是否为此重打包由用户决定，不擅自重传 870MB。
+
+### D-STO-01 数据存储控制台：P1 只读面板（2026-11-27）
+
+- **数据面用「自动发现 + 手写注册表」**：`src/shared/storage-registry.ts` 声明 70 张表（含 8 个域）与 11 条路径项，运行时与 `sqlite_master` 交叉校验；未映射的表进 `other` 域并在开发日志告警。上线首测就抓到 `wd14_history` 没被映射——这类遗漏只有交叉校验能发现，纯手写清单会一直漏。
+- **表体积用 `dbstat`**：`SELECT SUM(pgsize) FROM dbstat GROUP BY name`，再用 `PRAGMA index_list(<table>)` 把索引页归并回所属表（UI 不显示 `idx_*` 噪音）。实测 9.3MB / 69 表库上毫秒级；`dbstat` 不可用时降级为 `null` + `approximate=true`，不把未知渲染成 0。
+- **目录体积不用 worker_threads**（与计划草案的偏差，已实测后改）：`storage-size.service.ts` 用 `fs/promises` + 并发 8 + 3s 预算 + 10 万文件上限 + 5 分钟 TTL 缓存 + in-flight 合并。理由是遍历本身是异步 IO，实测 527MB 的 userData 在 300ms 内完成，引入 worker 只会多一层打包与调试成本。上限/超时命中时 `truncated=true`，UI 标注「体积为下限」。
+- **分组卡片不能用 `ui-list-card` 裸类**：它的 `:hover` 会把整块染成强调色，看起来像被选中；改用 `ui-list-card-no-hover`。
+- **窄容器用 ResizeObserver 而不是 container query**：阈值 780px。踩到两个坑并已修：①`ref` 放在 loading 早退之后的树里，`useEffect([])` 首次拿不到元素 → 改为依赖 `inventory`；②窄布局必须用两行块布局（标题+行数+大小 / 路径+操作），三层 flex-col 在 340px 下会互相压字。
+- **P1 只渲染已实现的操作**（打开目录 / 复制路径）。导出、导入、迁移、清理的能力位已在数据里，但按钮等 P2–P5 真做出来再加，宁可少一个按钮也不做「点了没反应」的占位。
+- 实测：本机 527MB userData 中，迁移备份 20 份占 145MB、Chromium 缓存 348MB、真实库 9.3MB；面板总览的顺序即按此设计（先看清构成，再谈导出）。

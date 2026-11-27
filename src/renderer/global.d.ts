@@ -9,6 +9,7 @@ import type { WD14HistoryRecord } from '../shared/wd14-types'
 import type { CherryCacheEntry, CherryCacheSyncMessage, CherryDataApiDataChangeEffect, CherryDataApiRequest, CherryDataApiResponse } from '../shared/cherry-preload-types'
 import type { AgentSessionAttachment, AgentSessionEventRecord, AgentSessionRecord, AgentSessionSnapshot, AgentSessionWorkspace, McpServerRecord } from '../shared/agent-types'
 import type { AiAssistantRecord, AiEventRecord, AiMessageRecord, AiResourceOrderAnchor, AiSessionRecord, AiTopicRecord } from '../shared/ai-types'
+import type { StorageInventory } from '../shared/storage-types'
 
 /** NovelAI generation parameters embedded in the PNG Comment block (M6.6). */
 export interface NovelaiMetadataParams {
@@ -435,6 +436,10 @@ export interface GrimoireAPI {
   error: {
     getAll: () => Promise<Array<{ id: number; message: string; stack: string; context: string; created_at: string }>>
     log: (message: string, stack?: string, context?: string) => Promise<boolean>
+  }
+  storage: {
+    inventory: (options?: { force?: boolean }) => Promise<StorageInventory>
+    scanSizes: () => Promise<StorageInventory>
   }
   db: {
     export: () => Promise<boolean>
