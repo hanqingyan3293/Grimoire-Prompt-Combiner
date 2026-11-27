@@ -133,6 +133,12 @@ export interface AppSettings {
   max_undo_steps: number
   random_min: string
   random_max: string
+  /** 界面字体族；空字符串 = 跟随内置默认。 */
+  font_ui: string
+  /** 标题字体族；空字符串 = 跟随内置默认。 */
+  font_display: string
+  /** 等宽字体族；空字符串 = 跟随内置默认。 */
+  font_mono: string
 }
 
 /** Favorite tag */
@@ -328,6 +334,7 @@ export const IPC_CHANNELS = {
   DB_IMPORT: "db:import",
   STORAGE_INVENTORY: "storage:inventory",
   STORAGE_SCAN_SIZES: "storage:scanSizes",
+  SYSTEM_LIST_FONTS: "system:listFonts",
 
   // File dialog
   DIALOG_SAVE_TEXT: "dialog:saveText",

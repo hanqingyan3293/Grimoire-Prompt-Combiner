@@ -1,8 +1,50 @@
 // @vitest-environment jsdom
-import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { render, screen, waitFor, cleanup } from '@testing-library/react'
+import { beforeEach, describe, expect, it } from 'vitest'
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { StorageDataSection } from './StorageDataSection'
-import type { StorageInventory } from '../../../shared/storage-types'
+import type { StorageEntry, StorageGroup, StorageInventory } from '../../../shared/storage-types'
+
+const tagsTable: StorageEntry = {
+  id: 'db.tags', kind: 'table', domain: 'tags', subgroup: '本体', label: '标签', location: 'db:tags',
+  bytes: 512 * 1024, rows: 4589, exportable: true, importable: true, migratable: false, cleanable: false,
+}
+const aliasTable: StorageEntry = {
+  id: 'db.tag_aliases', kind: 'table', domain: 'tags', subgroup: '别名与关系', label: '标签别名', location: 'db:tag_aliases',
+  bytes: 1024 * 1024, rows: 9162, exportable: true, importable: true, migratable: false, cleanable: false,
+}
+const databaseFile: StorageEntry = {
+  id: 'files.database', kind: 'file', domain: 'runtime', subgroup: '数据库', label: '数据库文件',
+  location: 'C:/Users/x/AppData/Roaming/Grimoire/grimoire.db', bytes: null, files: 1,
+  exportable: true, importable: true, migratable: true, cleanable: false,
+  note: 'SQLite 主库，schema 42', lastWrite: '2026-11-27T10:00:00.000Z',
+}
+
+const groupOf = (domain: StorageGroup['domain'], label: string, entries: StorageEntry[]): StorageGroup => {
+  const order: string[] = []
+  const buckets = new Map<string, StorageEntry[]>()
+  for (const entry of entries) {
+    if (!buckets.has(entry.subgroup)) { buckets.set(entry.subgroup, []); order.push(entry.subgroup) }
+    buckets.get(entry.subgroup)!.push(entry)
+  }
+  return {
+    domain,
+    label,
+    bytes: entries.reduce((total, entry) => total + (entry.bytes ?? 0), 0),
+    complete: entries.every((entry) => entry.bytes !== null),
+    entries,
+    subgroups: order.map((key) => {
+      const bucket = buckets.get(key)!
+      const known = bucket.filter((entry) => entry.bytes !== null)
+      return {
+        key,
+        label: key,
+        bytes: known.reduce((total, entry) => total + (entry.bytes ?? 0), 0),
+        complete: known.length === bucket.length,
+        entries: bucket,
+      }
+    }),
+  }
+}
 
 const inventory: StorageInventory = {
   generatedAt: '2026-11-27T00:00:00.000Z',
@@ -10,29 +52,8 @@ const inventory: StorageInventory = {
   approximate: false,
   unmappedTables: [],
   groups: [
-    {
-      domain: 'tags',
-      label: '标签',
-      bytes: 1024 * 1024,
-      entries: [
-        {
-          id: 'db.tags', kind: 'table', domain: 'tags', label: '标签', location: 'db:tags',
-          bytes: 512 * 1024, rows: 4589, exportable: true, importable: true, migratable: false, cleanable: false,
-        },
-      ],
-    },
-    {
-      domain: 'runtime',
-      label: '运行与环境',
-      bytes: 2 * 1024 * 1024,
-      entries: [
-        {
-          id: 'files.database', kind: 'file', domain: 'runtime', label: '数据库文件',
-          location: 'C:/Users/x/AppData/Roaming/Grimoire/grimoire.db',
-          bytes: null, files: 1, exportable: true, importable: true, migratable: true, cleanable: false,
-        },
-      ],
-    },
+    groupOf('tags', '标签', [tagsTable, aliasTable]),
+    groupOf('runtime', '运行与环境', [databaseFile]),
   ],
 }
 
@@ -44,54 +65,61 @@ beforeEach(() => {
   })
   Object.defineProperty(window, 'api', {
     configurable: true,
-    value: {
-      storage: {
-        inventory: async () => inventory,
-        scanSizes: async () => inventory,
-      },
-    },
+    value: { storage: { inventory: async () => inventory, scanSizes: async () => inventory } },
   })
 })
 
 describe('storage data section', () => {
-  it('renders the total, every domain and per-entry figures', async () => {
+  it('renders domains with their subgroup count and total', async () => {
     render(<StorageDataSection />)
     expect(await screen.findByText('数据存储')).toBeTruthy()
     expect(screen.getByText('合计 3.0 MB')).toBeTruthy()
-    // 「标签」既是域标题也是表名，用 getAllByText 证明两处都在
-    expect(screen.getAllByText('标签').length).toBeGreaterThanOrEqual(2)
-    expect(screen.getByText('运行与环境')).toBeTruthy()
-    expect(screen.getByText('4589 行')).toBeTruthy()
+    expect(screen.getByText('2 类 · 2 项')).toBeTruthy()
+    expect(screen.getByText('1 类 · 1 项')).toBeTruthy()
   })
 
-  it('shows an unknown size as a dash instead of zero', async () => {
+  it('keeps subgroups collapsed until asked, then reveals their entries', async () => {
     render(<StorageDataSection />)
+    await screen.findByText('数据存储')
+    // 子组默认折叠：标签表本身不可见，只有子组标题
+    expect(screen.queryByText('标签别名')).toBeNull()
+    fireEvent.click(screen.getByText('别名与关系'))
+    expect(await screen.findByText('标签别名')).toBeTruthy()
+    expect(screen.getByText('9162 行')).toBeTruthy()
+    // 另一个子组不受影响（本体里的「标签」表仍是 4589 行，未展开）
+    expect(screen.queryByText('4589 行')).toBeNull()
+  })
+
+  it('keeps unknown sizes as a dash instead of zero', async () => {
+    render(<StorageDataSection />)
+    await screen.findByText('数据存储')
+    fireEvent.click(screen.getByText('数据库'))
     await waitFor(() => expect(screen.getByText('数据库文件')).toBeTruthy())
-    // 该条 bytes=null：必须显示「—」，不能显示 0 B（0 与未知是两件事）
     expect(screen.queryByText('0 B')).toBeNull()
     expect(screen.getAllByText('—').length).toBeGreaterThan(0)
   })
 
-  it('surfaces unmapped tables instead of hiding them', async () => {
+  it('shows the entry detail card on hover after the delay', async () => {
+    render(<StorageDataSection />)
+    await screen.findByText('数据存储')
+    fireEvent.click(screen.getByText('别名与关系'))
+    const row = (await screen.findByText('标签别名')).closest('div')!.parentElement!
+    fireEvent.mouseEnter(row, { clientX: 120, clientY: 240 })
+    const card = await screen.findByRole('tooltip', undefined, { timeout: 2000 })
+    expect(card.textContent).toContain('db:tag_aliases')
+    expect(card.textContent).toContain('可导出')
+    fireEvent.mouseLeave(row)
+    await waitFor(() => expect(screen.queryByRole('tooltip')).toBeNull())
+  })
+
+  it('surfaces unmapped tables and still explains the pending actions', async () => {
     Object.defineProperty(window, 'api', {
       configurable: true,
-      value: {
-        storage: {
-          inventory: async () => ({ ...inventory, unmappedTables: ['mystery_table'] }),
-          scanSizes: async () => inventory,
-        },
-      },
+      value: { storage: { inventory: async () => ({ ...inventory, unmappedTables: ['mystery_table'] }), scanSizes: async () => inventory } },
     })
     render(<StorageDataSection />)
     expect(await screen.findByText(/mystery_table/)).toBeTruthy()
-  })
-
-  it('explains that export and migration are not wired yet', async () => {
-    render(<StorageDataSection />)
-    await screen.findByText('数据存储')
     expect(screen.getByText(/后续版本逐个接入/)).toBeTruthy()
-    // P1 不渲染未实现的导出/迁移按钮，避免「点了没反应」
     expect(screen.queryByText('导出')).toBeNull()
-    expect(screen.queryByText('迁移')).toBeNull()
   })
 })

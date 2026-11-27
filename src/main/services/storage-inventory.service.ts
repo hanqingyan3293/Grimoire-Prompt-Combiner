@@ -114,6 +114,7 @@ function collectDatabaseParts(): { entries: StorageEntry[]; unmapped: string[]; 
         id: `db.${table}`,
         kind: 'table',
         domain: 'other',
+      subgroup: '未映射',
         label: table,
         location: `db:${table}`,
         bytes: tableBytes,
@@ -130,6 +131,7 @@ function collectDatabaseParts(): { entries: StorageEntry[]; unmapped: string[]; 
       id: `db.${table}`,
       kind: 'table',
       domain: spec.domain,
+      subgroup: spec.subgroup,
       label: spec.label,
       location: `db:${table}`,
       bytes: tableBytes,
@@ -190,6 +192,7 @@ export async function buildStorageInventory(options: InventoryOptions = {}): Pro
       id: spec.id,
       kind: spec.kind,
       domain: spec.domain,
+      subgroup: spec.subgroup,
       label: spec.label,
       location: target,
       bytes: sized.bytes,
@@ -205,15 +208,41 @@ export async function buildStorageInventory(options: InventoryOptions = {}): Pro
   }
 
   const allEntries = [...dbParts.entries, ...fileEntries]
-  const groups: StorageGroup[] = STORAGE_DOMAINS_ORDER.map((domain) => {
-    const entries = allEntries.filter((entry) => entry.domain === domain)
-    return {
+  const groups: StorageGroup[] = []
+  for (const domain of STORAGE_DOMAINS_ORDER) {
+    // 组内按体积降序，未统计的排末尾：面板先展示「谁在吃空间」，而不是字母表顺序。
+    const entries = allEntries
+      .filter((entry) => entry.domain === domain)
+      .sort((left, right) => (right.bytes ?? -1) - (left.bytes ?? -1))
+    if (entries.length === 0) continue
+
+    // 子组按注册表里的出现顺序（不是字母序），保证「本体 → 别名与关系 → 收藏与统计」这类
+    // 业务顺序稳定；聚合字节与完整度由共享 helper 算，UI 不再自己加。
+    const order: string[] = []
+    const buckets = new Map<string, StorageEntry[]>()
+    for (const entry of entries) {
+      if (!buckets.has(entry.subgroup)) {
+        buckets.set(entry.subgroup, [])
+        order.push(entry.subgroup)
+      }
+      buckets.get(entry.subgroup)!.push(entry)
+    }
+    const subgroups = order.map((key) => {
+      const bucket = buckets.get(key)!
+      const summed = sumDomain(bucket)
+      return { key, label: key, bytes: summed.bytes, complete: summed.complete, entries: bucket }
+    })
+
+    const summed = sumDomain(entries)
+    groups.push({
       domain: domain as StorageDomain,
       label: STORAGE_DOMAIN_LABELS[domain],
-      bytes: sumDomain(entries).bytes,
+      bytes: summed.bytes,
+      complete: summed.complete,
       entries,
-    }
-  }).filter((group) => group.entries.length > 0)
+      subgroups,
+    })
+  }
 
   const totalBytes = groups.reduce((total, group) => total + group.bytes, 0)
   return {

@@ -51,7 +51,7 @@ describe('storage types helpers', () => {
   })
 
   it('sums known entries and reports incomplete groups', () => {
-    const base = { kind: 'table', domain: 'tags', location: 'db:x', exportable: false, importable: false, migratable: false, cleanable: false } as const
+    const base = { kind: 'table', domain: 'tags', subgroup: '本体', location: 'db:x', exportable: false, importable: false, migratable: false, cleanable: false } as const
     const known: StorageEntry[] = [{ ...base, id: 'a', label: 'A', bytes: 100 }, { ...base, id: 'b', label: 'B', bytes: 50 }]
     expect(sumDomain(known)).toEqual({ bytes: 150, complete: true })
     expect(sumDomain([...known, { ...base, id: 'c', label: 'C', bytes: null }])).toEqual({ bytes: 150, complete: false })

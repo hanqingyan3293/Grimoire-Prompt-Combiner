@@ -16,6 +16,7 @@ import { useAgentStore } from "@canvas/stores/use-agent-store"
 import { useOptionalWorkspaceEditorState } from '../workspace/WorkspaceEditorHost'
 import { captureSettingsView, validateSettingsView } from './settings-editor-view'
 import { StorageDataSection } from './StorageDataSection'
+import { FontSettingsFields } from './FontSettingsFields'
 
 const THEMES = [
   { key: "neon", zh: "霓虹", color: "#a855f7" },
@@ -334,7 +335,10 @@ export function SettingsWindow({ onClose, embedded = false }: { onClose?: () => 
 	                <span className="w-8 text-sm text-[var(--color-text-secondary)]">px</span>
 	              </div>
 	            </Field>
-	            <Field label="界面密度" desc="调整面板标题栏、分割线和控件尺寸">
+	            <Field label="字体" desc="可分别指定界面、标题与等宽字体；未选择的项跟随系统默认">
+              <FontSettingsFields />
+            </Field>
+            <Field label="界面密度" desc="调整面板标题栏、分割线和控件尺寸">
               <div className="ui-segmented grid grid-cols-3" role='group' aria-label='界面密度'>
                 {["compact","normal","comfortable"].map(d => (
                   <button key={d} onClick={() => setSetting("ui_density", d)}
@@ -574,7 +578,7 @@ export function SettingsWindow({ onClose, embedded = false }: { onClose?: () => 
         {showSection("data") && (
           <SettingsSectionCard id="data" title="数据" collapsed={collapsedSections["data"] === true} onToggle={() => toggleSection("data")}>
           <div className="space-y-5">
-            <PanelHeader icon={Database} title='数据管理' description='备份和恢复数据库，迁移朋友项目提示词并查看诊断记录' />
+            <PanelHeader icon={Database} title='数据管理' description='查看数据占用与位置、备份和恢复数据库、导入提示词索引并查看诊断记录' />
             <StorageDataSection />
             <Field label="数据库" desc="备份和恢复全部数据">
               <div className="flex gap-3">
@@ -582,8 +586,8 @@ export function SettingsWindow({ onClose, embedded = false }: { onClose?: () => 
                 <Button icon={Upload} onClick={() => void runDatabaseAction('import')} disabled={dataBusy !== null} className='flex-1'>导入数据库</Button>
               </div>
             </Field>
-            <Field label="朋友项目迁移" desc="先扫描提示词索引，再确认导入；不会导入 API Key">
-              <Button icon={RefreshCw} onClick={() => void selectFriendPromptIndex()} disabled={migrationBusy} className='w-full'>扫描朋友项目提示词索引</Button>
+            <Field label="提示词索引（JSON）导入" desc="从一个 JSON 索引文件导入提示词到资产库；先扫描预览，再确认导入，不会导入 API Key">
+              <Button icon={RefreshCw} onClick={() => void selectFriendPromptIndex()} disabled={migrationBusy} className='w-full'>选择提示词索引文件</Button>
               {migrationPreview && (
                 <div className="ui-list-card ui-list-card-no-hover mt-3 space-y-3 p-3 text-sm">
                   <div className="grid grid-cols-3 gap-2 text-center">

@@ -9,6 +9,7 @@ import { registerPresetsIPC } from "./ipc/presets.ipc"
 import { registerHistoryIPC } from "./ipc/history.ipc"
 import { registerSettingsIPC } from "./ipc/settings.ipc"
 import { registerStorageIPC } from "./ipc/storage.ipc"
+import { registerSystemFontsIPC } from "./ipc/system.ipc"
 import { registerSelectionAssistantIPC, setSelectionWindowOpener } from "./ipc/selection.ipc"
 import { registerThemeIPC } from "./ipc/theme.ipc"
 import { registerImagesIPC } from "./ipc/images.ipc"
@@ -609,6 +610,7 @@ async function registerAllIPC(): Promise<void> {
   setSelectionWindowOpener(openSelectionAssistantWindow)
   registerSettingsIPC()
   registerStorageIPC()
+  registerSystemFontsIPC()
   registerSelectionAssistantIPC()
   registerThemeIPC()
   registerImagesIPC()

@@ -15,6 +15,8 @@ export interface StorageEntry {
   readonly id: string
   readonly kind: StorageKind
   readonly domain: StorageDomain
+  /** 三级结构的中间层，例如「别名与关系」。 */
+  readonly subgroup: string
   readonly label: string
   /** 绝对路径；DB 表记作 `db:<table>`。 */
   readonly location: string
@@ -30,11 +32,23 @@ export interface StorageEntry {
   readonly note?: string
 }
 
+/** 域 → 子组 → 条目 的中间层。条目多的时候（标签 13 项、AI 25 项）靠它折叠。 */
+export interface StorageSubgroup {
+  readonly key: string
+  readonly label: string
+  readonly bytes: number
+  readonly complete: boolean
+  readonly entries: readonly StorageEntry[]
+}
+
 export interface StorageGroup {
   readonly domain: StorageDomain
   readonly label: string
   readonly bytes: number
+  /** 组内是否全部已统计；false 且 bytes=0 时 UI 必须显示「—」而不是 0 B。 */
+  readonly complete: boolean
   readonly entries: readonly StorageEntry[]
+  readonly subgroups: readonly StorageSubgroup[]
 }
 
 export interface StorageInventory {

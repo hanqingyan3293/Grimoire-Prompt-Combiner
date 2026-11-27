@@ -180,6 +180,7 @@ export interface GrimoireAPI {
     set: (key: string, value: string) => Promise<boolean>
   }
   system: {
+    listFonts: () => Promise<string[]>
     openExternal: (url: string) => Promise<boolean>
     showItemInFolder: (filePath: string) => Promise<boolean>
   }

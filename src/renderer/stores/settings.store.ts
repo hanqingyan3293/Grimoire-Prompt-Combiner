@@ -1,6 +1,7 @@
 // Grimoire v7 - Settings Store
 import { create } from "zustand"
 import type { AppSettings } from "@shared/types"
+import { applyFontPreferences, applyFontSlot, fontSlotForKey } from "../font-application"
 
 interface SettingsState extends AppSettings {
   shortcuts: Record<string, string>
@@ -148,6 +149,9 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   max_undo_steps: 50,
   random_min: "3",
   random_max: "16",
+  font_ui: "",
+  font_display: "",
+  font_mono: "",
   shortcuts: {},
   loading: false,
 
@@ -196,6 +200,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
       applyUiDensity(density)
       applyAccent(acc)
       applyColorOverrides(colorOverrides)
+      applyFontPreferences({ ui: String(raw.font_ui ?? ''), display: String(raw.font_display ?? ''), mono: String(raw.font_mono ?? '') })
     } catch {
       set({ loading: false })
     }
@@ -212,6 +217,8 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     if (key === "ui_density") applyUiDensity(value)
     if (key === "custom_accent") applyAccent(value)
     if (isColorOverrideKey(key)) applyColorOverride(key, value)
+    const fontSlot = fontSlotForKey(key)
+    if (fontSlot) applyFontSlot(fontSlot, value)
     if (key.startsWith("shortcut_")) {
       const sk = key.replace("shortcut_", "")
       set(s => ({ shortcuts: { ...s.shortcuts, [sk]: value } }))

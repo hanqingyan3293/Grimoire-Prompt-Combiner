@@ -765,3 +765,13 @@
 - **窄容器用 ResizeObserver 而不是 container query**：阈值 780px。踩到两个坑并已修：①`ref` 放在 loading 早退之后的树里，`useEffect([])` 首次拿不到元素 → 改为依赖 `inventory`；②窄布局必须用两行块布局（标题+行数+大小 / 路径+操作），三层 flex-col 在 340px 下会互相压字。
 - **P1 只渲染已实现的操作**（打开目录 / 复制路径）。导出、导入、迁移、清理的能力位已在数据里，但按钮等 P2–P5 真做出来再加，宁可少一个按钮也不做「点了没反应」的占位。
 - 实测：本机 527MB userData 中，迁移备份 20 份占 145MB、Chromium 缓存 348MB、真实库 9.3MB；面板总览的顺序即按此设计（先看清构成，再谈导出）。
+
+### D-STO-02 数据面板三级结构 + 悬停详情 + 字体三槽位（2026-11-27，P1.5）
+
+- **子组按体积排序而不是注册表顺序**：`storage-inventory` 先按 `bytes` 降序排条目，子组顺序取首次出现。代价是「别名为关系」可能排在「本体」前面，但这正是存储面板要表达的语义——先看谁在吃空间。若以后要改成业务顺序，只需在 registry 加 `subgroupOrder`。
+- **组的 `complete` 位**：组内存在未统计项且合计为 0 时，UI 显示「—」而不是「0 B」。这是 P1 的遗留缺陷（只有未知一项的域显示 0 B，误导用户以为没有数据）。
+- **悬停卡片用 `position: fixed`**：面板最窄 210px，`absolute` 会被容器裁掉；固定定位 + 视口边界翻转，路径可选中复制。
+- **字体走三个独立槽位**，不是一个全局字体：`--font-sans` / `--font-display` / `--font-mono` 在项目里是三种真实语义（正文、标题、提示词原文/日志）。回落链固定追加 `Microsoft YaHei UI`，因为选中字体可能只有拉丁字形。
+- **字体名校验必须严**：白名单只放行 `字母/数字/空格/点/下划线/连字符/加号`，括号也不放行（`url(evil)` 这类值必须被拒）。设置是可手改的 JSON，直接拼进 style 就是注入。
+- **命名冲突教训**：`index.ts` 已有一个本地 `registerSystemIPC`（管 openExternal / showItem），新模块最初同名导致 import 被静默跳过、handler 从未注册（现象是 `No handler registered for 'system:listFonts'`）。改为 `registerSystemFontsIPC`。同一文件里出现同名本地函数时，插入 import 不会报错但会被本地声明覆盖——`grep` 编译产物比读源码更可靠。
+- **「朋友项目迁移」→「提示词索引（JSON）导入」**：功能保留（写 `prompt_assets` + `migration_runs`），只是名字换成用户能懂的词；P2 建好导入弹窗后并入统一入口。
