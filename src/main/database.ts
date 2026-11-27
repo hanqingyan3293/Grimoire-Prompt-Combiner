@@ -1466,6 +1466,10 @@ function resolveDatabasePath(): string {
   return path.join(app.getPath('userData'), 'grimoire.db')
 }
 
+export function probeSchemaVersion(filePath: string): number | null {
+  return readSchemaVersion(filePath)
+}
+
 function readSchemaVersion(filePath: string): number | null {
   if (!fs.existsSync(filePath)) return null
   let probe: DatabaseSync | null = null

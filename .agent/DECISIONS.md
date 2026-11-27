@@ -806,3 +806,13 @@
 ```
 
 切换成本已远低于 150ms 目标，收益不足以抵消保活带来的内存占用与订阅生命周期复杂度（每个面板要处理 `aria-hidden`、事件解绑、LRU 淘汰、重新可见时的补拉）。**按数据取消该项**，不做"为了计划表好看而实现一个没收益的机制"。
+
+### D-TRANSFER-01 备份包：格式、校验与「先看再动」（2026-11-27，P2 第一批）
+
+- **包格式自版本化**：`format: 'grimoire-backup/1'` 与 `schemaVersion` 分开记。包格式变（加字段/换布局）才升 format；数据库结构升级不需要让旧包失效。
+- **每个文件都有 sha256**：导入 full 时先解 db 到临时目录、比对 manifest 里的 sha256，再交给现有 `importDatabase()`。它有 staging + integrity + `.before-import-*.bak` 回退，不重写。
+- **数据库快照用 `VACUUM INTO`**：`DatabaseSync.backup()` 不存在（实测），`VACUUM INTO` 只读句柄也能跑，且顺带压实（9.3MB → 7.9MB）。
+- **partial（选择性导入）在本批只导出不导入**：`applyImport` 对 partial 明确抛「还在实现中」，不做半吊子写入。下一批补「按条目 JSON + 外键顺序 + 单事务」。
+- **拒绝非本格式文件要给出可读原因**：`yauzl` 抛的是 `End of central directory record signature not found`，用户看不懂；`inspectImport` 会转成「压缩包内缺少 manifest.json，无法识别为 Grimoire 备份」。
+- **schema 更高的包直接拦**：`schemaVersion > CURRENT_SCHEMA_VERSION` 时 `compatible=false`，避免把新库塞进旧代码。
+- **对话框留在主进程**：渲染层只发「导出/导入/诊断」意图，路径由 `dialog` 决定，避免渲染层被注入后获得任意写权限。验收脚本用 `GRIMOIRE_TRANSFER_DIR`（只读环境变量）绕过对话框，这是唯一的自动化缝合点。

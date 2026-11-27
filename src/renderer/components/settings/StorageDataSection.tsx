@@ -13,6 +13,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ChevronDown, ChevronRight, Copy, FolderOpen, HardDrive, LoaderCircle, RefreshCw } from 'lucide-react'
 import { Button, IconButton } from '../ui/Button'
 import { StorageEntryCard } from './StorageEntryCard'
+import { StorageTransferActions } from './StorageTransferActions'
 import { formatStorageBytes, type StorageDomain, type StorageEntry, type StorageInventory } from '../../../shared/storage-types'
 import type { BootMetrics } from '../../../main/services/boot-metrics.service'
 
@@ -160,7 +161,8 @@ export function StorageDataSection() {
           <span className="text-sm font-semibold text-[var(--color-text-primary)]">数据存储</span>
           <span className="text-xs text-[var(--color-text-secondary)]">合计 {formatStorageBytes(inventory.totalBytes)}</span>
           {inventory.approximate && <span className="ui-badge text-[10px]">部分未知</span>}
-          <Button size="sm" variant="ghost" icon={RefreshCw} className="ml-auto" onClick={() => void load('refresh')} disabled={refreshing}>
+          <StorageTransferActions onImported={() => void load('refresh')} />
+          <Button size="sm" variant="ghost" icon={RefreshCw} onClick={() => void load('refresh')} disabled={refreshing}>
             {refreshing ? '统计中' : '刷新'}
           </Button>
         </div>
@@ -301,7 +303,7 @@ export function StorageDataSection() {
       })}
 
       <p className="text-[10px] leading-4 text-[var(--color-text-secondary)]">
-        这里只显示位置与占用；导出、导入、迁移与清理会在后续版本逐个接入，未实现的项不会显示按钮。
+        导出与导入已接入（完整备份 / 数据库文件）；迁移与清理会在后续版本接入，未实现的项不会显示按钮。
       </p>
 
       {hover && <StorageEntryCard entry={hover.entry} x={hover.x} y={hover.y} />}

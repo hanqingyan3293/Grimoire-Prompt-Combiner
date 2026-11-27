@@ -119,7 +119,9 @@ describe('storage data section', () => {
     })
     render(<StorageDataSection />)
     expect(await screen.findByText(/mystery_table/)).toBeTruthy()
-    expect(screen.getByText(/后续版本逐个接入/)).toBeTruthy()
-    expect(screen.queryByText('导出')).toBeNull()
+    expect(screen.getByText(/迁移与清理会在后续版本接入/)).toBeTruthy()
+    // 导出/导入现在已实现，按钮必须在（P1 时期这里是「不渲染未实现按钮」的反向断言）
+    expect(screen.getByText('导出')).toBeTruthy()
+    expect(screen.getByText('导入')).toBeTruthy()
   })
 })

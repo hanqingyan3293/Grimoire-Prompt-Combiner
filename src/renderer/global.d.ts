@@ -11,6 +11,7 @@ import type { AgentSessionAttachment, AgentSessionEventRecord, AgentSessionRecor
 import type { AiAssistantRecord, AiEventRecord, AiMessageRecord, AiResourceOrderAnchor, AiSessionRecord, AiTopicRecord } from '../shared/ai-types'
 import type { StorageInventory } from '../shared/storage-types'
 import type { BootMetrics } from '../main/services/boot-metrics.service'
+import type { BackupManifest, ImportApplyResult, ImportInspection, TransferProgress } from '../shared/storage-transfer-types'
 
 /** NovelAI generation parameters embedded in the PNG Comment block (M6.6). */
 export interface NovelaiMetadataParams {
@@ -444,6 +445,12 @@ export interface GrimoireAPI {
     metrics: () => Promise<BootMetrics>
   }
   storage: {
+    exportBackup: (options?: { includeMedia?: boolean }) => Promise<{ path: string; manifest: BackupManifest } | null>
+    exportDiagnostics: () => Promise<{ path: string; manifest: BackupManifest } | null>
+    inspectImport: () => Promise<ImportInspection | null>
+    inspectImportPath: (filePath: string) => Promise<ImportInspection>
+    applyImport: (filePath: string) => Promise<ImportApplyResult>
+    onTransferProgress: (callback: (progress: TransferProgress) => void) => () => void
     inventory: (options?: { force?: boolean }) => Promise<StorageInventory>
     scanSizes: () => Promise<StorageInventory>
   }

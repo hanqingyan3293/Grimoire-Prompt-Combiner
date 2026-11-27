@@ -9,6 +9,7 @@ import { registerPresetsIPC } from "./ipc/presets.ipc"
 import { registerHistoryIPC } from "./ipc/history.ipc"
 import { registerSettingsIPC } from "./ipc/settings.ipc"
 import { registerStorageIPC } from "./ipc/storage.ipc"
+import { registerStorageTransferIPC } from "./ipc/storage-transfer.ipc"
 import { registerSystemFontsIPC } from "./ipc/system.ipc"
 import { registerBootIPC } from "./ipc/boot.ipc"
 import { markBootPhase, getBootMetrics, afterFirstPaint } from './services/boot-metrics.service'
@@ -612,6 +613,7 @@ async function registerAllIPC(): Promise<void> {
   setSelectionWindowOpener(openSelectionAssistantWindow)
   registerSettingsIPC()
   registerStorageIPC()
+  registerStorageTransferIPC()
   registerSystemFontsIPC()
   registerBootIPC()
   registerSelectionAssistantIPC()
