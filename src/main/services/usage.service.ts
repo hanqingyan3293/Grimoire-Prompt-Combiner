@@ -1,13 +1,31 @@
 import crypto from 'crypto'
 import { getDatabase, saveDatabase } from '../database'
+import type {
+  CherryUsageCurrency,
+  CherryUsageEntry,
+  CherryUsageGroupBy,
+  CherryUsageListQuery,
+  CherryUsageListResponse,
+  CherryUsageMessageKind,
+  CherryUsageMetric,
+  CherryUsageSortBy,
+  CherryUsageSortOrder,
+  CherryUsageStatsBucket,
+  CherryUsageStatsGroupIdentity,
+  CherryUsageStatsMetrics,
+  CherryUsageStatsQuery,
+  CherryUsageStatsResponse,
+  CherryUsageTimelineBucket,
+  CherryUsageTimelineQuery,
+  CherryUsageTimelineResponse
+} from '../../shared/cherry-usage'
 
 /**
  * Token accounting for model calls.
  *
  * Grimoire had no usage capture at all before this (`src/main/ai/` contained no token/usage
- * reference), so `/settings/usage` had nothing to read. This is the write half; the three
- * source read endpoints are a separate step (see `.agent/PLAN.md` M3.4; the original note
- * lived in the archived `.agent/history/2026-10-27/REMAINING_WORK.md`, item A4).
+ * reference), so `/settings/usage` had nothing to read. The read half below adapts those
+ * real rows to the source usage list/stats/timeline contracts.
  *
  * Null semantics matter here and are the reason every count is `number | null` rather than
  * `number`:
@@ -158,10 +176,10 @@ export function listAiUsage(limit = 100): UsageRecord[] {
  *
  * Fields Grimoire CAN answer are real: the token counts, the model, the timestamp, and — for
  * records written since the runtime gained usage reporting — the protocol/runtime that
- * produced them. `modality` is always `'text'` because only the text path reports usage today;
+ * produced them. `modality` is always `'language'` because only the text path reports usage today;
  * a non-text call would produce no `usage` event at all rather than a mislabelled one.
  */
-export function projectUsageEntry(record: UsageRecord, id: string): Record<string, unknown> {
+export function projectUsageEntry(record: UsageRecord, id: string): CherryUsageEntry {
   const total = record.inputTokens === null && record.outputTokens === null
     ? null
     : (record.inputTokens ?? 0) + (record.outputTokens ?? 0)
@@ -173,7 +191,10 @@ export function projectUsageEntry(record: UsageRecord, id: string): Record<strin
     requestId: record.id,
     recordKind: 'invocation',
     requestCount: 1,
-    messageKind: record.messageId ? 'assistant' : null,
+    // The local row does not record whether the message belonged to a chat topic or an
+    // agent session. `null` is the source's explicit "unknown" value; `assistant` is not
+    // even a member of the source `messageKind` enum.
+    messageKind: null,
     messageId: record.messageId,
     providerId: record.providerId || null,
     providerName: null,
@@ -183,7 +204,7 @@ export function projectUsageEntry(record: UsageRecord, id: string): Record<strin
     sourceIcon: null,
     modelId: record.modelId || null,
     modelName: record.modelId || null,
-    modality: 'text',
+    modality: 'language',
     apiKeyId: null,
     apiKeyLabel: null,
     apiKeyMasked: null,
@@ -209,66 +230,506 @@ export function projectUsageEntry(record: UsageRecord, id: string): Record<strin
   }
 }
 
-/** Totals in the source `AiUsageRecordStatsMetrics` shape. */
-export function projectUsageTotals(): Record<string, unknown> {
-  const totals = summarizeAiUsage()
-  return {
-    inputTokens: totals.inputTokens,
-    outputTokens: totals.outputTokens,
-    totalTokens: totals.inputTokens === null && totals.outputTokens === null
-      ? null
-      : (totals.inputTokens ?? 0) + (totals.outputTokens ?? 0),
-    reasoningTokens: null,
-    noCacheTokens: null,
-    cacheReadTokens: totals.cachedTokens,
-    cacheWriteTokens: null,
-    imageCount: null,
-    totalCost: null,
-    costCurrency: null,
-    recordCount: totals.calls,
-    requestCount: totals.calls
+const USAGE_LIST_DEFAULT_LIMIT = 50
+const USAGE_LIST_MAX_LIMIT = 200
+const USAGE_AGGREGATE_DEFAULT_LIMIT = 10
+const USAGE_AGGREGATE_MAX_LIMIT = 50
+const USAGE_MAX_RANGE_DAYS = 366
+const USAGE_MAX_TIMESTAMP = 8_640_000_000_000_000
+
+const USAGE_GROUP_BY = new Set<CherryUsageGroupBy>(['provider', 'apiKey', 'model', 'source'])
+const USAGE_METRICS = new Set<CherryUsageMetric>(['tokens', 'requests', 'cost'])
+const USAGE_SORT_BY = new Set<CherryUsageSortBy>(['createdAt', 'totalTokens', 'cost', 'timeFirstTokenMs', 'tokensPerSecond'])
+const USAGE_SORT_ORDER = new Set<CherryUsageSortOrder>(['asc', 'desc'])
+const USAGE_MESSAGE_KIND = new Set<CherryUsageMessageKind>(['chat', 'agent-session'])
+const USAGE_CURRENCY = new Set<CherryUsageCurrency>(['USD', 'CNY'])
+
+export class UsageQueryError extends Error {
+  constructor(
+    readonly status: number,
+    readonly code: string,
+    message: string
+  ) {
+    super(message)
+    this.name = 'UsageQueryError'
   }
 }
 
-/**
- * Daily buckets for the timeline, grouped by UTC date.
- *
- * Buckets are keyed by date alone (`groupBy: 'date'`) because Grimoire's records carry no
- * provider/model attribution strong enough to split a day by group without inventing
- * groupings the source UI would then present as real.
- */
-export function listUsageTimeline(): Array<Record<string, unknown>> {
+type UsageQueryObject = Record<string, unknown>
+
+function invalidUsageQuery(message: string): never {
+  throw new UsageQueryError(400, 'VALIDATION_ERROR', message)
+}
+
+function usageQueryObject(input: unknown): UsageQueryObject {
+  if (input === undefined || input === null) return {}
+  if (typeof input !== 'object' || Array.isArray(input)) {
+    invalidUsageQuery('Usage query must be an object')
+  }
+  return input as UsageQueryObject
+}
+
+function rejectUnknownUsageKeys(input: UsageQueryObject, allowed: readonly string[]): void {
+  const known = new Set(allowed)
+  const unknown = Object.keys(input).filter(key => !known.has(key) && input[key] !== undefined)
+  if (unknown.length > 0) invalidUsageQuery(`Unknown usage query field: ${unknown[0]}`)
+}
+
+function readUsageInteger(
+  input: UsageQueryObject,
+  key: string,
+  options: { required?: boolean; min?: number; max?: number; allowTimestamp?: boolean } = {}
+): number | undefined {
+  const value = input[key]
+  if (value === undefined) {
+    if (options.required) invalidUsageQuery(`${key} is required`)
+    return undefined
+  }
+  const parsed = typeof value === 'number'
+    ? value
+    : typeof value === 'string' && /^-?\d+$/.test(value.trim())
+      ? Number(value)
+      : Number.NaN
+  if (!Number.isSafeInteger(parsed)) invalidUsageQuery(`${key} must be an integer`)
+  if (options.min !== undefined && parsed < options.min) invalidUsageQuery(`${key} must be at least ${options.min}`)
+  if (options.max !== undefined && parsed > options.max) invalidUsageQuery(`${key} must be at most ${options.max}`)
+  if (options.allowTimestamp && parsed > USAGE_MAX_TIMESTAMP) invalidUsageQuery(`${key} is outside the timestamp range`)
+  return parsed
+}
+
+function readUsageString(input: UsageQueryObject, key: string): string | undefined {
+  const value = input[key]
+  if (value === undefined) return undefined
+  if (typeof value !== 'string' || value.length === 0) invalidUsageQuery(`${key} must be a nonempty string`)
+  return value
+}
+
+function readUsageEnum<T extends string>(
+  input: UsageQueryObject,
+  key: string,
+  allowed: Set<T>,
+  options: { required?: boolean; fallback?: T } = {}
+): T | undefined {
+  const value = input[key]
+  if (value === undefined) {
+    if (options.required) invalidUsageQuery(`${key} is required`)
+    return options.fallback
+  }
+  if (typeof value !== 'string' || !allowed.has(value as T)) invalidUsageQuery(`${key} is invalid`)
+  return value as T
+}
+
+function readUsageCurrency(input: UsageQueryObject, key: string, required: boolean): CherryUsageCurrency | undefined {
+  const currency = readUsageEnum(input, key, USAGE_CURRENCY, { required })
+  return currency
+}
+
+function validateUsageRange(from: number, to: number): void {
+  if (to < from) invalidUsageQuery('to must be greater than or equal to from')
+  if (to - from > USAGE_MAX_RANGE_DAYS * 24 * 60 * 60 * 1000) {
+    invalidUsageQuery(`time range must not exceed ${USAGE_MAX_RANGE_DAYS} days`)
+  }
+}
+
+function parseUsageListQuery(input: unknown): CherryUsageListQuery {
+  const raw = usageQueryObject(input)
+  rejectUnknownUsageKeys(raw, ['cursor', 'limit', 'sortBy', 'sortOrder', 'from', 'to', 'messageKind', 'messageId', 'costCurrency'])
+  const sortBy = readUsageEnum(raw, 'sortBy', USAGE_SORT_BY, { fallback: 'createdAt' })!
+  const sortOrder = readUsageEnum(raw, 'sortOrder', USAGE_SORT_ORDER, { fallback: 'desc' })!
+  const costCurrency = readUsageCurrency(raw, 'costCurrency', sortBy === 'cost')
+  const messageKind = readUsageEnum(raw, 'messageKind', USAGE_MESSAGE_KIND)
+  const messageId = readUsageString(raw, 'messageId')
+  if ((messageKind === undefined) !== (messageId === undefined)) {
+    invalidUsageQuery('messageKind and messageId must be provided together')
+  }
+  const cursor = readUsageString(raw, 'cursor')
+  const from = readUsageInteger(raw, 'from', { min: 0, allowTimestamp: true })
+  const to = readUsageInteger(raw, 'to', { min: 0, allowTimestamp: true })
+  const query: CherryUsageListQuery = {
+    limit: readUsageInteger(raw, 'limit', { min: 1, max: USAGE_LIST_MAX_LIMIT }) ?? USAGE_LIST_DEFAULT_LIMIT,
+    sortBy,
+    sortOrder,
+    ...(cursor !== undefined ? { cursor } : {}),
+    ...(from !== undefined ? { from } : {}),
+    ...(to !== undefined ? { to } : {}),
+    ...(messageKind !== undefined ? { messageKind } : {}),
+    ...(messageId !== undefined ? { messageId } : {}),
+    ...(costCurrency !== undefined ? { costCurrency } : {})
+  }
+  if (query.messageKind && query.messageId) {
+    throw new UsageQueryError(
+      501,
+      'NOT_IMPLEMENTED',
+      'message-scoped usage queries are unsupported: ai_usage_records stores no message kind'
+    )
+  }
+  return query
+}
+
+function parseAggregateQuery(input: unknown, withGroupBy: true): CherryUsageStatsQuery
+function parseAggregateQuery(input: unknown, withGroupBy: false): CherryUsageTimelineQuery
+function parseAggregateQuery(input: unknown, withGroupBy: boolean): CherryUsageStatsQuery | CherryUsageTimelineQuery {
+  const raw = usageQueryObject(input)
+  rejectUnknownUsageKeys(raw, ['groupBy', 'metric', 'currency', 'limit', 'from', 'to'])
+  const metric = readUsageEnum(raw, 'metric', USAGE_METRICS, { fallback: 'tokens' })!
+  const currency = readUsageCurrency(raw, 'currency', metric === 'cost')
+  const groupBy = readUsageEnum(raw, 'groupBy', USAGE_GROUP_BY, { required: withGroupBy })
+  const from = readUsageInteger(raw, 'from', { required: true, min: 0, allowTimestamp: true })!
+  const to = readUsageInteger(raw, 'to', { required: true, min: 0, allowTimestamp: true })!
+  validateUsageRange(from, to)
+  const common = {
+    metric,
+    limit: readUsageInteger(raw, 'limit', { min: 1, max: USAGE_AGGREGATE_MAX_LIMIT }) ?? USAGE_AGGREGATE_DEFAULT_LIMIT,
+    from,
+    to,
+    ...(currency !== undefined ? { currency } : {})
+  }
+  return withGroupBy
+    ? { ...common, groupBy: groupBy! }
+    : { ...common, ...(groupBy !== undefined ? { groupBy } : {}) }
+}
+
+function readUsageRows(from?: number, to?: number): UsageRecord[] {
+  const conditions: string[] = []
+  const parameters: unknown[] = []
+  if (from !== undefined) {
+    conditions.push('created_at >= ?')
+    parameters.push(new Date(from).toISOString())
+  }
+  if (to !== undefined) {
+    conditions.push('created_at <= ?')
+    parameters.push(new Date(to).toISOString())
+  }
   const rows = getDatabase().exec(
-    "SELECT substr(created_at,1,10) AS day, count(*), sum(input_tokens), sum(output_tokens), sum(cached_tokens) FROM ai_usage_records GROUP BY day ORDER BY day DESC LIMIT 400"
+    `SELECT id,session_id,message_id,runtime,protocol,provider_id,model_id,input_tokens,output_tokens,cached_tokens,created_at FROM ai_usage_records${conditions.length > 0 ? ` WHERE ${conditions.join(' AND ')}` : ''} ORDER BY created_at DESC, rowid DESC`,
+    parameters
   )[0]?.values || []
-  return rows.map(row => {
-    const input = row[2] === null || row[2] === undefined ? null : Number(row[2])
-    const output = row[3] === null || row[3] === undefined ? null : Number(row[3])
-    const cached = row[4] === null || row[4] === undefined ? null : Number(row[4])
-    return {
-      date: String(row[0] || ''),
-      groupBy: 'date',
-      isOther: false,
-      providerId: null,
-      providerName: null,
-      sourceType: null,
-      sourceId: null,
-      sourceName: null,
-      sourceIcon: null,
-      modelId: null,
-      apiKeyId: null,
-      apiKeyLabel: null,
-      apiKeyMasked: null,
-      apiKeyAttribution: 'unknown',
-      authMethod: null,
-      totalTokens: input === null && output === null ? null : (input ?? 0) + (output ?? 0),
-      totalNoCacheTokens: null,
-      totalCacheReadTokens: cached,
-      totalCacheWriteTokens: null,
-      totalCost: null,
-      costCurrency: null,
-      recordCount: Number(row[1] || 0),
-      requestCount: Number(row[1] || 0)
+  return rows.map(row => ({
+    id: String(row[0]),
+    sessionId: row[1] === null || row[1] === undefined ? null : String(row[1]),
+    messageId: row[2] === null || row[2] === undefined ? null : String(row[2]),
+    runtime: String(row[3] || ''),
+    protocol: String(row[4] || ''),
+    providerId: String(row[5] || ''),
+    modelId: String(row[6] || ''),
+    inputTokens: row[7] === null || row[7] === undefined ? null : Number(row[7]),
+    outputTokens: row[8] === null || row[8] === undefined ? null : Number(row[8]),
+    cachedTokens: row[9] === null || row[9] === undefined ? null : Number(row[9]),
+    createdAt: String(row[10] || '')
+  }))
+}
+
+function usageTotalTokens(record: UsageRecord): number | null {
+  if (record.inputTokens === null && record.outputTokens === null) return null
+  return (record.inputTokens ?? 0) + (record.outputTokens ?? 0)
+}
+
+function sumNullable(rows: readonly UsageRecord[], read: (row: UsageRecord) => number | null): number | null {
+  let sawValue = false
+  let total = 0
+  for (const row of rows) {
+    const value = read(row)
+    if (value === null) continue
+    sawValue = true
+    total += value
+  }
+  return sawValue ? total : null
+}
+
+function usageMetrics(rows: readonly UsageRecord[]): CherryUsageStatsMetrics {
+  return {
+    costCurrency: null,
+    // Grimoire stores no price table and no provider-reported cost. Null means unknown;
+    // a zero here would claim every call was free.
+    totalCost: null,
+    totalInputTokens: sumNullable(rows, row => row.inputTokens),
+    totalOutputTokens: sumNullable(rows, row => row.outputTokens),
+    totalTokens: sumNullable(rows, usageTotalTokens),
+    // The local table has no no-cache or cache-write columns. Do not infer them from
+    // cached_tokens because that would invent a split the source never captured.
+    totalNoCacheTokens: null,
+    totalCacheReadTokens: sumNullable(rows, row => row.cachedTokens),
+    totalCacheWriteTokens: null,
+    recordCount: rows.length,
+    requestCount: rows.length,
+    estimatedRequestCount: 0,
+    unpricedRequestCount: rows.length
+  }
+}
+
+function statsGroupIdentity(record: UsageRecord, groupBy: CherryUsageGroupBy): CherryUsageStatsGroupIdentity {
+  const providerId = record.providerId || null
+  const modelId = record.modelId || null
+  const sessionId = record.sessionId || null
+  switch (groupBy) {
+    case 'provider':
+      return { groupBy, providerId, providerName: null }
+    case 'model':
+      return { groupBy, providerId, providerName: null, modelId }
+    case 'apiKey':
+      return {
+        groupBy,
+        providerId,
+        providerName: null,
+        apiKeyId: null,
+        apiKeyLabel: null,
+        apiKeyMasked: null,
+        apiKeyAttribution: 'unknown',
+        authMethod: null
+      }
+    case 'source':
+      return { groupBy, sourceType: null, sourceId: sessionId, sourceName: null, sourceIcon: null }
+  }
+}
+
+function statsIdentityKey(identity: CherryUsageStatsGroupIdentity): string {
+  return JSON.stringify(identity)
+}
+
+function compareNullableDescending(left: number | null, right: number | null): number {
+  if (left === null && right === null) return 0
+  if (left === null) return 1
+  if (right === null) return -1
+  return right - left
+}
+
+function compareStatsBuckets(left: CherryUsageStatsBucket, right: CherryUsageStatsBucket, metric: CherryUsageMetric): number {
+  let difference = 0
+  if (metric === 'requests') difference = right.requestCount - left.requestCount
+  else if (metric === 'tokens') difference = compareNullableDescending(left.totalTokens, right.totalTokens)
+  else difference = compareNullableDescending(left.totalCost, right.totalCost)
+  return difference || statsIdentityKey(left).localeCompare(statsIdentityKey(right))
+}
+
+function statsFromRows(
+  rows: readonly UsageRecord[],
+  groupBy: CherryUsageGroupBy,
+  metric: CherryUsageMetric,
+  limit: number
+): CherryUsageStatsResponse {
+  const groups = new Map<string, { identity: CherryUsageStatsGroupIdentity; rows: UsageRecord[] }>()
+  for (const row of rows) {
+    const identity = statsGroupIdentity(row, groupBy)
+    const key = statsIdentityKey(identity)
+    const group = groups.get(key) ?? { identity, rows: [] }
+    group.rows.push(row)
+    groups.set(key, group)
+  }
+  const ranked = [...groups.values()]
+    .map(group => ({ rows: group.rows, bucket: { ...group.identity, ...usageMetrics(group.rows) } }))
+    .sort((left, right) => compareStatsBuckets(left.bucket, right.bucket, metric))
+  const buckets = ranked.slice(0, limit).map(item => item.bucket)
+  const totals = usageMetrics(rows)
+  const otherRows = ranked.slice(limit).flatMap(item => item.rows)
+  return { buckets, totals, other: usageMetrics(otherRows) }
+}
+
+function timelineDay(record: UsageRecord): string {
+  const date = new Date(record.createdAt)
+  if (Number.isNaN(date.getTime())) return ''
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+function timelineMetrics(rows: readonly UsageRecord[]) {
+  return {
+    costCurrency: null as CherryUsageCurrency | null,
+    totalCost: null as number | null,
+    totalTokens: sumNullable(rows, usageTotalTokens),
+    totalNoCacheTokens: null as number | null,
+    totalCacheReadTokens: sumNullable(rows, row => row.cachedTokens),
+    totalCacheWriteTokens: null as number | null,
+    recordCount: rows.length,
+    requestCount: rows.length,
+    estimatedRequestCount: 0,
+    unpricedRequestCount: rows.length
+  }
+}
+
+function timelineIdentity(record: UsageRecord, groupBy: CherryUsageGroupBy): Partial<CherryUsageTimelineBucket> {
+  const providerId = record.providerId || null
+  const modelId = record.modelId || null
+  const sessionId = record.sessionId || null
+  if (groupBy === 'provider') return { providerId, providerName: null }
+  if (groupBy === 'model') return { providerId, providerName: null, modelId }
+  if (groupBy === 'source') return { sourceType: null, sourceId: sessionId, sourceName: null, sourceIcon: null }
+  return {
+    providerId,
+    providerName: null,
+    apiKeyId: null,
+    apiKeyLabel: null,
+    apiKeyMasked: null,
+    apiKeyAttribution: 'unknown',
+    authMethod: null
+  }
+}
+
+function timelineIdentityKey(record: UsageRecord, groupBy: CherryUsageGroupBy): string {
+  return JSON.stringify(timelineIdentity(record, groupBy))
+}
+
+function statsBucketIdentityKey(bucket: CherryUsageStatsBucket): string {
+  switch (bucket.groupBy) {
+    case 'provider':
+      return JSON.stringify({ providerId: bucket.providerId, providerName: bucket.providerName })
+    case 'model':
+      return JSON.stringify({ providerId: bucket.providerId, providerName: bucket.providerName, modelId: bucket.modelId })
+    case 'source':
+      return JSON.stringify({
+        sourceType: bucket.sourceType,
+        sourceId: bucket.sourceId,
+        sourceName: bucket.sourceName,
+        sourceIcon: bucket.sourceIcon
+      })
+    case 'apiKey':
+      return JSON.stringify({
+        providerId: bucket.providerId,
+        providerName: bucket.providerName,
+        apiKeyId: bucket.apiKeyId,
+        apiKeyLabel: bucket.apiKeyLabel,
+        apiKeyMasked: bucket.apiKeyMasked,
+        apiKeyAttribution: bucket.apiKeyAttribution,
+        authMethod: bucket.authMethod
+      })
+  }
+}
+
+export function getUsageStats(input: unknown): CherryUsageStatsResponse {
+  const query = parseAggregateQuery(input, true)
+  return statsFromRows(readUsageRows(query.from, query.to), query.groupBy, query.metric, query.limit)
+}
+
+export function getUsageTimeline(input: unknown): CherryUsageTimelineResponse {
+  const query = parseAggregateQuery(input, false)
+  const rows = readUsageRows(query.from, query.to)
+  const byDay = new Map<string, UsageRecord[]>()
+  for (const row of rows) {
+    const day = timelineDay(row)
+    if (!day) continue
+    const dayRows = byDay.get(day) ?? []
+    dayRows.push(row)
+    byDay.set(day, dayRows)
+  }
+  const days = [...byDay.entries()].sort(([left], [right]) => left.localeCompare(right))
+  const ungrouped: CherryUsageTimelineBucket[] = days.map(([date, dayRows]) => ({ date, ...timelineMetrics(dayRows) }))
+  if (!query.groupBy || rows.length === 0) {
+    return { buckets: ungrouped, costTotals: [], dailyCosts: [] }
+  }
+
+  const top = statsFromRows(rows, query.groupBy, query.metric, query.limit).buckets
+  const topKeys = new Set(top.map(statsBucketIdentityKey))
+  const selectedGroups = new Map<string, { identity: Partial<CherryUsageTimelineBucket>; rows: UsageRecord[] }>()
+  const otherBuckets: CherryUsageTimelineBucket[] = []
+  for (const [date, dayRows] of days) {
+    const selectedRows: UsageRecord[] = []
+    const otherRows: UsageRecord[] = []
+    for (const row of dayRows) {
+      if (topKeys.has(timelineIdentityKey(row, query.groupBy))) selectedRows.push(row)
+      else otherRows.push(row)
     }
-  })
+    for (const row of selectedRows) {
+      const identity = timelineIdentity(row, query.groupBy)
+      const key = `${date}:${JSON.stringify(identity)}`
+      const group = selectedGroups.get(key) ?? { identity, rows: [] }
+      group.rows.push(row)
+      selectedGroups.set(key, group)
+    }
+    if (otherRows.length > 0) {
+      otherBuckets.push({ date, ...timelineMetrics(otherRows), isOther: true })
+    }
+  }
+  const selected = [...selectedGroups.values()]
+    .sort((left, right) => JSON.stringify(left.identity).localeCompare(JSON.stringify(right.identity)))
+    .map(group => ({ date: timelineDay(group.rows[0]), ...group.identity, ...timelineMetrics(group.rows) }))
+    .sort((left, right) => left.date.localeCompare(right.date))
+  return { buckets: [...selected, ...otherBuckets], costTotals: [], dailyCosts: [] }
+}
+
+type UsageCursor = { value: number | null; createdAt: string; id: string }
+
+function encodeUsageCursor(cursor: UsageCursor): string {
+  return encodeURIComponent(JSON.stringify([cursor.value, cursor.createdAt, cursor.id]))
+}
+
+function decodeUsageCursor(raw: string): UsageCursor {
+  try {
+    const parsed: unknown = JSON.parse(decodeURIComponent(raw))
+    if (!Array.isArray(parsed) || parsed.length !== 3) invalidUsageQuery('Invalid usage cursor')
+    const [value, createdAt, id] = parsed
+    if (value !== null && (typeof value !== 'number' || !Number.isFinite(value))) invalidUsageQuery('Invalid usage cursor')
+    if (typeof createdAt !== 'string' || !createdAt || typeof id !== 'string' || !id) invalidUsageQuery('Invalid usage cursor')
+    return { value, createdAt, id }
+  } catch (error) {
+    if (error instanceof UsageQueryError) throw error
+    invalidUsageQuery('Invalid usage cursor')
+  }
+}
+
+function usageSortValue(record: UsageRecord, sortBy: CherryUsageSortBy): number | null {
+  if (sortBy === 'createdAt') return Date.parse(record.createdAt)
+  if (sortBy === 'totalTokens') return usageTotalTokens(record)
+  // cost, TTFT and tokens/second have no columns in ai_usage_records. Sorting them as null
+  // is truthful; the remaining keyset order is still stable.
+  return null
+}
+
+function compareUsageKeys(left: UsageRecord, right: UsageRecord): number {
+  return right.createdAt.localeCompare(left.createdAt) || left.id.localeCompare(right.id)
+}
+
+function compareUsageRows(left: UsageRecord, right: UsageRecord, sortBy: CherryUsageSortBy, sortOrder: CherryUsageSortOrder): number {
+  if (sortBy === 'createdAt') {
+    const difference = left.createdAt.localeCompare(right.createdAt)
+    if (difference !== 0) return sortOrder === 'asc' ? difference : -difference
+    return left.id.localeCompare(right.id)
+  }
+  const leftValue = usageSortValue(left, sortBy)
+  const rightValue = usageSortValue(right, sortBy)
+  if (leftValue === null && rightValue === null) return compareUsageKeys(left, right)
+  if (leftValue === null) return 1
+  if (rightValue === null) return -1
+  if (leftValue === rightValue) return compareUsageKeys(left, right)
+  return sortOrder === 'asc' ? leftValue - rightValue : rightValue - leftValue
+}
+
+function isAfterUsageCursor(record: UsageRecord, query: CherryUsageListQuery, cursor: UsageCursor): boolean {
+  const afterTie = record.createdAt < cursor.createdAt
+    || (record.createdAt === cursor.createdAt && record.id > cursor.id)
+  if (query.sortBy === 'createdAt') {
+    if (record.createdAt === cursor.createdAt) return record.id > cursor.id
+    return query.sortOrder === 'asc'
+      ? record.createdAt > cursor.createdAt
+      : record.createdAt < cursor.createdAt
+  }
+  const value = usageSortValue(record, query.sortBy)
+  if (cursor.value === null) return value === null && afterTie
+  if (value === null) return true
+  if (value === cursor.value) return afterTie
+  return query.sortOrder === 'asc' ? value > cursor.value : value < cursor.value
+}
+
+export function listUsageRecords(input: unknown): CherryUsageListResponse {
+  const query = parseUsageListQuery(input)
+  const rows = readUsageRows(query.from, query.to)
+  const ordered = [...rows].sort((left, right) => compareUsageRows(left, right, query.sortBy, query.sortOrder))
+  const cursor = query.cursor !== undefined ? decodeUsageCursor(query.cursor) : undefined
+  const remaining = cursor
+    ? ordered.filter(row => isAfterUsageCursor(row, query, cursor))
+    : ordered
+  const pageRows = remaining.slice(0, query.limit)
+  const tail = pageRows.at(-1)
+  return {
+    items: pageRows.map(row => projectUsageEntry(row, row.id)),
+    total: rows.length,
+    ...(remaining.length > query.limit && tail
+      ? { nextCursor: encodeUsageCursor({ value: usageSortValue(tail, query.sortBy), createdAt: tail.createdAt, id: tail.id }) }
+      : {})
+  }
+}
+
+/** Totals in the source stats-metrics shape, with unknown token/cost values null. */
+export function projectUsageTotals(): CherryUsageStatsMetrics {
+  return usageMetrics(readUsageRows())
 }

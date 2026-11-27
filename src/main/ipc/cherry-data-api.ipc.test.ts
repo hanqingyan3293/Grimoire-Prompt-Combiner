@@ -368,6 +368,110 @@ describe('Cherry DataApi source Agent blueprint transport', () => {
   })
 })
 
+describe('Cherry DataApi retained usage statistics', () => {
+  const request = (path: string, params?: Record<string, unknown>) =>
+    handleRequest({ id: 'usage-request', method: 'GET', path, params }) as any
+  const from = Date.parse('2026-03-01T00:00:00.000Z')
+  const to = Date.parse('2026-03-04T00:00:00.000Z')
+
+  function seedUsage(): void {
+    const insert = getDatabase().run.bind(getDatabase())
+    for (const row of [
+      ['u1', 'p1', 'm1', 's1', 100, 20, 5, '2026-03-01T12:00:00.000Z'],
+      ['u2', 'p1', 'm1', 's1', 50, null, null, '2026-03-02T12:00:00.000Z'],
+      ['u3', 'p2', 'm2', 's2', 30, 10, null, '2026-03-03T12:00:00.000Z'],
+      ['u4', 'p2', 'm2', 's2', null, null, null, '2026-03-03T13:00:00.000Z']
+    ]) {
+      insert(
+        'INSERT INTO ai_usage_records (id,session_id,message_id,runtime,protocol,provider_id,model_id,input_tokens,output_tokens,cached_tokens,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)',
+        [row[0], row[3], null, 'opencode', 'chat', row[1], row[2], row[4], row[5], row[6], row[7]]
+      )
+    }
+  }
+
+  it('serves source query-shaped stats and timeline with real provider/model groups', async () => {
+    await initDatabase()
+    seedUsage()
+
+    const stats = request('/ai-usage-records/stats', {
+      groupBy: 'provider', metric: 'tokens', currency: 'USD', limit: 10, from, to
+    })
+    expect(stats.status).toBe(200)
+    expect(stats.data.buckets).toHaveLength(2)
+    expect(stats.data.buckets[0]).toMatchObject({
+      groupBy: 'provider', providerId: 'p1', totalInputTokens: 150, totalOutputTokens: 20, totalTokens: 170, recordCount: 2
+    })
+    expect(stats.data.totals).toMatchObject({
+      totalInputTokens: 180, totalOutputTokens: 30, totalTokens: 210,
+      recordCount: 4, requestCount: 4, totalCost: null, costCurrency: null
+    })
+    const viaPathQuery = request(
+      `/ai-usage-records/stats?groupBy=provider&metric=tokens&currency=USD&limit=10&from=${from}&to=${to}`
+    )
+    expect(viaPathQuery).toMatchObject({ status: 200, data: { totals: { totalTokens: 210, recordCount: 4 } } })
+
+    const models = request('/ai-usage-records/stats', {
+      groupBy: 'model', metric: 'requests', currency: 'USD', limit: 10, from, to
+    })
+    expect(models.data.buckets.map((bucket: any) => bucket.modelId)).toEqual(['m1', 'm2'])
+    expect(models.data.buckets[0].requestCount).toBe(2)
+
+    const timeline = request('/ai-usage-records/timeline', {
+      groupBy: 'provider', metric: 'tokens', currency: 'USD', limit: 10, from, to
+    })
+    expect(timeline.status).toBe(200)
+    expect(timeline.data.costTotals).toEqual([])
+    expect(timeline.data.dailyCosts).toEqual([])
+    expect(timeline.data.buckets.filter((bucket: any) => !bucket.isOther).map((bucket: any) => bucket.providerId)).toEqual(['p1', 'p1', 'p2'])
+  })
+
+  it('returns a real keyset cursor for entries and a null-token empty contract', async () => {
+    await initDatabase()
+    seedUsage()
+
+    const first = request('/ai-usage-records', { sortBy: 'createdAt', sortOrder: 'desc', limit: 2 })
+    expect(first.status).toBe(200)
+    expect(first.data.total).toBe(4)
+    expect(first.data.items).toHaveLength(2)
+    expect(first.data.nextCursor).toEqual(expect.any(String))
+    const second = request('/ai-usage-records', { sortBy: 'createdAt', sortOrder: 'desc', limit: 2, cursor: first.data.nextCursor })
+    expect(second.status).toBe(200)
+    expect(second.data.nextCursor).toBeUndefined()
+    expect(new Set([...first.data.items, ...second.data.items].map((item: any) => item.id)).size).toBe(4)
+    expect([...first.data.items, ...second.data.items].find((item: any) => item.id === 'u4'))
+      .toMatchObject({ totalTokens: null, cost: null, costCurrency: null })
+
+    getDatabase().run('DELETE FROM ai_usage_records')
+    const emptyStats = request('/ai-usage-records/stats', { groupBy: 'provider', metric: 'tokens', limit: 10, from, to })
+    expect(emptyStats).toMatchObject({
+      status: 200,
+      data: { buckets: [], totals: { recordCount: 0, totalTokens: null, totalCost: null, costCurrency: null } }
+    })
+    expect(request('/ai-usage-records/timeline', { metric: 'tokens', limit: 10, from, to })).toEqual({
+      id: 'usage-request',
+      status: 200,
+      data: { buckets: [], costTotals: [], dailyCosts: [] }
+    })
+    expect(request('/ai-usage-records', { limit: 10 })).toEqual({
+      id: 'usage-request',
+      status: 200,
+      data: { items: [], total: 0 }
+    })
+  })
+
+  it('surfaces invalid and unrepresentable usage queries instead of returning a fake page', async () => {
+    await initDatabase()
+    expect(request('/ai-usage-records/stats', { groupBy: 'provider', metric: 'tokens', limit: 10, from: to, to: from }))
+      .toMatchObject({ status: 400, error: { code: 'VALIDATION_ERROR' } })
+    expect(request('/ai-usage-records/timeline', { metric: 'tokens', limit: 10, to }))
+      .toMatchObject({ status: 400, error: { code: 'VALIDATION_ERROR' } })
+    expect(request('/ai-usage-records', { messageKind: 'chat', messageId: 'message-1' }))
+      .toMatchObject({ status: 501, error: { code: 'NOT_IMPLEMENTED' } })
+    expect(request('/ai-usage-records', { cursor: 'bad-cursor' }))
+      .toMatchObject({ status: 400, error: { code: 'VALIDATION_ERROR' } })
+  })
+})
+
 describe('Cherry source Agent workspace repository transport', () => {
   let outside = ''
   beforeEach(() => { outside = fs.mkdtempSync(path.join(os.tmpdir(), 'grimoire-api-workspaces-')) })
@@ -1471,6 +1575,150 @@ describe('prompt asset id mapping', () => {
       { id: 'x', name: 'n', prompt: 'p', sourceRef: 's', source: 'asset', detail: '', createdAt: '2026-01-01', nsfw: false, variantCount: 0 } as never,
       0, 'x')
     expect(projected.visibility).toBe('global')
+  })
+})
+
+describe('prompt visibility update adapter', () => {
+  const request = (method: string, path: string, body?: unknown) =>
+    handleRequest({ id: 'prompt-request', method, path, body }) as any
+
+  async function seedAssistant(): Promise<void> {
+    await initDatabase()
+    getDatabase().run(
+      'INSERT INTO ai_assistants (id,name,created_at,updated_at) VALUES (?,?,?,?)',
+      ['assistant-1', 'Assistant', '2026-01-01', '2026-01-01']
+    )
+  }
+
+  async function seedRestrictedPrompt() {
+    await seedAssistant()
+    const created = request('POST', '/prompts', {
+      title: 'Restricted', content: 'Body', visibility: 'restricted',
+      bindingTarget: { type: 'assistant', id: 'assistant-1' }
+    })
+    expect(created.status).toBe(201)
+    const storedId = String(created.data.id)
+    // The source list id is the union alias; the create response uses the stored id.
+    return { storedId, listId: 'asset:' + storedId }
+  }
+
+  const patchPath = (id: string) => '/prompts/' + encodeURIComponent(id)
+  const bindingCount = (promptId: string) =>
+    Number(getDatabase().exec('SELECT count(*) FROM cherry_prompt_bindings WHERE prompt_id=?', [promptId])[0]?.values?.[0]?.[0] || 0)
+  const storedVisibility = (id: string) =>
+    String(getDatabase().exec('SELECT visibility FROM prompt_assets WHERE id=?', [id])[0]?.values?.[0]?.[0])
+
+  it('does not leave an unbound restricted prompt when the assistant target is invalid', async () => {
+    await initDatabase()
+    const before = Number(getDatabase().exec('SELECT count(*) FROM prompt_assets')[0]?.values?.[0]?.[0] || 0)
+    const response = request('POST', '/prompts', {
+      title: 'Restricted', content: 'Body', visibility: 'restricted',
+      bindingTarget: { type: 'assistant', id: 'missing-assistant' }
+    })
+    expect(response).toMatchObject({ status: 400, error: { code: 'INVALID_INPUT' } })
+    expect(Number(getDatabase().exec('SELECT count(*) FROM prompt_assets')[0]?.values?.[0]?.[0] || 0)).toBe(before)
+  })
+
+  it('persists a global visibility transition and binding clear across database reopen', async () => {
+    const { storedId, listId } = await seedRestrictedPrompt()
+    const response = request('PATCH', patchPath(listId), {
+      visibility: 'global',
+      expectedBindings: [{ type: 'assistant', id: 'assistant-1' }]
+    })
+    expect(response.status).toBe(200)
+    closeDatabase()
+    await initDatabase()
+    expect(storedVisibility(storedId)).toBe('global')
+    expect(bindingCount(storedId)).toBe(0)
+  })
+
+  it('answers 409 and keeps the row restricted when expectedBindings is missing', async () => {
+    const { storedId, listId } = await seedRestrictedPrompt()
+    const response = request('PATCH', patchPath(listId), { visibility: 'global' })
+
+    expect(response).toMatchObject({ status: 409, error: { code: 'CONCURRENT_MODIFICATION' } })
+    expect(storedVisibility(storedId)).toBe('restricted')
+    expect(bindingCount(storedId)).toBe(1)
+  })
+
+  it('answers 409 for a mismatched expectedBindings snapshot without changing either row', async () => {
+    const { storedId, listId } = await seedRestrictedPrompt()
+
+    const response = request('PATCH', patchPath(listId), {
+      visibility: 'global',
+      expectedBindings: [{ type: 'assistant', id: 'assistant-stale' }]
+    })
+
+    expect(response).toMatchObject({ status: 409, error: { code: 'CONCURRENT_MODIFICATION' } })
+    expect(storedVisibility(storedId)).toBe('restricted')
+    expect(bindingCount(storedId)).toBe(1)
+  })
+
+  it('makes the prompt global and clears bindings when the snapshot matches', async () => {
+    const { storedId, listId } = await seedRestrictedPrompt()
+
+    const response = request('PATCH', patchPath(listId), {
+      visibility: 'global',
+      expectedBindings: [{ type: 'assistant', id: 'assistant-1' }]
+    })
+
+    expect(response.status).toBe(200)
+    expect(response.data).toMatchObject({ id: storedId, visibility: 'global' })
+    expect(storedVisibility(storedId)).toBe('global')
+    expect(bindingCount(storedId)).toBe(0)
+  })
+
+  it('keeps the selected binding when the prompt is updated to restricted', async () => {
+    await seedAssistant()
+    const created = request('POST', '/prompts', { title: 'Prompt', content: 'Body', visibility: 'global' })
+    expect(created.status).toBe(201)
+    const storedId = String(created.data.id)
+    expect(request('PUT', '/prompts/' + encodeURIComponent(storedId) + '/bindings/assistant/assistant-1').status).toBe(200)
+
+    const response = request('PATCH', patchPath('asset:' + storedId), {
+      title: 'Prompt renamed', visibility: 'restricted'
+    })
+
+    expect(response.status).toBe(200)
+    expect(response.data).toMatchObject({ id: storedId, title: 'Prompt renamed', visibility: 'restricted' })
+    expect(storedVisibility(storedId)).toBe('restricted')
+    expect(bindingCount(storedId)).toBe(1)
+  })
+
+  it('answers 400 for an unknown visibility value and leaves the row untouched', async () => {
+    await initDatabase()
+    const created = request('POST', '/prompts', { title: 'Prompt', content: 'Body', visibility: 'global' })
+    const storedId = String(created.data.id)
+
+    const response = request('PATCH', patchPath(storedId), { visibility: 'private' })
+
+    expect(response).toMatchObject({ status: 400, error: { code: 'INVALID_VISIBILITY' } })
+    expect(storedVisibility(storedId)).toBe('global')
+  })
+
+  it('rejects expectedBindings unless the update targets global', async () => {
+    const { storedId, listId } = await seedRestrictedPrompt()
+
+    const response = request('PATCH', patchPath(listId), {
+      visibility: 'restricted',
+      expectedBindings: [{ type: 'assistant', id: 'assistant-1' }]
+    })
+
+    expect(response).toMatchObject({ status: 400, error: { code: 'INVALID_EXPECTED_BINDINGS' } })
+    expect(storedVisibility(storedId)).toBe('restricted')
+  })
+
+  it('answers 403 for built-in/imported rows', async () => {
+    await initDatabase()
+    getDatabase().run(
+      'INSERT INTO prompt_assets (id,source_id,source,name,prompt,chapter,section,subsection,nsfw,variant_count,source_fingerprint,created_at,updated_at,visibility) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
+      ['builtin_abc', 'builtin:pack:x', 'asset', 'Built-in', 'Body', '', '', '', 0, 0, '', '2026-01-01', '2026-01-01', 'global']
+    )
+
+    const response = request('PATCH', patchPath('asset:builtin_abc'), { visibility: 'restricted' })
+
+    expect(response).toMatchObject({ status: 403, error: { code: 'FORBIDDEN' } })
+    expect(storedVisibility('builtin_abc')).toBe('global')
   })
 })
 

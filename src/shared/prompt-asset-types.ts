@@ -10,6 +10,8 @@ export interface PromptAssetItem {
   name: string
   prompt: string
   detail: string
+  /** Local or remote preview image. Built-in local assets use the grimoire-asset:// protocol. */
+  coverUrl?: string
   group?: string
   categoryIds?: string[]
   createdAt: string

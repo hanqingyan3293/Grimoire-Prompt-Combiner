@@ -137,7 +137,7 @@ export function usePluginHost(params: PluginHostParams) {
                 id: "node-interaction-toggle",
                 title: t(interactive ? "canvas.plugins.interactiveTitle" : "canvas.plugins.movableTitle"),
                 label: t(interactive ? "canvas.plugins.move" : "canvas.plugins.interact"),
-                icon: interactive ? "✋" : "🖐",
+                icon: interactive ? "hand" : "move",
                 active: interactive,
                 onClick: () => pluginHost.updateMetadata(node.id, { interactive: !interactive }),
             };

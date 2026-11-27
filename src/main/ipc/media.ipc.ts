@@ -1,6 +1,6 @@
 import { dialog, ipcMain } from 'electron'
 import { IPC_CHANNELS } from '../../shared/types'
-import { batchDeleteMediaAssets, batchUpdateMediaAssets, deleteMediaAsset, getImageGenerationMetadata, getMediaAsset, listMediaAssets, listMediaRelations, createMediaRelation, deleteMediaRelation, relocateMediaAsset, saveImageGenerationMetadata, updateMediaAsset } from '../services/media.service'
+import { batchUpdateMediaAssets, deleteMediaAsset, getImageGenerationMetadata, getMediaAsset, listMediaAssets, listMediaRelations, createMediaRelation, deleteMediaRelation, relocateMediaAsset, saveImageGenerationMetadata, updateMediaAsset } from '../services/media.service'
 import { ensureMediaAsset } from '../services/media.service'
 import { getDatabase } from '../database'
 import { previewMediaBatch, queryGallery, type GalleryQuery } from '../services/gallery-query.service'
@@ -11,7 +11,7 @@ import { indexClipEmbeddings } from '../services/clip-index.service'
 import { clipWorker, configureClipModelDirectory, configureClipPythonPath } from '../services/clip-worker'
 import { findDuplicateGroups } from '../services/duplicate.service'
 import { importScannedFiles, scanImageDirectory } from '../services/folder-scan.service'
-import { deleteImageArtifacts } from '../services/image-asset.service'
+import { deleteImagesFromLibrary, ImageDeletionError } from '../services/image-asset.service'
 
 export function registerMediaIPC(): void {
   ipcMain.handle(IPC_CHANNELS.MEDIA_LIST, async (_event, input: unknown) => listMediaAssets(input && typeof input === 'object' ? input as Record<string, unknown> : {}))
@@ -22,13 +22,15 @@ export function registerMediaIPC(): void {
   ipcMain.handle(IPC_CHANNELS.MEDIA_RELOCATE, async (_event, input: unknown) => relocateMediaAsset(String((input as any)?.id || ''), String((input as any)?.filePath || '')))
   ipcMain.handle(IPC_CHANNELS.MEDIA_BATCH_UPDATE, async (_event, input: unknown) => batchUpdateMediaAssets(input as { ids: string[]; favorite?: boolean; rating?: number }))
   ipcMain.handle(IPC_CHANNELS.MEDIA_BATCH_DELETE, async (_event, input: unknown) => {
-    const ids = Array.isArray((input as any)?.ids) ? (input as any).ids.map(String) : []
-    // 先清磁盘产物（托管副本/派生图；外链原文件绝不触碰），再删 DB 行——与 images.delete 同一策略。
-    for (const id of ids) {
+    const ids: string[] = Array.isArray((input as any)?.ids) ? (input as any).ids.map(String) : []
+    // Resolve every identity before the shared image batch preflight. Keep the legacy success count.
+    const imageIds = ids.flatMap(id => {
       const media = getMediaAsset(id)
-      if (media) await deleteImageArtifacts(media.image_ref_id).catch(() => { /* 清理失败不阻塞 */ })
-    }
-    return batchDeleteMediaAssets(ids)
+      return media ? [media.image_ref_id] : []
+    })
+    const result = deleteImagesFromLibrary(imageIds)
+    if (result.status !== 'completed') throw new ImageDeletionError('IMAGE_CLEANUP_FAILED', result.failures[0]?.message || '批量图片清理未完成', result)
+    return result.deletedIds.length
   })
   ipcMain.handle(IPC_CHANNELS.MEDIA_METADATA_GET, async (_event, id: unknown) => getImageGenerationMetadata(String(id || '')))
   ipcMain.handle(IPC_CHANNELS.MEDIA_METADATA_SAVE, async (_event, input: unknown) => saveImageGenerationMetadata(input as any))

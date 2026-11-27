@@ -3,6 +3,7 @@ import { Bot, Download, Eye, FileText, GitBranch, ImagePlus, MessageSquare, Moni
 import type { AiAssistantRecord, AiAttachmentRecord, AiEventRecord, AiMessageRecord, AiRuntimeKind, AiSessionKind, AiSessionRecord, AiTopicRecord } from "@shared/ai-types"
 import type { AiMessagePart } from "@shared/ai-message-parts"
 import type { CherryRuntimeStatus } from "@shared/cherry-host-types"
+import { runtimeModelFallback, runtimeUsesGrimoireProvider, transitionRuntimeSelection, type RuntimeModelMemory } from "@shared/runtime-contract"
 import { useProviderStore } from "../../stores/providers.store"
 import { Button, IconButton } from "../ui/Button"
 import { EmptyState, StatusBadge } from "../ui/Feedback"
@@ -79,6 +80,7 @@ export function AgentWorkspacePanel({ variant = "workspace", initialMode }: { va
   const [runtimeStatuses, setRuntimeStatuses] = useState<RuntimeStatus[]>([])
   const [selectedRuntime, setSelectedRuntime] = useState<AiRuntimeKind>("openai-compatible")
   const [modelOverride, setModelOverride] = useState("")
+  const [runtimeModelMemory, setRuntimeModelMemory] = useState<RuntimeModelMemory>({})
   const [permissionRequests, setPermissionRequests] = useState<Array<{ requestId: string; sessionId: string; permission: 'read' | 'write' | 'execute' | 'network'; detail?: unknown }>>([])
   const [sessionQuery, setSessionQuery] = useState("")
   const [attachments, setAttachments] = useState<AiAttachmentRecord[]>([])
@@ -86,9 +88,17 @@ export function AgentWorkspacePanel({ variant = "workspace", initialMode }: { va
   const [contexts, setContexts] = useState<AgentContextRef[]>([])
   const [bridgeWarning, setBridgeWarning] = useState('')
 
-  const providerRuntime = selectedRuntime === "openai-compatible" || selectedRuntime === "anthropic" || selectedRuntime === "google"
-  const model = modelOverride || activeData?.session.model_id || activeProvider?.default_model || providers[0]?.default_model || (providerRuntime ? "" : "default")
   const selectedProvider = activeProvider || providers[0]
+  const selectedRuntimeStatus = runtimeStatuses.find(item => item.kind === selectedRuntime)
+  const runtimeReady = !!selectedRuntimeStatus?.available && !!selectedRuntimeStatus.contract
+  const providerRuntime = runtimeUsesGrimoireProvider(selectedRuntimeStatus?.contract)
+  const sessionModel = activeData?.session.runtime === selectedRuntime ? activeData.session.model_id : ""
+  const model = runtimeModelFallback({
+    contract: selectedRuntimeStatus?.contract,
+    explicitModel: modelOverride,
+    sessionModel,
+    providerDefaultModel: activeProvider?.default_model || providers[0]?.default_model,
+  })
   const messages = activeData?.messages || []
   const streamingParts = streamingState.parts
 
@@ -112,6 +122,7 @@ export function AgentWorkspacePanel({ variant = "workspace", initialMode }: { va
       setActiveData({ session: value.session, messages: value.messages, events: value.events })
       setSelectedRuntime(value.session.runtime)
       setModelOverride(value.session.model_id)
+      setRuntimeModelMemory(current => value.session.model_id ? { ...current, [value.session.runtime]: value.session.model_id } : current)
     } catch (cause) { setError(cause instanceof Error ? cause.message : "读取 Agent 会话失败") }
   }
 
@@ -166,11 +177,12 @@ export function AgentWorkspacePanel({ variant = "workspace", initialMode }: { va
 
   const createSession = async (kind: AiSessionKind = mode === "chat" ? "chat" : mode === "vision" ? "vision" : mode === "drawing" ? "drawing" : "agent"): Promise<AiSessionRecord | null> => {
     const runtimeStatus = runtimeStatuses.find(item => item.kind === selectedRuntime)
-    if (runtimeStatus && !runtimeStatus.available) {
-      setError(runtimeStatus.message)
+    if (!runtimeStatus?.available || !runtimeStatus.contract) {
+      setError(runtimeStatus?.message || 'Runtime 状态尚未就绪')
       return null
     }
-    const session = await cherry.sessions.create({ kind, runtime: selectedRuntime, providerId: selectedProvider?.id || "", modelId: model, title: MODES.find(item => item.id === mode)?.label || "Agent 会话", metadata: assistants[0] ? { assistantId: assistants[0].id } : {} })
+    const providerId = runtimeUsesGrimoireProvider(runtimeStatus.contract) ? selectedProvider?.id || "" : ""
+    const session = await cherry.sessions.create({ kind, runtime: selectedRuntime, providerId, modelId: model, title: MODES.find(item => item.id === mode)?.label || "Agent 会话", metadata: assistants[0] ? { assistantId: assistants[0].id } : {} })
     setSessions(current => [session, ...current.filter(item => item.id !== session.id)])
     setActiveId(session.id)
     return session
@@ -191,15 +203,28 @@ export function AgentWorkspacePanel({ variant = "workspace", initialMode }: { va
 
   const changeRuntime = async (runtime: AiRuntimeKind) => {
     const status = runtimeStatuses.find(item => item.kind === runtime)
-    if (status && !status.available) {
-      setError(status.message)
+    if (!status || !status.contract || !status.available) {
+      setError(status?.message || 'Runtime 状态尚未就绪')
       return
     }
+    if (runtime === selectedRuntime) return
     setError("")
+    const transition = transitionRuntimeSelection({
+      fromRuntime: selectedRuntime,
+      toRuntime: runtime,
+      contract: status.contract,
+      current: { providerId: selectedProvider?.id || '', model },
+      activeProviderId: selectedProvider?.id,
+      providerDefaultModel: selectedProvider?.default_model,
+      providerModels: [...(selectedProvider?.models || []), ...catalogModels.map(item => item.id)],
+      memory: runtimeModelMemory,
+    })
+    setRuntimeModelMemory(transition.memory)
     setSelectedRuntime(runtime)
+    setModelOverride(transition.selection.model)
     if (activeId) {
       try {
-        const session = await cherry.sessions.update({ id: activeId, runtime })
+        const session = await cherry.sessions.update({ id: activeId, runtime, providerId: transition.selection.providerId, modelId: transition.selection.model })
         setActiveData(current => current ? { ...current, session } : current)
       } catch (cause) {
         setError(cause instanceof Error ? cause.message : "切换 Runtime 失败")
@@ -208,11 +233,13 @@ export function AgentWorkspacePanel({ variant = "workspace", initialMode }: { va
   }
 
   const changeProvider = async (providerId: string) => {
+    if (!runtimeUsesGrimoireProvider(selectedRuntimeStatus?.contract)) return
     await setActiveProvider(providerId)
     const nextProvider = useProviderStore.getState().providers.find(item => item.id === providerId) || null
     if (!nextProvider) return
     const nextModel = nextProvider.default_model || nextProvider.models[0] || ''
     setModelOverride(nextModel)
+    setRuntimeModelMemory(current => ({ ...current, [selectedRuntime]: nextModel }))
     if (activeId) {
       try {
         const session = await cherry.sessions.update({ id: activeId, providerId, modelId: nextModel })
@@ -346,6 +373,7 @@ export function AgentWorkspacePanel({ variant = "workspace", initialMode }: { va
   }
 
   const sendChat = async () => {
+    if (!runtimeReady) { setError('Runtime 状态尚未就绪，发送暂停'); return }
     const text = message.trim()
     if (!text || busy) return
     if (providerRuntime && !selectedProvider) { setError("请先在设置中配置 AI Provider"); return }
@@ -438,7 +466,7 @@ export function AgentWorkspacePanel({ variant = "workspace", initialMode }: { va
   // own wrapping row above the conversation body.
   const conversationHeader = <CherryConversationHeader title="Agent 工作台" subtitle={activeData?.session.title || '统一 AI 会话、工具与上下文'} mode={mode} modes={[]} runtime={selectedRuntime} model={model} onModeChange={() => {}} />
   const sessionSidebar = <CherrySessionSidebar sessions={sessions} activeId={activeId} query={sessionQuery} onQueryChange={setSessionQuery} onSelect={refreshActive} onCreate={() => void createSession()} onDelete={deleteSession} onRename={async (id, title) => { const session = await cherry.sessions.update({ id, title }); setSessions(current => current.map(item => item.id === id ? session : item)); if (activeId === id) setActiveData(current => current ? { ...current, session } : current) }} onBranch={() => void branchSession()} onExport={exportSession} onImport={() => void importSession()} assistants={assistants} topics={topics} activeAssistantId={activeAssistantId} onAssistantChange={id => void changeAssistant(id)} onTopicCreate={() => void createTopic()} onTopicSelect={id => void selectTopic(id)} />
-  const context = <><ContextPanel providers={providers} provider={selectedProvider} model={model} catalogModels={catalogModels} runtimeStatuses={runtimeStatuses} runtime={selectedRuntime} onRuntimeChange={changeRuntime} onRefreshRuntimes={refreshRuntimes} onProviderChange={changeProvider} onModelChange={async nextModel => { setModelOverride(nextModel); if (activeId) { const session = await cherry.sessions.update({ id: activeId, modelId: nextModel }); setActiveData(current => current ? { ...current, session } : current) } }} session={activeData?.session || null} events={activeData?.events || []} onInterrupt={() => void interruptSession()} onRetry={() => void retrySession()} busy={busy} onOpenSettings={() => void cherry.windows.openSettings()} /><CherryContextPicker contexts={contexts} onChange={setContexts} /></>
+  const context = <><ContextPanel providers={providers} provider={selectedProvider} model={model} catalogModels={catalogModels} runtimeStatuses={runtimeStatuses} runtime={selectedRuntime} onRuntimeChange={changeRuntime} onRefreshRuntimes={refreshRuntimes} onProviderChange={changeProvider} onModelChange={async nextModel => { setModelOverride(nextModel); setRuntimeModelMemory(current => ({ ...current, [selectedRuntime]: nextModel })); if (activeId) { const session = await cherry.sessions.update({ id: activeId, modelId: nextModel }); setActiveData(current => current ? { ...current, session } : current) } }} session={activeData?.session || null} events={activeData?.events || []} onInterrupt={() => void interruptSession()} onRetry={() => void retrySession()} busy={busy} onOpenSettings={() => void cherry.windows.openSettings()} /><CherryContextPicker contexts={contexts} onChange={setContexts} /></>
   const errorView = error ? <div className="shrink-0 border-t border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-500" role="alert">{error}</div> : null
   const body = <CherryAgentShell header={conversationHeader} notice={notice} toolbar={variant === 'compact' ? <CompactRuntimeBar runtime={selectedRuntime} runtimeStatuses={runtimeStatuses} onRuntimeChange={changeRuntime} onRefresh={refreshRuntimes} onOpenWorkspace={() => void cherry.windows.openAI()} /> : undefined} compact={variant === 'compact'} center={<div className="flex h-full min-h-0 flex-col">{modeRow}{modeContent}</div>} sidebar={sessionSidebar} context={context} error={errorView} />
   if (legacyUi && variant === 'workspace') return <ChatLayout />
@@ -470,8 +498,8 @@ function ContextPanel({ providers, provider, model, catalogModels, runtimeStatus
   const selectedStatus = runtimeStatuses.find(item => item.kind === runtime)
   return <div className="space-y-3">
     <div className="flex items-center justify-between"><div className="text-xs font-semibold text-[var(--color-text-secondary)]">上下文与模型</div><div className="flex items-center gap-1"><IconButton icon={Settings2} label="打开 AI 设置" onClick={onOpenSettings} /><button type="button" className="text-[10px] text-[var(--color-accent-text)]" onClick={() => void onRefreshRuntimes()}>刷新 Runtime</button></div></div>
-    <div className="ui-list-card space-y-2 p-3 text-xs"><label className="block"><span className="mb-1 block text-[var(--color-text-secondary)]">Runtime</span><select className="ui-field w-full" value={runtime} onChange={event => void onRuntimeChange(event.target.value as AiRuntimeKind)}>{RUNTIMES.map(item => { const status = runtimeStatuses.find(value => value.kind === item.id); return <option key={item.id} value={item.id} disabled={Boolean(status && !status.available)}>{item.label}{status && !status.available ? '（不可用）' : ''}</option> })}</select>{selectedStatus && <div className={'mt-1 text-[10px] leading-4 ' + (selectedStatus.available ? 'text-emerald-500' : 'text-amber-500')}>{selectedStatus.available ? (selectedStatus.version || selectedStatus.message) : selectedStatus.message}</div>}</label></div>
-    <CherryProviderModelSelector providers={providers} provider={provider} catalogModels={catalogModels} model={model} runtime={runtime} onRuntimeModel={runtime === 'codex' || runtime === 'opencode' || runtime === 'pi'} onProviderChange={onProviderChange} onModelChange={onModelChange} />
+    <div className="ui-list-card space-y-2 p-3 text-xs"><label className="block"><span className="mb-1 block text-[var(--color-text-secondary)]">Runtime</span><select aria-label="Runtime" className="ui-field w-full" value={runtime} onChange={event => void onRuntimeChange(event.target.value as AiRuntimeKind)}>{RUNTIMES.map(item => { const status = runtimeStatuses.find(value => value.kind === item.id); return <option key={item.id} value={item.id} disabled={Boolean(status && !status.available)}>{item.label}{status && !status.available ? '（不可用）' : ''}</option> })}</select>{selectedStatus && <div className={'mt-1 text-[10px] leading-4 ' + (selectedStatus.available ? 'text-emerald-500' : 'text-amber-500')}>{selectedStatus.available ? (selectedStatus.version || selectedStatus.message) : selectedStatus.message}</div>}</label></div>
+    <CherryProviderModelSelector providers={providers} provider={provider} catalogModels={catalogModels} model={model} runtime={runtime} contract={selectedStatus?.contract} ready={selectedStatus?.available === true} onProviderChange={onProviderChange} onModelChange={onModelChange} />
     {session && <div className="ui-list-card flex items-center justify-between gap-3 p-3 text-xs"><span className="min-w-0 truncate text-[var(--color-text-secondary)]">{session.title || session.id}</span><div className="flex shrink-0 gap-2"><button type="button" className="text-[10px] text-amber-600" onClick={onRetry} disabled={busy}>重试</button><button type="button" className="text-[10px] text-red-500" onClick={onInterrupt} disabled={!busy}>停止</button></div></div>}
     <div className="ui-list-card space-y-2 p-3 text-xs"><div className="font-semibold text-[var(--color-text-secondary)]">Runtime 状态</div>{runtimeStatuses.map(item => <div key={item.kind} className="flex items-start justify-between gap-2"><span className="text-[var(--color-text-primary)]">{RUNTIMES.find(value => value.id === item.kind)?.label || item.kind}</span><span className={item.available ? 'text-emerald-500' : 'text-amber-500'}>{item.available ? (item.version || item.source) : '不可用'}</span></div>)}</div>
     {events.length > 0 && <div className="ui-list-card space-y-1 p-3 text-[10px]"><div className="font-semibold text-[var(--color-text-secondary)]">最近事件</div>{events.slice(-8).reverse().map(event => <div key={event.id} className="truncate text-[var(--color-text-secondary)]">{event.event_type} · {JSON.stringify(event.payload)}</div>)}</div>}
@@ -481,6 +509,5 @@ function ContextPanel({ providers, provider, model, catalogModels, runtimeStatus
 
 function CompactRuntimeBar({ runtime, runtimeStatuses, onRuntimeChange, onRefresh, onOpenWorkspace }: { runtime: AiRuntimeKind; runtimeStatuses: RuntimeStatus[]; onRuntimeChange: (runtime: AiRuntimeKind) => Promise<void>; onRefresh: () => Promise<void>; onOpenWorkspace: () => void }) {
   const status = runtimeStatuses.find(item => item.kind === runtime)
-  return <div className="flex shrink-0 items-center gap-2 border-b border-[var(--color-border)] px-3 py-2 text-xs"><span className="text-[var(--color-text-secondary)]">Runtime</span><select className="ui-field min-w-0 flex-1 py-1 text-xs" value={runtime} onChange={event => void onRuntimeChange(event.target.value as AiRuntimeKind)}>{RUNTIMES.map(item => { const itemStatus = runtimeStatuses.find(value => value.kind === item.id); return <option key={item.id} value={item.id} disabled={Boolean(itemStatus && !itemStatus.available)}>{item.label}{itemStatus && !itemStatus.available ? '（不可用）' : ''}</option> })}</select><span className={status?.available ? 'text-emerald-500' : 'text-amber-500'}>{status?.available ? '可用' : '需准备'}</span><button type="button" className="text-[var(--color-accent-text)]" onClick={() => void onRefresh()}>刷新</button><button type="button" className="text-[var(--color-accent-text)]" onClick={onOpenWorkspace}>完整工作台</button></div>
+  return <div className="flex shrink-0 items-center gap-2 border-b border-[var(--color-border)] px-3 py-2 text-xs"><span className="text-[var(--color-text-secondary)]">Runtime</span><select aria-label="Runtime" className="ui-field min-w-0 flex-1 py-1 text-xs" value={runtime} onChange={event => void onRuntimeChange(event.target.value as AiRuntimeKind)}>{RUNTIMES.map(item => { const itemStatus = runtimeStatuses.find(value => value.kind === item.id); return <option key={item.id} value={item.id} disabled={Boolean(itemStatus && !itemStatus.available)}>{item.label}{itemStatus && !itemStatus.available ? '（不可用）' : ''}</option> })}</select><span className={status?.available ? 'text-emerald-500' : 'text-amber-500'}>{status?.available ? '可用' : '需准备'}</span><button type="button" className="text-[var(--color-accent-text)]" onClick={() => void onRefresh()}>刷新</button><button type="button" className="text-[var(--color-accent-text)]" onClick={onOpenWorkspace}>完整工作台</button></div>
 }
-

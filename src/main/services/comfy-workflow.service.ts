@@ -29,9 +29,10 @@ export function getComfyWorkflow(id: string): StoredComfyWorkflow | null {
   return result[0]?.values?.[0] ? rowToWorkflow(result[0].values[0]) : null
 }
 
-export function importComfyWorkflow(name: string, input: unknown, source = 'imported'): StoredComfyWorkflow & { analysis: ComfyWorkflowAnalysis } {
+export function importComfyWorkflow(name: string, input: unknown, source = 'imported', extraWarnings: string[] = []): StoredComfyWorkflow & { analysis: ComfyWorkflowAnalysis } {
   const workflow: ComfyWorkflow = parseComfyWorkflow(input)
-  const analysis = analyzeComfyWorkflow(workflow)
+  const baseAnalysis = analyzeComfyWorkflow(workflow)
+  const analysis: ComfyWorkflowAnalysis = { ...baseAnalysis, warnings: [...new Set([...baseAnalysis.warnings, ...extraWarnings])] }
   const id = 'comfy_' + crypto.randomUUID().replaceAll('-', '').slice(0, 20)
   const now = new Date().toISOString()
   getDatabase().run('INSERT INTO comfy_workflows (id, name, raw_json, analysis_json, bindings_json, source, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?)', [id, name.trim().slice(0, 200) || '未命名工作流', JSON.stringify(workflow), JSON.stringify(analysis), JSON.stringify(analysis.bindings), source, now, now])

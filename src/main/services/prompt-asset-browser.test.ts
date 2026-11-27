@@ -23,6 +23,7 @@ function createDatabase() {
     CREATE TABLE subcategories (id TEXT, zh TEXT, category_id TEXT);
     CREATE TABLE categories (id TEXT, zh TEXT);
     CREATE TABLE cherry_resource_state (entity_type TEXT, entity_id TEXT, archived INTEGER DEFAULT 0, deleted_at TEXT, pinned INTEGER DEFAULT 0, order_key TEXT DEFAULT '', group_id TEXT, owner_id TEXT, last_activity_at TEXT, created_at TEXT, updated_at TEXT, PRIMARY KEY (entity_type, entity_id));
+    CREATE TABLE cherry_prompt_bindings (prompt_id TEXT NOT NULL, target_type TEXT NOT NULL, target_id TEXT NOT NULL, created_at TEXT NOT NULL, PRIMARY KEY (prompt_id, target_type, target_id));
   `)
   db.run('INSERT INTO categories VALUES (?,?)', ['cat', '人物'])
   db.run('INSERT INTO subcategories VALUES (?,?,?)', ['sub', '发型', 'cat'])
@@ -110,6 +111,14 @@ describe('prompt asset write protection', () => {
     native.close()
   })
 
+  it('refuses to edit a row imported under a non-asset source', () => {
+    const { native, db } = createDatabase()
+    // The fixture's first row is `source='suigu-search-index'` with a non-builtin id.
+    expect(updatePromptAsset(db, 'asset1', { visibility: 'restricted' })).toBeNull()
+    expect(String(native.prepare('SELECT visibility FROM prompt_assets WHERE id=?').get('asset1')?.visibility)).toBe('global')
+    native.close()
+  })
+
   it('refuses to delete an imported row', () => {
     const { native, db } = createDatabase()
     db.run('INSERT INTO prompt_assets (id,source_id,source,name,prompt,chapter,section,subsection,nsfw,variant_count,source_fingerprint,created_at,updated_at,visibility) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)', ['builtin_abc', 'builtin:pack:x', 'asset', '内置条目', 'content', '', '', '', 0, 0, '', '2026-01-01', '2026-01-01', 'global'])
@@ -128,6 +137,150 @@ describe('prompt asset write protection', () => {
     // The stored row agrees with the returned projection.
     const stored = native.prepare('SELECT name, prompt FROM prompt_assets WHERE id=?').get('asset:uuid-1')
     expect(stored).toMatchObject({ name: '新名', prompt: '原内容' })
+    native.close()
+  })
+})
+
+describe('prompt visibility updates', () => {
+  const insertPrompt = (db: ReturnType<typeof createDatabase>['db'], id: string, visibility: 'global' | 'restricted') =>
+    db.run('INSERT INTO prompt_assets (id,source_id,source,name,prompt,chapter,section,subsection,nsfw,variant_count,source_fingerprint,created_at,updated_at,visibility) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)', [id, 'src-' + id, 'asset', 'original', 'body', '', '', '', 0, 0, '', '2026-01-01', '2026-01-01', visibility])
+
+  const insertBinding = (db: ReturnType<typeof createDatabase>['db'], promptId: string, targetId = 'assistant-1') =>
+    db.run('INSERT INTO cherry_prompt_bindings (prompt_id,target_type,target_id,created_at) VALUES (?,?,?,?)', [promptId, 'assistant', targetId, '2026-01-01'])
+
+  const storedVisibility = (native: DatabaseSync, id: string) =>
+    String(native.prepare('SELECT visibility FROM prompt_assets WHERE id=?').get(id)?.visibility)
+
+  it('stores and returns the restricted visibility instead of projecting global', () => {
+    const { native, db } = createDatabase()
+    insertPrompt(db, 'asset:visible-1', 'global')
+
+    const updated = updatePromptAsset(db, 'asset:visible-1', { visibility: 'restricted' })
+
+    expect(updated).toMatchObject({ id: 'asset:visible-1', visibility: 'restricted' })
+    expect(storedVisibility(native, 'asset:visible-1')).toBe('restricted')
+    expect(queryPromptAssets(db, { source: 'asset' }).items.find(item => item.id === 'asset:asset:visible-1')?.visibility).toBe('restricted')
+    native.close()
+  })
+
+  it('leaves an existing binding in place when a prompt stays restricted', () => {
+    const { native, db } = createDatabase()
+    insertPrompt(db, 'asset:visible-2', 'restricted')
+    insertBinding(db, 'asset:visible-2')
+
+    const updated = updatePromptAsset(db, 'asset:visible-2', { name: 'renamed', visibility: 'restricted' })
+
+    expect(updated).toMatchObject({ name: 'renamed', visibility: 'restricted' })
+    expect(native.prepare('SELECT count(*) c FROM cherry_prompt_bindings WHERE prompt_id=?').get('asset:visible-2')?.c).toBe(1)
+    native.close()
+  })
+
+  it('does not invent binding targets when a global prompt becomes restricted', () => {
+    const { native, db } = createDatabase()
+    insertPrompt(db, 'asset:visible-3', 'global')
+
+    updatePromptAsset(db, 'asset:visible-3', { visibility: 'restricted' })
+
+    expect(storedVisibility(native, 'asset:visible-3')).toBe('restricted')
+    expect(native.prepare('SELECT count(*) c FROM cherry_prompt_bindings').get()?.c).toBe(0)
+    native.close()
+  })
+
+  it('rejects making a bound prompt global without an expectedBindings snapshot', () => {
+    const { native, db } = createDatabase()
+    insertPrompt(db, 'asset:visible-4', 'restricted')
+    insertBinding(db, 'asset:visible-4')
+
+    expect(() => updatePromptAsset(db, 'asset:visible-4', { visibility: 'global' })).toThrow('PROMPT_BINDINGS_CONFLICT')
+    expect(storedVisibility(native, 'asset:visible-4')).toBe('restricted')
+    expect(native.prepare('SELECT count(*) c FROM cherry_prompt_bindings WHERE prompt_id=?').get('asset:visible-4')?.c).toBe(1)
+    native.close()
+  })
+
+  it('rejects a stale expectedBindings snapshot without a partial write', () => {
+    const { native, db } = createDatabase()
+    insertPrompt(db, 'asset:visible-5', 'restricted')
+    insertBinding(db, 'asset:visible-5', 'assistant-current')
+
+    expect(() => updatePromptAsset(db, 'asset:visible-5', {
+      visibility: 'global',
+      expectedBindings: [{ type: 'assistant', id: 'assistant-stale' }]
+    })).toThrow('PROMPT_BINDINGS_CONFLICT')
+
+    expect(storedVisibility(native, 'asset:visible-5')).toBe('restricted')
+    expect(native.prepare('SELECT target_id FROM cherry_prompt_bindings WHERE prompt_id=?').get('asset:visible-5')?.target_id).toBe('assistant-current')
+    native.close()
+  })
+
+  it('clears bindings and stores global when the snapshot matches', () => {
+    const { native, db } = createDatabase()
+    insertPrompt(db, 'asset:visible-6', 'restricted')
+    insertBinding(db, 'asset:visible-6', 'assistant-1')
+    insertBinding(db, 'asset:visible-6', 'assistant-2')
+
+    const updated = updatePromptAsset(db, 'asset:visible-6', {
+      visibility: 'global',
+      expectedBindings: [{ type: 'assistant', id: 'assistant-2' }, { type: 'assistant', id: 'assistant-1' }]
+    })
+
+    expect(updated).toMatchObject({ visibility: 'global' })
+    expect(storedVisibility(native, 'asset:visible-6')).toBe('global')
+    expect(native.prepare('SELECT count(*) c FROM cherry_prompt_bindings WHERE prompt_id=?').get('asset:visible-6')?.c).toBe(0)
+    native.close()
+  })
+
+  it('compares the snapshot in logical target space when both id forms are bound', () => {
+    const { native, db } = createDatabase()
+    insertPrompt(db, 'asset:visible-6b', 'restricted')
+    // The create route binds by stored id; the list route binds by the `asset:` alias.
+    // They are the same prompt and the same target, so the snapshot has one entry.
+    insertBinding(db, 'asset:visible-6b', 'assistant-1')
+    insertBinding(db, 'asset:asset:visible-6b', 'assistant-1')
+
+    const updated = updatePromptAsset(db, 'asset:visible-6b', {
+      visibility: 'global',
+      expectedBindings: [{ type: 'assistant', id: 'assistant-1' }]
+    })
+
+    expect(updated).toMatchObject({ visibility: 'global' })
+    expect(native.prepare("SELECT count(*) c FROM cherry_prompt_bindings WHERE prompt_id IN ('asset:visible-6b','asset:asset:visible-6b')").get()?.c).toBe(0)
+    native.close()
+  })
+
+  it('rolls the visibility change back when clearing bindings fails', () => {
+    const { native, db } = createDatabase()
+    insertPrompt(db, 'asset:visible-7', 'restricted')
+    insertBinding(db, 'asset:visible-7')
+    db.exec("CREATE TRIGGER reject_binding_delete BEFORE DELETE ON cherry_prompt_bindings BEGIN SELECT RAISE(ABORT,'fixture failure'); END")
+
+    expect(() => updatePromptAsset(db, 'asset:visible-7', {
+      visibility: 'global',
+      expectedBindings: [{ type: 'assistant', id: 'assistant-1' }]
+    })).toThrow()
+
+    expect(storedVisibility(native, 'asset:visible-7')).toBe('restricted')
+    expect(native.prepare('SELECT count(*) c FROM cherry_prompt_bindings WHERE prompt_id=?').get('asset:visible-7')?.c).toBe(1)
+    native.close()
+  })
+
+  it('rejects unknown visibility values', () => {
+    const { native, db } = createDatabase()
+    insertPrompt(db, 'asset:visible-8', 'global')
+
+    expect(() => updatePromptAsset(db, 'asset:visible-8', { visibility: 'private' })).toThrow('INVALID_VISIBILITY')
+    expect(storedVisibility(native, 'asset:visible-8')).toBe('global')
+    native.close()
+  })
+
+  it('rejects expectedBindings unless the update is explicitly global', () => {
+    const { native, db } = createDatabase()
+    insertPrompt(db, 'asset:visible-9', 'restricted')
+
+    expect(() => updatePromptAsset(db, 'asset:visible-9', {
+      visibility: 'restricted',
+      expectedBindings: []
+    })).toThrow('INVALID_EXPECTED_BINDINGS')
+    expect(storedVisibility(native, 'asset:visible-9')).toBe('restricted')
     native.close()
   })
 })

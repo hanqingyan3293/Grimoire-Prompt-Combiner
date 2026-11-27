@@ -5,6 +5,7 @@ import { DEFAULT_WEIGHT, WEIGHT_MIN, WEIGHT_MAX, MAX_UNDO_STEPS } from "@shared/
 import { bracketStep, parsePromptText, serializePrompt, type PromptToken } from "@shared/tag-prompt-core"
 
 interface PromptsState {
+  editingLocked: boolean
   positive: PanelTag[]
   negative: PanelTag[]
   undoStack: UndoRedoEntry[]
@@ -69,6 +70,7 @@ function panelTagsToTokens(items: PanelTag[], lang: "zh" | "en", negative: boole
 }
 
 export const usePromptsStore = create<PromptsState>((set, get) => ({
+  editingLocked: false,
   positive: [],
   negative: [],
   undoStack: [],
@@ -77,6 +79,7 @@ export const usePromptsStore = create<PromptsState>((set, get) => ({
   impliedExcluded: [],
   
   addPositive: (tag, category, subcategory) => {
+    if (get().editingLocked) return
     const state = get()
     if (state.positive.find(p => p.tag.id === tag.id)) return
     const newStack = pushUndo(state)
@@ -88,6 +91,7 @@ export const usePromptsStore = create<PromptsState>((set, get) => ({
   },
   
   addNegative: (tag, category, subcategory) => {
+    if (get().editingLocked) return
     const state = get()
     if (state.negative.find(p => p.tag.id === tag.id)) return
     const newStack = pushUndo(state)
@@ -99,6 +103,7 @@ export const usePromptsStore = create<PromptsState>((set, get) => ({
   },
   
   removePositive: (tagId) => {
+    if (get().editingLocked) return
     const state = get()
     const newStack = pushUndo(state)
     set({
@@ -109,6 +114,7 @@ export const usePromptsStore = create<PromptsState>((set, get) => ({
   },
   
   removeNegative: (tagId) => {
+    if (get().editingLocked) return
     const state = get()
     const newStack = pushUndo(state)
     set({
@@ -119,6 +125,7 @@ export const usePromptsStore = create<PromptsState>((set, get) => ({
   },
   
   updateWeight: (tagId, weight) => {
+    if (get().editingLocked) return
     const clamped = Math.min(WEIGHT_MAX, Math.max(WEIGHT_MIN, weight))
     set({
       positive: get().positive.map(p =>
@@ -131,18 +138,21 @@ export const usePromptsStore = create<PromptsState>((set, get) => ({
   },
 
   stepWeight: (tagId, direction) => {
+    if (get().editingLocked) return
     const apply = (list: PanelTag[]) =>
       list.map(p => (p.tag.id === tagId ? { ...p, weight: bracketStep(p.weight, direction) } : p))
     set({ positive: apply(get().positive), negative: apply(get().negative) })
   },
 
   excludeImplied: (tagId) => {
+    if (get().editingLocked) return
     const list = get().impliedExcluded
     if (list.includes(tagId)) return
     set({ impliedExcluded: [...list, tagId] })
   },
 
   includeImplied: (tagId) => {
+    if (get().editingLocked) return
     const list = get().impliedExcluded
     if (!list.includes(tagId)) return
     set({ impliedExcluded: list.filter(id => id !== tagId) })
@@ -153,6 +163,7 @@ export const usePromptsStore = create<PromptsState>((set, get) => ({
   },
   
   clearPositive: () => {
+    if (get().editingLocked) return
     const state = get()
     if (state.positive.length === 0) return
     const newStack = pushUndo(state)
@@ -160,6 +171,7 @@ export const usePromptsStore = create<PromptsState>((set, get) => ({
   },
   
   clearNegative: () => {
+    if (get().editingLocked) return
     const state = get()
     if (state.negative.length === 0) return
     const newStack = pushUndo(state)
@@ -167,6 +179,7 @@ export const usePromptsStore = create<PromptsState>((set, get) => ({
   },
   
   clearAll: () => {
+    if (get().editingLocked) return
     const state = get()
     if (state.positive.length === 0 && state.negative.length === 0) return
     const newStack = pushUndo(state)
@@ -174,6 +187,7 @@ export const usePromptsStore = create<PromptsState>((set, get) => ({
   },
   
   undo: () => {
+    if (get().editingLocked) return
     const state = get()
     if (state.undoStack.length === 0) return
     const current: UndoRedoEntry = {
@@ -191,6 +205,7 @@ export const usePromptsStore = create<PromptsState>((set, get) => ({
   },
   
   redo: () => {
+    if (get().editingLocked) return
     const state = get()
     if (state.redoStack.length === 0) return
     const current: UndoRedoEntry = {
@@ -211,6 +226,7 @@ export const usePromptsStore = create<PromptsState>((set, get) => ({
   canRedo: () => get().redoStack.length > 0,
   
   deduplicate: () => {
+    if (get().editingLocked) return
     const state = get()
     const seenPos = new Set<string>()
     const seenNeg = new Set<string>()
@@ -230,6 +246,7 @@ export const usePromptsStore = create<PromptsState>((set, get) => ({
   },
   
   randomPick: (allTags, minTags = 3, maxTags = 16) => {
+    if (get().editingLocked) return
     if (allTags.length === 0) return
     const state = get()
     const newStack = pushUndo(state)
@@ -264,6 +281,7 @@ export const usePromptsStore = create<PromptsState>((set, get) => ({
   },
 
   replaceFromPromptText: (text, tags) => {
+    if (get().editingLocked) return { matched: 0, unknown: [] }
     const positive: PanelTag[] = []
     const negative: PanelTag[] = []
     const unknown: string[] = []
@@ -303,6 +321,7 @@ export const usePromptsStore = create<PromptsState>((set, get) => ({
   },
   
   loadPresetData: (data, tagMap) => {
+    if (get().editingLocked) return
     const positive: PanelTag[] = data.positive
       .map(p => {
         const tag = tagMap.get(p.tag_id)

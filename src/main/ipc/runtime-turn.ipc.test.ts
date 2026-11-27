@@ -9,9 +9,18 @@ import { IPC_CHANNELS } from '../../shared/types'
 const mock = vi.hoisted(() => ({ root: '', handlers: new Map<string, Function>(), runtime: null as AgentRuntime | null, execute: vi.fn(), senderEvents: [] as Array<{ sender: unknown; sends: ReturnType<typeof vi.fn> }> }))
 vi.mock('electron', () => ({ app: { getPath: () => mock.root }, BrowserWindow: { getAllWindows: () => [] }, ipcMain: { handle: (key: string, handler: Function) => mock.handlers.set(key, handler) } }))
 vi.mock('./providers.ipc', () => ({ getActiveProvider: async () => ({ id: 'provider', name: 'Mock', default_model: 'model', base_url: 'http://mock' }) }))
-vi.mock('../ai/runtime/registry', () => ({ createAgentRuntime: () => mock.runtime }))
+vi.mock('../ai/runtime/registry', async importOriginal => ({ ...await importOriginal<typeof import('../ai/runtime/registry')>(), createAgentRuntime: () => mock.runtime }))
 vi.mock('../ai/runtime/grimoire-tools', () => ({ createGrimoireToolRegistry: () => ({ list: () => [{ name: 'grimoire.write', description: 'Mock tool', inputSchema: { type: 'object' } }], execute: mock.execute }) }))
-vi.mock('../services/agent-runtime-manager', () => ({ inspectAgentRuntime: vi.fn(), inspectAgentRuntimes: vi.fn(), resolveAgentRuntimeCommand: () => ({ command: 'pi', args: [] }), shutdownAgentRuntimes: vi.fn(), startOpenCodeRuntime: vi.fn() }))
+vi.mock('../services/agent-runtime-manager', () => ({
+  inspectAgentRuntime: vi.fn(),
+  inspectAgentRuntimes: vi.fn(),
+  resolveAgentRuntimeCommand: () => ({ command: 'pi', args: [] }),
+  runtimeSelectionContract: (kind: string) => ['openai-compatible', 'anthropic', 'google'].includes(kind)
+    ? { provider: 'grimoire', model: 'catalog' }
+    : { provider: 'runtime', model: 'freeform' },
+  shutdownAgentRuntimes: vi.fn(),
+  startOpenCodeRuntime: vi.fn(),
+}))
 vi.mock('../services/agent-runtime-preparation.service', () => ({
   prepareNativeRuntime: vi.fn(async ({ store, sessionId, kind }: { store: 'ai' | 'agent'; sessionId: string; kind: 'pi' | 'opencode' }) => ({
     config: { endpoint: 'http://127.0.0.1:4096', model: 'grimoire/model', nativeToolPolicy: 'ask' },
@@ -19,12 +28,14 @@ vi.mock('../services/agent-runtime-preparation.service', () => ({
     release: async () => {},
   })),
 }))
-import { initDatabase, closeDatabase } from '../database'
+import { initDatabase, closeDatabase, getDatabase } from '../database'
 import { createAiSession, getAiSession } from '../services/ai-session.service'
+import * as aiSessionService from '../services/ai-session.service'
 import { createAgentSession, getAgentSession } from '../services/agent-session.service'
 import { registerAiSessionsIPC, shutdownAiSessions } from './ai-sessions.ipc'
 import { registerAgentIPC, shutdownAgentPermissionBroker } from './agent.ipc'
 import { OpenAICompatibleRuntime } from '../ai/runtime/openai-compatible.runtime'
+import { registerBuiltInAgentRuntimes } from '../ai/runtime/registry'
 
 const call = { callId: 'call-1', name: 'grimoire.write', input: { value: 1 } }
 function runtime(batches: RuntimeEvent[][]): AgentRuntime {
@@ -41,6 +52,7 @@ function invokeAs(sender: unknown, channel: string, value: unknown) { return moc
 function invoke(channel: string, value: unknown) { return invokeAs(makeSender(), channel, value) }
 
 beforeEach(async () => {
+  registerBuiltInAgentRuntimes()
   mock.root = fs.mkdtempSync(path.join(os.tmpdir(), 'grimoire-runtime-turn-'))
   await initDatabase()
   mock.handlers.clear()
@@ -50,7 +62,145 @@ beforeEach(async () => {
 })
 afterEach(async () => { await shutdownAiSessions(); shutdownAgentPermissionBroker(); closeDatabase(); fs.rmSync(mock.root, { recursive: true, force: true }) })
 
-for (const kind of ['ai', 'agent'] as const) {
+function permissionDecision(requestId: string) {
+  return getDatabase().exec('SELECT decision FROM ai_permissions WHERE request_id=?', [requestId])[0]?.values?.[0]?.[0]
+}
+
+describe('model fallback', () => {
+  it('does not use the active provider default model for a local runtime', async () => {
+    const aiId = createAiSession({ runtime: 'pi' }).id
+    await expect(invoke(IPC_CHANNELS.AI_SESSION_SEND, { sessionId: aiId, content: 'hello' })).rejects.toThrow('请先选择模型')
+    const agentId = createAgentSession({ runtime: 'pi' }).id
+    await expect(invoke(IPC_CHANNELS.AGENT_SESSION_SEND, { sessionId: agentId, content: 'hello' })).rejects.toThrow('请先选择模型')
+  })
+
+  it('keeps the provider default for a Grimoire-provider runtime', async () => {
+    mock.runtime = runtime([[{ type: 'completed', text: 'ok' }]])
+    const id = createAiSession({ runtime: 'openai-compatible' }).id
+    await invoke(IPC_CHANNELS.AI_SESSION_SEND, { sessionId: id, content: 'hello' })
+    expect(mock.runtime!.createSession).toHaveBeenCalledWith('model', expect.anything())
+  })
+})
+
+describe('capability provenance and permission persistence', () => {
+  it('reuses the actual running instance capability ledger', async () => {
+    let release: () => void = () => {}
+    const gate = new Promise<void>(resolve => { release = resolve })
+    const instanceCaps = Object.fromEntries([
+      'streaming', 'session.resume', 'session.fork', 'event.replay', 'permission.once', 'permission.deny',
+      'permission.session', 'native.tools', 'compaction', 'recovery', 'process.lease',
+    ].map(key => [key, { state: 'unavailable', reason: 'from instance' }])) as unknown as Record<string, { state: string; reason: string }>
+    instanceCaps['process.lease'] = { state: 'supported', reason: 'from instance lease' }
+    mock.runtime = {
+      ...runtime([]),
+      send: vi.fn(async function* () {
+        yield { type: 'agent-status' as const, status: 'running' }
+        await gate
+        yield { type: 'completed' as const, text: 'done' }
+      }),
+      getCapabilities: () => instanceCaps as never,
+      getCapabilityDriver: () => 'opencode-managed' as const,
+    }
+    const id = createAiSession({ runtime: 'opencode', modelId: 'model' }).id
+    const send = invoke(IPC_CHANNELS.AI_SESSION_SEND, { sessionId: id, content: 'hello' })
+    await vi.waitFor(() => expect(mock.runtime!.send).toHaveBeenCalled())
+    const ledger = await invoke(IPC_CHANNELS.AI_RUNTIME_CAPABILITIES, { kind: 'opencode', sessionId: id, managed: true, persistent: true, hostPermissionBroker: true })
+    expect(ledger.provenance).toMatchObject({ source: 'runtime-instance', driver: 'opencode-managed', instance: true })
+    expect(ledger['process.lease'].state).toBe('supported')
+    release()
+    await send
+  })
+
+  it('persists the effective allow-once decision when a native detail cannot form a session grant', async () => {
+    mock.runtime = {
+      ...runtime([[{ type: 'permission-requested', requestId: 'downgrade', action: 'bash', detail: {} }, { type: 'completed', text: 'ok' }]]),
+      approve: vi.fn(async () => {}), reject: vi.fn(async () => {}),
+    }
+    const id = createAiSession({ runtime: 'opencode', modelId: 'model' }).id
+    const sender = Object.assign(new EventEmitter(), {
+      isDestroyed: () => false,
+      send: vi.fn((channel: string, value: { requestId: string }) => {
+        if (channel !== IPC_CHANNELS.AI_PERMISSION_REQUEST) return
+        queueMicrotask(() => { void invokeAs(sender, IPC_CHANNELS.AI_PERMISSION_DECISION, { requestId: value.requestId, decision: 'allowForSession' }) })
+      }),
+    })
+    await invokeAs(sender, IPC_CHANNELS.AI_SESSION_SEND, { sessionId: id, content: 'hello' })
+    expect(permissionDecision('downgrade')).toBe('allowOnce')
+    expect(mock.runtime!.approve).toHaveBeenCalledTimes(1)
+  })
+
+  it('never lets the raw IPC allow-for-session choice overwrite the downgraded persistence value', async () => {
+    const resolve = vi.spyOn(aiSessionService, 'resolveAiPermission')
+    mock.runtime = {
+      ...runtime([[{ type: 'permission-requested', requestId: 'downgrade-ipc', action: 'bash', detail: {} }, { type: 'completed', text: 'ok' }]]),
+      approve: vi.fn(async () => {}), reject: vi.fn(async () => {}),
+    }
+    const id = createAiSession({ runtime: 'opencode', modelId: 'model' }).id
+    const sender = Object.assign(new EventEmitter(), {
+      isDestroyed: () => false,
+      send: vi.fn((channel: string, value: { requestId: string }) => {
+        if (channel !== IPC_CHANNELS.AI_PERMISSION_REQUEST) return
+        queueMicrotask(() => { void invokeAs(sender, IPC_CHANNELS.AI_PERMISSION_DECISION, { requestId: value.requestId, decision: 'allowForSession' }) })
+      }),
+    })
+    try {
+      await invokeAs(sender, IPC_CHANNELS.AI_SESSION_SEND, { sessionId: id, content: 'hello' })
+      const decisions = resolve.mock.calls.filter(([input]) => input.requestId === 'downgrade-ipc').map(([input]) => input.decision)
+      expect(decisions.length).toBeGreaterThan(0)
+      expect(decisions.every(decision => decision === 'allowOnce')).toBe(true)
+    } finally {
+      resolve.mockRestore()
+    }
+  })
+
+  it('persists a real allow-for-session decision on the host tool path', async () => {
+    mock.execute.mockImplementation(async (_name: string, input: Record<string, unknown>, context: { permission: (kind: string, detail: unknown) => Promise<boolean> }) => {
+      const allowed = await context.permission('write', { tool: call.name, input, toolCallId: call.callId })
+      return { ok: allowed }
+    })
+    mock.runtime = {
+      ...runtime([
+        [{ type: 'tool-started', ownership: 'host', ...call }, { type: 'completed', text: '', toolOwnership: 'host', toolCalls: [call] }],
+        [{ type: 'text-delta', text: 'done' }, { type: 'completed', text: 'done' }],
+      ]),
+      approve: vi.fn(async () => {}), reject: vi.fn(async () => {}),
+    }
+    const id = createAiSession({ runtime: 'opencode', modelId: 'model' }).id
+    const sender = Object.assign(new EventEmitter(), {
+      isDestroyed: () => false,
+      send: vi.fn((channel: string, value: { requestId: string }) => {
+        if (channel !== IPC_CHANNELS.AI_PERMISSION_REQUEST) return
+        queueMicrotask(() => { void invokeAs(sender, IPC_CHANNELS.AI_PERMISSION_DECISION, { requestId: value.requestId, decision: 'allowForSession' }) })
+      }),
+    })
+    await invokeAs(sender, IPC_CHANNELS.AI_SESSION_SEND, { sessionId: id, content: 'hello' })
+    const rows = getDatabase().exec('SELECT decision FROM ai_permissions WHERE session_id=? ORDER BY created_at DESC', [id])[0]?.values || []
+    expect(rows.at(-1)?.[0]).toBe('allowForSession')
+  })
+})
+
+  it('ignores renderer-supplied capability flags and keeps Pi capabilities unavailable', async () => {
+    const forged = await invoke(IPC_CHANNELS.AI_RUNTIME_CAPABILITIES, {
+      kind: 'pi', persistent: true, managed: true, nativeToolPolicy: 'ask',
+      nativeSessionOperations: true, hostPermissionBroker: true,
+    })
+    expect(forged['session.resume'].state).toBe('blocked')
+    expect(forged['process.lease'].state).toBe('unavailable')
+    expect(forged['permission.once'].state).toBe('blocked')
+    expect(forged['native.tools'].state).toBe('unavailable')
+  })
+
+  it('keeps OpenCode capabilities blocked without main-owned runtime context', async () => {
+    const forged = await invoke(IPC_CHANNELS.AI_RUNTIME_CAPABILITIES, {
+      kind: 'opencode', persistent: true, managed: true, nativeToolPolicy: 'ask',
+      nativeSessionOperations: true, hostPermissionBroker: true,
+    })
+    expect(forged['process.lease'].state).toBe('unavailable')
+    expect(forged['permission.session'].state).toBe('unavailable')
+    expect(forged['session.fork'].state).toBe('unavailable')
+  })
+
+  for (const kind of ['ai', 'agent'] as const) {
   describe(`${kind} registered send lifecycle and ownership`, () => {
     function session() { return kind === 'ai' ? createAiSession({ runtime: 'openai-compatible', modelId: 'model' }) : createAgentSession({ runtime: 'openai-compatible', model: 'model' }) }
     function send(id: string) { return invoke(kind === 'ai' ? IPC_CHANNELS.AI_SESSION_SEND : IPC_CHANNELS.AGENT_SESSION_SEND, { sessionId: id, content: 'hello' }) }
@@ -210,4 +360,15 @@ it('AI cancellation targets the one runtime session and finally does not interru
   await invoke(IPC_CHANNELS.AI_SESSION_SEND, { sessionId: id, content: 'hello' })
   expect(mock.runtime.interrupt).toHaveBeenCalledTimes(1)
   expect(mock.runtime.close).toHaveBeenCalledTimes(1)
+})
+
+it('AI compaction fails closed without writing a success event or completion metadata', async () => {
+  const id = createAiSession({ runtime: 'openai-compatible', modelId: 'model', metadata: { keep: 'untouched' } }).id
+  const before = getAiSession(id)!
+  await expect(invoke(IPC_CHANNELS.AI_SESSION_COMPACT, id)).rejects.toThrow('AI_SESSION_COMPACT_NOT_IMPLEMENTED')
+  const after = getAiSession(id)!
+  expect(after.events).toEqual(before.events)
+  expect(after.session.metadata.keep).toBe('untouched')
+  expect(after.session.metadata.compactedAt).toBeUndefined()
+  expect(after.session.metadata.compactedMessageCount).toBeUndefined()
 })

@@ -19,7 +19,7 @@ function loadMarked(): Promise<Marked> {
     return markedPromise;
 }
 
-const PLACEHOLDER = "*选中节点,点上方工具条的 ✎ 编辑 Markdown*";
+const PLACEHOLDER = "*选中节点,点上方工具条的铅笔按钮编辑 Markdown*";
 
 // 解析结果按源码缓存(模块级):同一段 Markdown 只解析一次,重复渲染/重挂载都命中缓存,
 // 返回的是同一个字符串引用,配合下方「值不变不写 DOM」彻底避免图片被重新请求。
@@ -95,7 +95,7 @@ export default definePlugin({
         {
             type: "markdown:doc",
             title: "Markdown",
-            icon: "📝",
+            icon: "note",
             description: "编辑与渲染 Markdown",
             defaultSize: { width: 360, height: 300 },
             defaultMetadata: { content: "" },
@@ -114,7 +114,7 @@ export default definePlugin({
                         id: "md-toggle-edit",
                         title: editing ? "预览渲染结果" : "编辑 Markdown 源码",
                         label: editing ? "预览" : "编辑",
-                        icon: editing ? "👁" : "✎",
+                        icon: editing ? "eye" : "pencil",
                         active: editing,
                         onClick: () => ctx.updateMetadata({ editing: !editing }),
                     },

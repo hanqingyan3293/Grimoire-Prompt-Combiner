@@ -1,0 +1,2916 @@
+[
+  {
+    "id": "demo-001",
+    "sourceId": "moss-character",
+    "title": "pikachu",
+    "prompt": "pikachu from pokemon. A non-human character. Appearance: pokemon (creature).",
+    "description": "MOSS · pokemon · 角色",
+    "coverUrl": "grimoire-asset://default-prompt-assets/moss-character/001.webp",
+    "referenceImageUrls": [
+      "grimoire-asset://default-prompt-assets/moss-character/001.webp"
+    ],
+    "tags": [
+      "角色",
+      "作品:pokemon",
+      "gender:Non-human"
+    ],
+    "author": "ukr8b3g-cmyk",
+    "sourceUrl": "https://github.com/ukr8b3g-cmyk/MOSS-Image-Character-Catalog",
+    "createdAt": "2026-10-17T08:07:52.848866+00:00",
+    "imageMode": "text-to-image",
+    "imageModel": "MOSS-Image-Base"
+  },
+  {
+    "id": "demo-002",
+    "sourceId": "moss-character",
+    "title": "gardevoir",
+    "prompt": "gardevoir from pokemon. A character. Appearance: white skin, two-tone skin, green skin, red eyes, hair over one eye, one eye covered, short hair, green hair, bob cut, flat chest.",
+    "description": "MOSS · pokemon · 角色",
+    "coverUrl": "grimoire-asset://default-prompt-assets/moss-character/002.webp",
+    "referenceImageUrls": [
+      "grimoire-asset://default-prompt-assets/moss-character/002.webp"
+    ],
+    "tags": [
+      "角色",
+      "作品:pokemon",
+      "hairColor:green hair",
+      "hairLength:short hair",
+      "eyeColor:red eyes",
+      "gender:Female"
+    ],
+    "author": "ukr8b3g-cmyk",
+    "sourceUrl": "https://github.com/ukr8b3g-cmyk/MOSS-Image-Character-Catalog",
+    "createdAt": "2026-10-17T08:07:59.065199+00:00",
+    "imageMode": "text-to-image",
+    "imageModel": "MOSS-Image-Base"
+  },
+  {
+    "id": "demo-003",
+    "sourceId": "moss-character",
+    "title": "dawn (pokemon)",
+    "prompt": "dawn (pokemon) from pokemon. A female human character. Appearance: blue eyes, eyelashes, long hair, blue hair, black hair, hairclip, white headwear, beanie.",
+    "description": "MOSS · pokemon · 角色",
+    "coverUrl": "grimoire-asset://default-prompt-assets/moss-character/003.webp",
+    "referenceImageUrls": [
+      "grimoire-asset://default-prompt-assets/moss-character/003.webp"
+    ],
+    "tags": [
+      "角色",
+      "作品:pokemon",
+      "hairColor:blue hair",
+      "hairColor:black hair",
+      "hairLength:long hair",
+      "eyeColor:blue eyes",
+      "gender:Female"
+    ],
+    "author": "ukr8b3g-cmyk",
+    "sourceUrl": "https://github.com/ukr8b3g-cmyk/MOSS-Image-Character-Catalog",
+    "createdAt": "2026-10-17T08:13:09.603883+00:00",
+    "imageMode": "text-to-image",
+    "imageModel": "MOSS-Image-Base"
+  },
+  {
+    "id": "demo-004",
+    "sourceId": "moss-character",
+    "title": "lillie (pokemon)",
+    "prompt": "lillie (pokemon) from pokemon. A female human character. Appearance: green eyes, eyelashes, blonde hair, long hair, twin braids, blunt bangs, ponytail.",
+    "description": "MOSS · pokemon · 角色",
+    "coverUrl": "grimoire-asset://default-prompt-assets/moss-character/004.webp",
+    "referenceImageUrls": [
+      "grimoire-asset://default-prompt-assets/moss-character/004.webp"
+    ],
+    "tags": [
+      "角色",
+      "作品:pokemon",
+      "hairColor:blonde hair",
+      "hairLength:long hair",
+      "eyeColor:green eyes",
+      "gender:Female"
+    ],
+    "author": "ukr8b3g-cmyk",
+    "sourceUrl": "https://github.com/ukr8b3g-cmyk/MOSS-Image-Character-Catalog",
+    "createdAt": "2026-10-17T08:13:15.846462+00:00",
+    "imageMode": "text-to-image",
+    "imageModel": "MOSS-Image-Base"
+  },
+  {
+    "id": "demo-005",
+    "sourceId": "moss-character",
+    "title": "may (pokemon)",
+    "prompt": "may (pokemon) from pokemon. A female human character. Appearance: blue eyes, eyelashes, brown hair.",
+    "description": "MOSS · pokemon · 角色",
+    "coverUrl": "grimoire-asset://default-prompt-assets/moss-character/005.webp",
+    "referenceImageUrls": [
+      "grimoire-asset://default-prompt-assets/moss-character/005.webp"
+    ],
+    "tags": [
+      "角色",
+      "作品:pokemon",
+      "hairColor:brown hair",
+      "eyeColor:blue eyes",
+      "gender:Female"
+    ],
+    "author": "ukr8b3g-cmyk",
+    "sourceUrl": "https://github.com/ukr8b3g-cmyk/MOSS-Image-Character-Catalog",
+    "createdAt": "2026-10-17T08:13:22.037488+00:00",
+    "imageMode": "text-to-image",
+    "imageModel": "MOSS-Image-Base"
+  },
+  {
+    "id": "demo-006",
+    "sourceId": "moss-character",
+    "title": "rosa (pokemon)",
+    "prompt": "rosa (pokemon) from pokemon. A female human character. Appearance: blue eyes, brown hair, long hair, very long hair, doughnut hair bun, double bun, twintails, visor cap, black pantyhose, yellow shorts, raglan sleeves.",
+    "description": "MOSS · pokemon · 角色",
+    "coverUrl": "grimoire-asset://default-prompt-assets/moss-character/006.webp",
+    "referenceImageUrls": [
+      "grimoire-asset://default-prompt-assets/moss-character/006.webp"
+    ],
+    "tags": [
+      "角色",
+      "作品:pokemon",
+      "hairColor:brown hair",
+      "hairLength:long hair",
+      "hairLength:very long hair",
+      "eyeColor:blue eyes",
+      "gender:Female"
+    ],
+    "author": "ukr8b3g-cmyk",
+    "sourceUrl": "https://github.com/ukr8b3g-cmyk/MOSS-Image-Character-Catalog",
+    "createdAt": "2026-10-17T08:13:28.277034+00:00",
+    "imageMode": "text-to-image",
+    "imageModel": "MOSS-Image-Base"
+  },
+  {
+    "id": "demo-007",
+    "sourceId": "moss-character",
+    "title": "marnie (pokemon)",
+    "prompt": "marnie (pokemon) from pokemon. A female human character. Appearance: green eyes, aqua eyes, black hair, medium hair, long hair, asymmetrical bangs, twintails, hair ribbon, collarbone, black jacket, pink dress, black choker, red ribbon, long sleeves, black nails, nail polish, earrings.",
+    "description": "MOSS · pokemon · 角色",
+    "coverUrl": "grimoire-asset://default-prompt-assets/moss-character/007.webp",
+    "referenceImageUrls": [
+      "grimoire-asset://default-prompt-assets/moss-character/007.webp"
+    ],
+    "tags": [
+      "角色",
+      "作品:pokemon",
+      "hairColor:black hair",
+      "hairLength:medium hair",
+      "hairLength:long hair",
+      "eyeColor:green eyes",
+      "eyeColor:aqua eyes",
+      "gender:Female",
+      "outfit:black jacket",
+      "outfit:pink dress"
+    ],
+    "author": "ukr8b3g-cmyk",
+    "sourceUrl": "https://github.com/ukr8b3g-cmyk/MOSS-Image-Character-Catalog",
+    "createdAt": "2026-10-17T08:13:34.530812+00:00",
+    "imageMode": "text-to-image",
+    "imageModel": "MOSS-Image-Base"
+  },
+  {
+    "id": "demo-008",
+    "sourceId": "moss-character",
+    "title": "hilda (pokemon)",
+    "prompt": "hilda (pokemon) from pokemon. A female human character. Appearance: blue eyes, brown hair, long hair, ponytail, sidelocks, high ponytail, baseball cap, denim shorts, short shorts, white shirt, wristband.",
+    "description": "MOSS · pokemon · 角色",
+    "coverUrl": "grimoire-asset://default-prompt-assets/moss-character/008.webp",
+    "referenceImageUrls": [
+      "grimoire-asset://default-prompt-assets/moss-character/008.webp"
+    ],
+    "tags": [
+      "角色",
+      "作品:pokemon",
+      "hairColor:brown hair",
+      "hairLength:long hair",
+      "eyeColor:blue eyes",
+      "gender:Female",
+      "outfit:white shirt"
+    ],
+    "author": "ukr8b3g-cmyk",
+    "sourceUrl": "https://github.com/ukr8b3g-cmyk/MOSS-Image-Character-Catalog",
+    "createdAt": "2026-10-17T08:13:40.741129+00:00",
+    "imageMode": "text-to-image",
+    "imageModel": "MOSS-Image-Base"
+  },
+  {
+    "id": "demo-009",
+    "sourceId": "moss-character",
+    "title": "gloria (pokemon)",
+    "prompt": "gloria (pokemon) from pokemon. A female human character. Appearance: brown eyes, brown hair, short hair, bob cut, green headwear, pink dress, long sleeves, tam o' shanter, grey cardigan.",
+    "description": "MOSS · pokemon · 角色",
+    "coverUrl": "grimoire-asset://default-prompt-assets/moss-character/009.webp",
+    "referenceImageUrls": [
+      "grimoire-asset://default-prompt-assets/moss-character/009.webp"
+    ],
+    "tags": [
+      "角色",
+      "作品:pokemon",
+      "hairColor:brown hair",
+      "hairLength:short hair",
+      "eyeColor:brown eyes",
+      "gender:Female",
+      "outfit:pink dress"
+    ],
+    "author": "ukr8b3g-cmyk",
+    "sourceUrl": "https://github.com/ukr8b3g-cmyk/MOSS-Image-Character-Catalog",
+    "createdAt": "2026-10-17T08:13:47.029614+00:00",
+    "imageMode": "text-to-image",
+    "imageModel": "MOSS-Image-Base"
+  },
+  {
+    "id": "demo-010",
+    "sourceId": "moss-character",
+    "title": "cynthia (pokemon)",
+    "prompt": "cynthia (pokemon) from pokemon. A female human character. Appearance: grey eyes, hair over one eye, blonde hair, very long hair, long hair, hair ornament.",
+    "description": "MOSS · pokemon · 角色",
+    "coverUrl": "grimoire-asset://default-prompt-assets/moss-character/010.webp",
+    "referenceImageUrls": [
+      "grimoire-asset://default-prompt-assets/moss-character/010.webp"
+    ],
+    "tags": [
+      "角色",
+      "作品:pokemon",
+      "hairColor:blonde hair",
+      "hairLength:very long hair",
+      "hairLength:long hair",
+      "eyeColor:grey eyes",
+      "gender:Female"
+    ],
+    "author": "ukr8b3g-cmyk",
+    "sourceUrl": "https://github.com/ukr8b3g-cmyk/MOSS-Image-Character-Catalog",
+    "createdAt": "2026-10-17T08:13:53.284091+00:00",
+    "imageMode": "text-to-image",
+    "imageModel": "MOSS-Image-Base"
+  },
+  {
+    "id": "demo-011",
+    "sourceId": "moss-character",
+    "title": "ash ketchum",
+    "prompt": "ash ketchum from pokemon. A male human character. Appearance: brown eyes, black hair, short hair, baseball cap, short sleeves.",
+    "description": "MOSS · pokemon · 角色",
+    "coverUrl": "grimoire-asset://default-prompt-assets/moss-character/011.webp",
+    "referenceImageUrls": [
+      "grimoire-asset://default-prompt-assets/moss-character/011.webp"
+    ],
+    "tags": [
+      "角色",
+      "作品:pokemon",
+      "hairColor:black hair",
+      "hairLength:short hair",
+      "eyeColor:brown eyes",
+      "gender:Male"
+    ],
+    "author": "ukr8b3g-cmyk",
+    "sourceUrl": "https://github.com/ukr8b3g-cmyk/MOSS-Image-Character-Catalog",
+    "createdAt": "2026-10-17T08:13:59.563915+00:00",
+    "imageMode": "text-to-image",
+    "imageModel": "MOSS-Image-Base"
+  },
+  {
+    "id": "demo-012",
+    "sourceId": "moss-character",
+    "title": "red (pokemon)",
+    "prompt": "red (pokemon) from pokemon. A male human character. Appearance: brown eyes, short hair, black hair, brown hair, baseball cap.",
+    "description": "MOSS · pokemon · 角色",
+    "coverUrl": "grimoire-asset://default-prompt-assets/moss-character/012.webp",
+    "referenceImageUrls": [
+      "grimoire-asset://default-prompt-assets/moss-character/012.webp"
+    ],
+    "tags": [
+      "角色",
+      "作品:pokemon",
+      "hairColor:black hair",
+      "hairColor:brown hair",
+      "hairLength:short hair",
+      "eyeColor:brown eyes",
+      "gender:Male"
+    ],
+    "author": "ukr8b3g-cmyk",
+    "sourceUrl": "https://github.com/ukr8b3g-cmyk/MOSS-Image-Character-Catalog",
+    "createdAt": "2026-10-17T08:14:05.795866+00:00",
+    "imageMode": "text-to-image",
+    "imageModel": "MOSS-Image-Base"
+  },
+  {
+    "id": "demo-013",
+    "sourceId": "moss-character",
+    "title": "serena (pokemon)",
+    "prompt": "serena (pokemon) from pokemon. A female human character. Appearance: blue eyes, eyelashes, blonde hair, brown hair, long hair, short hair, black thighhighs, hat.",
+    "description": "MOSS · pokemon · 角色",
+    "coverUrl": "grimoire-asset://default-prompt-assets/moss-character/013.webp",
+    "referenceImageUrls": [
+      "grimoire-asset://default-prompt-assets/moss-character/013.webp"
+    ],
+    "tags": [
+      "角色",
+      "作品:pokemon",
+      "hairColor:blonde hair",
+      "hairColor:brown hair",
+      "hairLength:long hair",
+      "hairLength:short hair",
+      "eyeColor:blue eyes",
+      "gender:Female",
+      "outfit:hat"
+    ],
+    "author": "ukr8b3g-cmyk",
+    "sourceUrl": "https://github.com/ukr8b3g-cmyk/MOSS-Image-Character-Catalog",
+    "createdAt": "2026-10-17T08:14:12.057685+00:00",
+    "imageMode": "text-to-image",
+    "imageModel": "MOSS-Image-Base"
+  },
+  {
+    "id": "demo-014",
+    "sourceId": "moss-character",
+    "title": "eevee",
+    "prompt": "eevee from pokemon. A non-human character. Appearance: animal ears, brown eyes, short hair, pokemon (creature).",
+    "description": "MOSS · pokemon · 角色",
+    "coverUrl": "grimoire-asset://default-prompt-assets/moss-character/014.webp",
+    "referenceImageUrls": [
+      "grimoire-asset://default-prompt-assets/moss-character/014.webp"
+    ],
+    "tags": [
+      "角色",
+      "作品:pokemon",
+      "hairLength:short hair",
+      "eyeColor:brown eyes",
+      "gender:Non-human"
+    ],
+    "author": "ukr8b3g-cmyk",
+    "sourceUrl": "https://github.com/ukr8b3g-cmyk/MOSS-Image-Character-Catalog",
+    "createdAt": "2026-10-17T08:14:18.307806+00:00",
+    "imageMode": "text-to-image",
+    "imageModel": "MOSS-Image-Base"
+  },
+  {
+    "id": "demo-015",
+    "sourceId": "moss-character",
+    "title": "selene (pokemon)",
+    "prompt": "selene (pokemon) from pokemon. A female human character. Appearance: blue eyes, eyelashes, black hair, short hair, collarbone, red headwear, tied shirt, green shorts, short sleeves, beanie.",
+    "description": "MOSS · pokemon · 角色",
+    "coverUrl": "grimoire-asset://default-prompt-assets/moss-character/015.webp",
+    "referenceImageUrls": [
+      "grimoire-asset://default-prompt-assets/moss-character/015.webp"
+    ],
+    "tags": [
+      "角色",
+      "作品:pokemon",
+      "hairColor:black hair",
+      "hairLength:short hair",
+      "eyeColor:blue eyes",
+      "gender:Female",
+      "outfit:tied shirt"
+    ],
+    "author": "ukr8b3g-cmyk",
+    "sourceUrl": "https://github.com/ukr8b3g-cmyk/MOSS-Image-Character-Catalog",
+    "createdAt": "2026-10-17T08:14:24.545640+00:00",
+    "imageMode": "text-to-image",
+    "imageModel": "MOSS-Image-Base"
+  },
+  {
+    "id": "demo-016",
+    "sourceId": "moss-character",
+    "title": "iono (pokemon)",
+    "prompt": "iono (pokemon) from pokemon. A female human character. Appearance: sharp teeth, pink eyes, purple eyes, pink hair, two-tone hair, bow-shaped hair, long hair, blue hair, very long hair, split-color hair, low-tied long hair, character hair ornament, twintails, yellow jacket, sleeves past fingers.",
+    "description": "MOSS · pokemon · 角色",
+    "coverUrl": "grimoire-asset://default-prompt-assets/moss-character/016.webp",
+    "referenceImageUrls": [
+      "grimoire-asset://default-prompt-assets/moss-character/016.webp"
+    ],
+    "tags": [
+      "角色",
+      "作品:pokemon",
+      "hairColor:pink hair",
+      "hairColor:blue hair",
+      "hairLength:long hair",
+      "hairLength:very long hair",
+      "eyeColor:pink eyes",
+      "eyeColor:purple eyes",
+      "gender:Female",
+      "outfit:yellow jacket"
+    ],
+    "author": "ukr8b3g-cmyk",
+    "sourceUrl": "https://github.com/ukr8b3g-cmyk/MOSS-Image-Character-Catalog",
+    "createdAt": "2026-10-17T08:14:30.845021+00:00",
+    "imageMode": "text-to-image",
+    "imageModel": "MOSS-Image-Base"
+  },
+  {
+    "id": "demo-017",
+    "sourceId": "moss-character",
+    "title": "misty (pokemon)",
+    "prompt": "misty (pokemon) from pokemon. A female human character. Appearance: green eyes, blue eyes, orange hair, short hair, side ponytail.",
+    "description": "MOSS · pokemon · 角色",
+    "coverUrl": "grimoire-asset://default-prompt-assets/moss-character/017.webp",
+    "referenceImageUrls": [
+      "grimoire-asset://default-prompt-assets/moss-character/017.webp"
+    ],
+    "tags": [
+      "角色",
+      "作品:pokemon",
+      "hairColor:orange hair",
+      "hairLength:short hair",
+      "eyeColor:green eyes",
+      "eyeColor:blue eyes",
+      "gender:Female"
+    ],
+    "author": "ukr8b3g-cmyk",
+    "sourceUrl": "https://github.com/ukr8b3g-cmyk/MOSS-Image-Character-Catalog",
+    "createdAt": "2026-10-17T08:14:37.093922+00:00",
+    "imageMode": "text-to-image",
+    "imageModel": "MOSS-Image-Base"
+  },
+  {
+    "id": "demo-018",
+    "sourceId": "moss-character",
+    "title": "hex maniac (pokemon xy)",
+    "prompt": "hex maniac (pokemon xy) from pokemon. A female human character. Appearance: long hair, hairband, ahoge, dress, hair between eyes, purple eyes, purple hairband, long sleeves, messy hair, alternate breast size (larger).",
+    "description": "MOSS · pokemon · 角色",
+    "coverUrl": "grimoire-asset://default-prompt-assets/moss-character/018.webp",
+    "referenceImageUrls": [
+      "grimoire-asset://default-prompt-assets/moss-character/018.webp"
+    ],
+    "tags": [
+      "角色",
+      "作品:pokemon",
+      "hairLength:long hair",
+      "eyeColor:purple eyes",
+      "gender:Female",
+      "outfit:dress"
+    ],
+    "author": "ukr8b3g-cmyk",
+    "sourceUrl": "https://github.com/ukr8b3g-cmyk/MOSS-Image-Character-Catalog",
+    "createdAt": "2026-10-17T08:14:43.328184+00:00",
+    "imageMode": "text-to-image",
+    "imageModel": "MOSS-Image-Base"
+  },
+  {
+    "id": "demo-019",
+    "sourceId": "moss-character",
+    "title": "leon (pokemon)",
+    "prompt": "leon (pokemon) from pokemon. A male human character. Appearance: dark-skinned male, yellow eyes, long hair, facial hair, purple hair, champion uniform, shirt, baseball cap, short sleeves.",
+    "description": "MOSS · pokemon · 角色",
+    "coverUrl": "grimoire-asset://default-prompt-assets/moss-character/019.webp",
+    "referenceImageUrls": [
+      "grimoire-asset://default-prompt-assets/moss-character/019.webp"
+    ],
+    "tags": [
+      "角色",
+      "作品:pokemon",
+      "hairColor:purple hair",
+      "hairLength:long hair",
+      "eyeColor:yellow eyes",
+      "gender:Male",
+      "outfit:champion uniform",
+      "outfit:shirt"
+    ],
+    "author": "ukr8b3g-cmyk",
+    "sourceUrl": "https://github.com/ukr8b3g-cmyk/MOSS-Image-Character-Catalog",
+    "createdAt": "2026-10-17T08:14:49.619097+00:00",
+    "imageMode": "text-to-image",
+    "imageModel": "MOSS-Image-Base"
+  },
+  {
+    "id": "demo-020",
+    "sourceId": "moss-character",
+    "title": "raihan (pokemon)",
+    "prompt": "raihan (pokemon) from pokemon. A male human character. Appearance: dark-skinned male, teeth, green eyes, blue eyes, black hair, short hair, orange headwear, black hoodie, earrings, undercut.",
+    "description": "MOSS · pokemon · 角色",
+    "coverUrl": "grimoire-asset://default-prompt-assets/moss-character/020.webp",
+    "referenceImageUrls": [
+      "grimoire-asset://default-prompt-assets/moss-character/020.webp"
+    ],
+    "tags": [
+      "角色",
+      "作品:pokemon",
+      "hairColor:black hair",
+      "hairLength:short hair",
+      "eyeColor:green eyes",
+      "eyeColor:blue eyes",
+      "gender:Male"
+    ],
+    "author": "ukr8b3g-cmyk",
+    "sourceUrl": "https://github.com/ukr8b3g-cmyk/MOSS-Image-Character-Catalog",
+    "createdAt": "2026-10-17T08:14:55.859605+00:00",
+    "imageMode": "text-to-image",
+    "imageModel": "MOSS-Image-Base"
+  },
+  {
+    "id": "demo-021",
+    "sourceId": "moss-character",
+    "title": "nessa (pokemon)",
+    "prompt": "nessa (pokemon) from pokemon. A female human character. Appearance: dark-skinned female, blue eyes, blue eyeshadow, black hair, two-tone hair, blue hair, long hair, single hair bun, hoop earrings, necklace, crop top, armlet, belly chain, single glove.",
+    "description": "MOSS · pokemon · 角色",
+    "coverUrl": "grimoire-asset://default-prompt-assets/moss-character/021.webp",
+    "referenceImageUrls": [
+      "grimoire-asset://default-prompt-assets/moss-character/021.webp"
+    ],
+    "tags": [
+      "角色",
+      "作品:pokemon",
+      "hairColor:black hair",
+      "hairColor:blue hair",
+      "hairLength:long hair",
+      "eyeColor:blue eyes",
+      "gender:Female"
+    ],
+    "author": "ukr8b3g-cmyk",
+    "sourceUrl": "https://github.com/ukr8b3g-cmyk/MOSS-Image-Character-Catalog",
+    "createdAt": "2026-10-17T08:15:03.131134+00:00",
+    "imageMode": "text-to-image",
+    "imageModel": "MOSS-Image-Base"
+  },
+  {
+    "id": "demo-022",
+    "sourceId": "moss-character",
+    "title": "rotom",
+    "prompt": "rotom from pokemon. A character. Appearance: blue eyes, short hair, black hair.",
+    "description": "MOSS · pokemon · 角色",
+    "coverUrl": "grimoire-asset://default-prompt-assets/moss-character/022.webp",
+    "referenceImageUrls": [
+      "grimoire-asset://default-prompt-assets/moss-character/022.webp"
+    ],
+    "tags": [
+      "角色",
+      "作品:pokemon",
+      "hairColor:black hair",
+      "hairLength:short hair",
+      "eyeColor:blue eyes",
+      "gender:Female"
+    ],
+    "author": "ukr8b3g-cmyk",
+    "sourceUrl": "https://github.com/ukr8b3g-cmyk/MOSS-Image-Character-Catalog",
+    "createdAt": "2026-10-17T08:15:09.396342+00:00",
+    "imageMode": "text-to-image",
+    "imageModel": "MOSS-Image-Base"
+  },
+  {
+    "id": "demo-023",
+    "sourceId": "moss-character",
+    "title": "kieran (pokemon)",
+    "prompt": "kieran (pokemon) from pokemon. A male human character. Appearance: yellow eyes, hair between eyes, black hair, short hair, purple hair, colored inner hair, multicolored hair, yellow hairband, crossed bangs, ahoge, mole on neck, white jacket, red gloves, collared shirt, long sleeves.",
+    "description": "MOSS · pokemon · 角色",
+    "coverUrl": "grimoire-asset://default-prompt-assets/moss-character/023.webp",
+    "referenceImageUrls": [
+      "grimoire-asset://default-prompt-assets/moss-character/023.webp"
+    ],
+    "tags": [
+      "角色",
+      "作品:pokemon",
+      "hairColor:black hair",
+      "hairColor:purple hair",
+      "hairColor:multicolored hair",
+      "hairLength:short hair",
+      "eyeColor:yellow eyes",
+      "gender:Male",
+      "outfit:white jacket",
+      "outfit:red gloves",
+      "outfit:collared shirt"
+    ],
+    "author": "ukr8b3g-cmyk",
+    "sourceUrl": "https://github.com/ukr8b3g-cmyk/MOSS-Image-Character-Catalog",
+    "createdAt": "2026-10-17T08:15:15.659911+00:00",
+    "imageMode": "text-to-image",
+    "imageModel": "MOSS-Image-Base"
+  },
+  {
+    "id": "demo-024",
+    "sourceId": "moss-character",
+    "title": "bea (pokemon)",
+    "prompt": "bea (pokemon) from pokemon. A female human character. Appearance: dark-skinned female, hair between eyes, grey eyes, blue eyes, short hair, grey hair, black hairband, bow hairband, barefoot, covered navel, sweat, bodysuit under clothes, black bodysuit, short sleeves, single glove.",
+    "description": "MOSS · pokemon · 角色",
+    "coverUrl": "grimoire-asset://default-prompt-assets/moss-character/024.webp",
+    "referenceImageUrls": [
+      "grimoire-asset://default-prompt-assets/moss-character/024.webp"
+    ],
+    "tags": [
+      "角色",
+      "作品:pokemon",
+      "hairColor:grey hair",
+      "hairLength:short hair",
+      "eyeColor:grey eyes",
+      "eyeColor:blue eyes",
+      "gender:Female",
+      "outfit:bodysuit under clothes",
+      "outfit:black bodysuit"
+    ],
+    "author": "ukr8b3g-cmyk",
+    "sourceUrl": "https://github.com/ukr8b3g-cmyk/MOSS-Image-Character-Catalog",
+    "createdAt": "2026-10-17T08:15:21.893994+00:00",
+    "imageMode": "text-to-image",
+    "imageModel": "MOSS-Image-Base"
+  },
+  {
+    "id": "demo-025",
+    "sourceId": "moss-character",
+    "title": "akari (pokemon)",
+    "prompt": "akari (pokemon) from pokemon. A female human character. Appearance: grey eyes, eyelashes, long hair, black hair, sidelocks, ponytail, galaxy expedition team survey corps uniform, red scarf, white headwear.",
+    "description": "MOSS · pokemon · 角色",
+    "coverUrl": "grimoire-asset://default-prompt-assets/moss-character/025.webp",
+    "referenceImageUrls": [
+      "grimoire-asset://default-prompt-assets/moss-character/025.webp"
+    ],
+    "tags": [
+      "角色",
+      "作品:pokemon",
+      "hairColor:black hair",
+      "hairLength:long hair",
+      "eyeColor:grey eyes",
+      "gender:Female",
+      "outfit:galaxy expedition team survey corps uniform"
+    ],
+    "author": "ukr8b3g-cmyk",
+    "sourceUrl": "https://github.com/ukr8b3g-cmyk/MOSS-Image-Character-Catalog",
+    "createdAt": "2026-10-17T08:15:28.162533+00:00",
+    "imageMode": "text-to-image",
+    "imageModel": "MOSS-Image-Base"
+  },
+  {
+    "id": "demo-026",
+    "sourceId": "moss-character",
+    "title": "ethan (pokemon)",
+    "prompt": "ethan (pokemon) from pokemon. A male human character. Appearance: yellow eyes, black hair, short hair, baseball cap, backwards hat, long sleeves.",
+    "description": "MOSS · pokemon · 角色",
+    "coverUrl": "grimoire-asset://default-prompt-assets/moss-character/026.webp",
+    "referenceImageUrls": [
+      "grimoire-asset://default-prompt-assets/moss-character/026.webp"
+    ],
+    "tags": [
+      "角色",
+      "作品:pokemon",
+      "hairColor:black hair",
+      "hairLength:short hair",
+      "eyeColor:yellow eyes",
+      "gender:Male",
+      "outfit:backwards hat"
+    ],
+    "author": "ukr8b3g-cmyk",
+    "sourceUrl": "https://github.com/ukr8b3g-cmyk/MOSS-Image-Character-Catalog",
+    "createdAt": "2026-10-17T08:15:34.451127+00:00",
+    "imageMode": "text-to-image",
+    "imageModel": "MOSS-Image-Base"
+  },
+  {
+    "id": "demo-027",
+    "sourceId": "moss-character",
+    "title": "rowlet",
+    "prompt": "rowlet from pokemon. A non-human character. Appearance: white pupils, pokemon (creature), owl.",
+    "description": "MOSS · pokemon · 角色",
+    "coverUrl": "grimoire-asset://default-prompt-assets/moss-character/027.webp",
+    "referenceImageUrls": [
+      "grimoire-asset://default-prompt-assets/moss-character/027.webp"
+    ],
+    "tags": [
+      "角色",
+      "作品:pokemon",
+      "gender:Non-human"
+    ],
+    "author": "ukr8b3g-cmyk",
+    "sourceUrl": "https://github.com/ukr8b3g-cmyk/MOSS-Image-Character-Catalog",
+    "createdAt": "2026-10-17T08:15:40.710649+00:00",
+    "imageMode": "text-to-image",
+    "imageModel": "MOSS-Image-Base"
+  },
+  {
+    "id": "demo-028",
+    "sourceId": "moss-character",
+    "title": "lana (pokemon)",
+    "prompt": "lana (pokemon) from pokemon. A female human character. Appearance: blue eyes, white pupils, short hair, blue hair, yellow hairband, sleeveless shirt, swimsuit under clothes, blue sailor collar, no sclera.",
+    "description": "MOSS · pokemon · 角色",
+    "coverUrl": "grimoire-asset://default-prompt-assets/moss-character/028.webp",
+    "referenceImageUrls": [
+      "grimoire-asset://default-prompt-assets/moss-character/028.webp"
+    ],
+    "tags": [
+      "角色",
+      "作品:pokemon",
+      "hairColor:blue hair",
+      "hairLength:short hair",
+      "eyeColor:blue eyes",
+      "gender:Female",
+      "outfit:sleeveless shirt",
+      "outfit:swimsuit under clothes"
+    ],
+    "author": "ukr8b3g-cmyk",
+    "sourceUrl": "https://github.com/ukr8b3g-cmyk/MOSS-Image-Character-Catalog",
+    "createdAt": "2026-10-17T08:15:46.952183+00:00",
+    "imageMode": "text-to-image",
+    "imageModel": "MOSS-Image-Base"
+  },
+  {
+    "id": "demo-029",
+    "sourceId": "moss-character",
+    "title": "hex maniac (pokemon)",
+    "prompt": "hex maniac (pokemon) from pokemon. A female human character. Appearance: purple eyes, hair between eyes, messy hair, purple hair, long hair, black hair, very long hair, purple hairband, ahoge, sweat.",
+    "description": "MOSS · pokemon · 角色",
+    "coverUrl": "grimoire-asset://default-prompt-assets/moss-character/029.webp",
+    "referenceImageUrls": [
+      "grimoire-asset://default-prompt-assets/moss-character/029.webp"
+    ],
+    "tags": [
+      "角色",
+      "作品:pokemon",
+      "hairColor:purple hair",
+      "hairColor:black hair",
+      "hairLength:long hair",
+      "hairLength:very long hair",
+      "eyeColor:purple eyes",
+      "gender:Female"
+    ],
+    "author": "ukr8b3g-cmyk",
+    "sourceUrl": "https://github.com/ukr8b3g-cmyk/MOSS-Image-Character-Catalog",
+    "createdAt": "2026-10-17T08:15:53.195314+00:00",
+    "imageMode": "text-to-image",
+    "imageModel": "MOSS-Image-Base"
+  },
+  {
+    "id": "demo-030",
+    "sourceId": "moss-character",
+    "title": "blue oak",
+    "prompt": "blue oak from pokemon. A male human character. Appearance: brown eyes, spiked hair, short hair, brown hair, orange hair, long sleeves, necklace.",
+    "description": "MOSS · pokemon · 角色",
+    "coverUrl": "grimoire-asset://default-prompt-assets/moss-character/030.webp",
+    "referenceImageUrls": [
+      "grimoire-asset://default-prompt-assets/moss-character/030.webp"
+    ],
+    "tags": [
+      "角色",
+      "作品:pokemon",
+      "hairColor:brown hair",
+      "hairColor:orange hair",
+      "hairLength:short hair",
+      "eyeColor:brown eyes",
+      "gender:Male"
+    ],
+    "author": "ukr8b3g-cmyk",
+    "sourceUrl": "https://github.com/ukr8b3g-cmyk/MOSS-Image-Character-Catalog",
+    "createdAt": "2026-10-17T08:15:59.456093+00:00",
+    "imageMode": "text-to-image",
+    "imageModel": "MOSS-Image-Base"
+  },
+  {
+    "id": "demo-031",
+    "sourceId": "moss-character",
+    "title": "hilbert (pokemon)",
+    "prompt": "hilbert (pokemon) from pokemon. A male human character. Appearance: brown eyes, brown hair, short hair, baseball cap, blue jacket, long sleeves.",
+    "description": "MOSS · pokemon · 角色",
+    "coverUrl": "grimoire-asset://default-prompt-assets/moss-character/031.webp",
+    "referenceImageUrls": [
+      "grimoire-asset://default-prompt-assets/moss-character/031.webp"
+    ],
+    "tags": [
+      "角色",
+      "作品:pokemon",
+      "hairColor:brown hair",
+      "hairLength:short hair",
+      "eyeColor:brown eyes",
+      "gender:Male",
+      "outfit:blue jacket"
+    ],
+    "author": "ukr8b3g-cmyk",
+    "sourceUrl": "https://github.com/ukr8b3g-cmyk/MOSS-Image-Character-Catalog",
+    "createdAt": "2026-10-17T08:16:05.657338+00:00",
+    "imageMode": "text-to-image",
+    "imageModel": "MOSS-Image-Base"
+  },
+  {
+    "id": "demo-032",
+    "sourceId": "moss-character",
+    "title": "piplup",
+    "prompt": "piplup from pokemon. A non-human character. Appearance: tongue, blue eyes, toes, pokemon (creature).",
+    "description": "MOSS · pokemon · 角色",
+    "coverUrl": "grimoire-asset://default-prompt-assets/moss-character/032.webp",
+    "referenceImageUrls": [
+      "grimoire-asset://default-prompt-assets/moss-character/032.webp"
+    ],
+    "tags": [
+      "角色",
+      "作品:pokemon",
+      "eyeColor:blue eyes",
+      "gender:Non-human"
+    ],
+    "author": "ukr8b3g-cmyk",
+    "sourceUrl": "https://github.com/ukr8b3g-cmyk/MOSS-Image-Character-Catalog",
+    "createdAt": "2026-10-17T08:16:11.891975+00:00",
+    "imageMode": "text-to-image",
+    "imageModel": "MOSS-Image-Base"
+  },
+  {
+    "id": "demo-033",
+    "sourceId": "moss-character",
+    "title": "artoria pendragon (fate)",
+    "prompt": "artoria pendragon (fate) from fate (series). A female human character. Appearance: green eyes, hair between eyes, blonde hair, long hair, ahoge, sidelocks.",
+    "description": "MOSS · fate (series) · 角色",
+    "coverUrl": "grimoire-asset://default-prompt-assets/moss-character/033.webp",
+    "referenceImageUrls": [
+      "grimoire-asset://default-prompt-assets/moss-character/033.webp"
+    ],
+    "tags": [
+      "角色",
+      "作品:fate (series)",
+      "hairColor:blonde hair",
+      "hairLength:long hair",
+      "eyeColor:green eyes",
+      "gender:Female"
+    ],
+    "author": "ukr8b3g-cmyk",
+    "sourceUrl": "https://github.com/ukr8b3g-cmyk/MOSS-Image-Character-Catalog",
+    "createdAt": "2026-10-17T13:58:33.296769+00:00",
+    "imageMode": "text-to-image",
+    "imageModel": "MOSS-Image-Base"
+  },
+  {
+    "id": "demo-034",
+    "sourceId": "moss-character",
+    "title": "saber (fate)",
+    "prompt": "saber (fate) from fate (series). A female human character. Appearance: green eyes, blonde hair, ahoge, hair ribbon.",
+    "description": "MOSS · fate (series) · 角色",
+    "coverUrl": "grimoire-asset://default-prompt-assets/moss-character/034.webp",
+    "referenceImageUrls": [
+      "grimoire-asset://default-prompt-assets/moss-character/034.webp"
+    ],
+    "tags": [
+      "角色",
+      "作品:fate (series)",
+      "hairColor:blonde hair",
+      "eyeColor:green eyes",
+      "gender:Female"
+    ],
+    "author": "ukr8b3g-cmyk",
+    "sourceUrl": "https://github.com/ukr8b3g-cmyk/MOSS-Image-Character-Catalog",
+    "createdAt": "2026-10-17T13:58:41.227035+00:00",
+    "imageMode": "text-to-image",
+    "imageModel": "MOSS-Image-Base"
+  },
+  {
+    "id": "demo-035",
+    "sourceId": "moss-character",
+    "title": "mash kyrielight",
+    "prompt": "mash kyrielight from fate (series). A female human character. Appearance: purple eyes, hair over one eye, short hair, pink hair, purple hair, bare shoulders.",
+    "description": "MOSS · fate (series) · 角色",
+    "coverUrl": "grimoire-asset://default-prompt-assets/moss-character/035.webp",
+    "referenceImageUrls": [
+      "grimoire-asset://default-prompt-assets/moss-character/035.webp"
+    ],
+    "tags": [
+      "角色",
+      "作品:fate (series)",
+      "hairColor:pink hair",
+      "hairColor:purple hair",
+      "hairLength:short hair",
+      "eyeColor:purple eyes",
+      "gender:Female"
+    ],
+    "author": "ukr8b3g-cmyk",
+    "sourceUrl": "https://github.com/ukr8b3g-cmyk/MOSS-Image-Character-Catalog",
+    "createdAt": "2026-10-17T13:58:47.888541+00:00",
+    "imageMode": "text-to-image",
+    "imageModel": "MOSS-Image-Base"
+  },
+  {
+    "id": "demo-036",
+    "sourceId": "moss-character",
+    "title": "fujimaru ritsuka (male)",
+    "prompt": "fujimaru ritsuka (male) from fate (series). A male human character. Appearance: blue eyes, black hair, short hair, chaldea uniform.",
+    "description": "MOSS · fate (series) · 角色",
+    "coverUrl": "grimoire-asset://default-prompt-assets/moss-character/036.webp",
+    "referenceImageUrls": [
+      "grimoire-asset://default-prompt-assets/moss-character/036.webp"
+    ],
+    "tags": [
+      "角色",
+      "作品:fate (series)",
+      "hairColor:black hair",
+      "hairLength:short hair",
+      "eyeColor:blue eyes",
+      "gender:Male",
+      "outfit:chaldea uniform"
+    ],
+    "author": "ukr8b3g-cmyk",
+    "sourceUrl": "https://github.com/ukr8b3g-cmyk/MOSS-Image-Character-Catalog",
+    "createdAt": "2026-10-17T13:58:54.526796+00:00",
+    "imageMode": "text-to-image",
+    "imageModel": "MOSS-Image-Base"
+  },
+  {
+    "id": "demo-037",
+    "sourceId": "moss-character",
+    "title": "tamamo (fate)",
+    "prompt": "tamamo (fate) from fate (series). A female human character. Appearance: fox girl, fox ears, fox tail, animal ear fluff, yellow eyes, hair between eyes, pink hair, long hair.",
+    "description": "MOSS · fate (series) · 角色",
+    "coverUrl": "grimoire-asset://default-prompt-assets/moss-character/037.webp",
+    "referenceImageUrls": [
+      "grimoire-asset://default-prompt-assets/moss-character/037.webp"
+    ],
+    "tags": [
+      "角色",
+      "作品:fate (series)",
+      "hairColor:pink hair",
+      "hairLength:long hair",
+      "eyeColor:yellow eyes",
+      "gender:Female"
+    ],
+    "author": "ukr8b3g-cmyk",
+    "sourceUrl": "https://github.com/ukr8b3g-cmyk/MOSS-Image-Character-Catalog",
+    "createdAt": "2026-10-17T13:59:01.124251+00:00",
+    "imageMode": "text-to-image",
+    "imageModel": "MOSS-Image-Base"
+  },
+  {
+    "id": "demo-038",
+    "sourceId": "moss-character",
+    "title": "fujimaru ritsuka (female)",
+    "prompt": "fujimaru ritsuka (female) from fate (series). A female human character. Appearance: hair between eyes, orange eyes, yellow eyes, orange hair, short hair, ahoge, side ponytail, hair scrunchie, one side up.",
+    "description": "MOSS · fate (series) · 角色",
+    "coverUrl": "grimoire-asset://default-prompt-assets/moss-character/038.webp",
+    "referenceImageUrls": [
+      "grimoire-asset://default-prompt-assets/moss-character/038.webp"
+    ],
+    "tags": [
+      "角色",
+      "作品:fate (series)",
+      "hairColor:orange hair",
+      "hairLength:short hair",
+      "eyeColor:orange eyes",
+      "eyeColor:yellow eyes",
+      "gender:Female"
+    ],
+    "author": "ukr8b3g-cmyk",
+    "sourceUrl": "https://github.com/ukr8b3g-cmyk/MOSS-Image-Character-Catalog",
+    "createdAt": "2026-10-17T13:59:07.694060+00:00",
+    "imageMode": "text-to-image",
+    "imageModel": "MOSS-Image-Base"
+  },
+  {
+    "id": "demo-039",
+    "sourceId": "moss-character",
+    "title": "jeanne d'arc alter (fate)",
+    "prompt": "jeanne d'arc alter (fate) from fate (series). A female human character. Appearance: yellow eyes, hair between eyes, white hair, short hair, grey hair, very long hair, ahoge.",
+    "description": "MOSS · fate (series) · 角色",
+    "coverUrl": "grimoire-asset://default-prompt-assets/moss-character/039.webp",
+    "referenceImageUrls": [
+      "grimoire-asset://default-prompt-assets/moss-character/039.webp"
+    ],
+    "tags": [
+      "角色",
+      "作品:fate (series)",
+      "hairColor:white hair",
+      "hairColor:grey hair",
+      "hairLength:short hair",
+      "hairLength:very long hair",
+      "eyeColor:yellow eyes",
+      "gender:Female"
+    ],
+    "author": "ukr8b3g-cmyk",
+    "sourceUrl": "https://github.com/ukr8b3g-cmyk/MOSS-Image-Character-Catalog",
+    "createdAt": "2026-10-17T13:59:15.299701+00:00",
+    "imageMode": "text-to-image",
+    "imageModel": "MOSS-Image-Base"
+  },
+  {
+    "id": "demo-040",
+    "sourceId": "moss-character",
+    "title": "abigail williams (fate)",
+    "prompt": "abigail williams (fate) from fate (series). A female human character. Appearance: blue eyes, blonde hair, very long hair, long hair, parted bangs, hair bow, orange bow, black bow, polka dot bow, long sleeves, forehead.",
+    "description": "MOSS · fate (series) · 角色",
+    "coverUrl": "grimoire-asset://default-prompt-assets/moss-character/040.webp",
+    "referenceImageUrls": [
+      "grimoire-asset://default-prompt-assets/moss-character/040.webp"
+    ],
+    "tags": [
+      "角色",
+      "作品:fate (series)",
+      "hairColor:blonde hair",
+      "hairLength:very long hair",
+      "hairLength:long hair",
+      "eyeColor:blue eyes",
+      "gender:Female"
+    ],
+    "author": "ukr8b3g-cmyk",
+    "sourceUrl": "https://github.com/ukr8b3g-cmyk/MOSS-Image-Character-Catalog",
+    "createdAt": "2026-10-17T13:59:21.915199+00:00",
+    "imageMode": "text-to-image",
+    "imageModel": "MOSS-Image-Base"
+  },
+  {
+    "id": "demo-041",
+    "sourceId": "moss-character",
+    "title": "nero claudius (fate)",
+    "prompt": "nero claudius (fate) from fate (series). A female human character. Appearance: green eyes, hair between eyes, blonde hair, long hair, single hair bun, ahoge, hair intakes.",
+    "description": "MOSS · fate (series) · 角色",
+    "coverUrl": "grimoire-asset://default-prompt-assets/moss-character/041.webp",
+    "referenceImageUrls": [
+      "grimoire-asset://default-prompt-assets/moss-character/041.webp"
+    ],
+    "tags": [
+      "角色",
+      "作品:fate (series)",
+      "hairColor:blonde hair",
+      "hairLength:long hair",
+      "eyeColor:green eyes",
+      "gender:Female"
+    ],
+    "author": "ukr8b3g-cmyk",
+    "sourceUrl": "https://github.com/ukr8b3g-cmyk/MOSS-Image-Character-Catalog",
+    "createdAt": "2026-10-17T13:59:28.541598+00:00",
+    "imageMode": "text-to-image",
+    "imageModel": "MOSS-Image-Base"
+  },
+  {
+    "id": "demo-042",
+    "sourceId": "moss-character",
+    "title": "tohsaka rin",
+    "prompt": "tohsaka rin from fate (series). A female human character. Appearance: blue eyes, long hair, black hair, brown hair, two side up, hair ribbon, black thighhighs.",
+    "description": "MOSS · fate (series) · 角色",
+    "coverUrl": "grimoire-asset://default-prompt-assets/moss-character/042.webp",
+    "referenceImageUrls": [
+      "grimoire-asset://default-prompt-assets/moss-character/042.webp"
+    ],
+    "tags": [
+      "角色",
+      "作品:fate (series)",
+      "hairColor:black hair",
+      "hairColor:brown hair",
+      "hairLength:long hair",
+      "eyeColor:blue eyes",
+      "gender:Female"
+    ],
+    "author": "ukr8b3g-cmyk",
+    "sourceUrl": "https://github.com/ukr8b3g-cmyk/MOSS-Image-Character-Catalog",
+    "createdAt": "2026-10-17T13:59:35.176024+00:00",
+    "imageMode": "text-to-image",
+    "imageModel": "MOSS-Image-Base"
+  },
+  {
+    "id": "demo-043",
+    "sourceId": "moss-character",
+    "title": "illyasviel von einzbern",
+    "prompt": "illyasviel von einzbern from fate (series). A female human character. Appearance: red eyes, hair between eyes, long hair, white hair, blonde hair.",
+    "description": "MOSS · fate (series) · 角色",
+    "coverUrl": "grimoire-asset://default-prompt-assets/moss-character/043.webp",
+    "referenceImageUrls": [
+      "grimoire-asset://default-prompt-assets/moss-character/043.webp"
+    ],
+    "tags": [
+      "角色",
+      "作品:fate (series)",
+      "hairColor:white hair",
+      "hairColor:blonde hair",
+      "hairLength:long hair",
+      "eyeColor:red eyes",
+      "gender:Female"
+    ],
+    "author": "ukr8b3g-cmyk",
+    "sourceUrl": "https://github.com/ukr8b3g-cmyk/MOSS-Image-Character-Catalog",
+    "createdAt": "2026-10-17T13:59:41.802943+00:00",
+    "imageMode": "text-to-image",
+    "imageModel": "MOSS-Image-Base"
+  },
+  {
+    "id": "demo-044",
+    "sourceId": "moss-character",
+    "title": "scathach (fate)",
+    "prompt": "scathach (fate) from fate (series). A female human character. Appearance: red eyes, hair between eyes, purple hair, long hair, very long hair, hair intakes, thighs.",
+    "description": "MOSS · fate (series) · 角色",
+    "coverUrl": "grimoire-asset://default-prompt-assets/moss-character/044.webp",
+    "referenceImageUrls": [
+      "grimoire-asset://default-prompt-assets/moss-character/044.webp"
+    ],
+    "tags": [
+      "角色",
+      "作品:fate (series)",
+      "hairColor:purple hair",
+      "hairLength:long hair",
+      "hairLength:very long hair",
+      "eyeColor:red eyes",
+      "gender:Female"
+    ],
+    "author": "ukr8b3g-cmyk",
+    "sourceUrl": "https://github.com/ukr8b3g-cmyk/MOSS-Image-Character-Catalog",
+    "createdAt": "2026-10-17T13:59:49.417145+00:00",
+    "imageMode": "text-to-image",
+    "imageModel": "MOSS-Image-Base"
+  },
+  {
+    "id": "demo-045",
+    "sourceId": "moss-character",
+    "title": "jeanne d'arc (fate)",
+    "prompt": "jeanne d'arc (fate) from fate (series). A female human character. Appearance: blue eyes, blonde hair, very long hair, long hair, single braid, headpiece.",
+    "description": "MOSS · fate (series) · 角色",
+    "coverUrl": "grimoire-asset://default-prompt-assets/moss-character/045.webp",
+    "referenceImageUrls": [
+      "grimoire-asset://default-prompt-assets/moss-character/045.webp"
+    ],
+    "tags": [
+      "角色",
+      "作品:fate (series)",
+      "hairColor:blonde hair",
+      "hairLength:very long hair",
+      "hairLength:long hair",
+      "eyeColor:blue eyes",
+      "gender:Female"
+    ],
+    "author": "ukr8b3g-cmyk",
+    "sourceUrl": "https://github.com/ukr8b3g-cmyk/MOSS-Image-Character-Catalog",
+    "createdAt": "2026-10-17T13:59:56.028546+00:00",
+    "imageMode": "text-to-image",
+    "imageModel": "MOSS-Image-Base"
+  },
+  {
+    "id": "demo-046",
+    "sourceId": "moss-character",
+    "title": "jeanne d'arc alter (avenger) (fate)",
+    "prompt": "jeanne d'arc alter (avenger) (fate) from fate (series). A female human character. Appearance: yellow eyes, short hair, white hair, grey hair, very long hair, blonde hair, ahoge, headpiece.",
+    "description": "MOSS · fate (series) · 角色",
+    "coverUrl": "grimoire-asset://default-prompt-assets/moss-character/046.webp",
+    "referenceImageUrls": [
+      "grimoire-asset://default-prompt-assets/moss-character/046.webp"
+    ],
+    "tags": [
+      "角色",
+      "作品:fate (series)",
+      "hairColor:white hair",
+      "hairColor:grey hair",
+      "hairColor:blonde hair",
+      "hairLength:short hair",
+      "hairLength:very long hair",
+      "eyeColor:yellow eyes",
+      "gender:Female"
+    ],
+    "author": "ukr8b3g-cmyk",
+    "sourceUrl": "https://github.com/ukr8b3g-cmyk/MOSS-Image-Character-Catalog",
+    "createdAt": "2026-10-17T14:00:02.640098+00:00",
+    "imageMode": "text-to-image",
+    "imageModel": "MOSS-Image-Base"
+  },
+  {
+    "id": "demo-047",
+    "sourceId": "moss-character",
+    "title": "okita souji (fate)",
+    "prompt": "okita souji (fate) from fate (series). A female human character. Appearance: yellow eyes, hair between eyes, short hair, blonde hair, ahoge, hair bow, short kimono, white kimono, black scarf, black thighhighs, black bow, haori.",
+    "description": "MOSS · fate (series) · 角色",
+    "coverUrl": "grimoire-asset://default-prompt-assets/moss-character/047.webp",
+    "referenceImageUrls": [
+      "grimoire-asset://default-prompt-assets/moss-character/047.webp"
+    ],
+    "tags": [
+      "角色",
+      "作品:fate (series)",
+      "hairColor:blonde hair",
+      "hairLength:short hair",
+      "eyeColor:yellow eyes",
+      "gender:Female",
+      "outfit:short kimono",
+      "outfit:white kimono"
+    ],
+    "author": "ukr8b3g-cmyk",
+    "sourceUrl": "https://github.com/ukr8b3g-cmyk/MOSS-Image-Character-Catalog",
+    "createdAt": "2026-10-17T14:00:09.320275+00:00",
+    "imageMode": "text-to-image",
+    "imageModel": "MOSS-Image-Base"
+  },
+  {
+    "id": "demo-048",
+    "sourceId": "moss-character",
+    "title": "tamamo no mae (fate/extra)",
+    "prompt": "tamamo no mae (fate/extra) from fate (series). A female human character. Appearance: fox girl, fox ears, fox tail, animal ear fluff, yellow eyes, hair between eyes, pink hair, long hair, twintails, hair bow, hair ribbon, bare shoulders, detached sleeves.",
+    "description": "MOSS · fate (series) · 角色",
+    "coverUrl": "grimoire-asset://default-prompt-assets/moss-character/048.webp",
+    "referenceImageUrls": [
+      "grimoire-asset://default-prompt-assets/moss-character/048.webp"
+    ],
+    "tags": [
+      "角色",
+      "作品:fate (series)",
+      "hairColor:pink hair",
+      "hairLength:long hair",
+      "eyeColor:yellow eyes",
+      "gender:Female"
+    ],
+    "author": "ukr8b3g-cmyk",
+    "sourceUrl": "https://github.com/ukr8b3g-cmyk/MOSS-Image-Character-Catalog",
+    "createdAt": "2026-10-17T14:00:16.073051+00:00",
+    "imageMode": "text-to-image",
+    "imageModel": "MOSS-Image-Base"
+  },
+  {
+    "id": "demo-049",
+    "sourceId": "moss-character",
+    "title": "shuten douji (fate)",
+    "prompt": "shuten douji (fate) from fate (series). A female human character. Appearance: oni, skin-covered horns, fangs, purple eyes, short eyebrows, short hair, purple hair, bob cut, thighs, collarbone, purple kimono, revealing clothes, bare shoulders, off shoulder, eyeliner, headpiece.",
+    "description": "MOSS · fate (series) · 角色",
+    "coverUrl": "grimoire-asset://default-prompt-assets/moss-character/049.webp",
+    "referenceImageUrls": [
+      "grimoire-asset://default-prompt-assets/moss-character/049.webp"
+    ],
+    "tags": [
+      "角色",
+      "作品:fate (series)",
+      "hairColor:purple hair",
+      "hairLength:short hair",
+      "eyeColor:purple eyes",
+      "gender:Female",
+      "outfit:purple kimono"
+    ],
+    "author": "ukr8b3g-cmyk",
+    "sourceUrl": "https://github.com/ukr8b3g-cmyk/MOSS-Image-Character-Catalog",
+    "createdAt": "2026-10-17T14:00:24.047016+00:00",
+    "imageMode": "text-to-image",
+    "imageModel": "MOSS-Image-Base"
+  },
+  {
+    "id": "demo-050",
+    "sourceId": "moss-character",
+    "title": "astolfo (fate)",
+    "prompt": "astolfo (fate) from fate (series). A male human character. Appearance: fang, purple eyes, hair between eyes, pink hair, long hair, streaked hair, white hair, hair intakes, single braid, hair bow, hair ribbon, black bow.",
+    "description": "MOSS · fate (series) · 角色",
+    "coverUrl": "grimoire-asset://default-prompt-assets/moss-character/050.webp",
+    "referenceImageUrls": [
+      "grimoire-asset://default-prompt-assets/moss-character/050.webp"
+    ],
+    "tags": [
+      "角色",
+      "作品:fate (series)",
+      "hairColor:pink hair",
+      "hairColor:white hair",
+      "hairLength:long hair",
+      "eyeColor:purple eyes",
+      "gender:Male"
+    ],
+    "author": "ukr8b3g-cmyk",
+    "sourceUrl": "https://github.com/ukr8b3g-cmyk/MOSS-Image-Character-Catalog",
+    "createdAt": "2026-10-17T14:00:30.726638+00:00",
+    "imageMode": "text-to-image",
+    "imageModel": "MOSS-Image-Base"
+  },
+  {
+    "id": "demo-051",
+    "sourceId": "moss-character",
+    "title": "gilgamesh (fate)",
+    "prompt": "gilgamesh (fate) from fate (series). A male human character. Appearance: red eyes, blonde hair, short hair, earrings.",
+    "description": "MOSS · fate (series) · 角色",
+    "coverUrl": "grimoire-asset://default-prompt-assets/moss-character/051.webp",
+    "referenceImageUrls": [
+      "grimoire-asset://default-prompt-assets/moss-character/051.webp"
+    ],
+    "tags": [
+      "角色",
+      "作品:fate (series)",
+      "hairColor:blonde hair",
+      "hairLength:short hair",
+      "eyeColor:red eyes",
+      "gender:Male"
+    ],
+    "author": "ukr8b3g-cmyk",
+    "sourceUrl": "https://github.com/ukr8b3g-cmyk/MOSS-Image-Character-Catalog",
+    "createdAt": "2026-10-17T14:00:37.426941+00:00",
+    "imageMode": "text-to-image",
+    "imageModel": "MOSS-Image-Base"
+  },
+  {
+    "id": "demo-052",
+    "sourceId": "moss-character",
+    "title": "matou sakura",
+    "prompt": "matou sakura from fate (series). A female human character. Appearance: purple eyes, purple hair, long hair, hair ribbon, red ribbon.",
+    "description": "MOSS · fate (series) · 角色",
+    "coverUrl": "grimoire-asset://default-prompt-assets/moss-character/052.webp",
+    "referenceImageUrls": [
+      "grimoire-asset://default-prompt-assets/moss-character/052.webp"
+    ],
+    "tags": [
+      "角色",
+      "作品:fate (series)",
+      "hairColor:purple hair",
+      "hairLength:long hair",
+      "eyeColor:purple eyes",
+      "gender:Female"
+    ],
+    "author": "ukr8b3g-cmyk",
+    "sourceUrl": "https://github.com/ukr8b3g-cmyk/MOSS-Image-Character-Catalog",
+    "createdAt": "2026-10-17T14:00:44.088741+00:00",
+    "imageMode": "text-to-image",
+    "imageModel": "MOSS-Image-Base"
+  },
+  {
+    "id": "demo-053",
+    "sourceId": "moss-character",
+    "title": "cu chulainn (fate)",
+    "prompt": "cu chulainn (fate) from fate (series). A male human character. Appearance: red eyes, long hair, blue hair, spiked hair, ponytail, earrings, spear.",
+    "description": "MOSS · fate (series) · 角色",
+    "coverUrl": "grimoire-asset://default-prompt-assets/moss-character/053.webp",
+    "referenceImageUrls": [
+      "grimoire-asset://default-prompt-assets/moss-character/053.webp"
+    ],
+    "tags": [
+      "角色",
+      "作品:fate (series)",
+      "hairColor:blue hair",
+      "hairLength:long hair",
+      "eyeColor:red eyes",
+      "gender:Male"
+    ],
+    "author": "ukr8b3g-cmyk",
+    "sourceUrl": "https://github.com/ukr8b3g-cmyk/MOSS-Image-Character-Catalog",
+    "createdAt": "2026-10-17T14:00:50.826709+00:00",
+    "imageMode": "text-to-image",
+    "imageModel": "MOSS-Image-Base"
+  },
+  {
+    "id": "demo-054",
+    "sourceId": "moss-character",
+    "title": "mordred (fate)",
+    "prompt": "mordred (fate) from fate (series). A female human character. Appearance: green eyes, blonde hair, long hair, ponytail, sidelocks, parted bangs, french braid, hair scrunchie, bare shoulders, red scrunchie.",
+    "description": "MOSS · fate (series) · 角色",
+    "coverUrl": "grimoire-asset://default-prompt-assets/moss-character/054.webp",
+    "referenceImageUrls": [
+      "grimoire-asset://default-prompt-assets/moss-character/054.webp"
+    ],
+    "tags": [
+      "角色",
+      "作品:fate (series)",
+      "hairColor:blonde hair",
+      "hairLength:long hair",
+      "eyeColor:green eyes",
+      "gender:Female"
+    ],
+    "author": "ukr8b3g-cmyk",
+    "sourceUrl": "https://github.com/ukr8b3g-cmyk/MOSS-Image-Character-Catalog",
+    "createdAt": "2026-10-17T14:00:58.510300+00:00",
+    "imageMode": "text-to-image",
+    "imageModel": "MOSS-Image-Base"
+  },
+  {
+    "id": "demo-055",
+    "sourceId": "moss-character",
+    "title": "minamoto no raikou (fate)",
+    "prompt": "minamoto no raikou (fate) from fate (series). A female human character. Appearance: purple eyes, purple hair, very long hair, low-tied long hair, parted bangs, thighs.",
+    "description": "MOSS · fate (series) · 角色",
+    "coverUrl": "grimoire-asset://default-prompt-assets/moss-character/055.webp",
+    "referenceImageUrls": [
+      "grimoire-asset://default-prompt-assets/moss-character/055.webp"
+    ],
+    "tags": [
+      "角色",
+      "作品:fate (series)",
+      "hairColor:purple hair",
+      "hairLength:very long hair",
+      "eyeColor:purple eyes",
+      "gender:Female"
+    ],
+    "author": "ukr8b3g-cmyk",
+    "sourceUrl": "https://github.com/ukr8b3g-cmyk/MOSS-Image-Character-Catalog",
+    "createdAt": "2026-10-17T14:01:05.087413+00:00",
+    "imageMode": "text-to-image",
+    "imageModel": "MOSS-Image-Base"
+  },
+  {
+    "id": "demo-056",
+    "sourceId": "moss-character",
+    "title": "emiya shirou",
+    "prompt": "emiya shirou from fate (series). A male human character. Appearance: yellow eyes, orange hair, red hair, short hair.",
+    "description": "MOSS · fate (series) · 角色",
+    "coverUrl": "grimoire-asset://default-prompt-assets/moss-character/056.webp",
+    "referenceImageUrls": [
+      "grimoire-asset://default-prompt-assets/moss-character/056.webp"
+    ],
+    "tags": [
+      "角色",
+      "作品:fate (series)",
+      "hairColor:orange hair",
+      "hairColor:red hair",
+      "hairLength:short hair",
+      "eyeColor:yellow eyes",
+      "gender:Male"
+    ],
+    "author": "ukr8b3g-cmyk",
+    "sourceUrl": "https://github.com/ukr8b3g-cmyk/MOSS-Image-Character-Catalog",
+    "createdAt": "2026-10-17T14:01:11.711218+00:00",
+    "imageMode": "text-to-image",
+    "imageModel": "MOSS-Image-Base"
+  },
+  {
+    "id": "demo-057",
+    "sourceId": "moss-character",
+    "title": "doctor (arknights)",
+    "prompt": "doctor (arknights) from arknights. A female human character. Appearance: hair between eyes, long hair, long sleeves.",
+    "description": "MOSS · arknights · 角色",
+    "coverUrl": "grimoire-asset://default-prompt-assets/moss-character/057.webp",
+    "referenceImageUrls": [
+      "grimoire-asset://default-prompt-assets/moss-character/057.webp"
+    ],
+    "tags": [
+      "角色",
+      "作品:arknights",
+      "hairLength:long hair",
+      "gender:Female"
+    ],
+    "author": "ukr8b3g-cmyk",
+    "sourceUrl": "https://github.com/ukr8b3g-cmyk/MOSS-Image-Character-Catalog",
+    "createdAt": "2026-10-18T01:13:25.798279+00:00",
+    "imageMode": "text-to-image",
+    "imageModel": "MOSS-Image-Base"
+  },
+  {
+    "id": "demo-058",
+    "sourceId": "moss-character",
+    "title": "amiya (arknights)",
+    "prompt": "amiya (arknights) from arknights. A female human character. Appearance: rabbit ears, blue eyes, hair between eyes, brown hair, long hair, very long hair, ponytail, sidelocks, black jacket, open jacket, white shirt, long sleeves, rabbit girl.",
+    "description": "MOSS · arknights · 角色",
+    "coverUrl": "grimoire-asset://default-prompt-assets/moss-character/058.webp",
+    "referenceImageUrls": [
+      "grimoire-asset://default-prompt-assets/moss-character/058.webp"
+    ],
+    "tags": [
+      "角色",
+      "作品:arknights",
+      "hairColor:brown hair",
+      "hairLength:long hair",
+      "hairLength:very long hair",
+      "eyeColor:blue eyes",
+      "gender:Female",
+      "outfit:black jacket",
+      "outfit:open jacket",
+      "outfit:white shirt"
+    ],
+    "author": "ukr8b3g-cmyk",
+    "sourceUrl": "https://github.com/ukr8b3g-cmyk/MOSS-Image-Character-Catalog",
+    "createdAt": "2026-10-18T01:13:32.860287+00:00",
+    "imageMode": "text-to-image",
+    "imageModel": "MOSS-Image-Base"
+  },
+  {
+    "id": "demo-059",
+    "sourceId": "moss-character",
+    "title": "texas (arknights)",
+    "prompt": "texas (arknights) from arknights. A female human character. Appearance: wolf girl, wolf ears, animal ear fluff, wolf tail, hair between eyes, brown eyes, yellow eyes, orange eyes, black hair, long hair, red hair, long sleeves.",
+    "description": "MOSS · arknights · 角色",
+    "coverUrl": "grimoire-asset://default-prompt-assets/moss-character/059.webp",
+    "referenceImageUrls": [
+      "grimoire-asset://default-prompt-assets/moss-character/059.webp"
+    ],
+    "tags": [
+      "角色",
+      "作品:arknights",
+      "hairColor:black hair",
+      "hairColor:red hair",
+      "hairLength:long hair",
+      "eyeColor:brown eyes",
+      "eyeColor:yellow eyes",
+      "eyeColor:orange eyes",
+      "gender:Female"
+    ],
+    "author": "ukr8b3g-cmyk",
+    "sourceUrl": "https://github.com/ukr8b3g-cmyk/MOSS-Image-Character-Catalog",
+    "createdAt": "2026-10-18T01:13:38.483444+00:00",
+    "imageMode": "text-to-image",
+    "imageModel": "MOSS-Image-Base"
+  },
+  {
+    "id": "demo-060",
+    "sourceId": "moss-character",
+    "title": "skadi (arknights)",
+    "prompt": "skadi (arknights) from arknights. A female human character. Appearance: red eyes, hair between eyes, very long hair, grey hair, white hair, thighs, bare shoulders.",
+    "description": "MOSS · arknights · 角色",
+    "coverUrl": "grimoire-asset://default-prompt-assets/moss-character/060.webp",
+    "referenceImageUrls": [
+      "grimoire-asset://default-prompt-assets/moss-character/060.webp"
+    ],
+    "tags": [
+      "角色",
+      "作品:arknights",
+      "hairColor:grey hair",
+      "hairColor:white hair",
+      "hairLength:very long hair",
+      "eyeColor:red eyes",
+      "gender:Female"
+    ],
+    "author": "ukr8b3g-cmyk",
+    "sourceUrl": "https://github.com/ukr8b3g-cmyk/MOSS-Image-Character-Catalog",
+    "createdAt": "2026-10-18T01:13:44.108623+00:00",
+    "imageMode": "text-to-image",
+    "imageModel": "MOSS-Image-Base"
+  },
+  {
+    "id": "demo-061",
+    "sourceId": "moss-character",
+    "title": "lappland (arknights)",
+    "prompt": "lappland (arknights) from arknights. A female human character. Appearance: wolf girl, wolf ears, wolf tail, hair between eyes, grey eyes, scar across eye, grey hair, long hair, white hair, very long hair, hairclip, scar on face, black jacket, long sleeves, oripathy lesion (arknights).",
+    "description": "MOSS · arknights · 角色",
+    "coverUrl": "grimoire-asset://default-prompt-assets/moss-character/061.webp",
+    "referenceImageUrls": [
+      "grimoire-asset://default-prompt-assets/moss-character/061.webp"
+    ],
+    "tags": [
+      "角色",
+      "作品:arknights",
+      "hairColor:grey hair",
+      "hairColor:white hair",
+      "hairLength:long hair",
+      "hairLength:very long hair",
+      "eyeColor:grey eyes",
+      "gender:Female",
+      "outfit:black jacket"
+    ],
+    "author": "ukr8b3g-cmyk",
+    "sourceUrl": "https://github.com/ukr8b3g-cmyk/MOSS-Image-Character-Catalog",
+    "createdAt": "2026-10-18T01:13:49.703553+00:00",
+    "imageMode": "text-to-image",
+    "imageModel": "MOSS-Image-Base"
+  },
+  {
+    "id": "demo-062",
+    "sourceId": "moss-character",
+    "title": "suzuran (arknights)",
+    "prompt": "suzuran (arknights) from arknights. A female human character. Appearance: fox girl, fox ears, fox tail, animal ear fluff, multiple tails, green eyes, blonde hair, white hair, two-tone hair, long hair, blue hairband, twin braids, hair rings, bare shoulders, kyuubi, kitsune.",
+    "description": "MOSS · arknights · 角色",
+    "coverUrl": "grimoire-asset://default-prompt-assets/moss-character/062.webp",
+    "referenceImageUrls": [
+      "grimoire-asset://default-prompt-assets/moss-character/062.webp"
+    ],
+    "tags": [
+      "角色",
+      "作品:arknights",
+      "hairColor:blonde hair",
+      "hairColor:white hair",
+      "hairLength:long hair",
+      "eyeColor:green eyes",
+      "gender:Female"
+    ],
+    "author": "ukr8b3g-cmyk",
+    "sourceUrl": "https://github.com/ukr8b3g-cmyk/MOSS-Image-Character-Catalog",
+    "createdAt": "2026-10-18T01:13:55.407425+00:00",
+    "imageMode": "text-to-image",
+    "imageModel": "MOSS-Image-Base"
+  },
+  {
+    "id": "demo-063",
+    "sourceId": "moss-character",
+    "title": "kal'tsit (arknights)",
+    "prompt": "kal'tsit (arknights) from arknights. A female human character. Appearance: cat girl, cat ears, animal ear fluff, green eyes, short hair, green hair, grey hair, white hair, green dress, bare shoulders, oripathy lesion (arknights).",
+    "description": "MOSS · arknights · 角色",
+    "coverUrl": "grimoire-asset://default-prompt-assets/moss-character/063.webp",
+    "referenceImageUrls": [
+      "grimoire-asset://default-prompt-assets/moss-character/063.webp"
+    ],
+    "tags": [
+      "角色",
+      "作品:arknights",
+      "hairColor:green hair",
+      "hairColor:grey hair",
+      "hairColor:white hair",
+      "hairLength:short hair",
+      "eyeColor:green eyes",
+      "gender:Female",
+      "outfit:green dress"
+    ],
+    "author": "ukr8b3g-cmyk",
+    "sourceUrl": "https://github.com/ukr8b3g-cmyk/MOSS-Image-Character-Catalog",
+    "createdAt": "2026-10-18T01:14:01.092585+00:00",
+    "imageMode": "text-to-image",
+    "imageModel": "MOSS-Image-Base"
+  },
+  {
+    "id": "demo-064",
+    "sourceId": "moss-character",
+    "title": "ch'en (arknights)",
+    "prompt": "ch'en (arknights) from arknights. A female human character. Appearance: dragon horns, dragon tail, red eyes, hair between eyes, blue hair, long hair, sidelocks, thighs, bare shoulders, dragon girl.",
+    "description": "MOSS · arknights · 角色",
+    "coverUrl": "grimoire-asset://default-prompt-assets/moss-character/064.webp",
+    "referenceImageUrls": [
+      "grimoire-asset://default-prompt-assets/moss-character/064.webp"
+    ],
+    "tags": [
+      "角色",
+      "作品:arknights",
+      "hairColor:blue hair",
+      "hairLength:long hair",
+      "eyeColor:red eyes",
+      "gender:Female"
+    ],
+    "author": "ukr8b3g-cmyk",
+    "sourceUrl": "https://github.com/ukr8b3g-cmyk/MOSS-Image-Character-Catalog",
+    "createdAt": "2026-10-18T01:14:08.346111+00:00",
+    "imageMode": "text-to-image",
+    "imageModel": "MOSS-Image-Base"
+  },
+  {
+    "id": "demo-065",
+    "sourceId": "moss-character",
+    "title": "exusiai (arknights)",
+    "prompt": "exusiai (arknights) from arknights. A female human character. Appearance: red eyes, orange eyes, hair over one eye, red hair, short hair, white jacket, black gloves, fingerless gloves, halo, detached wings, energy wings.",
+    "description": "MOSS · arknights · 角色",
+    "coverUrl": "grimoire-asset://default-prompt-assets/moss-character/065.webp",
+    "referenceImageUrls": [
+      "grimoire-asset://default-prompt-assets/moss-character/065.webp"
+    ],
+    "tags": [
+      "角色",
+      "作品:arknights",
+      "hairColor:red hair",
+      "hairLength:short hair",
+      "eyeColor:red eyes",
+      "eyeColor:orange eyes",
+      "gender:Female",
+      "outfit:white jacket",
+      "outfit:black gloves",
+      "outfit:fingerless gloves"
+    ],
+    "author": "ukr8b3g-cmyk",
+    "sourceUrl": "https://github.com/ukr8b3g-cmyk/MOSS-Image-Character-Catalog",
+    "createdAt": "2026-10-18T01:14:14.174063+00:00",
+    "imageMode": "text-to-image",
+    "imageModel": "MOSS-Image-Base"
+  },
+  {
+    "id": "demo-066",
+    "sourceId": "moss-character",
+    "title": "surtr (arknights)",
+    "prompt": "surtr (arknights) from arknights. A female human character. Appearance: demon horns, demon girl, horns, purple eyes, hair between eyes, red hair, very long hair, long hair, hair intakes, black dress, bare shoulders.",
+    "description": "MOSS · arknights · 角色",
+    "coverUrl": "grimoire-asset://default-prompt-assets/moss-character/066.webp",
+    "referenceImageUrls": [
+      "grimoire-asset://default-prompt-assets/moss-character/066.webp"
+    ],
+    "tags": [
+      "角色",
+      "作品:arknights",
+      "hairColor:red hair",
+      "hairLength:very long hair",
+      "hairLength:long hair",
+      "eyeColor:purple eyes",
+      "gender:Female",
+      "outfit:black dress"
+    ],
+    "author": "ukr8b3g-cmyk",
+    "sourceUrl": "https://github.com/ukr8b3g-cmyk/MOSS-Image-Character-Catalog",
+    "createdAt": "2026-10-18T01:14:21.105391+00:00",
+    "imageMode": "text-to-image",
+    "imageModel": "MOSS-Image-Base"
+  },
+  {
+    "id": "demo-067",
+    "sourceId": "moss-character",
+    "title": "mudrock (arknights)",
+    "prompt": "mudrock (arknights) from arknights. A female human character. Appearance: pointy ears, horns, red eyes, white hair, long hair, grey hair, very long hair, hair ornament, bare shoulders, oripathy lesion (arknights), material growth, infection monitor (arknights), stomach.",
+    "description": "MOSS · arknights · 角色",
+    "coverUrl": "grimoire-asset://default-prompt-assets/moss-character/067.webp",
+    "referenceImageUrls": [
+      "grimoire-asset://default-prompt-assets/moss-character/067.webp"
+    ],
+    "tags": [
+      "角色",
+      "作品:arknights",
+      "hairColor:white hair",
+      "hairColor:grey hair",
+      "hairLength:long hair",
+      "hairLength:very long hair",
+      "eyeColor:red eyes",
+      "gender:Female"
+    ],
+    "author": "ukr8b3g-cmyk",
+    "sourceUrl": "https://github.com/ukr8b3g-cmyk/MOSS-Image-Character-Catalog",
+    "createdAt": "2026-10-18T01:14:27.732896+00:00",
+    "imageMode": "text-to-image",
+    "imageModel": "MOSS-Image-Base"
+  },
+  {
+    "id": "demo-068",
+    "sourceId": "moss-character",
+    "title": "w (arknights)",
+    "prompt": "w (arknights) from arknights. A female human character. Appearance: demon horns, demon tail, demon girl, horns, red eyes, orange eyes, grey hair, short hair, antenna hair, red hair, white hair, ahoge, black jacket, black gloves, open jacket, fingerless gloves, antennae.",
+    "description": "MOSS · arknights · 角色",
+    "coverUrl": "grimoire-asset://default-prompt-assets/moss-character/068.webp",
+    "referenceImageUrls": [
+      "grimoire-asset://default-prompt-assets/moss-character/068.webp"
+    ],
+    "tags": [
+      "角色",
+      "作品:arknights",
+      "hairColor:grey hair",
+      "hairColor:red hair",
+      "hairColor:white hair",
+      "hairLength:short hair",
+      "eyeColor:red eyes",
+      "eyeColor:orange eyes",
+      "gender:Female",
+      "outfit:black jacket",
+      "outfit:black gloves",
+      "outfit:open jacket",
+      "outfit:fingerless gloves"
+    ],
+    "author": "ukr8b3g-cmyk",
+    "sourceUrl": "https://github.com/ukr8b3g-cmyk/MOSS-Image-Character-Catalog",
+    "createdAt": "2026-10-18T01:14:34.485753+00:00",
+    "imageMode": "text-to-image",
+    "imageModel": "MOSS-Image-Base"
+  },
+  {
+    "id": "demo-069",
+    "sourceId": "moss-character",
+    "title": "mostima (arknights)",
+    "prompt": "mostima (arknights) from arknights. A female human character. Appearance: demon horns, horns, blue eyes, hair between eyes, blue hair, long hair, black jacket, white shirt, open jacket, halo, long sleeves, detached wings, energy wings.",
+    "description": "MOSS · arknights · 角色",
+    "coverUrl": "grimoire-asset://default-prompt-assets/moss-character/069.webp",
+    "referenceImageUrls": [
+      "grimoire-asset://default-prompt-assets/moss-character/069.webp"
+    ],
+    "tags": [
+      "角色",
+      "作品:arknights",
+      "hairColor:blue hair",
+      "hairLength:long hair",
+      "eyeColor:blue eyes",
+      "gender:Female",
+      "outfit:black jacket",
+      "outfit:white shirt",
+      "outfit:open jacket"
+    ],
+    "author": "ukr8b3g-cmyk",
+    "sourceUrl": "https://github.com/ukr8b3g-cmyk/MOSS-Image-Character-Catalog",
+    "createdAt": "2026-10-18T01:14:42.736074+00:00",
+    "imageMode": "text-to-image",
+    "imageModel": "MOSS-Image-Base"
+  },
+  {
+    "id": "demo-070",
+    "sourceId": "moss-character",
+    "title": "dusk (arknights)",
+    "prompt": "dusk (arknights) from arknights. A female human character. Appearance: green skin, pointy ears, dragon horns, dragon tail, red eyes, hair over one eye, black hair, streaked hair, very long hair, green hair, long hair, china dress, sleeveless dress, white dress, bare shoulders, tassel earrings, red necktie, dragon girl.",
+    "description": "MOSS · arknights · 角色",
+    "coverUrl": "grimoire-asset://default-prompt-assets/moss-character/070.webp",
+    "referenceImageUrls": [
+      "grimoire-asset://default-prompt-assets/moss-character/070.webp"
+    ],
+    "tags": [
+      "角色",
+      "作品:arknights",
+      "hairColor:black hair",
+      "hairColor:green hair",
+      "hairLength:very long hair",
+      "hairLength:long hair",
+      "eyeColor:red eyes",
+      "gender:Female",
+      "outfit:china dress",
+      "outfit:sleeveless dress",
+      "outfit:white dress"
+    ],
+    "author": "ukr8b3g-cmyk",
+    "sourceUrl": "https://github.com/ukr8b3g-cmyk/MOSS-Image-Character-Catalog",
+    "createdAt": "2026-10-18T01:14:49.416725+00:00",
+    "imageMode": "text-to-image",
+    "imageModel": "MOSS-Image-Base"
+  },
+  {
+    "id": "demo-071",
+    "sourceId": "moss-character",
+    "title": "nian (arknights)",
+    "prompt": "nian (arknights) from arknights. A female human character. Appearance: red skin, pointy ears, dragon horns, horns, dragon tail, purple eyes, white hair, streaked hair, long hair, red hair, ponytail, braid, thighs, china dress, bare shoulders, dragon girl, tube top.",
+    "description": "MOSS · arknights · 角色",
+    "coverUrl": "grimoire-asset://default-prompt-assets/moss-character/071.webp",
+    "referenceImageUrls": [
+      "grimoire-asset://default-prompt-assets/moss-character/071.webp"
+    ],
+    "tags": [
+      "角色",
+      "作品:arknights",
+      "hairColor:white hair",
+      "hairColor:red hair",
+      "hairLength:long hair",
+      "eyeColor:purple eyes",
+      "gender:Female",
+      "outfit:china dress"
+    ],
+    "author": "ukr8b3g-cmyk",
+    "sourceUrl": "https://github.com/ukr8b3g-cmyk/MOSS-Image-Character-Catalog",
+    "createdAt": "2026-10-18T01:14:56.080646+00:00",
+    "imageMode": "text-to-image",
+    "imageModel": "MOSS-Image-Base"
+  },
+  {
+    "id": "demo-072",
+    "sourceId": "moss-character",
+    "title": "specter (arknights)",
+    "prompt": "specter (arknights) from arknights. A female human character. Appearance: nun, red eyes, hair between eyes, grey hair, very long hair, white hair, long hair, black dress, black headwear, hat, long sleeves, nail polish, habit.",
+    "description": "MOSS · arknights · 角色",
+    "coverUrl": "grimoire-asset://default-prompt-assets/moss-character/072.webp",
+    "referenceImageUrls": [
+      "grimoire-asset://default-prompt-assets/moss-character/072.webp"
+    ],
+    "tags": [
+      "角色",
+      "作品:arknights",
+      "hairColor:grey hair",
+      "hairColor:white hair",
+      "hairLength:very long hair",
+      "hairLength:long hair",
+      "eyeColor:red eyes",
+      "gender:Female",
+      "outfit:black dress",
+      "outfit:hat"
+    ],
+    "author": "ukr8b3g-cmyk",
+    "sourceUrl": "https://github.com/ukr8b3g-cmyk/MOSS-Image-Character-Catalog",
+    "createdAt": "2026-10-18T01:15:02.814698+00:00",
+    "imageMode": "text-to-image",
+    "imageModel": "MOSS-Image-Base"
+  },
+  {
+    "id": "demo-073",
+    "sourceId": "moss-character",
+    "title": "angelina (arknights)",
+    "prompt": "angelina (arknights) from arknights. A female human character. Appearance: fox girl, fox ears, red eyes, hair between eyes, brown eyes, brown hair, long hair, red hairband, twintails, black gloves, open jacket, long sleeves, bare shoulders, infection monitor (arknights).",
+    "description": "MOSS · arknights · 角色",
+    "coverUrl": "grimoire-asset://default-prompt-assets/moss-character/073.webp",
+    "referenceImageUrls": [
+      "grimoire-asset://default-prompt-assets/moss-character/073.webp"
+    ],
+    "tags": [
+      "角色",
+      "作品:arknights",
+      "hairColor:brown hair",
+      "hairLength:long hair",
+      "eyeColor:red eyes",
+      "eyeColor:brown eyes",
+      "gender:Female",
+      "outfit:black gloves",
+      "outfit:open jacket"
+    ],
+    "author": "ukr8b3g-cmyk",
+    "sourceUrl": "https://github.com/ukr8b3g-cmyk/MOSS-Image-Character-Catalog",
+    "createdAt": "2026-10-18T01:15:09.402956+00:00",
+    "imageMode": "text-to-image",
+    "imageModel": "MOSS-Image-Base"
+  },
+  {
+    "id": "demo-074",
+    "sourceId": "moss-character",
+    "title": "skadi the corrupting heart (arknights)",
+    "prompt": "skadi the corrupting heart (arknights) from arknights. A female human character. Appearance: red eyes, hair between eyes, very long hair, grey hair, white hair, navel cutout, thighs, red dress, hat, aqua gloves, bare shoulders, detached sleeves, long sleeves, black ascot.",
+    "description": "MOSS · arknights · 角色",
+    "coverUrl": "grimoire-asset://default-prompt-assets/moss-character/074.webp",
+    "referenceImageUrls": [
+      "grimoire-asset://default-prompt-assets/moss-character/074.webp"
+    ],
+    "tags": [
+      "角色",
+      "作品:arknights",
+      "hairColor:grey hair",
+      "hairColor:white hair",
+      "hairLength:very long hair",
+      "eyeColor:red eyes",
+      "gender:Female",
+      "outfit:red dress",
+      "outfit:hat",
+      "outfit:aqua gloves"
+    ],
+    "author": "ukr8b3g-cmyk",
+    "sourceUrl": "https://github.com/ukr8b3g-cmyk/MOSS-Image-Character-Catalog",
+    "createdAt": "2026-10-18T01:15:16.033135+00:00",
+    "imageMode": "text-to-image",
+    "imageModel": "MOSS-Image-Base"
+  },
+  {
+    "id": "demo-075",
+    "sourceId": "moss-character",
+    "title": "saria (arknights)",
+    "prompt": "saria (arknights) from arknights. A female human character. Appearance: dragon horns, dragon tail, orange eyes, hair between eyes, grey hair, long hair, white hair, long sleeves, dragon girl.",
+    "description": "MOSS · arknights · 角色",
+    "coverUrl": "grimoire-asset://default-prompt-assets/moss-character/075.webp",
+    "referenceImageUrls": [
+      "grimoire-asset://default-prompt-assets/moss-character/075.webp"
+    ],
+    "tags": [
+      "角色",
+      "作品:arknights",
+      "hairColor:grey hair",
+      "hairColor:white hair",
+      "hairLength:long hair",
+      "eyeColor:orange eyes",
+      "gender:Female"
+    ],
+    "author": "ukr8b3g-cmyk",
+    "sourceUrl": "https://github.com/ukr8b3g-cmyk/MOSS-Image-Character-Catalog",
+    "createdAt": "2026-10-18T01:15:22.675267+00:00",
+    "imageMode": "text-to-image",
+    "imageModel": "MOSS-Image-Base"
+  },
+  {
+    "id": "demo-076",
+    "sourceId": "moss-character",
+    "title": "irene (arknights)",
+    "prompt": "irene (arknights) from arknights. A female human character. Appearance: grey eyes, scar across eye, grey hair, long hair, very long hair, scar on face, white capelet, black gloves, black jacket, white skirt, long sleeves, head wings, earrings.",
+    "description": "MOSS · arknights · 角色",
+    "coverUrl": "grimoire-asset://default-prompt-assets/moss-character/076.webp",
+    "referenceImageUrls": [
+      "grimoire-asset://default-prompt-assets/moss-character/076.webp"
+    ],
+    "tags": [
+      "角色",
+      "作品:arknights",
+      "hairColor:grey hair",
+      "hairLength:long hair",
+      "hairLength:very long hair",
+      "eyeColor:grey eyes",
+      "gender:Female",
+      "outfit:black gloves",
+      "outfit:black jacket",
+      "outfit:white skirt"
+    ],
+    "author": "ukr8b3g-cmyk",
+    "sourceUrl": "https://github.com/ukr8b3g-cmyk/MOSS-Image-Character-Catalog",
+    "createdAt": "2026-10-18T01:15:29.411433+00:00",
+    "imageMode": "text-to-image",
+    "imageModel": "MOSS-Image-Base"
+  },
+  {
+    "id": "demo-077",
+    "sourceId": "moss-character",
+    "title": "hoshiguma (arknights)",
+    "prompt": "hoshiguma (arknights) from arknights. A female human character. Appearance: oni horns, skin-covered horns, single horn, yellow eyes, hair between eyes, green hair, long hair, very long hair, black shirt, bare shoulders.",
+    "description": "MOSS · arknights · 角色",
+    "coverUrl": "grimoire-asset://default-prompt-assets/moss-character/077.webp",
+    "referenceImageUrls": [
+      "grimoire-asset://default-prompt-assets/moss-character/077.webp"
+    ],
+    "tags": [
+      "角色",
+      "作品:arknights",
+      "hairColor:green hair",
+      "hairLength:long hair",
+      "hairLength:very long hair",
+      "eyeColor:yellow eyes",
+      "gender:Female",
+      "outfit:black shirt"
+    ],
+    "author": "ukr8b3g-cmyk",
+    "sourceUrl": "https://github.com/ukr8b3g-cmyk/MOSS-Image-Character-Catalog",
+    "createdAt": "2026-10-18T01:15:35.101504+00:00",
+    "imageMode": "text-to-image",
+    "imageModel": "MOSS-Image-Base"
+  },
+  {
+    "id": "demo-078",
+    "sourceId": "moss-character",
+    "title": "shu (arknights)",
+    "prompt": "shu (arknights) from arknights. A female human character. Appearance: colored skin, dragon horns, pointy ears, dragon tail, hair between eyes, grey eyes, blue eyes, blonde hair, grey hair, blue hair, very long hair, streaked hair, multicolored hair, long hair, hair intakes, white jacket, open jacket, white pants, strapless shirt, white shirt, bare shoulders, off shoulder, long sleeves, tassel earrings, necklace, dragon girl.",
+    "description": "MOSS · arknights · 角色",
+    "coverUrl": "grimoire-asset://default-prompt-assets/moss-character/078.webp",
+    "referenceImageUrls": [
+      "grimoire-asset://default-prompt-assets/moss-character/078.webp"
+    ],
+    "tags": [
+      "角色",
+      "作品:arknights",
+      "hairColor:blonde hair",
+      "hairColor:grey hair",
+      "hairColor:blue hair",
+      "hairColor:multicolored hair",
+      "hairLength:very long hair",
+      "hairLength:long hair",
+      "eyeColor:grey eyes",
+      "eyeColor:blue eyes",
+      "gender:Female",
+      "outfit:white jacket",
+      "outfit:open jacket",
+      "outfit:strapless shirt",
+      "outfit:white shirt"
+    ],
+    "author": "ukr8b3g-cmyk",
+    "sourceUrl": "https://github.com/ukr8b3g-cmyk/MOSS-Image-Character-Catalog",
+    "createdAt": "2026-10-18T01:15:43.303263+00:00",
+    "imageMode": "text-to-image",
+    "imageModel": "MOSS-Image-Base"
+  },
+  {
+    "id": "demo-079",
+    "sourceId": "moss-character",
+    "title": "goldenglow (arknights)",
+    "prompt": "goldenglow (arknights) from arknights. A female human character. Appearance: cat girl, cat ears, cat tail, floppy ears, yellow eyes, pink hair, long hair, black hairband, single braid, hair bow, white shirt, open jacket, long sleeves, blue bow.",
+    "description": "MOSS · arknights · 角色",
+    "coverUrl": "grimoire-asset://default-prompt-assets/moss-character/079.webp",
+    "referenceImageUrls": [
+      "grimoire-asset://default-prompt-assets/moss-character/079.webp"
+    ],
+    "tags": [
+      "角色",
+      "作品:arknights",
+      "hairColor:pink hair",
+      "hairLength:long hair",
+      "eyeColor:yellow eyes",
+      "gender:Female",
+      "outfit:white shirt",
+      "outfit:open jacket"
+    ],
+    "author": "ukr8b3g-cmyk",
+    "sourceUrl": "https://github.com/ukr8b3g-cmyk/MOSS-Image-Character-Catalog",
+    "createdAt": "2026-10-18T01:15:49.993715+00:00",
+    "imageMode": "text-to-image",
+    "imageModel": "MOSS-Image-Base"
+  },
+  {
+    "id": "demo-080",
+    "sourceId": "moss-character",
+    "title": "blue poison (arknights)",
+    "prompt": "blue poison (arknights) from arknights. A female human character. Appearance: blue eyes, pink hair, long hair, twin braids, low twintails, hairband, open jacket, white jacket, sports bra, long sleeves, bare shoulders, off shoulder, pink choker, midriff.",
+    "description": "MOSS · arknights · 角色",
+    "coverUrl": "grimoire-asset://default-prompt-assets/moss-character/080.webp",
+    "referenceImageUrls": [
+      "grimoire-asset://default-prompt-assets/moss-character/080.webp"
+    ],
+    "tags": [
+      "角色",
+      "作品:arknights",
+      "hairColor:pink hair",
+      "hairLength:long hair",
+      "eyeColor:blue eyes",
+      "gender:Female",
+      "outfit:open jacket",
+      "outfit:white jacket"
+    ],
+    "author": "ukr8b3g-cmyk",
+    "sourceUrl": "https://github.com/ukr8b3g-cmyk/MOSS-Image-Character-Catalog",
+    "createdAt": "2026-10-18T01:15:56.757218+00:00",
+    "imageMode": "text-to-image",
+    "imageModel": "MOSS-Image-Base"
+  },
+  {
+    "id": "demo-081",
+    "sourceId": "moss-character",
+    "title": "ganyu (genshin impact)",
+    "prompt": "ganyu (genshin impact) from genshin impact. A female human character. Appearance: goat horns, horns, purple eyes, hair between eyes, blue hair, long hair, ahoge, sidelocks, thighs, black gloves, bare shoulders, detached sleeves, neck bell, bodystocking.",
+    "description": "MOSS · genshin impact · 角色",
+    "coverUrl": "grimoire-asset://default-prompt-assets/moss-character/081.webp",
+    "referenceImageUrls": [
+      "grimoire-asset://default-prompt-assets/moss-character/081.webp"
+    ],
+    "tags": [
+      "角色",
+      "作品:genshin impact",
+      "hairColor:blue hair",
+      "hairLength:long hair",
+      "eyeColor:purple eyes",
+      "gender:Female",
+      "outfit:black gloves"
+    ],
+    "author": "ukr8b3g-cmyk",
+    "sourceUrl": "https://github.com/ukr8b3g-cmyk/MOSS-Image-Character-Catalog",
+    "createdAt": "2026-10-17T11:39:27.092348+00:00",
+    "imageMode": "text-to-image",
+    "imageModel": "MOSS-Image-Base"
+  },
+  {
+    "id": "demo-082",
+    "sourceId": "moss-character",
+    "title": "raiden shogun",
+    "prompt": "raiden shogun from genshin impact. A female human character. Appearance: purple eyes, mole under eye, purple hair, long hair, very long hair, braided ponytail, hair ornament, thighs, purple kimono, purple nails, obi, bridal gauntlets.",
+    "description": "MOSS · genshin impact · 角色",
+    "coverUrl": "grimoire-asset://default-prompt-assets/moss-character/082.webp",
+    "referenceImageUrls": [
+      "grimoire-asset://default-prompt-assets/moss-character/082.webp"
+    ],
+    "tags": [
+      "角色",
+      "作品:genshin impact",
+      "hairColor:purple hair",
+      "hairLength:long hair",
+      "hairLength:very long hair",
+      "eyeColor:purple eyes",
+      "gender:Female",
+      "outfit:purple kimono"
+    ],
+    "author": "ukr8b3g-cmyk",
+    "sourceUrl": "https://github.com/ukr8b3g-cmyk/MOSS-Image-Character-Catalog",
+    "createdAt": "2026-10-17T11:39:34.287691+00:00",
+    "imageMode": "text-to-image",
+    "imageModel": "MOSS-Image-Base"
+  },
+  {
+    "id": "demo-083",
+    "sourceId": "moss-character",
+    "title": "lumine (genshin impact)",
+    "prompt": "lumine (genshin impact) from genshin impact. A female human character. Appearance: yellow eyes, hair between eyes, blonde hair, short hair with long locks, sidelocks, hair flower, white dress, bare shoulders.",
+    "description": "MOSS · genshin impact · 角色",
+    "coverUrl": "grimoire-asset://default-prompt-assets/moss-character/083.webp",
+    "referenceImageUrls": [
+      "grimoire-asset://default-prompt-assets/moss-character/083.webp"
+    ],
+    "tags": [
+      "角色",
+      "作品:genshin impact",
+      "hairColor:blonde hair",
+      "eyeColor:yellow eyes",
+      "gender:Female",
+      "outfit:white dress"
+    ],
+    "author": "ukr8b3g-cmyk",
+    "sourceUrl": "https://github.com/ukr8b3g-cmyk/MOSS-Image-Character-Catalog",
+    "createdAt": "2026-10-17T11:39:40.624346+00:00",
+    "imageMode": "text-to-image",
+    "imageModel": "MOSS-Image-Base"
+  },
+  {
+    "id": "demo-084",
+    "sourceId": "moss-character",
+    "title": "hu tao (genshin impact)",
+    "prompt": "hu tao (genshin impact) from genshin impact. A female human character. Appearance: red eyes, hair between eyes, flower-shaped pupils, brown hair, very long hair, long hair, twintails, thighs, hat flower, black headwear, long sleeves, black nails, nail polish, ghost.",
+    "description": "MOSS · genshin impact · 角色",
+    "coverUrl": "grimoire-asset://default-prompt-assets/moss-character/084.webp",
+    "referenceImageUrls": [
+      "grimoire-asset://default-prompt-assets/moss-character/084.webp"
+    ],
+    "tags": [
+      "角色",
+      "作品:genshin impact",
+      "hairColor:brown hair",
+      "hairLength:very long hair",
+      "hairLength:long hair",
+      "eyeColor:red eyes",
+      "gender:Female",
+      "outfit:hat flower"
+    ],
+    "author": "ukr8b3g-cmyk",
+    "sourceUrl": "https://github.com/ukr8b3g-cmyk/MOSS-Image-Character-Catalog",
+    "createdAt": "2026-10-17T11:39:47.044862+00:00",
+    "imageMode": "text-to-image",
+    "imageModel": "MOSS-Image-Base"
+  },
+  {
+    "id": "demo-085",
+    "sourceId": "moss-character",
+    "title": "yae miko",
+    "prompt": "yae miko from genshin impact. A female human character. Appearance: fox ears, floppy ears, purple eyes, hair between eyes, pink hair, very long hair, long hair, hair ornament, thighs, japanese clothes, bare shoulders, detached sleeves, wide sleeves, earrings, nontraditional miko.",
+    "description": "MOSS · genshin impact · 角色",
+    "coverUrl": "grimoire-asset://default-prompt-assets/moss-character/085.webp",
+    "referenceImageUrls": [
+      "grimoire-asset://default-prompt-assets/moss-character/085.webp"
+    ],
+    "tags": [
+      "角色",
+      "作品:genshin impact",
+      "hairColor:pink hair",
+      "hairLength:very long hair",
+      "hairLength:long hair",
+      "eyeColor:purple eyes",
+      "gender:Female"
+    ],
+    "author": "ukr8b3g-cmyk",
+    "sourceUrl": "https://github.com/ukr8b3g-cmyk/MOSS-Image-Character-Catalog",
+    "createdAt": "2026-10-17T11:39:53.493712+00:00",
+    "imageMode": "text-to-image",
+    "imageModel": "MOSS-Image-Base"
+  },
+  {
+    "id": "demo-086",
+    "sourceId": "moss-character",
+    "title": "aether (genshin impact)",
+    "prompt": "aether (genshin impact) from genshin impact. A male human character. Appearance: hair between eyes, yellow eyes, blonde hair, long hair, ahoge, single braid, single earring.",
+    "description": "MOSS · genshin impact · 角色",
+    "coverUrl": "grimoire-asset://default-prompt-assets/moss-character/086.webp",
+    "referenceImageUrls": [
+      "grimoire-asset://default-prompt-assets/moss-character/086.webp"
+    ],
+    "tags": [
+      "角色",
+      "作品:genshin impact",
+      "hairColor:blonde hair",
+      "hairLength:long hair",
+      "eyeColor:yellow eyes",
+      "gender:Male"
+    ],
+    "author": "ukr8b3g-cmyk",
+    "sourceUrl": "https://github.com/ukr8b3g-cmyk/MOSS-Image-Character-Catalog",
+    "createdAt": "2026-10-17T11:40:00.061533+00:00",
+    "imageMode": "text-to-image",
+    "imageModel": "MOSS-Image-Base"
+  },
+  {
+    "id": "demo-087",
+    "sourceId": "moss-character",
+    "title": "scaramouche (genshin impact)",
+    "prompt": "scaramouche (genshin impact) from genshin impact. A male human character. Appearance: purple eyes, hair between eyes, blue eyes, red eyeshadow, short hair, purple hair, black hair, japanese clothes, black shirt, short sleeves, blunt ends.",
+    "description": "MOSS · genshin impact · 角色",
+    "coverUrl": "grimoire-asset://default-prompt-assets/moss-character/087.webp",
+    "referenceImageUrls": [
+      "grimoire-asset://default-prompt-assets/moss-character/087.webp"
+    ],
+    "tags": [
+      "角色",
+      "作品:genshin impact",
+      "hairColor:purple hair",
+      "hairColor:black hair",
+      "hairLength:short hair",
+      "eyeColor:purple eyes",
+      "eyeColor:blue eyes",
+      "gender:Male",
+      "outfit:black shirt"
+    ],
+    "author": "ukr8b3g-cmyk",
+    "sourceUrl": "https://github.com/ukr8b3g-cmyk/MOSS-Image-Character-Catalog",
+    "createdAt": "2026-10-17T11:40:07.195649+00:00",
+    "imageMode": "text-to-image",
+    "imageModel": "MOSS-Image-Base"
+  },
+  {
+    "id": "demo-088",
+    "sourceId": "moss-character",
+    "title": "zhongli (genshin impact)",
+    "prompt": "zhongli (genshin impact) from genshin impact. A male human character. Appearance: hair between eyes, yellow eyes, brown hair, long hair, gradient hair, black hair, orange hair, ponytail, suit, black gloves, jacket, collared shirt, tassel earrings, long sleeves, formal, eyeliner, single earring.",
+    "description": "MOSS · genshin impact · 角色",
+    "coverUrl": "grimoire-asset://default-prompt-assets/moss-character/088.webp",
+    "referenceImageUrls": [
+      "grimoire-asset://default-prompt-assets/moss-character/088.webp"
+    ],
+    "tags": [
+      "角色",
+      "作品:genshin impact",
+      "hairColor:brown hair",
+      "hairColor:black hair",
+      "hairColor:orange hair",
+      "hairLength:long hair",
+      "eyeColor:yellow eyes",
+      "gender:Male",
+      "outfit:suit",
+      "outfit:black gloves",
+      "outfit:jacket",
+      "outfit:collared shirt"
+    ],
+    "author": "ukr8b3g-cmyk",
+    "sourceUrl": "https://github.com/ukr8b3g-cmyk/MOSS-Image-Character-Catalog",
+    "createdAt": "2026-10-17T11:40:13.704128+00:00",
+    "imageMode": "text-to-image",
+    "imageModel": "MOSS-Image-Base"
+  },
+  {
+    "id": "demo-089",
+    "sourceId": "moss-character",
+    "title": "hakurei reimu",
+    "prompt": "hakurei reimu from touhou. A female human character. Appearance: brown eyes, red eyes, brown hair, long hair, black hair, hair bow, hair tubes, red bow, detached sleeves.",
+    "description": "MOSS · touhou · 角色",
+    "coverUrl": "grimoire-asset://default-prompt-assets/moss-character/089.webp",
+    "referenceImageUrls": [
+      "grimoire-asset://default-prompt-assets/moss-character/089.webp"
+    ],
+    "tags": [
+      "角色",
+      "作品:touhou",
+      "hairColor:brown hair",
+      "hairColor:black hair",
+      "hairLength:long hair",
+      "eyeColor:brown eyes",
+      "eyeColor:red eyes",
+      "gender:Female"
+    ],
+    "author": "ukr8b3g-cmyk",
+    "sourceUrl": "https://github.com/ukr8b3g-cmyk/MOSS-Image-Character-Catalog",
+    "createdAt": "2026-10-18T03:09:02.079024+00:00",
+    "imageMode": "text-to-image",
+    "imageModel": "MOSS-Image-Base"
+  },
+  {
+    "id": "demo-090",
+    "sourceId": "moss-character",
+    "title": "kirisame marisa",
+    "prompt": "kirisame marisa from touhou. A female human character. Appearance: yellow eyes, blonde hair, long hair, single braid, witch hat.",
+    "description": "MOSS · touhou · 角色",
+    "coverUrl": "grimoire-asset://default-prompt-assets/moss-character/090.webp",
+    "referenceImageUrls": [
+      "grimoire-asset://default-prompt-assets/moss-character/090.webp"
+    ],
+    "tags": [
+      "角色",
+      "作品:touhou",
+      "hairColor:blonde hair",
+      "hairLength:long hair",
+      "eyeColor:yellow eyes",
+      "gender:Female",
+      "outfit:witch hat"
+    ],
+    "author": "ukr8b3g-cmyk",
+    "sourceUrl": "https://github.com/ukr8b3g-cmyk/MOSS-Image-Character-Catalog",
+    "createdAt": "2026-10-18T03:09:07.923544+00:00",
+    "imageMode": "text-to-image",
+    "imageModel": "MOSS-Image-Base"
+  },
+  {
+    "id": "demo-091",
+    "sourceId": "moss-character",
+    "title": "remilia scarlet",
+    "prompt": "remilia scarlet from touhou. A female human character. Appearance: red eyes, short hair, blue hair, mob cap, bat wings.",
+    "description": "MOSS · touhou · 角色",
+    "coverUrl": "grimoire-asset://default-prompt-assets/moss-character/091.webp",
+    "referenceImageUrls": [
+      "grimoire-asset://default-prompt-assets/moss-character/091.webp"
+    ],
+    "tags": [
+      "角色",
+      "作品:touhou",
+      "hairColor:blue hair",
+      "hairLength:short hair",
+      "eyeColor:red eyes",
+      "gender:Female"
+    ],
+    "author": "ukr8b3g-cmyk",
+    "sourceUrl": "https://github.com/ukr8b3g-cmyk/MOSS-Image-Character-Catalog",
+    "createdAt": "2026-10-18T03:09:13.737573+00:00",
+    "imageMode": "text-to-image",
+    "imageModel": "MOSS-Image-Base"
+  },
+  {
+    "id": "demo-092",
+    "sourceId": "moss-character",
+    "title": "flandre scarlet",
+    "prompt": "flandre scarlet from touhou. A female human character. Appearance: red eyes, blonde hair, short hair, side ponytail, mob cap, wings, one side up, crystal.",
+    "description": "MOSS · touhou · 角色",
+    "coverUrl": "grimoire-asset://default-prompt-assets/moss-character/092.webp",
+    "referenceImageUrls": [
+      "grimoire-asset://default-prompt-assets/moss-character/092.webp"
+    ],
+    "tags": [
+      "角色",
+      "作品:touhou",
+      "hairColor:blonde hair",
+      "hairLength:short hair",
+      "eyeColor:red eyes",
+      "gender:Female"
+    ],
+    "author": "ukr8b3g-cmyk",
+    "sourceUrl": "https://github.com/ukr8b3g-cmyk/MOSS-Image-Character-Catalog",
+    "createdAt": "2026-10-18T03:09:21.252557+00:00",
+    "imageMode": "text-to-image",
+    "imageModel": "MOSS-Image-Base"
+  },
+  {
+    "id": "demo-093",
+    "sourceId": "moss-character",
+    "title": "santa claus",
+    "prompt": "santa claus from original. A male human character. Appearance: beard, mustache, white hair, facial hair, santa hat, santa costume, old man.",
+    "description": "MOSS · original · 角色",
+    "coverUrl": "grimoire-asset://default-prompt-assets/moss-character/093.webp",
+    "referenceImageUrls": [
+      "grimoire-asset://default-prompt-assets/moss-character/093.webp"
+    ],
+    "tags": [
+      "角色",
+      "作品:original",
+      "hairColor:white hair",
+      "gender:Male",
+      "outfit:santa hat"
+    ],
+    "author": "ukr8b3g-cmyk",
+    "sourceUrl": "https://github.com/ukr8b3g-cmyk/MOSS-Image-Character-Catalog",
+    "createdAt": "2026-10-18T20:11:36.184894+00:00",
+    "imageMode": "text-to-image",
+    "imageModel": "MOSS-Image-Base"
+  },
+  {
+    "id": "demo-094",
+    "sourceId": "moss-character",
+    "title": "death (entity)",
+    "prompt": "death (entity) from original. A female human character. Appearance: red eyes, long hair, scythe, skull.",
+    "description": "MOSS · original · 角色",
+    "coverUrl": "grimoire-asset://default-prompt-assets/moss-character/094.webp",
+    "referenceImageUrls": [
+      "grimoire-asset://default-prompt-assets/moss-character/094.webp"
+    ],
+    "tags": [
+      "角色",
+      "作品:original",
+      "hairLength:long hair",
+      "eyeColor:red eyes",
+      "gender:Female"
+    ],
+    "author": "ukr8b3g-cmyk",
+    "sourceUrl": "https://github.com/ukr8b3g-cmyk/MOSS-Image-Character-Catalog",
+    "createdAt": "2026-10-18T21:01:45.068197+00:00",
+    "imageMode": "text-to-image",
+    "imageModel": "MOSS-Image-Base"
+  },
+  {
+    "id": "demo-095",
+    "sourceId": "moss-character",
+    "title": "frankenstein's monster",
+    "prompt": "frankenstein's monster from original. A female human character. Appearance: short hair, black hair, long hair, halloween costume, stitches, muscular male, bara.",
+    "description": "MOSS · original · 角色",
+    "coverUrl": "grimoire-asset://default-prompt-assets/moss-character/095.webp",
+    "referenceImageUrls": [
+      "grimoire-asset://default-prompt-assets/moss-character/095.webp"
+    ],
+    "tags": [
+      "角色",
+      "作品:original",
+      "hairColor:black hair",
+      "hairLength:short hair",
+      "hairLength:long hair",
+      "gender:Female"
+    ],
+    "author": "ukr8b3g-cmyk",
+    "sourceUrl": "https://github.com/ukr8b3g-cmyk/MOSS-Image-Character-Catalog",
+    "createdAt": "2026-10-18T21:04:18.601838+00:00",
+    "imageMode": "text-to-image",
+    "imageModel": "MOSS-Image-Base"
+  },
+  {
+    "id": "demo-096",
+    "sourceId": "moss-character",
+    "title": "cthulhu",
+    "prompt": "cthulhu from cthulhu mythos. A female human character. Appearance: long hair, green hair, tentacles.",
+    "description": "MOSS · cthulhu mythos · 角色",
+    "coverUrl": "grimoire-asset://default-prompt-assets/moss-character/096.webp",
+    "referenceImageUrls": [
+      "grimoire-asset://default-prompt-assets/moss-character/096.webp"
+    ],
+    "tags": [
+      "角色",
+      "作品:cthulhu mythos",
+      "hairColor:green hair",
+      "hairLength:long hair",
+      "gender:Female"
+    ],
+    "author": "ukr8b3g-cmyk",
+    "sourceUrl": "https://github.com/ukr8b3g-cmyk/MOSS-Image-Character-Catalog",
+    "createdAt": "2026-10-18T23:10:23.896834+00:00",
+    "imageMode": "text-to-image",
+    "imageModel": "MOSS-Image-Base"
+  },
+  {
+    "id": "demo-097",
+    "sourceId": "moss-character",
+    "title": "Anime Style",
+    "prompt": "Contemporary anime illustration with confident, simplified contours, appealing stylized proportions, and large expressive eyes. Use bright flat colors and clear cel-shaded shadow shapes, keeping internal detail economical and every form immediately readable.",
+    "description": "MOSS · Picture styles · 风格",
+    "coverUrl": "grimoire-asset://default-prompt-assets/moss-character/097.webp",
+    "referenceImageUrls": [
+      "grimoire-asset://default-prompt-assets/moss-character/097.webp"
+    ],
+    "tags": [
+      "风格",
+      "风格:Anime Style"
+    ],
+    "author": "ukr8b3g-cmyk",
+    "sourceUrl": "https://github.com/ukr8b3g-cmyk/MOSS-Image-Character-Catalog",
+    "createdAt": "2026-10-21T07:26:16.925469+00:00",
+    "imageMode": "text-to-image",
+    "imageModel": "MOSS-Image-Base"
+  },
+  {
+    "id": "demo-098",
+    "sourceId": "moss-character",
+    "title": "8-Bit Pixel Art",
+    "prompt": "8-bit pixel art built from discrete, grid-aligned square pixels and a tightly limited palette. Reduce forms to clear blocky silhouettes, using stepped color bands and deliberate pixel clusters for shading, with hard edges and no antialiasing.",
+    "description": "MOSS · Picture styles · 风格",
+    "coverUrl": "grimoire-asset://default-prompt-assets/moss-character/098.webp",
+    "referenceImageUrls": [
+      "grimoire-asset://default-prompt-assets/moss-character/098.webp"
+    ],
+    "tags": [
+      "风格",
+      "风格:8-Bit Pixel Art"
+    ],
+    "author": "ukr8b3g-cmyk",
+    "sourceUrl": "https://github.com/ukr8b3g-cmyk/MOSS-Image-Character-Catalog",
+    "createdAt": "2026-10-21T07:33:56.428828+00:00",
+    "imageMode": "text-to-image",
+    "imageModel": "MOSS-Image-Base"
+  },
+  {
+    "id": "demo-099",
+    "sourceId": "moss-character",
+    "title": "Pixar Animation",
+    "prompt": "Pixar-inspired 3D animation rendering with appealing rounded proportions, smooth volumetric modeling, and warm subsurface scattering in skin. Gentle three-point lighting, soft shadows, and subtle ambient occlusion give the forms dimensional weight while preserving a soft, inviting finish.",
+    "description": "MOSS · Picture styles · 风格",
+    "coverUrl": "grimoire-asset://default-prompt-assets/moss-character/099.webp",
+    "referenceImageUrls": [
+      "grimoire-asset://default-prompt-assets/moss-character/099.webp"
+    ],
+    "tags": [
+      "风格",
+      "风格:Pixar Animation"
+    ],
+    "author": "ukr8b3g-cmyk",
+    "sourceUrl": "https://github.com/ukr8b3g-cmyk/MOSS-Image-Character-Catalog",
+    "createdAt": "2026-10-21T07:35:01.643481+00:00",
+    "imageMode": "text-to-image",
+    "imageModel": "MOSS-Image-Base"
+  },
+  {
+    "id": "demo-100",
+    "sourceId": "moss-character",
+    "title": "Low-Poly 3D",
+    "prompt": "Low-poly rendering with visibly triangulated geometry and angular, simplified forms. Flat-shaded polygon faces create hard tonal changes between adjoining facets, replacing smooth gradients and curved surfaces with a clean geometric structure and deliberately reduced detail.",
+    "description": "MOSS · Picture styles · 风格",
+    "coverUrl": "grimoire-asset://default-prompt-assets/moss-character/100.webp",
+    "referenceImageUrls": [
+      "grimoire-asset://default-prompt-assets/moss-character/100.webp"
+    ],
+    "tags": [
+      "风格",
+      "风格:Low-Poly 3D"
+    ],
+    "author": "ukr8b3g-cmyk",
+    "sourceUrl": "https://github.com/ukr8b3g-cmyk/MOSS-Image-Character-Catalog",
+    "createdAt": "2026-10-21T07:36:06.137614+00:00",
+    "imageMode": "text-to-image",
+    "imageModel": "MOSS-Image-Base"
+  },
+  {
+    "id": "demo-101",
+    "sourceId": "moss-character",
+    "title": "Paper Cutout",
+    "prompt": "Layered paper-cutout rendering with flat, sharply cut shapes stacked at slightly different depths. Use clean silhouettes, subtle paper texture, and narrow drop shadows between overlapping layers, creating tactile dimensionality through physical separation rather than drawn outlines or blended shading.",
+    "description": "MOSS · Picture styles · 风格",
+    "coverUrl": "grimoire-asset://default-prompt-assets/moss-character/101.webp",
+    "referenceImageUrls": [
+      "grimoire-asset://default-prompt-assets/moss-character/101.webp"
+    ],
+    "tags": [
+      "风格",
+      "风格:Paper Cutout"
+    ],
+    "author": "ukr8b3g-cmyk",
+    "sourceUrl": "https://github.com/ukr8b3g-cmyk/MOSS-Image-Character-Catalog",
+    "createdAt": "2026-10-21T07:37:10.575224+00:00",
+    "imageMode": "text-to-image",
+    "imageModel": "MOSS-Image-Base"
+  },
+  {
+    "id": "demo-102",
+    "sourceId": "moss-character",
+    "title": "Claymation",
+    "prompt": "Handcrafted claymation rendering with soft, rounded forms, slight asymmetry, and visible fingerprint dents. Preserve small surface irregularities and hand-shaped contours, using warm, even light and gentle contact shadows to give the clay a tangible, softly modeled appearance.",
+    "description": "MOSS · Picture styles · 风格",
+    "coverUrl": "grimoire-asset://default-prompt-assets/moss-character/102.webp",
+    "referenceImageUrls": [
+      "grimoire-asset://default-prompt-assets/moss-character/102.webp"
+    ],
+    "tags": [
+      "风格",
+      "风格:Claymation"
+    ],
+    "author": "ukr8b3g-cmyk",
+    "sourceUrl": "https://github.com/ukr8b3g-cmyk/MOSS-Image-Character-Catalog",
+    "createdAt": "2026-10-21T07:38:15.816536+00:00",
+    "imageMode": "text-to-image",
+    "imageModel": "MOSS-Image-Base"
+  },
+  {
+    "id": "demo-103",
+    "sourceId": "moss-character",
+    "title": "Watercolor Painting (MOSS caption test)",
+    "prompt": "A transparent watercolor painting on textured cold-pressed paper, with luminous cream paper visible through thin layers of color. Soft wet-on-wet edges, delicate pigment blooms, fine granulation and subtle darker pools of pigment create the forms. Transparent blue-gray washes shape the shadows, while a few crisp dry-brush accents define the focal details.",
+    "description": "MOSS · Picture styles · 风格",
+    "coverUrl": "grimoire-asset://default-prompt-assets/moss-character/103.webp",
+    "referenceImageUrls": [
+      "grimoire-asset://default-prompt-assets/moss-character/103.webp"
+    ],
+    "tags": [
+      "风格",
+      "风格:Watercolor Painting (MOSS caption test)"
+    ],
+    "author": "ukr8b3g-cmyk",
+    "sourceUrl": "https://github.com/ukr8b3g-cmyk/MOSS-Image-Character-Catalog",
+    "createdAt": "2026-10-21T07:18:28.830744+00:00",
+    "imageMode": "text-to-image",
+    "imageModel": "MOSS-Image-Base"
+  },
+  {
+    "id": "demo-104",
+    "sourceId": "moss-character",
+    "title": "Line Art",
+    "prompt": "A clean contour-line illustration in black ink on white paper. Describe the adult woman's face, hands, clothing folds, flowers and furniture with deliberate tapered lines and generous open white areas. Keep the forms readable through line weight and overlapping contours, with almost no filled color, tonal gradients or modeled shadow masses.",
+    "description": "MOSS · Picture styles · 风格",
+    "coverUrl": "grimoire-asset://default-prompt-assets/moss-character/104.webp",
+    "referenceImageUrls": [
+      "grimoire-asset://default-prompt-assets/moss-character/104.webp"
+    ],
+    "tags": [
+      "风格",
+      "风格:Line Art"
+    ],
+    "author": "ukr8b3g-cmyk",
+    "sourceUrl": "https://github.com/ukr8b3g-cmyk/MOSS-Image-Character-Catalog",
+    "createdAt": "2026-10-21T09:32:42.079234+00:00",
+    "imageMode": "text-to-image",
+    "imageModel": "MOSS-Image-Base"
+  },
+  {
+    "id": "demo-105",
+    "sourceId": "moss-character",
+    "title": "Colored Pencil Drawing",
+    "prompt": "A colored-pencil drawing on lightly textured cream paper. Fine directional pencil strokes follow the face, hands, hair and cloth, with layered translucent hatching building soft volume. Preserve visible paper grain between the colored marks, delicate outlines and small burnished highlights, using ochre, blue, yellow and warm brown pencils rather than smooth digital fills.",
+    "description": "MOSS · Picture styles · 风格",
+    "coverUrl": "grimoire-asset://default-prompt-assets/moss-character/105.webp",
+    "referenceImageUrls": [
+      "grimoire-asset://default-prompt-assets/moss-character/105.webp"
+    ],
+    "tags": [
+      "风格",
+      "风格:Colored Pencil Drawing"
+    ],
+    "author": "ukr8b3g-cmyk",
+    "sourceUrl": "https://github.com/ukr8b3g-cmyk/MOSS-Image-Character-Catalog",
+    "createdAt": "2026-10-21T09:36:01.517747+00:00",
+    "imageMode": "text-to-image",
+    "imageModel": "MOSS-Image-Base"
+  },
+  {
+    "id": "demo-106",
+    "sourceId": "moss-character",
+    "title": "Stained Glass Art",
+    "prompt": "A luminous stained-glass panel depicting the adult woman arranging flowers. Dark lead cames outline carefully shaped pieces of cream, amber, blue and green glass, dividing the face, hands, clothing and workshop into expressive colored segments. Uneven glass thickness, tiny bubbles and transmitted window light create rich color without painted three-dimensional shading.",
+    "description": "MOSS · Picture styles · 风格",
+    "coverUrl": "grimoire-asset://default-prompt-assets/moss-character/106.webp",
+    "referenceImageUrls": [
+      "grimoire-asset://default-prompt-assets/moss-character/106.webp"
+    ],
+    "tags": [
+      "风格",
+      "风格:Stained Glass Art"
+    ],
+    "author": "ukr8b3g-cmyk",
+    "sourceUrl": "https://github.com/ukr8b3g-cmyk/MOSS-Image-Character-Catalog",
+    "createdAt": "2026-10-21T09:42:41.465083+00:00",
+    "imageMode": "text-to-image",
+    "imageModel": "MOSS-Image-Base"
+  },
+  {
+    "id": "demo-107",
+    "sourceId": "moss-character",
+    "title": "Sumi-e Ink Painting",
+    "prompt": "An expressive East Asian ink-wash painting on absorbent rice paper. Broad diluted ink washes establish the workshop and clothing, while a few dark calligraphic brushstrokes define the adult woman's face, hands, hair and flowers. Let wet edges bleed into pale paper and dry strokes break into visible fibers, using carefully reserved white space instead of continuous tonal rendering.",
+    "description": "MOSS · Picture styles · 风格",
+    "coverUrl": "grimoire-asset://default-prompt-assets/moss-character/107.webp",
+    "referenceImageUrls": [
+      "grimoire-asset://default-prompt-assets/moss-character/107.webp"
+    ],
+    "tags": [
+      "风格",
+      "风格:Sumi-e Ink Painting"
+    ],
+    "author": "ukr8b3g-cmyk",
+    "sourceUrl": "https://github.com/ukr8b3g-cmyk/MOSS-Image-Character-Catalog",
+    "createdAt": "2026-10-21T09:44:54.989624+00:00",
+    "imageMode": "text-to-image",
+    "imageModel": "MOSS-Image-Base"
+  },
+  {
+    "id": "demo-108",
+    "sourceId": "moss-character",
+    "title": "Rembrandt (MOSS caption test)",
+    "prompt": "An oil painting in the style of Rembrandt, with a restrained palette of warm umber, ochre and muted gold. Build illuminated skin and fabric with thick, textured impasto, while keeping the deep brown shadows thinly glazed. Use softly lost edges, subtle reflected light and rich tonal transitions to create rounded, weighty forms. Concentrated directional window light reveals the face and hands against a subdued interior. Preserve visible brushwork and a tactile painted surface throughout.",
+    "description": "MOSS · Picture styles · 风格",
+    "coverUrl": "grimoire-asset://default-prompt-assets/moss-character/108.webp",
+    "referenceImageUrls": [
+      "grimoire-asset://default-prompt-assets/moss-character/108.webp"
+    ],
+    "tags": [
+      "风格",
+      "风格:Rembrandt (MOSS caption test)"
+    ],
+    "author": "ukr8b3g-cmyk",
+    "sourceUrl": "https://github.com/ukr8b3g-cmyk/MOSS-Image-Character-Catalog",
+    "createdAt": "2026-10-21T09:13:52.479975+00:00",
+    "imageMode": "text-to-image",
+    "imageModel": "MOSS-Image-Base"
+  },
+  {
+    "id": "demo-109",
+    "sourceId": "moss-character",
+    "title": "Claude Monet Style",
+    "prompt": "An oil painting in the style of Claude Monet, with broken touches of luminous color and softly dissolving contours. Build the woman's face, flowers and workshop from interwoven cream, lavender, pale blue, green and warm yellow brushmarks. Let reflected daylight unify the forms, keeping shadows colorful and airy and allowing adjacent strokes to remain visible rather than blending into smooth photographic detail.",
+    "description": "MOSS · Picture styles · 风格",
+    "coverUrl": "grimoire-asset://default-prompt-assets/moss-character/109.webp",
+    "referenceImageUrls": [
+      "grimoire-asset://default-prompt-assets/moss-character/109.webp"
+    ],
+    "tags": [
+      "风格",
+      "风格:Claude Monet Style"
+    ],
+    "author": "ukr8b3g-cmyk",
+    "sourceUrl": "https://github.com/ukr8b3g-cmyk/MOSS-Image-Character-Catalog",
+    "createdAt": "2026-10-21T09:50:27.152849+00:00",
+    "imageMode": "text-to-image",
+    "imageModel": "MOSS-Image-Base"
+  },
+  {
+    "id": "demo-110",
+    "sourceId": "moss-character",
+    "title": "Vincent van Gogh Style",
+    "prompt": "An oil painting in the style of Vincent van Gogh, with thick ridged impasto and strongly directional brushstrokes. Rhythmic curves describe the woman's hair, clothing folds, flowers and workshop surfaces, while saturated ochre, cobalt blue, green and warm cream create expressive color contrasts. Use clear dark accents and vigorously worked paint to give familiar forms a tactile, pulsing structure.",
+    "description": "MOSS · Picture styles · 风格",
+    "coverUrl": "grimoire-asset://default-prompt-assets/moss-character/110.webp",
+    "referenceImageUrls": [
+      "grimoire-asset://default-prompt-assets/moss-character/110.webp"
+    ],
+    "tags": [
+      "风格",
+      "风格:Vincent van Gogh Style"
+    ],
+    "author": "ukr8b3g-cmyk",
+    "sourceUrl": "https://github.com/ukr8b3g-cmyk/MOSS-Image-Character-Catalog",
+    "createdAt": "2026-10-21T09:51:33.988123+00:00",
+    "imageMode": "text-to-image",
+    "imageModel": "MOSS-Image-Base"
+  },
+  {
+    "id": "demo-111",
+    "sourceId": "moss-character",
+    "title": "Gustav Klimt Style",
+    "prompt": "A painting in the style of Gustav Klimt, combining sensitively modeled facial features and hands with decorative flattened clothing and surroundings. Gold-leaf-like surfaces, small mosaic rectangles, curling botanical motifs and densely repeated geometric patterns fill the apron and workshop. Keep the face and bouquet readable amid warm gold, deep blue, cream and green ornamental fields.",
+    "description": "MOSS · Picture styles · 风格",
+    "coverUrl": "grimoire-asset://default-prompt-assets/moss-character/111.webp",
+    "referenceImageUrls": [
+      "grimoire-asset://default-prompt-assets/moss-character/111.webp"
+    ],
+    "tags": [
+      "风格",
+      "风格:Gustav Klimt Style"
+    ],
+    "author": "ukr8b3g-cmyk",
+    "sourceUrl": "https://github.com/ukr8b3g-cmyk/MOSS-Image-Character-Catalog",
+    "createdAt": "2026-10-21T09:52:39.613948+00:00",
+    "imageMode": "text-to-image",
+    "imageModel": "MOSS-Image-Base"
+  },
+  {
+    "id": "demo-112",
+    "sourceId": "moss-character",
+    "title": "Alphonse Mucha Style",
+    "prompt": "An illustration in the style of Alphonse Mucha, with graceful continuous contours, an elegantly simplified adult face and flowing curved hair and fabric. Muted cream, sage, ochre and dusty blue color areas are enclosed by clean decorative lines. Integrate restrained floral ornament and rhythmic curved shapes into the existing workshop, preserving the woman's action without adding a title or lettering.",
+    "description": "MOSS · Picture styles · 风格",
+    "coverUrl": "grimoire-asset://default-prompt-assets/moss-character/112.webp",
+    "referenceImageUrls": [
+      "grimoire-asset://default-prompt-assets/moss-character/112.webp"
+    ],
+    "tags": [
+      "风格",
+      "风格:Alphonse Mucha Style"
+    ],
+    "author": "ukr8b3g-cmyk",
+    "sourceUrl": "https://github.com/ukr8b3g-cmyk/MOSS-Image-Character-Catalog",
+    "createdAt": "2026-10-21T09:53:46.172909+00:00",
+    "imageMode": "text-to-image",
+    "imageModel": "MOSS-Image-Base"
+  },
+  {
+    "id": "demo-113",
+    "sourceId": "moss-character",
+    "title": "Takashi Murakami Style",
+    "prompt": "An illustration in the style of Takashi Murakami and Superflat, with precise cartoon contours, brilliant flat color fields, clean graphic shapes and deliberately shallow pictorial space. Simplify the woman, bouquet and workshop into a coherent, highly saturated two-dimensional composition. Use sharply separated colors and playful stylized facial features throughout, rather than merely adding a decorative flower pattern to a realistic scene.",
+    "description": "MOSS · Picture styles · 风格",
+    "coverUrl": "grimoire-asset://default-prompt-assets/moss-character/113.webp",
+    "referenceImageUrls": [
+      "grimoire-asset://default-prompt-assets/moss-character/113.webp"
+    ],
+    "tags": [
+      "风格",
+      "风格:Takashi Murakami Style"
+    ],
+    "author": "ukr8b3g-cmyk",
+    "sourceUrl": "https://github.com/ukr8b3g-cmyk/MOSS-Image-Character-Catalog",
+    "createdAt": "2026-10-21T10:56:36.716880+00:00",
+    "imageMode": "text-to-image",
+    "imageModel": "MOSS-Image-Base"
+  },
+  {
+    "id": "demo-114",
+    "sourceId": "moss-character",
+    "title": "Yayoi Kusama Style",
+    "prompt": "A painting in the style of Yayoi Kusama, where the woman, bouquet and interior are reconstructed as flattened organic shapes interwoven with dense repeating dots and infinity-net patterns. Use vivid contrasting fields of yellow, red, black and white, with rhythmic irregular spots and looping mesh-like contours. Let the repeated structures define the face, hands, clothing and flowers themselves, rather than merely decorating a realistic figure. Preserve the single woman and her flower-arranging gesture.",
+    "description": "MOSS · Picture styles · 风格",
+    "coverUrl": "grimoire-asset://default-prompt-assets/moss-character/114.webp",
+    "referenceImageUrls": [
+      "grimoire-asset://default-prompt-assets/moss-character/114.webp"
+    ],
+    "tags": [
+      "风格",
+      "风格:Yayoi Kusama Style"
+    ],
+    "author": "ukr8b3g-cmyk",
+    "sourceUrl": "https://github.com/ukr8b3g-cmyk/MOSS-Image-Character-Catalog",
+    "createdAt": "2026-10-21T11:18:52.471688+00:00",
+    "imageMode": "text-to-image",
+    "imageModel": "MOSS-Image-Base"
+  },
+  {
+    "id": "demo-115",
+    "sourceId": "moss-character",
+    "title": "Andy Warhol Style",
+    "prompt": "A portrait-centered silkscreen artwork in the style of Andy Warhol. Reduce the adult woman's face, hands, clothes and flower workshop to bold high-contrast photographic stencil shapes over sharply separated areas of vivid flat color. Retain uneven ink coverage and small registration offsets within the printed forms, producing a single coherent image rather than a grid of repeated portraits.",
+    "description": "MOSS · Picture styles · 风格",
+    "coverUrl": "grimoire-asset://default-prompt-assets/moss-character/115.webp",
+    "referenceImageUrls": [
+      "grimoire-asset://default-prompt-assets/moss-character/115.webp"
+    ],
+    "tags": [
+      "风格",
+      "风格:Andy Warhol Style"
+    ],
+    "author": "ukr8b3g-cmyk",
+    "sourceUrl": "https://github.com/ukr8b3g-cmyk/MOSS-Image-Character-Catalog",
+    "createdAt": "2026-10-21T10:04:54.511347+00:00",
+    "imageMode": "text-to-image",
+    "imageModel": "MOSS-Image-Base"
+  },
+  {
+    "id": "demo-116",
+    "sourceId": "moss-character",
+    "title": "Banksy Style",
+    "prompt": "A street-art stencil in the style of Banksy, portraying the woman, her hands and the bouquet as sharply cut black-and-white silhouettes with selective interior cutouts. Use a small accent of yellow on the flowers against a pale, subtly weathered wall. Reduce the workshop to a few decisive stencil shapes, with sparse spray-painted edges and strong graphic negative space. Transform the figure itself into stencil art rather than placing a realistic portrait in front of graffiti.",
+    "description": "MOSS · Picture styles · 风格",
+    "coverUrl": "grimoire-asset://default-prompt-assets/moss-character/116.webp",
+    "referenceImageUrls": [
+      "grimoire-asset://default-prompt-assets/moss-character/116.webp"
+    ],
+    "tags": [
+      "风格",
+      "风格:Banksy Style"
+    ],
+    "author": "ukr8b3g-cmyk",
+    "sourceUrl": "https://github.com/ukr8b3g-cmyk/MOSS-Image-Character-Catalog",
+    "createdAt": "2026-10-21T10:58:49.053320+00:00",
+    "imageMode": "text-to-image",
+    "imageModel": "MOSS-Image-Base"
+  },
+  {
+    "id": "demo-117",
+    "sourceId": "moss-character",
+    "title": "Ancient Egyptian Wall Painting",
+    "prompt": "An ancient Egyptian wall painting on pale plaster, with precise dark contours and flat areas of ochre, red, blue, green and cream mineral color. Translate the adult woman's anatomy into Egyptian composite-view conventions: a profile face with a front-facing eye, broad frontal shoulders and clearly separated arms and hands. Flatten the workshop and bouquet into carefully arranged painted shapes without photographic perspective or modeled shading.",
+    "description": "MOSS · Picture styles · 风格",
+    "coverUrl": "grimoire-asset://default-prompt-assets/moss-character/117.webp",
+    "referenceImageUrls": [
+      "grimoire-asset://default-prompt-assets/moss-character/117.webp"
+    ],
+    "tags": [
+      "风格",
+      "风格:Ancient Egyptian Wall Painting"
+    ],
+    "author": "ukr8b3g-cmyk",
+    "sourceUrl": "https://github.com/ukr8b3g-cmyk/MOSS-Image-Character-Catalog",
+    "createdAt": "2026-10-21T10:25:43.107199+00:00",
+    "imageMode": "text-to-image",
+    "imageModel": "MOSS-Image-Base"
+  },
+  {
+    "id": "demo-118",
+    "sourceId": "moss-character",
+    "title": "Wayang Kulit Shadow Theatre",
+    "prompt": "A scene rendered as Indonesian wayang kulit shadow theatre, with the woman reconstructed as an articulated flat leather puppet in an elegant elongated profile. Use slender jointed arms, delicately pierced ornamental shapes, visible thin control rods and a warm backlit cloth screen. Make the bouquet and worktable legible through carefully cut silhouettes and small openings. The figure and objects share the same flat theatrical construction, with dark shadows and warm light shining through the pierced leather.",
+    "description": "MOSS · Picture styles · 风格",
+    "coverUrl": "grimoire-asset://default-prompt-assets/moss-character/118.webp",
+    "referenceImageUrls": [
+      "grimoire-asset://default-prompt-assets/moss-character/118.webp"
+    ],
+    "tags": [
+      "风格",
+      "风格:Wayang Kulit Shadow Theatre"
+    ],
+    "author": "ukr8b3g-cmyk",
+    "sourceUrl": "https://github.com/ukr8b3g-cmyk/MOSS-Image-Character-Catalog",
+    "createdAt": "2026-10-21T11:08:46.672128+00:00",
+    "imageMode": "text-to-image",
+    "imageModel": "MOSS-Image-Base"
+  },
+  {
+    "id": "demo-119",
+    "sourceId": "moss-character",
+    "title": "The Simpsons Style",
+    "prompt": "A Simpsons-inspired two-dimensional animation frame with warm yellow skin, large round eyes, rounded cartoon construction and heavy clean outlines. Uniform primary-color fills and a few simple cel-shadow shapes keep the figures and workshop graphic and immediately readable.",
+    "description": "MOSS · Picture styles · 风格",
+    "coverUrl": "grimoire-asset://default-prompt-assets/moss-character/119.webp",
+    "referenceImageUrls": [
+      "grimoire-asset://default-prompt-assets/moss-character/119.webp"
+    ],
+    "tags": [
+      "风格",
+      "风格:The Simpsons Style"
+    ],
+    "author": "ukr8b3g-cmyk",
+    "sourceUrl": "https://github.com/ukr8b3g-cmyk/MOSS-Image-Character-Catalog",
+    "createdAt": "2026-10-21T07:46:50.717378+00:00",
+    "imageMode": "text-to-image",
+    "imageModel": "MOSS-Image-Base"
+  },
+  {
+    "id": "demo-120",
+    "sourceId": "moss-character",
+    "title": "Sesame Street-style Soft Puppet",
+    "prompt": "A Sesame Street-style practical puppet scene, with the woman transformed into one friendly foam-and-fleece hand puppet. Give her a broad flexible felt mouth, protruding round eyes, a softly rounded fabric head, short dark yarn hair and soft rod-operated hands. Retain the cream shirt and navy apron as sewn miniature garments. Show tactile fleece fibers, fabric seams and a handmade miniature flower-workshop set, with the puppet actively arranging the bouquet. One puppet only.",
+    "description": "MOSS · Picture styles · 风格",
+    "coverUrl": "grimoire-asset://default-prompt-assets/moss-character/120.webp",
+    "referenceImageUrls": [
+      "grimoire-asset://default-prompt-assets/moss-character/120.webp"
+    ],
+    "tags": [
+      "风格",
+      "风格:Sesame Street-style Soft Puppet"
+    ],
+    "author": "ukr8b3g-cmyk",
+    "sourceUrl": "https://github.com/ukr8b3g-cmyk/MOSS-Image-Character-Catalog",
+    "createdAt": "2026-10-21T11:11:02.357428+00:00",
+    "imageMode": "text-to-image",
+    "imageModel": "MOSS-Image-Base"
+  }
+]

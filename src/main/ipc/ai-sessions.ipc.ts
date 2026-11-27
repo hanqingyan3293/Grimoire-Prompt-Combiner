@@ -15,18 +15,19 @@ import { AI_MESSAGE_MAX_ATTACHMENTS, AI_MESSAGE_MAX_TOTAL_BYTES, getAiAttachment
 import { readRetryPolicy, withRetry } from '../ai/runtime/retry-policy'
 import { applyMessageLimit, readContextSettings } from '../ai/runtime/context-settings'
 import { recordAiUsage } from '../services/usage.service'
-import { agentRuntimeSessionDirectory, inspectAgentRuntime, inspectAgentRuntimes, resolveAgentRuntimeCommand, shutdownAgentRuntimes, startOpenCodeRuntime } from "../services/agent-runtime-manager"
+import { agentRuntimeSessionDirectory, inspectAgentRuntime, inspectAgentRuntimes, resolveAgentRuntimeCommand, runtimeSelectionContract, shutdownAgentRuntimes, startOpenCodeRuntime } from "../services/agent-runtime-manager"
 import { isMcpToolForcePrompt } from "../services/mcp.service"
 import { runAgentRuntimeLoop } from "../services/agent-runtime-turn.service"
 import { admitRuntimeTurn, cancelRuntimeTurn, shutdownRuntimeTurns } from '../services/agent-runtime-admission.service'
-import { RuntimePermissionBroker } from '../services/agent-runtime-permission.service'
+import { RuntimePermissionBroker, type RuntimePermissionDecision } from '../services/agent-runtime-permission.service'
 import { prepareNativeRuntime } from '../services/agent-runtime-preparation.service'
 import { attachRuntimeExecutionReference, beginRuntimeExecutionReference, type RuntimeExecutionIdentity } from '../services/agent-runtime-reference.service'
 import { safeRuntimeError } from '../services/agent-runtime-safety.service'
 import { piSdkHostTools, piSdkPermission } from '../services/pi-sdk-tool-bridge.service'
 import { readRuntimeFeatureFlags, RuntimeCapabilityUnavailableError } from '../ai/runtime/features'
+import { runtimeModelFallback } from '../../shared/runtime-contract'
 
-const runningRuntimes = new Map<string, { interrupt?: (sessionId: string) => Promise<void>; close?: () => Promise<void> }>()
+const runningRuntimes = new Map<string, { kind: AiRuntimeKind; runtime: AgentRuntime; interrupt?: (sessionId: string) => Promise<void>; close?: () => Promise<void> }>()
 const permissions = new RuntimePermissionBroker()
 
 const RUNTIME_KINDS: AiRuntimeKind[] = ["openai-compatible", "anthropic", "google", "codex", "opencode", "pi"]
@@ -48,30 +49,37 @@ function broadcastPermissionRequest(value: { requestId: string; sessionId: strin
   }
 }
 
-async function requestPermission(sender: Electron.WebContents, sessionId: string, permission: ToolPermission, detail: unknown, mode: unknown, requestIdOverride?: string, forcePrompt = false, signal?: AbortSignal, scope = 'ai:' + sessionId): Promise<boolean> {
-  const decision = await permissions.request({ sender, sessionId, scope, permission, detail, mode, requestId: requestIdOverride, forcePrompt, signal, channel: IPC_CHANNELS.AI_PERMISSION_REQUEST })
-  return decision === 'allowOnce' || decision === 'allowForSession'
+async function requestPermission(sender: Electron.WebContents, sessionId: string, permission: ToolPermission, detail: unknown, mode: unknown, requestIdOverride?: string, forcePrompt = false, signal?: AbortSignal, scope = 'ai:' + sessionId): Promise<RuntimePermissionDecision> {
+  return permissions.request({ sender, sessionId, scope, permission, detail, mode, requestId: requestIdOverride, forcePrompt, signal, channel: IPC_CHANNELS.AI_PERMISSION_REQUEST })
 }
 
 // Source `ai.tool.approval.respond` lands here through the compat route: one approval id, one
 // boolean. The broker is the authority — an unknown or already-resolved id simply returns false.
 export function decideAiSessionPermission(sender: Electron.WebContents, requestId: string, decision: 'allowOnce' | 'allowForSession' | 'deny' | 'cancel'): boolean {
   if (!requestId || !['allowOnce', 'allowForSession', 'deny', 'cancel'].includes(decision)) return false
-  if (!permissions.decide(sender, requestId, decision)) return false
-  resolveAiPermission({ requestId, decision })
+  const effective = permissions.decideWithDecision(sender, requestId, decision)
+  if (!effective) return false
+  resolveAiPermission({ requestId, decision: effective })
   return true
 }
 
 export function registerAiSessionsIPC(): void {
   ipcMain.handle(IPC_CHANNELS.AI_RUNTIME_STATUS, async () => inspectAgentRuntimes())
-  ipcMain.handle(IPC_CHANNELS.AI_RUNTIME_CAPABILITIES, async (_event, kind: unknown) => getAgentRuntimeCapabilities(String(kind || '') as AiRuntimeKind))
+  ipcMain.handle(IPC_CHANNELS.AI_RUNTIME_CAPABILITIES, async (_event, input: unknown) => {
+    const value = typeof input === 'string' ? { kind: input } : input && typeof input === 'object' ? input as Record<string, unknown> : {}
+    const kind = String(value.kind || '') as AiRuntimeKind
+    const sessionId = typeof value.sessionId === 'string' ? value.sessionId : ''
+    const running = sessionId ? runningRuntimes.get(sessionId) : undefined
+    return getAgentRuntimeCapabilities(kind, {}, running && running.kind === kind ? running.runtime : undefined)
+  })
   ipcMain.handle(IPC_CHANNELS.AI_RUNTIME_PREPARE, async (_event, kind: unknown) => inspectAgentRuntime(String(kind || "") as AiRuntimeKind))
   ipcMain.handle(IPC_CHANNELS.AI_PERMISSION_DECISION, async (_event, input: unknown) => {
     const value = input && typeof input === "object" ? input as Record<string, unknown> : {}
     const requestId = String(value.requestId || "")
     const decision = String(value.decision || "")
-    if (!permissions.decide(_event.sender, requestId, decision)) return false
-    resolveAiPermission({ requestId, decision: decision as 'allowOnce' | 'allowForSession' | 'cancel' | 'deny' })
+    const effective = permissions.decideWithDecision(_event.sender, requestId, decision)
+    if (!effective) return false
+    resolveAiPermission({ requestId, decision: effective })
     return true
   })
   ipcMain.handle(IPC_CHANNELS.AI_CATALOG_PROVIDERS, async (_event, input?: unknown) => {
@@ -148,11 +156,8 @@ export function registerAiSessionsIPC(): void {
   ipcMain.handle(IPC_CHANNELS.AI_SESSION_INTERRUPT, handleAiSessionInterrupt)
   ipcMain.handle(IPC_CHANNELS.AI_SESSION_COMPACT, async (_event, id: unknown) => {
     const sessionId = String(id || "")
-    const snapshot = getAiSession(sessionId)
-    if (!snapshot) throw new Error("AI 会话不存在")
-    const metadata = { ...snapshot.session.metadata, compactedAt: new Date().toISOString(), compactedMessageCount: snapshot.messages.length }
-    appendAiEvent({ sessionId, eventType: "compaction-finished", payload: { messageCount: snapshot.messages.length } })
-    return updateAiSession({ id: sessionId, metadata })
+    if (!getAiSession(sessionId)) throw new Error("AI 会话不存在")
+    throw new Error('AI_SESSION_COMPACT_NOT_IMPLEMENTED: no verified compaction operation is attached')
   })
   ipcMain.handle(IPC_CHANNELS.AI_SESSION_RETRY, async (_event, input: unknown) => {
     const value = input && typeof input === 'object' ? input as Record<string, unknown> : {}
@@ -276,9 +281,12 @@ export async function handleAiSessionSend(_event: { sender: Electron.WebContents
     if ((PROVIDER_RUNTIMES.has(runtimeKind) || runtimeKind === 'pi') && !provider) throw new Error("当前 Runtime 需要先配置 AI Provider")
     const providerWithSecret = provider as (typeof provider & { api_key?: string; base_url?: string; protocol?: 'chat_completions' | 'responses' }) | null
     const metadata = snapshot.session.metadata || {}
-    const model = typeof value.modelId === "string" && value.modelId.trim()
-      ? value.modelId.trim()
-      : snapshot.session.model_id || provider?.default_model || (typeof metadata.model === "string" ? metadata.model : "") || (PROVIDER_RUNTIMES.has(runtimeKind) ? "" : "default")
+    const model = runtimeModelFallback({
+      contract: runtimeSelectionContract(runtimeKind),
+      explicitModel: typeof value.modelId === "string" ? value.modelId : "",
+      sessionModel: snapshot.session.model_id || (typeof metadata.model === "string" ? metadata.model : ""),
+      providerDefaultModel: provider?.default_model,
+    })
     if (!model) throw new Error("请先选择模型")
     const inputAttachments = Array.isArray(value.attachments) ? value.attachments : []
     const inputContext = Array.isArray(value.context) ? value.context.slice(0, 20) : []
@@ -359,7 +367,7 @@ export async function handleAiSessionSend(_event: { sender: Electron.WebContents
       const close = () => closePromise ||= Promise.resolve().then(() => runtime?.close?.())
       admission.setCancel(async () => { cancelled = true; await interrupt() })
       admission.signal.throwIfAborted()
-      runningRuntimes.set(sessionId, { interrupt: runtime.interrupt ? async () => { cancelled = true; await interrupt() } : undefined, close })
+      runningRuntimes.set(sessionId, { kind: runtimeKind, runtime, interrupt: runtime.interrupt ? async () => { cancelled = true; await interrupt() } : undefined, close })
       cleanupRuntime = async () => { try { await interrupt() } finally { await close() } }
       const loopResult = await runAgentRuntimeLoop({
         runtime,
@@ -466,9 +474,10 @@ export async function handleAiSessionSend(_event: { sender: Electron.WebContents
             createAiPermission({ sessionId, requestId, permission, detail })
             hooks?.onPermissionRequest?.(requestId, { permission, detail, tool: call.name })
             broadcast({ kind: "event", record: requested })
-            const allowed = await requestPermission(sender, sessionId, permission, detail, permissionMode, requestId, isMcpToolForcePrompt(call.name), admission.signal, 'ai:' + sessionId + ':' + (nativeIdentity?.configFingerprint || runtimeKind))
+            const decision = await requestPermission(sender, sessionId, permission, detail, permissionMode, requestId, isMcpToolForcePrompt(call.name), admission.signal, 'ai:' + sessionId + ':' + (nativeIdentity?.configFingerprint || runtimeKind))
+            const allowed = decision === 'allowOnce' || decision === 'allowForSession'
             const resolved = appendAiEvent({ sessionId, eventType: "permission-resolved", payload: { permission, detail, tool: call.name, decision: allowed ? "allow" : "deny" } })
-            resolveAiPermission({ requestId, decision: allowed ? 'allowOnce' : 'deny' })
+            resolveAiPermission({ requestId, decision })
             broadcast({ kind: "event", record: resolved })
             return allowed
           },

@@ -1,12 +1,53 @@
 # Third-Party Notices
 
+## MOSS Image Character Catalog
+
+- Project: `ukr8b3g-cmyk/MOSS-Image-Character-Catalog`
+- Source: local reference snapshot under `项目参考/MOSS-Image-Character-Catalog-main`
+- Included material: `demo/catalog.json` browsing metadata and prompt/tag text for 120 entries (96 characters and 24 styles), plus the 120 WebP samples in `demo/images/`.
+- Grimoire destination: `data/default-prompt-assets/moss-character.json` and `data/default-prompt-assets/moss-character/`.
+- License: MIT for the maintainer-authored documentation, static demo code, validation script, and Pages workflow. The full upstream text is retained verbatim at `data/default-prompt-assets/moss-character-LICENSE.txt`; the upstream notice is retained at `data/default-prompt-assets/moss-character-NOTICE.md`.
+
+MIT License
+
+Copyright (c) 2026 ukr8b3g-cmyk
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+Upstream notice scope: the MIT grant covers only the maintainer-authored
+documentation, static demo HTML/CSS/JavaScript, validation script, and Pages
+workflow. It is not a grant of third-party character, artwork, trademark,
+likeness, or model rights. The 120 generated samples are demonstration
+material, not original reference artwork, verified identity labels, or a
+cleared collection. Model publishers' applicable terms and existing
+third-party rights remain unchanged. The public samples omit EXIF/XMP workflow
+metadata, private review state, backend credentials, and local file paths;
+their encoded image content is unchanged. The project is not an official
+OpenMOSS, Krea2, or AnimaDex product.
+
 ## Infinite Canvas
 
 - Project: `basketikun/infinite-canvas`
 - Source: https://github.com/basketikun/infinite-canvas
 - License: MIT
 - Copyright: Copyright (c) 2026 basketikun
-- Usage: The Grimoire canvas grouping, selection-state separation, geometry helpers, and node-registry architecture were adapted from the upstream design. The upstream application, routes, IndexedDB storage, remote APIs, Agent integration, and remote plugin loader are not bundled.
+- Usage: Grimoire loads the adapted Infinite Canvas application and routes in the canvas-vendor renderer. Grouping, selection-state separation, geometry helpers and node registry retain upstream provenance. Grimoire host adapters own Agent integration and SQLite-backed business persistence; upstream IndexedDB is not a second business source of truth. Remote APIs/plugin loading are not claimed as migrated without independent evidence.
 
 MIT License
 
@@ -235,3 +276,13 @@ Unchanged original artifacts from the granted Cherry reference snapshot are reta
 - `ai@6.0.185.patch`: SHA-256 `61fc175c652267f39ec01df738fc61d1639faa19b980441005f7e9cd645d1711`.
 
 Both hashes match the authentic source lockfile. The React hook patch uses structural-sharing message snapshots. The AI core patch also uses structural sharing and preserves Cherry's generated-image download/type contract, including data URLs, HTTP(S) downloads, and warnings when malformed/unavailable images are dropped. No backend/native implementation is added by these patches. Their contributions are conservatively covered by Cherry's AGPL-3.0 source license; original Vercel Apache-2.0 notices are retained. The combined patched code is not represented as unmodified Apache-only upstream code. The patch of the existing `ai` dependency also affects the default compat dependency resolution, so the unchanged default compat build and full tests are regression gates.
+
+## Cherry ComfyUI source bundle (2026-11-07)
+
+The [bundle-only boundary](<scripts/entries/comfy-source.ts>) directly exports the unchanged Cherry ComfyUI transport, strict version parser, and abort-aware polling wait. The [builder](<scripts/build-comfy-source.mjs>) records the actual resolved module graph, raw input hashes, parsed-code hashes, resolver package metadata, lockfiles, builder/runtime versions and output hash in [its generated provenance](<dist/main/integrations/cherry/comfy-source.provenance.json>). This describes the selected ComfyUI bundle, not the entire Cherry application dependency closure.
+
+Cherry source portions remain conservatively covered by the actual retained [AGPL-3.0 source license](<src/vendor/cherry/source/LICENSE>). The current retained vendor snapshot has four workspace package manifests but no root package manifest; earlier references to an upstream root declaration are not used as current manifest evidence. Workspace MIT declarations do not replace the actual license text governing this combined bundle.
+
+The bundle resolves Zod through the existing compatible installation (4.6.5 at this verification point), preserving its ESM import condition rather than substituting Grimoire's separate root Zod 4.3.4. Its actual MIT text, copyright 2025 Colin McDonnell, is copied byte-for-byte alongside the bundle as [the Zod notice](<dist/main/integrations/cherry/comfy-source.zod.LICENSE.txt>); the complete Cherry source license also travels as [the source license](<dist/main/integrations/cherry/comfy-source.LICENSE.txt>). Both generated notice hashes and original input locations are recorded in the provenance. No dependency was silently installed or upgraded.
+
+The selected network-policy closure now also directly reuses Cherry remoteUrlSafety.ts and the existing locked ipaddr.js 1.9.1 implementation. Its MIT license, Copyright (C) 2011-2017 whitequark, is copied byte-for-byte as [the IP library notice](<dist/main/integrations/cherry/comfy-source.ipaddr.LICENSE.txt>). Original package metadata, implementation, license and lockfile hashes are recorded in the source provenance. Comfy applies its own strict all-answer DNS and global-address policy through an adapter; no IP parser, dependency installation or dependency upgrade is substituted.

@@ -71,6 +71,16 @@ try {
     }
     catch (error) { throw new Error(label + ': ' + (error instanceof Error ? error.message : String(error))) }
   }
+  const interfaceResponse = await labeledFetch('v2 interface document', endpoint + '/doc', { headers: { accept: 'application/json' } })
+  const interfaceBody = interfaceResponse.ok ? await interfaceResponse.json() : {}
+  const waitOperation = interfaceBody.paths?.['/api/session/{sessionID}/wait']?.post
+  const v2Interface = {
+    status: interfaceResponse.status,
+    promptOperation: interfaceBody.paths?.['/api/session/{sessionID}/prompt']?.post?.operationId || null,
+    waitOperation: waitOperation?.operationId || null,
+    waitDeclares503: Boolean(waitOperation?.responses?.['503']),
+    eventOperation: interfaceBody.paths?.['/api/session/{sessionID}/event']?.get?.operationId || null,
+  }
   const durablePromise = labeledFetch('durable event fetch', endpoint + '/api/session/' + sessionId + '/event?after=0', { headers: { accept: 'text/event-stream' } }, 25_000)
   const prompt = await labeledFetch('v2 prompt admission', endpoint + '/api/session/' + sessionId + '/prompt', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ prompt: { text: 'reply replay ok' } }) }, 10_000)
   await delay(3000)
@@ -78,6 +88,10 @@ try {
   const activeResponse = await labeledFetch('v2 active sessions', endpoint + '/api/session/active', { headers: { accept: 'application/json' } }, 10_000)
   const activeBody = activeResponse.ok ? await activeResponse.json() : { error: await activeResponse.text() }
   const currentSession = await (await labeledFetch('v2 session state', endpoint + '/api/session/' + sessionId, { headers: { accept: 'application/json' } }, 10_000)).json()
+  const waitResponse = await labeledFetch('v2 session wait', endpoint + '/api/session/' + sessionId + '/wait', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' }, 10_000)
+  const waitText = await waitResponse.text()
+  let waitBody = waitText
+  try { waitBody = JSON.parse(waitText) } catch {}
   const eventResponse = await durablePromise
   if (!eventResponse.ok) throw new Error('v2 durable event HTTP ' + eventResponse.status)
   const durable = await readSse(eventResponse)
@@ -87,8 +101,18 @@ try {
   const durableTypes = durable.map(event => event.type)
   const history = historyBody.data?.data || historyBody.data || []
   const historyTypes = history.map(event => event.type)
-  console.log(JSON.stringify({ passed: prompt.ok && durable.length > 0, sessionId, promptStatus: prompt.status, promptBody, initialSession, activeStatus: activeResponse.status, activeBody, currentSession, providerRequests: providerRequests.length, durableCount: durable.length, durableSeqs, durableTypes, historyStatus: historyResponse.status, historyCount: history.length, historyTypes }, null, 2))
-  if (!prompt.ok || !durable.length) process.exitCode = 1
+  const conclusion = {
+    mode: 'conclusion-only',
+    admissionOnly: true,
+    executionVerified: false,
+    promptAdmitted: prompt.ok,
+    durableEventsObserved: durable.length > 0,
+    providerCallsDuringV2Prompt: providerRequests.length,
+    wait503: waitResponse.status === 503,
+  }
+  const passed = conclusion.promptAdmitted && conclusion.durableEventsObserved && conclusion.wait503 && v2Interface.waitDeclares503 && conclusion.providerCallsDuringV2Prompt === 0
+  console.log(JSON.stringify({ passed, ...conclusion, sessionId, v2Interface, promptStatus: prompt.status, promptBody, initialSession, activeStatus: activeResponse.status, activeBody, currentSession, waitStatus: waitResponse.status, waitBody, providerRequests: providerRequests.length, durableCount: durable.length, durableSeqs, durableTypes, historyStatus: historyResponse.status, historyCount: history.length, historyTypes }, null, 2))
+  if (!passed) process.exitCode = 1
 } catch (error) {
   console.error(JSON.stringify({ passed: false, error: error.stack || String(error), stderr }, null, 2)); process.exitCode = 1
 } finally {

@@ -24,6 +24,7 @@ export function MainContent() {
   const { t } = useI18n()
   const {
     positive, negative, removePositive, removeNegative, updateWeight, stepWeight,
+    editingLocked,
     clearPositive, clearNegative, clearAll,
     undo, redo, canUndo, canRedo,
     deduplicate, randomPick, getFullPrompt,
@@ -81,6 +82,8 @@ export function MainContent() {
 
   return (
     <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+      {editingLocked && <p role="status" className="shrink-0 px-3 py-1 text-xs text-[var(--color-text-secondary)]">这份提示词正在移交或由另一窗口编辑。</p>}
+      <div className="contents" inert={editingLocked}>
       <div className="ui-toolbar flex shrink-0 flex-wrap items-center gap-2 px-3 py-2.5">
         <IconButton icon={RotateCcw} onClick={undo} disabled={!canUndo()} label="撤销" title="撤销（Ctrl+Z）" />
         <IconButton icon={Redo2} onClick={redo} disabled={!canRedo()} label="重做" title="重做（Ctrl+Y）" />
@@ -144,6 +147,7 @@ export function MainContent() {
                 </div>
               </div>
         </FloatingPreview>
+      </div>
       </div>
     </div>
   )

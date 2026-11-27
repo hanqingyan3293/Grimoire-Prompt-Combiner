@@ -30,7 +30,13 @@ for (const match of text.matchAll(/[\w./\\-]+\.(?:ts|tsx|mjs|cjs|json|md|css)\b/
   const candidate = match[0].replace(/[.,;:]+$/, '')
   if (!candidate.includes('/') && !candidate.includes('\\')) continue
   if (candidate.startsWith('http') || candidate.includes('*')) continue
-  const normalised = candidate.split('\\').join('/').replace(/^(\.\/)+/, '')
+  let normalised = candidate.split('\\').join('/').replace(/^(\.\/)+/, '')
+  // Parent-relative Markdown links are anchored to this document's directory,
+  // not to a vendored suffix. Never collapse a repository escape to a basename.
+  if (normalised.startsWith('../')) {
+    const resolved = path.posix.normalize(path.posix.join('.agent', normalised))
+    if (!resolved.startsWith('../') && !path.posix.isAbsolute(resolved)) normalised = resolved
+  }
   // A citation like `messages.ts/topics.ts` names two files; split on the extension boundary.
   for (const piece of normalised.split(/(?<=\.(?:ts|tsx|mjs|cjs|json|md|css))\//)) candidates.add(piece)
 }

@@ -12,6 +12,21 @@ export type PromptBlockType = 'tags' | 'paragraph' | 'random'
 
 export interface TextRange { readonly start: number; readonly end: number }
 
+export interface PromptSyntaxDiagnostic {
+  readonly code: 'MISMATCHED_BRACKET' | 'UNCLOSED_BRACKET' | 'UNCLOSED_QUOTE' | 'INVALID_NUMERIC_WEIGHT' | 'UNCLOSED_NUMERIC_WEIGHT' | 'INVALID_RANDOM_MARKER' | 'DANGLING_ESCAPE' | 'INVALID_UNICODE'
+  readonly range: TextRange
+  readonly message: string
+}
+
+export interface ScannedRandomMarker { readonly range: TextRange; readonly raw: string; readonly marker?: RandomMarker }
+export interface ScannedNumericWeight { readonly range: TextRange; readonly contentRange: TextRange; readonly value: number }
+export interface PromptSyntaxScan {
+  readonly commas: readonly number[]
+  readonly diagnostics: readonly PromptSyntaxDiagnostic[]
+  readonly randomMarkers: readonly ScannedRandomMarker[]
+  readonly numericWeights: readonly ScannedNumericWeight[]
+}
+
 export interface PromptWeight {
   readonly kind: 'increase' | 'decrease' | 'numeric'
   readonly value: number
@@ -59,7 +74,7 @@ export const PROMPT_BLOCK_LIMITS = Object.freeze({
 
 const ENGLISH_FUNCTION_WORDS = /\b(?:a|an|the|she|he|her|his|him|they|them|their|it|its|i|my|we|our|you|your|is|are|was|were)\b/i
 const SENTENCE_END = /[.!?。！？](?:["'”’)]|\s|$)/
-const NUMERIC_WEIGHT = /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)::[\s\S]*?::$/
+const SENTENCE_FINAL = /[.!?。！？]["'”’)]*$/
 
 const hanCount = (text: string): number => (text.match(/\p{Script=Han}/gu) || []).length
 
@@ -136,44 +151,151 @@ export function formatRandomMarker(marker: Partial<RandomMarker> & { pool: strin
 
 /** Numeric weight group (`1.3::content::`) or brace/bracket weighting (`{x}` / `[x]`). */
 export function promptWeightOf(raw: string): PromptWeight | undefined {
-  const numeric = /^([+-]?(?:\d+(?:\.\d*)?|\.\d+))::[\s\S]*::$/.exec(raw)
-  if (numeric) return { kind: 'numeric', value: Number(numeric[1]) }
-  const increase = /^\{+[\s\S]*\}+$/.test(raw)
-  const decrease = /^\[+[\s\S]*\]+$/.test(raw)
-  if (increase) return { kind: 'increase', value: (raw.match(/^\{+/) || [''])[0].length * 0.05 }
-  if (decrease) return { kind: 'decrease', value: (raw.match(/^\[+/) || [''])[0].length * 0.05 }
+  const syntax = scanPromptSyntax(raw)
+  if (syntax.diagnostics.length) return undefined
+  const numeric = syntax.numericWeights.find(group => group.range.start === 0 && group.range.end === raw.length)
+  if (numeric) return { kind: 'numeric', value: numeric.value }
+  const kind = raw[0] === '{' ? 'increase' : raw[0] === '[' ? 'decrease' : undefined
+  if (!kind) return undefined
+  let content = raw
+  let depth = 0
+  while (content[0] === raw[0] && hasWholeBracketWrapper(content)) {
+    depth += 1
+    content = content.slice(1, -1).trim()
+  }
+  if (depth) return { kind, value: depth * 0.05 }
   return undefined
 }
 
-function topLevelCommas(source: string): number[] {
-  const cuts: number[] = []
-  let depth = 0
+function isWordApostrophe(source: string, index: number): boolean {
+  return (source[index] === "'" || source[index] === '’')
+    && /[\p{L}\p{N}_]/u.test(source[index - 1] || '')
+    && /[\p{L}\p{N}_]/u.test(source[index + 1] || '')
+}
+
+function quoteCloser(source: string, index: number): string | null {
+  if (isWordApostrophe(source, index)) return null
+  const char = source[index]
+  if (char === '"' || char === "'") return char
+  if (char === '“') return '”'
+  if (char === '‘') return '’'
+  return null
+}
+
+function escapedMarkerEnd(source: string, index: number): number {
+  if (source.slice(index + 1, index + 3) !== '__') return index + 1
+  const end = source.indexOf('__', index + 3)
+  return end < 0 ? index + 1 : end + 1
+}
+
+export function hasWholeBracketWrapper(raw: string): boolean {
+  if (raw[0] !== '{' && raw[0] !== '[') return false
+  const stack: string[] = []
   let quote: string | null = null
-  let numericOpen = false
-  for (let index = 0; index < source.length; index += 1) {
-    const char = source[index]
-    if (quote) { if (char === quote) quote = null; continue }
-    if (char === '"' || char === "'" || char === '“' || char === '”') { quote = char === '“' ? '”' : char; continue }
-    if (!numericOpen && char === ':' && source[index + 1] === ':') {
-      const head = source.slice(cuts.length ? cuts[cuts.length - 1] + 1 : 0, index)
-      if (/[+-]?(?:\d+(?:\.\d*)?|\.\d+)$/.test(head)) { numericOpen = true; index += 1; continue }
-    }
-    if (numericOpen) {
-      if (char === ':' && source[index + 1] === ':') { numericOpen = false; index += 1 }
+  for (let index = 0; index < raw.length; index += 1) {
+    const char = raw[index]
+    if (char === '\\') { index = escapedMarkerEnd(raw, index); continue }
+    if (quote) { if (char === quote && !isWordApostrophe(raw, index)) quote = null; continue }
+    if (char === '_' && raw[index + 1] === '_') {
+      const end = raw.indexOf('__', index + 2)
+      if (end < 0) return false
+      index = end + 1
       continue
     }
-    if (char === '{' || char === '[') { depth += 1; continue }
-    if (char === '}' || char === ']') { if (depth > 0) depth -= 1; continue }
-    if ((char === ',' || char === '，') && depth === 0) cuts.push(index)
+    quote = quoteCloser(raw, index)
+    if (quote) continue
+    if (char === '{' || char === '[') stack.push(char === '{' ? '}' : ']')
+    else if (char === '}' || char === ']') {
+      if (stack.pop() !== char || (!stack.length && index !== raw.length - 1)) return false
+    }
   }
-  return cuts
+  return stack.length === 0 && quote === null
+}
+
+/** One tolerant scan supplies both parser cuts and guarded-edit diagnostics. In particular,
+ * pool names and quoted text are atoms, so their punctuation never enters the weight grammar. */
+export function scanPromptSyntax(source: string): PromptSyntaxScan {
+  const cuts: number[] = []
+  const diagnostics: PromptSyntaxDiagnostic[] = []
+  const randomMarkers: ScannedRandomMarker[] = []
+  const numericWeights: ScannedNumericWeight[] = []
+  const brackets: Array<{ close: string; start: number }> = []
+  let quote: string | null = null
+  let quoteStart = 0
+  let numeric: { start: number; contentStart: number; depth: number; value: number } | null = null
+  const diagnose = (code: PromptSyntaxDiagnostic['code'], start: number, end: number, message: string) => {
+    diagnostics.push({ code, range: { start, end }, message })
+  }
+  // Unicode validity applies inside every atom, including literal/escaped marker text.
+  for (let index = 0; index < source.length; index += 1) {
+    const unit = source.charCodeAt(index)
+    if (unit >= 0xD800 && unit <= 0xDBFF) {
+      const next = source.charCodeAt(index + 1)
+      if (next >= 0xDC00 && next <= 0xDFFF) index += 1
+      else diagnose('INVALID_UNICODE', index, index + 1, 'UTF-16代理对不完整')
+    } else if (unit >= 0xDC00 && unit <= 0xDFFF) diagnose('INVALID_UNICODE', index, index + 1, 'UTF-16代理对不完整')
+  }
+  for (let index = 0; index < source.length; index += 1) {
+    const char = source[index]
+    if (char === '\\') {
+      if (index + 1 === source.length) diagnose('DANGLING_ESCAPE', index, index + 1, '转义符后缺少字符')
+      index = escapedMarkerEnd(source, index)
+      continue
+    }
+    if (quote) { if (char === quote && !isWordApostrophe(source, index)) quote = null; continue }
+    if (char === '_' && source[index + 1] === '_') {
+      const end = source.indexOf('__', index + 2)
+      const raw = source.slice(index, end < 0 ? source.length : end + 2)
+      let marker: RandomMarker | undefined
+      try { marker = parseRandomMarker(raw) } catch { diagnose('INVALID_RANDOM_MARKER', index, index + raw.length, '随机块格式不正确') }
+      randomMarkers.push({ range: { start: index, end: index + raw.length }, raw, ...(marker ? { marker } : {}) })
+      index = end < 0 ? source.length : end + 1
+      continue
+    }
+    quote = quoteCloser(source, index)
+    if (quote) { quoteStart = index; continue }
+    if ((char === '”' || char === '’') && !isWordApostrophe(source, index)) {
+      diagnose('UNCLOSED_QUOTE', index, index + 1, '引号没有对应的起始符')
+      continue
+    }
+    if (char === ':' && source[index + 1] === ':') {
+      if (numeric) {
+        if (brackets.length !== numeric.depth || !source.slice(numeric.contentStart, index).trim()) {
+          diagnose('INVALID_NUMERIC_WEIGHT', numeric.start, index + 2, '数字权重内容为空或括号跨越权重边界')
+        }
+        numericWeights.push({ range: { start: numeric.start, end: index + 2 }, contentRange: { start: numeric.contentStart, end: index }, value: numeric.value })
+        numeric = null
+      } else {
+        let start = index
+        while (start > 0 && /[\d.+-]/.test(source[start - 1])) start -= 1
+        const head = source.slice(start, index)
+        const boundary = source[start - 1] || ''
+        const value = Number(head)
+        if (!/^[+-]?(?:\d+(?:\.\d*)?|\.\d+)$/.test(head) || /[\p{L}\p{N}_:.]/u.test(boundary) || !Number.isFinite(value)) {
+          diagnose('INVALID_NUMERIC_WEIGHT', start, index + 2, '数字权重必须是独立的有限十进制数')
+        } else numeric = { start, contentStart: index + 2, depth: brackets.length, value }
+      }
+      index += 1
+      continue
+    }
+    if (char === '{' || char === '[' || char === '(') { brackets.push({ close: char === '{' ? '}' : char === '[' ? ']' : ')', start: index }); continue }
+    if (char === '}' || char === ']' || char === ')') {
+      if (brackets.pop()?.close !== char) diagnose('MISMATCHED_BRACKET', index, index + 1, '括号不匹配')
+      continue
+    }
+    if ((char === ',' || char === '，') && brackets.length === 0 && !numeric) cuts.push(index)
+  }
+  if (quote) diagnose('UNCLOSED_QUOTE', quoteStart, source.length, '引号未闭合')
+  for (const bracket of brackets) diagnose('UNCLOSED_BRACKET', bracket.start, source.length, '括号未闭合')
+  if (numeric) diagnose('UNCLOSED_NUMERIC_WEIGHT', numeric.start, source.length, '数字权重缺少结束::')
+  return { commas: cuts, diagnostics, randomMarkers, numericWeights }
 }
 
 export function parsePromptDocument(source: string): PromptDocument {
   // Blocks are located by ranges on the ORIGINAL string; everything between them (commas,
   // odd whitespace, empty segments) is preserved as `prefix`/`trailing`, so the round trip is
   // exact by construction instead of by careful reconstruction.
-  const cuts = topLevelCommas(source)
+  const cuts = scanPromptSyntax(source).commas
   const bounds: Array<[number, number]> = []
   let start = 0
   for (const cut of cuts) { bounds.push([start, cut]); start = cut + 1 }
@@ -201,7 +323,32 @@ export function parsePromptDocument(source: string): PromptDocument {
     })
     previousEnd = contentEnd
   }
-  return { source, blocks, trailing: source.slice(previousEnd) }
+  return { source, blocks: mergeParagraphClauses(source, blocks), trailing: source.slice(previousEnd) }
+}
+
+/** Commas inside prose separate clauses, not tag blocks. Derive the classification from the
+ * complete original range; weights, random pools and line boundaries remain independent. */
+function mergeParagraphClauses(source: string, blocks: readonly PromptBlock[]): PromptBlock[] {
+  const merged: PromptBlock[] = []
+  for (let index = 0; index < blocks.length; index += 1) {
+    const first = blocks[index]
+    const proseStart = first.type === 'paragraph' || /^\p{Script=Han}/u.test(first.raw)
+      || (/^[a-z]/i.test(first.raw) && first.raw.split(/\s+/).length >= 3 && ENGLISH_FUNCTION_WORDS.test(first.raw))
+    if (!proseStart || first.weight || first.type === 'random' || SENTENCE_FINAL.test(first.raw)) { merged.push(first); continue }
+    let last = index
+    while (last + 1 < blocks.length) {
+      const next = blocks[last + 1]
+      if (next.type === 'random' || next.weight || /[\r\n]/.test(next.prefix)) break
+      last += 1
+      if (SENTENCE_FINAL.test(next.raw)) break
+    }
+    const raw = source.slice(first.range.start, blocks[last].range.end)
+    if (last > index && classifyPromptBlock(raw) === 'paragraph') {
+      merged.push({ type: 'paragraph', prefix: first.prefix, raw, range: { start: first.range.start, end: blocks[last].range.end } })
+      index = last
+    } else merged.push(first)
+  }
+  return merged
 }
 function safeMarker(raw: string): RandomMarker | undefined {
   try { return parseRandomMarker(raw) } catch { return undefined }

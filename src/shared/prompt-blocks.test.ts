@@ -80,4 +80,37 @@ describe('prompt blocks (M6.1)', () => {
     expect(source.slice(block.range.start, block.range.end)).toBe('long hair')
     expect(source.slice(0, block.range.start) + 'short hair' + source.slice(block.range.end)).toBe('1girl, short hair, solo')
   })
+
+  it('keeps escaped quotes and apostrophes from swallowing later blocks', () => {
+    const first = String.raw`"a \"quoted, word\", b"`
+    expect(parsePromptDocument(first + ', tail').blocks.map(block => block.raw)).toEqual([first, 'tail'])
+    expect(parsePromptDocument("girl's hair, blue eyes").blocks.map(block => block.raw)).toEqual(["girl's hair", 'blue eyes'])
+  })
+
+  it('does not present an unmatched or disjoint wrapper as a valid weight', () => {
+    for (const raw of ['{{tag}', '[[tag]', '{[tag}', '{a}{b}', '[a][b]']) {
+      expect(promptWeightOf(raw)).toBeUndefined()
+    }
+  })
+
+  it('classifies the complete English sentence in the actual parsed blocks', () => {
+    const sentence = 'She walks through the rain, holding an umbrella, and the street lights reflect on the wet pavement.'
+    const document = parsePromptDocument(sentence)
+    expect(document.blocks).toHaveLength(1)
+    expect(document.blocks[0]).toMatchObject({ type: 'paragraph', raw: sentence, range: { start: 0, end: sentence.length } })
+    const mixed = 'sky, ' + sentence + ', __lighting__, night'
+    expect(parsePromptDocument(mixed).blocks.map(block => [block.type, block.raw])).toEqual([
+      ['tags', 'sky'], ['paragraph', sentence], ['random', '__lighting__'], ['tags', 'night'],
+    ])
+    expect(roundTrip(mixed)).toBe(mixed)
+  })
+
+  it('keeps accepted random pool names atomic even with prompt delimiters', () => {
+    const marker = '__palette, artist:1.2::[soft]{warm}(day)__'
+    const source = '  ' + marker + ' ,\t🌙,\r\n'
+    expect(parsePromptDocument(source).blocks.map(block => block.raw)).toEqual([marker, '🌙'])
+    expect(parsePromptDocument(source).blocks[0].random?.pool).toBe('palette, artist:1.2::[soft]{warm}(day)')
+    expect(roundTrip(source)).toBe(source)
+  })
+
 })

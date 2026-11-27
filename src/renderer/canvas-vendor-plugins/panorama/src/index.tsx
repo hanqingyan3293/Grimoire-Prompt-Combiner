@@ -1,6 +1,7 @@
 // 3D 全景节点:等距柱状(equirectangular)360° 全景查看器。
 // 三种取图方式:① 从上游图片节点自动取图 ② 本地上传 ③ AI 生成(复用宿主内置生成面板)。
 // three.js 从 CDN 按需加载,不打进 bundle。AI 生成通过 useBuiltinPanel 声明,结果写回本节点。
+import { Globe, Image as ImageIcon, Sparkles } from "lucide-react";
 import { definePlugin, useCallback, useEffect, useRef, useState } from "@infinite-canvas/plugin-sdk";
 import type { CanvasNodeContentProps, CanvasNodeContext } from "@infinite-canvas/plugin-sdk";
 
@@ -230,15 +231,15 @@ function PanoramaEmpty({ ctx }: { ctx: CanvasNodeContext }) {
     } as const;
 
     return (
-        <div style={{ height: "100%", width: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 14, padding: 20, borderRadius: 16, boxSizing: "border-box", background: t.node.fill }}>
-            <span style={{ fontSize: 34 }}>🌐</span>
+        <div style={{ height: "100%", width: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 14, padding: 20, borderRadius: 5, boxSizing: "border-box", background: t.node.fill }}>
+            <Globe size={34} aria-hidden="true" style={{ color: t.node.placeholder }} />
             <div data-canvas-no-zoom onMouseDown={(e) => e.stopPropagation()} style={{ display: "flex", gap: 10 }}>
                 <input ref={fileRef} type="file" accept="image/*" style={{ display: "none" }} onChange={(e) => onPick(e.target.files?.[0])} />
                 <button type="button" style={baseBtn} onClick={() => fileRef.current?.click()}>
-                    🖼 上传全景图
+                    <ImageIcon size={13} aria-hidden="true" /> 上传全景图
                 </button>
                 <button type="button" style={{ ...baseBtn, border: "none", background: t.toolbar.activeBg, color: t.toolbar.activeText }} onClick={() => ctx.openPanel()}>
-                    ✨ AI 生成
+                    <Sparkles size={13} aria-hidden="true" /> AI 生成
                 </button>
             </div>
             <span style={{ fontSize: 12, color: t.node.placeholder, textAlign: "center" }}>支持 2:1 等距柱状全景图</span>
@@ -266,7 +267,7 @@ export default definePlugin({
         {
             type: "panorama:viewer",
             title: "3D 全景",
-            icon: "🌐",
+            icon: "globe",
             description: "360° 全景查看器(上传 / AI 生成)",
             defaultSize: { width: 480, height: 300 },
             defaultMetadata: {},
@@ -290,7 +291,7 @@ export default definePlugin({
                         id: "panorama-generate",
                         title: "用 AI 生成全景图(打开下方面板)",
                         label: "AI 生成",
-                        icon: "✨",
+                        icon: "sparkles",
                         onClick: () => ctx.openPanel(),
                     },
                     ...(hasOwnContent
@@ -299,7 +300,7 @@ export default definePlugin({
                                   id: "panorama-reset",
                                   title: "清空当前全景图,重新上传",
                                   label: "换图",
-                                  icon: "🔄",
+                                  icon: "refresh",
                                   onClick: () => ctx.updateMetadata({ content: "" }),
                               },
                           ]

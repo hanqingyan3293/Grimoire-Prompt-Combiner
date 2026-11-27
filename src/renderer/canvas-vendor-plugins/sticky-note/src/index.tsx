@@ -148,7 +148,7 @@ export default definePlugin({
         {
             type: "sticky-note:note",
             title: "便利贴",
-            icon: "📌",
+            icon: "pin",
             description: "彩色便利贴",
             defaultSize: { width: 240, height: 200 },
             defaultMetadata: { content: "", pluginColor: DEFAULT_COLOR },

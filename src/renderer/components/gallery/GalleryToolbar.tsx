@@ -72,16 +72,18 @@ export function GalleryToolbar({ className }: { className?: string }): React.Rea
     if (!duplicateConfirm) return
     setResolvingGroup(duplicateConfirm.hash)
     try {
-      // 按图片 id 逐张走 images.delete（主进程负责清理托管文件/派生图）。
-      let removed = 0
-      for (const imageRefId of duplicateConfirm.deleteIds) {
-        try { await window.api.images.delete(imageRefId); removed += 1 } catch { /* 单张失败继续 */ }
+      // One main-owned batch validates all references before changing any member.
+      const result = await window.api.images.deleteBatch({ ids: duplicateConfirm.deleteIds })
+      if (result.status === 'completed') {
+        setSimilarityNotice(`已删除 ${result.deletedIds.length}/${duplicateConfirm.deleteIds.length} 张重复图片`)
+        setDuplicateConfirm(null)
+      } else {
+        const removed = new Set(result.deletedIds)
+        setDuplicateConfirm(current => current ? { ...current, deleteIds: current.deleteIds.filter(id => !removed.has(id)) } : null)
+        setSimilarityNotice(result.failures.map(item => '#' + item.imageRefId + ' ' + item.code + ': ' + item.message).join('；') || '图片清理未完成')
       }
-      setSimilarityNotice(`已删除 ${removed}/${duplicateConfirm.deleteIds.length} 张重复图片`)
-      setDuplicateConfirm(null)
-      // 刷新重复列表与图库。
       setDuplicates(await window.api.media.duplicates({ maxDistance: 6, limit: 50 }))
-      useGalleryStore.getState().load()
+      await useGalleryStore.getState().load()
     } catch (cause) {
       setSimilarityNotice(cause instanceof Error ? cause.message : '删除重复图片失败')
     } finally {

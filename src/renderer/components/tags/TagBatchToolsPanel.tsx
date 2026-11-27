@@ -17,7 +17,7 @@ type BatchApplyResult = { total: number; applied: number; tagsTouched: string[] 
 
 const CONFIRM_THRESHOLD = 200
 
-export function TagBatchToolsPanel() {
+export function TagBatchToolsPanel({ embedded = false }: { embedded?: boolean } = {}) {
   const allTags = useTagsStore(state => state.tags)
   const [assetType, setAssetType] = useState('image')
   const [filterTagIds, setFilterTagIds] = useState<string[]>([])
@@ -111,9 +111,9 @@ export function TagBatchToolsPanel() {
   )
 
   return (
-    <div className="flex h-full min-h-0 flex-col">
-      <PanelHeader title="标签批量工具" description="按筛选批量添加 / 删除 / 替换资产标签（先 dry-run 后应用）" />
-      <div className="min-h-0 flex-1 space-y-4 overflow-auto p-3 text-xs">
+    <div className={embedded ? "flex min-h-0 flex-col" : "flex h-full min-h-0 flex-col"}>
+      {embedded ? null : <PanelHeader title="标签批量工具" description="按筛选批量添加 / 删除 / 替换资产标签（先 dry-run 后应用）" />}
+      <div className={embedded ? "min-h-0 space-y-4 overflow-auto text-xs" : "min-h-0 flex-1 space-y-4 overflow-auto p-3 text-xs"}>
         <section className="space-y-2 rounded border border-[var(--color-border)] p-3">
           <div className="flex flex-wrap items-center gap-3">
             <span className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap font-medium text-[var(--color-text-primary)]"><Search size={13} aria-hidden="true" />目标筛选</span>

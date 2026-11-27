@@ -1,4 +1,5 @@
 import type { CSSProperties, MouseEvent as ReactMouseEvent, ReactNode, RefObject } from "react";
+import { renderIconSlot } from "./node-glyph";
 import { useEffect, useRef, useState } from "react";
 import { Button, Segmented, Switch } from "antd";
 import { CircleDot, Eraser, Grid2x2, Group, Hand, Image as ImageIcon, Info, Moon, MousePointer2, Music2, Palette, Puzzle, Redo2, Settings2, Square, Sun, Trash2, Type, Undo2, Upload, Video } from "lucide-react";
@@ -207,7 +208,7 @@ export function CanvasToolbar({
                                 }}
                             >
                                 <span className="grid size-7 shrink-0 place-items-center rounded-md text-base" style={{ background: theme.toolbar.itemHover }}>
-                                    {def.icon}
+                                    {renderIconSlot(def.icon)}
                                 </span>
                                 <span className="min-w-0 flex-1 truncate">{def.title}</span>
                             </button>

@@ -33,7 +33,7 @@
     "className": "ui-image-preview",
     "tag": "div",
     "property": "borderRadius",
-    "expect": "6px"
+    "expect": "4px"
   },
   {
     "className": "ui-layout-menu-trigger",
@@ -69,7 +69,7 @@
     "className": "ui-settings-content",
     "tag": "div",
     "property": "borderRadius",
-    "expect": "8px"
+    "expect": "5px"
   },
   {
     "className": "ui-settings-content",
@@ -99,7 +99,7 @@
     "className": "ui-theme-swatch",
     "tag": "div",
     "property": "borderRadius",
-    "expect": "6px"
+    "expect": "4px"
   },
   {
     "className": "ui-toolbar",

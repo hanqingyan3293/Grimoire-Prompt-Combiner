@@ -46,6 +46,7 @@ interface PanelShellProps {
   maximized?: boolean
   floating?: boolean
   closeDisabled?: boolean
+  transferring?: boolean
   mergeHighlighted?: boolean
   mergePreviewRect?: MergePreviewRect
 }
@@ -79,6 +80,7 @@ export function PanelShell({
   maximized = false,
   floating = false,
   closeDisabled = false,
+  transferring = false,
   mergeHighlighted = false,
   mergePreviewRect = null,
 }: PanelShellProps) {
@@ -244,6 +246,7 @@ export function PanelShell({
       {showHeader && (
         <div
           data-ui="panel.header"
+          inert={transferring}
           className={
             "ui-panel-header relative shrink-0 flex min-w-0 items-center gap-1.5 px-3 border-b border-[var(--color-border)] bg-[var(--color-bg-secondary)] overflow-visible " +
             (addMenuOpen ? "z-[120]" : "z-40")
@@ -259,7 +262,7 @@ export function PanelShell({
           // Double-click the panel title bar to detach it, the way a tab tears off into a new
           // window. Ignored when the click lands on a control: those have their own meaning.
           onDoubleClick={event => {
-            if (!onPopout || (event.target as HTMLElement).closest('button,select,input,textarea')) return
+            if (transferring || !onPopout || (event.target as HTMLElement).closest('button,select,input,textarea')) return
             onPopout()
           }}
           style={{ height: "var(--panel-header-height)" }}

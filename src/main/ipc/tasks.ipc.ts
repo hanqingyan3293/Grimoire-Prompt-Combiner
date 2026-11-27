@@ -3,6 +3,7 @@ import { IPC_CHANNELS } from '../../shared/types'
 import type { TaskCreateInput, TaskEvent, TaskStatus } from '../../shared/task-types'
 import { cancelPersistedTask, createPersistedTask, getPersistedTask, listPersistedTasks, retryPersistedTask } from '../services/task-repository'
 import { requireId } from '../services/input-validation'
+import { taskRunner } from '../services/task-runner'
 
 function broadcastTask(task: TaskEvent): void {
   for (const window of BrowserWindow.getAllWindows()) {
@@ -38,6 +39,7 @@ export function registerTasksIPC(): void {
 
   ipcMain.handle(IPC_CHANNELS.TASKS_CANCEL, async (_event, id: string) => {
     const task = cancelPersistedTask(requireId(id, '任务 ID'))
+    taskRunner.notifyCancellation(task.id)
     broadcastTask({ taskId: task.id, kind: task.kind, status: task.status, progress: task.progress })
     return task
   })

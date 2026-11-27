@@ -12,8 +12,32 @@ describe('local runtime protocol adapters', () => {
     expect(openCode['event.replay'].state).toBe('blocked')
     expect(openCode.recovery.state).toBe('not-implemented')
     expect(pi['session.resume'].state).toBe('blocked')
-    expect(pi['native.tools'].state).toBe('blocked')
+    expect(pi['native.tools'].state).toBe('unavailable')
     expect(pi['permission.once'].state).toBe('blocked')
+  })
+
+  it('normalizes permission.asked when native payload omits tool.name', () => {
+    const runtime = new OpenCodeRuntime({ endpoint: 'http://127.0.0.1:4097' })
+    const events = (runtime as any).normalizeEvent({ type: 'permission.asked', properties: { sessionID: 'remote', id: 'request', permission: 'read', patterns: ['fixture.txt'], tool: { callID: 'call' } } }, { localSessionId: 'local', remoteSessionId: 'remote', turn: { controller: new AbortController() }, messageRoles: new Map(), parts: new Map(), tools: new Map(), permissions: new Map(), seenEventIds: new Set() })
+    expect(events[0]).toMatchObject({ type: 'permission-requested', requestId: 'request', action: 'read' })
+  })
+
+  it('projects the actual opencode instance context into its capability ledger', () => {
+    const pure = new OpenCodeRuntime({ endpoint: 'http://127.0.0.1:4097', nativeToolPolicy: 'ask' })
+    expect(pure.getCapabilities()['permission.once'].state).toBe('supported')
+    expect(pure.getCapabilities()['permission.session'].state).toBe('unavailable')
+    expect(pure.getCapabilities()['process.lease'].state).toBe('unavailable')
+    const managed = new OpenCodeRuntime({ endpoint: 'http://127.0.0.1:4097', nativeToolPolicy: 'ask', hostPermissionBroker: true, enableNativeSessionOperations: true, managed: true })
+    expect(managed.getCapabilities()['permission.session'].state).toBe('supported')
+    expect(managed.getCapabilities()['session.fork'].state).toBe('supported')
+    expect(managed.getCapabilities().compaction.state).toBe('supported')
+    expect(managed.getCapabilities()['process.lease'].state).toBe('supported')
+  })
+
+  it('labels the prepared managed OpenCode instance separately from an unprepared adapter', () => {
+    expect(new OpenCodeRuntime({ endpoint: 'http://127.0.0.1:4097' }).getCapabilityDriver()).toBe('opencode-unprepared')
+    expect(new OpenCodeRuntime({ endpoint: 'http://127.0.0.1:4097', managed: true }).getCapabilityDriver()).toBe('opencode-managed')
+    expect(new PiRuntime('unused').getCapabilityDriver()).toBe('pi-rpc')
   })
 
   it('uses agent_end messages but waits for payload-free agent_settled, including retry', () => {

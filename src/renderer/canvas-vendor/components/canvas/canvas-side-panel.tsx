@@ -421,7 +421,7 @@ const CanvasAssetsTab = memo(function CanvasAssetsTab({ onInsert, theme }: { onI
                                     {isCollapsed ? null : (
                                         <div className="grid gap-2 px-1 pb-2 pt-1 [grid-template-columns:repeat(auto-fit,minmax(132px,1fr))]">
                                             {group.items.map((asset) => (
-                                                <AssetCard key={asset.id} asset={asset} theme={theme} onInsert={() => onInsert(buildInsertPayload(asset))} onRemove={() => (removeAsset(asset.id), message.success(t("canvas.sidePanel.assetRemoved")))} />
+                                                <AssetCard key={asset.id} asset={asset} theme={theme} onInsert={() => onInsert(buildInsertPayload(asset))} onRemove={async () => { try { await removeAsset(asset.id); message.success(t("canvas.sidePanel.assetRemoved")); } catch (error) { message.error(error instanceof Error ? error.message : String(error)); } }} />
                                             ))}
                                         </div>
                                     )}
@@ -437,7 +437,7 @@ const CanvasAssetsTab = memo(function CanvasAssetsTab({ onInsert, theme }: { onI
     );
 });
 
-function AssetCard({ asset, theme, onInsert, onRemove }: { asset: Asset; theme: CanvasTheme; onInsert: () => void; onRemove: () => void }) {
+function AssetCard({ asset, theme, onInsert, onRemove }: { asset: Asset; theme: CanvasTheme; onInsert: () => void; onRemove: () => Promise<void> }) {
     const { t } = useTranslation();
     return (
         <div className="group relative aspect-square overflow-hidden rounded-xl border transition duration-200 hover:-translate-y-0.5 hover:shadow-lg" style={{ borderColor: theme.node.stroke, background: theme.node.panel }}>

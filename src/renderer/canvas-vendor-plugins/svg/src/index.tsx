@@ -1,4 +1,5 @@
 // SVG 节点:编辑与渲染 SVG,透明背景直接融入画布;无自身内容时可取上游文本节点里的 SVG 源码。
+import { Eye, Pencil } from "lucide-react";
 import { definePlugin, useEffect, useRef, useState } from "@infinite-canvas/plugin-sdk";
 import type { CanvasNodeContentProps } from "@infinite-canvas/plugin-sdk";
 
@@ -46,7 +47,7 @@ function SvgContent({ ctx }: CanvasNodeContentProps) {
             }}
         >
             <button type="button" style={toggle} onMouseDown={stop} onClick={() => setEditing((v) => !v)} title={editing ? "预览" : "编辑源码"}>
-                {editing ? "👁" : "✎"}
+                {editing ? <Eye size={13} aria-hidden="true" /> : <Pencil size={13} aria-hidden="true" />}
             </button>
             {editing ? (
                 <textarea
@@ -84,7 +85,7 @@ export default definePlugin({
         {
             type: "svg:vector",
             title: "SVG",
-            icon: "🔷",
+            icon: "diamond",
             description: "渲染 SVG 矢量图",
             defaultSize: { width: 320, height: 320 },
             defaultMetadata: {},

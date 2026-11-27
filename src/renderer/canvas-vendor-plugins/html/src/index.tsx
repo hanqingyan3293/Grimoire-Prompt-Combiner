@@ -81,7 +81,7 @@ function HtmlContent({ ctx }: CanvasNodeContentProps) {
         return (
             <div style={{ height: "100%", width: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 8, color: ctx.theme.node.placeholder }}>
                 <span style={{ fontSize: 26 }}>{"</>"}</span>
-                <span style={{ fontSize: 13 }}>选中节点,点上方工具条的 ✎ 编辑 HTML</span>
+                <span style={{ fontSize: 13 }}>选中节点,点上方工具条的铅笔按钮编辑 HTML</span>
             </div>
         );
     }
@@ -109,7 +109,7 @@ export default definePlugin({
         {
             type: "html:render",
             title: "HTML",
-            icon: "🌐",
+            icon: "globe",
             description: "沙箱渲染 HTML",
             defaultSize: { width: 420, height: 320 },
             defaultMetadata: { content: "" },
@@ -127,7 +127,7 @@ export default definePlugin({
                         id: "html-toggle-edit",
                         title: editing ? "预览渲染结果" : "编辑 HTML 源码",
                         label: editing ? "预览" : "编辑",
-                        icon: editing ? "👁" : "✎",
+                        icon: editing ? "eye" : "pencil",
                         active: editing,
                         onClick: () => ctx.updateMetadata({ editing: !editing }),
                     },

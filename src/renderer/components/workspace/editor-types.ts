@@ -1,4 +1,11 @@
 import type { PanelType } from "./panelTypes"
+export interface WorkspaceEditorTransferAdapter {
+  freeze?: () => Promise<void>
+  thaw?: () => void
+  capture?: () => Promise<unknown>
+  hydrate?: (state: unknown) => Promise<void>
+  ready?: () => boolean
+}
 
 export type EditorRegionKind =
   | "header"

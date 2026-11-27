@@ -3,7 +3,7 @@
     "className": "ui-popover-surface",
     "tag": "div",
     "property": "borderRadius",
-    "expect": "8px"
+    "expect": "5px"
   },
   {
     "className": "ui-popover-panel",
@@ -27,7 +27,7 @@
     "className": "ui-menu-item",
     "tag": "div",
     "property": "borderRadius",
-    "expect": "6px"
+    "expect": "5px"
   },
   {
     "className": "ui-menu-direction-group",
@@ -63,7 +63,7 @@
     "className": "ui-toolbar-button",
     "tag": "div",
     "property": "borderRadius",
-    "expect": "6px"
+    "expect": "5px"
   },
   {
     "className": "ui-workspace-bar",
@@ -123,7 +123,7 @@
     "className": "ui-subtle-button",
     "tag": "div",
     "property": "borderRadius",
-    "expect": "7px"
+    "expect": "5px"
   },
   {
     "className": "ui-icon-button",
@@ -216,16 +216,10 @@
     "expect": "8px"
   },
   {
-    "className": "ui-settings-nav-item",
+    "className": "ui-segmented",
     "tag": "div",
-    "property": "minHeight",
-    "expect": "48px"
-  },
-  {
-    "className": "ui-settings-nav-item",
-    "tag": "div",
-    "property": "gap",
-    "expect": "10px"
+    "property": "borderRadius",
+    "expect": "5px"
   },
   {
     "className": "ui-segmented",
@@ -279,7 +273,7 @@
     "className": "ui-list-card",
     "tag": "div",
     "property": "borderRadius",
-    "expect": "7px"
+    "expect": "5px"
   },
   {
     "className": "ui-empty-state",
@@ -291,13 +285,13 @@
     "className": "ui-empty-state",
     "tag": "div",
     "property": "borderRadius",
-    "expect": "8px"
+    "expect": "5px"
   },
   {
     "className": "ui-tree-card",
     "tag": "div",
     "property": "borderRadius",
-    "expect": "7px"
+    "expect": "5px"
   },
   {
     "className": "ui-count-badge",
@@ -381,7 +375,7 @@
     "className": "ui-tooltip",
     "tag": "div",
     "property": "borderRadius",
-    "expect": "6px"
+    "expect": "5px"
   },
   {
     "className": "ui-tooltip-arrow",
@@ -412,6 +406,72 @@
     "tag": "input",
     "property": "borderRadius",
     "expect": "999px"
+  },
+  {
+    "className": "ui-settings-shell",
+    "tag": "div",
+    "property": "minHeight",
+    "expect": "0px"
+  },
+  {
+    "className": "ui-settings-rail",
+    "tag": "div",
+    "property": "width",
+    "expect": "212px"
+  },
+  {
+    "className": "ui-settings-rail",
+    "tag": "div",
+    "property": "minWidth",
+    "expect": "212px"
+  },
+  {
+    "className": "ui-settings-rail",
+    "tag": "div",
+    "property": "minHeight",
+    "expect": "0px"
+  },
+  {
+    "className": "ui-settings-rail-head",
+    "tag": "div",
+    "property": "gap",
+    "expect": "8px"
+  },
+  {
+    "className": "ui-settings-rail-brand",
+    "tag": "div",
+    "property": "gap",
+    "expect": "8px"
+  },
+  {
+    "className": "ui-settings-rail-nav",
+    "tag": "div",
+    "property": "gap",
+    "expect": "2px"
+  },
+  {
+    "className": "ui-settings-rail-item",
+    "tag": "div",
+    "property": "gap",
+    "expect": "9px"
+  },
+  {
+    "className": "ui-settings-rail-item",
+    "tag": "div",
+    "property": "minHeight",
+    "expect": "34px"
+  },
+  {
+    "className": "ui-settings-rail-label",
+    "tag": "div",
+    "property": "minWidth",
+    "expect": "0px"
+  },
+  {
+    "className": "ui-settings-rail-desc",
+    "tag": "div",
+    "property": "fontSize",
+    "expect": "10px"
   },
   {
     "className": "ui-workspace-tab-active",
@@ -504,11 +564,6 @@
     "tag": "div"
   },
   {
-    "className": "ui-settings-nav-item-active",
-    "differsFrom": "ui-settings-nav-item",
-    "tag": "div"
-  },
-  {
     "className": "ui-segmented-item",
     "differsFrom": "ui-segmented",
     "tag": "div"
@@ -589,6 +644,26 @@
     "tag": "div"
   },
   {
+    "className": "ui-settings-rail-search",
+    "differsFrom": "ui-settings-rail",
+    "tag": "div"
+  },
+  {
+    "className": "ui-settings-rail-item-active",
+    "differsFrom": "ui-settings-rail-item",
+    "tag": "div"
+  },
+  {
+    "className": "ui-settings-rail-icon",
+    "differsFrom": "ui-settings-rail",
+    "tag": "div"
+  },
+  {
+    "className": "ui-settings-rail-title",
+    "differsFrom": "ui-settings-rail",
+    "tag": "div"
+  },
+  {
     "className": "ui-spin-icon",
     "differsFrom": "ui-spin",
     "tag": "div"
@@ -601,6 +676,11 @@
   {
     "className": "ui-list-card-no-hover",
     "differsFrom": "ui-list-card",
+    "tag": "div"
+  },
+  {
+    "className": "ui-settings-rail-brand-label",
+    "differsFrom": "ui-settings-rail-brand",
     "tag": "div"
   },
   {

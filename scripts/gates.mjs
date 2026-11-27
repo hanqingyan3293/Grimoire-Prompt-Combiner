@@ -8,12 +8,35 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { spawnSync } from 'node:child_process'
+import { createHash } from 'node:crypto'
+import { buildFingerprint } from './journey-evidence.mjs'
 
 const root = process.cwd()
 const argv = process.argv.slice(2)
 const fast = argv.includes('--fast')
 const only = (argv.find(a => a.startsWith('--only=')) || '').replace('--only=', '').split(',').filter(Boolean)
 const compatDir = path.join(root, 'src', 'vendor', 'cherry', 'compat')
+const expectedIds = Array.from({ length: 14 }, (_, index) => 'G' + (index + 1))
+const sha256 = value => createHash('sha256').update(String(value)).digest('hex')
+const stamp = new Date().toISOString().replace(/[:.]/g, '-')
+const logDir = path.join(root, 'artifacts', 'gates-logs-' + stamp)
+fs.mkdirSync(logDir, { recursive: true })
+const rel = file => path.relative(root, file).replaceAll(path.sep, '/')
+const compiledOutputs = () => {
+  const paths = []
+  const walk = dir => {
+    if (!fs.existsSync(dir)) return
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      const file = path.join(dir, entry.name)
+      if (entry.isDirectory()) walk(file)
+      else paths.push(file)
+    }
+  }
+  walk(path.join(root, 'dist'))
+  const shell = path.join(root, 'src/vendor/cherry/compat/dist-source-shell/source-shell.html')
+  if (fs.existsSync(shell)) paths.push(shell)
+  return paths
+}
 
 const definitions = [
   { id: 'G1', title: '渲染层类型', cmd: 'npx', args: ['tsc', '--noEmit', '-p', 'tsconfig.json'] },
@@ -39,21 +62,45 @@ const definitions = [
 const selected = definitions.filter(d => (only.length ? only.includes(d.id) : true) && !(fast && d.heavy))
 const results = []
 const startedAll = Date.now()
+const buildBefore = buildFingerprint(compiledOutputs(), { root })
 
 function execute(gate) {
   const started = Date.now()
+  const startedAt = new Date().toISOString()
   const run = spawnSync(gate.cmd + ' ' + gate.args.map(a => (a.includes(' ') ? '"' + a + '"' : a)).join(' '), {
     cwd: gate.cwd || root,
     shell: true,
     encoding: 'utf8',
     maxBuffer: 64 * 1024 * 1024,
+    env: { ...process.env, ...gate.env },
   })
-  const output = (String(run.stdout || '') + String(run.stderr || '')).trim()
+  const stdout = String(run.stdout || '')
+  const stderr = String(run.stderr || '')
+  const output = (stdout + stderr).trim()
   // Keep the lines that NAME a failure, not just the last eight: a sharded suite ends with a shard summary,
   // and eight lines of summary hid which test failed twice in a row (the run had to be repeated by hand).
   const lines = output.split(/\r?\n/).filter(Boolean)
   const failureLines = lines.filter(line => /FAIL|✗|✕|AssertionError|Error:|Expected|Received|→/.test(line)).slice(-24)
-  return { exitCode: run.status, output, tail: [...new Set([...failureLines, ...lines.slice(-8)])].slice(-32), durationMs: Date.now() - started }
+  const stdoutArtifact = path.join(logDir, gate.id + '.stdout.log')
+  const stderrArtifact = path.join(logDir, gate.id + '.stderr.log')
+  const combinedArtifact = path.join(logDir, gate.id + '.combined.log')
+  fs.writeFileSync(stdoutArtifact, stdout)
+  fs.writeFileSync(stderrArtifact, stderr)
+  fs.writeFileSync(combinedArtifact, stdout + stderr)
+  return {
+    exitCode: run.status,
+    output,
+    tail: [...new Set([...failureLines, ...lines.slice(-8)])].slice(-32),
+    durationMs: Date.now() - started,
+    startedAt,
+    finishedAt: new Date().toISOString(),
+    stdoutSha256: sha256(stdout),
+    stderrSha256: sha256(stderr),
+    stdoutArtifact: rel(stdoutArtifact),
+    stderrArtifact: rel(stderrArtifact),
+    logArtifact: rel(stdoutArtifact),
+    combinedArtifact: rel(combinedArtifact),
+  }
 }
 
 // Vitest 3.2.7 on this Windows host intermittently reports a worker RPC timeout
@@ -64,7 +111,7 @@ function isWorkerRpcFlake(result) {
   // The signature is the worker RPC timeout. A run where a test file is ALSO marked failed
   // still retries: if the failure is real, the retry fails the same way and the gate stays
   // red with attempts=2 recorded, so nothing is hidden — but a crash-only run recovers.
-  return /Timeout calling "onTaskUpdate"/.test(result.output)
+  return /Timeout calling "onTaskUpdate"/.test(result.output) && !/FAIL |AssertionError|\d+ failed/.test(result.output)
 }
 
 for (const gate of selected) {
@@ -82,16 +129,41 @@ for (const gate of selected) {
     command: [gate.cmd, ...gate.args].join(' '),
     cwd: gate.cwd ? path.relative(root, gate.cwd) : '.',
     exitCode: result.exitCode, ok, attempts, durationMs: result.durationMs, tail: result.tail,
+    startedAt: result.startedAt, finishedAt: result.finishedAt,
+    stdoutSha256: result.stdoutSha256, stderrSha256: result.stderrSha256,
+    stdoutArtifact: result.stdoutArtifact, stderrArtifact: result.stderrArtifact, logArtifact: result.logArtifact, combinedArtifact: result.combinedArtifact,
   })
   console.log((ok ? 'PASS' : 'FAIL') + (attempts > 1 ? ' (attempt ' + attempts + ')' : '') + ' (' + (result.durationMs / 1000).toFixed(1) + 's)')
   if (!ok) for (const line of result.tail) console.log('   ' + line)
 }
 
+const buildAfter = buildFingerprint(compiledOutputs(), { root })
+const buildStable = buildBefore.combinedSha256 === buildAfter.combinedSha256 && buildBefore.fileCount === buildAfter.fileCount && buildBefore.totalBytes === buildAfter.totalBytes
+const ids = results.map(item => item.id)
+const duplicateIds = ids.filter((id, index) => ids.indexOf(id) !== index)
+const missingIds = expectedIds.filter(id => !ids.includes(id))
+const extraIds = ids.filter(id => !expectedIds.includes(id))
+const fullRequested = !fast && only.length === 0
+const complete = fullRequested && missingIds.length === 0 && extraIds.length === 0 && duplicateIds.length === 0
+const failed = results.filter(item => !item.ok).map(item => item.id)
+if (!buildStable) failed.push('BUILD-STABLE')
+if (results.length === 0) failed.push('GATE-SET-EMPTY')
+if (fullRequested && (missingIds.length || extraIds.length || duplicateIds.length)) failed.push('GATE-SET')
 const summary = {
+  schemaVersion: 2,
   generatedAt: new Date().toISOString(),
   durationMs: Date.now() - startedAll,
   selected: selected.map(g => g.id),
-  failed: results.filter(r => !r.ok).map(r => r.id),
+  expectedIds,
+  complete,
+  missingIds,
+  extraIds,
+  duplicateIds,
+  buildBefore,
+  buildAfter,
+  buildStable,
+  logDirectory: rel(logDir),
+  failed,
   results,
 }
 fs.mkdirSync(path.join(root, 'artifacts'), { recursive: true })
@@ -103,4 +175,5 @@ for (const r of results) console.log((r.ok ? '  ✓ ' : '  ✗ ') + r.id + '  ' 
 console.log('')
 console.log(summary.failed.length ? 'GATES FAILED: ' + summary.failed.join(', ') : 'ALL SELECTED GATES PASSED')
 console.log('snapshot: ' + path.relative(root, out))
+console.log('raw logs: ' + path.relative(root, logDir))
 process.exit(summary.failed.length ? 1 : 0)

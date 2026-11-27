@@ -3,6 +3,7 @@ import fs from 'fs'
 import path from 'path'
 import type { WD14HistoryRecord, WD14TagBuckets } from "../../shared/wd14-types"
 import { getDatabase, getResourceRoot, saveDatabase } from "../database"
+import { cleanupOwnedCopies, copyFinalizationFailure, OwnedCopyCleanupError, type OwnedCopyCleanupResult } from './owned-copy-cleanup'
 
 type HistoryStatus = WD14HistoryRecord["status"]
 
@@ -79,21 +80,31 @@ export function getWD14History(id: string): WD14HistoryRecord | null {
   return result[0]?.values?.[0] ? rowToHistory(result[0].values[0]) : null
 }
 
-export function deleteWD14History(id: string): boolean {
-  const row = getDatabase().exec("SELECT image_snapshot_path FROM wd14_history WHERE id=?", [id])[0]?.values?.[0]
-  const result = getDatabase().run("DELETE FROM wd14_history WHERE id=?", [id])
-  if (typeof row?.[0] === 'string') { try { fs.rmSync(String(row[0]), { force: true }) } catch {} }
-  saveDatabase()
-  return Number(result.changes || 0) > 0
+function removeHistoryRows(id?: string): boolean {
+  const db = getDatabase()
+  let cleanup: OwnedCopyCleanupResult | undefined
+  db.exec('BEGIN IMMEDIATE')
+  try {
+    const all = db.exec('SELECT id,image_snapshot_path FROM wd14_history ORDER BY rowid')[0]?.values || []
+    const selected = id === undefined ? all : all.filter(row => row[0] === id)
+    const selectedIds = new Set(selected.map(row => String(row[0])))
+    const copies = selected.map(row => ({ id: String(row[0]), filePath: typeof row[1] === 'string' ? row[1] : '', retained: all.some(other => !selectedIds.has(String(other[0])) && other[1] === row[1]) }))
+    cleanup = cleanupOwnedCopies(copies, 'wd14-history', 'rm')
+    if (cleanup.status !== 'completed') throw new OwnedCopyCleanupError('WD14_HISTORY_CLEANUP_FAILED', cleanup)
+    if (id === undefined) db.run('DELETE FROM wd14_history')
+    else db.run('DELETE FROM wd14_history WHERE id=?', [id])
+    db.exec('COMMIT')
+    saveDatabase()
+    return id === undefined || selected.length > 0
+  } catch (error) {
+    try { db.exec('ROLLBACK') } catch (rollbackError) { console.debug('[wd14-history] rollback settled', rollbackError) }
+    if (cleanup && !(error instanceof OwnedCopyCleanupError)) throw new OwnedCopyCleanupError('WD14_HISTORY_DELETE_DB_FAILED', copyFinalizationFailure(cleanup, error, id || 'all-history'))
+    throw error
+  }
 }
 
-export function clearWD14History(): boolean {
-  const rows = getDatabase().exec("SELECT image_snapshot_path FROM wd14_history WHERE image_snapshot_path IS NOT NULL")[0]?.values || []
-  getDatabase().run("DELETE FROM wd14_history")
-  for (const row of rows) if (typeof row[0] === 'string') { try { fs.rmSync(String(row[0]), { force: true }) } catch {} }
-  saveDatabase()
-  return true
-}
+export function deleteWD14History(id: string): boolean { return removeHistoryRows(id) }
+export function clearWD14History(): boolean { return removeHistoryRows() }
 
 export async function readWD14HistoryImageData(id: string): Promise<string | null> {
   const row = getDatabase().exec("SELECT image_snapshot_path, image_snapshot_mime, image_id FROM wd14_history WHERE id=?", [id])[0]?.values?.[0]

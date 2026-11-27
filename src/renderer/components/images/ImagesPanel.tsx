@@ -36,6 +36,8 @@ export function ImagesPanel() {
   const [query, setQuery] = useState('')
   const [sourceFilter, setSourceFilter] = useState('all')
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set())
+  const selectedIdsRef = React.useRef(selectedIds)
+  selectedIdsRef.current = selectedIds
   const [bulkTag, setBulkTag] = useState<{ id: string; label: string } | null>(null)
   const [tagFilterId, setTagFilterId] = useState<string | null>(null)
   const [scanProgress, setScanProgress] = useState<{ done: number; total: number } | null>(null)
@@ -73,6 +75,13 @@ export function ImagesPanel() {
       setUrls(Object.fromEntries(entries.filter((entry): entry is readonly [number, string] => Boolean(entry))))
       const linkEntries = await window.api.tags.assetLinks.listBatch({ assetType: 'image', assetKeys: list.map(item => 'image:' + item.id) })
       setImageTags(Object.fromEntries(linkEntries.map(entry => [Number(entry.assetKey.replace('image:', '')), entry.tagIds])))
+      const requestedIds = [...selectedIdsRef.current]
+      if (requestedIds.length) {
+        const liveIds = new Set(await window.api.images.existingIds({ ids: requestedIds }))
+        const checked = new Set(requestedIds)
+        // Use the whole selection, not this page: keep valid off-page ids and newer selections.
+        setSelectedIds(current => new Set([...current].filter(id => !checked.has(id) || liveIds.has(id))))
+      }
       setError(null)
     } catch (cause) {
       console.error('Failed to load image library:', cause)
@@ -109,6 +118,7 @@ export function ImagesPanel() {
     setBusy('delete')
     try {
       await window.api.images.delete(id)
+      setSelectedIds(current => new Set([...current].filter(selected => selected !== id)))
       setDeleteConfirm(null)
       await loadImages()
     } catch (cause) {
@@ -150,7 +160,19 @@ export function ImagesPanel() {
   })
   const toggleSelected = (id: number) => setSelectedIds(current => { const next = new Set(current); if (next.has(id)) next.delete(id); else next.add(id); return next })
   const bulkAssignTag = async () => { if (!bulkTag || !selectedIds.size) return; await window.api.tags.assetLinks.batchAssign({ assetType: 'image', assetKeys: [...selectedIds].map(id => 'image:' + id), tagIds: [bulkTag.id], source: 'manual' }); setBulkTag(null); await loadImages() }
-  const bulkDelete = async () => { if (!selectedIds.size || !window.confirm('确定删除选中的图片记录吗？')) return; await Promise.all([...selectedIds].map(id => window.api.images.delete(id))); setSelectedIds(new Set()); await loadImages() }
+  const bulkDelete = async () => {
+    if (busy !== null || !selectedIds.size || !window.confirm('确定删除选中的图片记录吗？')) return
+    setBusy('delete')
+    try {
+      const result = await window.api.images.deleteBatch({ ids: [...selectedIds] })
+      const removed = new Set(result.deletedIds)
+      setSelectedIds(current => new Set([...current].filter(id => !removed.has(id))))
+      await loadImages()
+      if (result.status !== 'completed') setError(result.failures.map(item => '#' + item.imageRefId + ' ' + item.code + ': ' + item.message).join('；') || '图片清理未完成，记录已保留供重试')
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : '批量删除失败')
+    } finally { setBusy(null) }
+  }
   // 存量图片补齐：扫描未解析的嵌入式生成元数据（A1111/NAI/ComfyUI），进度经推送通道显示。
   const scanMetadata = async () => {
     if (busy !== null) return

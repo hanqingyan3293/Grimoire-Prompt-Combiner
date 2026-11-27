@@ -13,6 +13,8 @@ import { Modal } from "../ui/Modal"
 import type { Provider } from "@shared/types"
 import { AppConfigPanel } from "@canvas/components/layout/app-config-modal"
 import { useAgentStore } from "@canvas/stores/use-agent-store"
+import { useOptionalWorkspaceEditorState } from '../workspace/WorkspaceEditorHost'
+import { captureSettingsView, validateSettingsView } from './settings-editor-view'
 
 const THEMES = [
   { key: "neon", zh: "霓虹", color: "#a855f7" },
@@ -65,15 +67,18 @@ export function SettingsWindow({ onClose, embedded = false }: { onClose?: () => 
     setThemePreference,
   } = useSettingsStore()
   const { providers, activeProvider, loading: providersLoading, loadProviders, saveProvider, deleteProvider, setActive } = useProviderStore()
-  const [section, setSection] = useState<Section>("general")
+  const editor = useOptionalWorkspaceEditorState()
+  const editorRef = useRef(editor); editorRef.current = editor
+  const [section, setLocalSection] = useState<Section>("general")
   // The settings panel is a full page now, so a way to find a setting by name matters more
   // than it did in a 900×680 window. Matches the section label, its description and its
   // keywords — enough for the vocabulary people actually type (主题/颜色/密钥/快捷键).
-  const [settingsQuery, setSettingsQuery] = useState("")
-  // In the settings PANEL every category is stacked on one page (the Cherry-style layout);
-  // in the separate window the rail still switches between them. Collapse state is per
-  // category and local — it is a view preference, not a persisted setting.
-  const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({})
+  const [settingsQuery, setLocalSettingsQuery] = useState("")
+  // Search results stack every match on one page; otherwise the rail shows exactly one section
+  // (page semantics in both the panel and the separate window, so the active rail item always
+  // reflects what is on screen instead of a scroll position). Collapse state only applies to the
+  // stacked search view.
+  const [collapsedSections, setLocalCollapsedSections] = useState<Record<string, boolean>>({})
   const [accentInput, setAccentInput] = useState(custom_accent)
   const [shortcuts, setShortcuts] = useState<Record<string, string>>({})
   const [editingShortcut, setEditingShortcut] = useState<string | null>(null)
@@ -81,6 +86,40 @@ export function SettingsWindow({ onClose, embedded = false }: { onClose?: () => 
 
   const [editingProvider, setEditingProvider] = useState<Provider | null>(null)
   const [showProviderEditor, setShowProviderEditor] = useState(false)
+  const viewRef = useRef({ section, query: settingsQuery, collapsed: collapsedSections })
+  viewRef.current = { section, query: settingsQuery, collapsed: collapsedSections }
+  const updateView = (patch: Partial<typeof viewRef.current>) => {
+    const next = { ...viewRef.current, ...patch }
+    viewRef.current = next
+    editorRef.current?.setState(captureSettingsView(next.section, next.query, next.collapsed))
+  }
+  const setSection = (value: Section) => { setLocalSection(value); updateView({ section: value }) }
+  const setSettingsQuery = (value: string) => { setLocalSettingsQuery(value); updateView({ query: value }) }
+  const setCollapsedSections = (value: Record<string, boolean> | ((current: Record<string, boolean>) => Record<string, boolean>)) => {
+    const next = typeof value === 'function' ? value(viewRef.current.collapsed) : value
+    setLocalCollapsedSections(next); updateView({ collapsed: next })
+  }
+  const applyView = (state: unknown) => {
+    const value = validateSettingsView(state)
+    setLocalSection(value.section as Section); setLocalSettingsQuery(value.query); setLocalCollapsedSections(value.collapsed)
+    viewRef.current = { section: value.section as Section, query: value.query, collapsed: value.collapsed }
+  }
+  useEffect(() => {
+    if (!editor?.state || editor.status === 'loading' || (editor.state as {kind?:string}).kind !== 'settings-view') return
+    applyView(editor.state)
+  }, [editor?.state, editor?.status])
+  useEffect(() => {
+    if (!editor?.registerTransferAdapter) return
+    return editor.registerTransferAdapter({
+      capture: async () => {
+        if (showProviderEditor) throw new Error('EDITOR_SENSITIVE_FORM_ACTIVE: 请先保存或关闭供应商凭据表单，再移交设置面板')
+        return captureSettingsView(viewRef.current.section, viewRef.current.query, viewRef.current.collapsed)
+      },
+      hydrate: async state => { applyView(state); await new Promise<void>(resolve => requestAnimationFrame(() => resolve())) },
+      ready: () => true,
+    })
+  }, [editor?.registerTransferAdapter, showProviderEditor])
+
   const [migrationPreview, setMigrationPreview] = useState<Awaited<ReturnType<typeof window.api.migration.selectFriendPrompts>>>(null)
   const [migrationBusy, setMigrationBusy] = useState(false)
   const [migrationMessage, setMigrationMessage] = useState('')
@@ -212,7 +251,8 @@ export function SettingsWindow({ onClose, embedded = false }: { onClose?: () => 
     { key: "custom_border", label: "边框颜色", value: custom_border, fallback: appearanceDefaults.border },
   ]
 
-  const showSection = (key: Section) => (embedded ? true : section === key)
+  const stacked = settingsQuery.trim().length > 0
+  const showSection = (key: Section) => (stacked ? filteredSections.some(entry => entry.key === key) : section === key)
   const toggleSection = (key: string) => setCollapsedSections(previous => ({ ...previous, [key]: !previous[key] }))
   const normalizedQuery = settingsQuery.trim().toLowerCase()
   const filteredSections = normalizedQuery
@@ -220,16 +260,14 @@ export function SettingsWindow({ onClose, embedded = false }: { onClose?: () => 
     : SECTIONS
 
   return (
-    // Embedded in a panel the shell stacks: a 220px fixed sidebar cannot share a 210px panel with content
-    // (the measurement showed inputs collapsed to 7-18px). Sections become a wrapping strip on top instead.
-    <div className={embedded ? "flex h-full min-h-0 flex-col overflow-hidden bg-[var(--color-bg-primary)]" : "flex h-screen overflow-hidden bg-[var(--color-bg-primary)]"}>
-      {/* Left nav */}
-      <aside className={"ui-app-chrome flex flex-col " + (embedded ? "w-full min-w-0 shrink-0 border-b border-[var(--color-border)]" : "w-[220px] min-w-[220px] border-r border-[var(--color-border)]")}>
-        <div className="flex items-center justify-between border-b border-[var(--color-border)] px-5 py-4">
-          <span className="flex items-center gap-2 text-base font-semibold text-[var(--color-text-primary)]"><Settings size={18} className='text-[var(--color-accent-text)]' aria-hidden='true' />设置</span>
+    <div className="ui-settings-shell" data-embedded={embedded ? 'true' : 'false'} data-search={stacked ? 'true' : 'false'}>
+      {/* Rail: labels in the separate window, icon tiles inside a narrow panel (container query). */}
+      <aside className="ui-settings-rail" aria-label='设置导航'>
+        <div className="ui-settings-rail-head">
+          <span className="ui-settings-rail-brand"><Settings size={16} className='text-[var(--color-accent-text)]' aria-hidden='true' /><span className="ui-settings-rail-brand-label">设置</span></span>
           {onClose ? <IconButton icon={X} label='关闭设置' onClick={onClose} /> : null}
         </div>
-        <div className="px-3 pt-3">
+        <div className="ui-settings-rail-search">
           <input
             value={settingsQuery}
             onChange={e => setSettingsQuery(e.target.value)}
@@ -238,28 +276,25 @@ export function SettingsWindow({ onClose, embedded = false }: { onClose?: () => 
             className="ui-field w-full"
           />
         </div>
-        <nav className={embedded ? "flex flex-wrap gap-1 p-2" : "flex-1 space-y-1 overflow-y-auto p-2"} aria-label='设置分区'>
-          {filteredSections.length === 0 ? <p className="px-3 py-2 text-xs text-[var(--color-text-secondary)]">没有匹配的设置</p> : null}
+        <nav className="ui-settings-rail-nav" aria-label='设置分区'>
+          {filteredSections.length === 0 ? <p className="px-2 py-2 text-xs text-[var(--color-text-secondary)]">没有匹配的设置</p> : null}
           {filteredSections.map(s => (
-            <button key={s.key} onClick={() => {
-              if (!embedded) { setSection(s.key); return }
-              document.getElementById('settings-section-' + s.key)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-            }}
-              aria-current={section === s.key ? 'page' : undefined}
-              className={`ui-settings-nav-item px-3 py-2 text-left text-sm ${embedded ? 'w-auto' : 'w-full py-2.5'} ${
-                section === s.key
-                  ? "ui-settings-nav-item-active"
-                  : "text-[var(--color-text-secondary)]"
-              }`}>
-              <s.icon size={16} aria-hidden='true' /><span><span className='block font-medium'>{s.label}</span>{embedded ? null : <span className='mt-0.5 block text-[10px] opacity-70'>{s.description}</span>}</span>
+            <button key={s.key} type='button' onClick={() => setSection(s.key)}
+              aria-current={!stacked && section === s.key ? 'page' : undefined}
+              data-active={!stacked && section === s.key ? 'true' : 'false'}
+              title={s.label + ' · ' + s.description}
+              className={`ui-settings-rail-item ${!stacked && section === s.key ? 'ui-settings-rail-item-active' : ''}`}>
+              <s.icon size={16} aria-hidden='true' className='ui-settings-rail-icon' />
+              <span className="ui-settings-rail-label"><span className="ui-settings-rail-title">{s.label}</span><span className="ui-settings-rail-desc">{s.description}</span></span>
             </button>
           ))}
         </nav>
       </aside>
 
-      {/* Right content */}
-      <div className="ui-settings-scroll min-h-0 flex-1 overflow-y-auto p-4 sm:p-7">
-        <div className="ui-settings-content mx-auto w-full max-w-5xl pb-5">
+      {/* Page pane: exactly one section unless the user is searching. */}
+      <div className="ui-settings-scroll min-h-0 flex-1 overflow-y-auto">
+        <StackedResults.Provider value={stacked}>
+        <div className="ui-settings-pane mx-auto w-full max-w-3xl">
         {showSection("general") && (
           <SettingsSectionCard id="general" title="通用设置" collapsed={collapsedSections["general"] === true} onToggle={() => toggleSection("general")}>
           <div className="space-y-5">
@@ -577,7 +612,7 @@ export function SettingsWindow({ onClose, embedded = false }: { onClose?: () => 
           <div className="space-y-3">
             <PanelHeader icon={Info} title='关于' description='应用版本、许可证和技术栈' />
             <div className="text-2xl font-bold text-[var(--color-text-primary)]">魔导书 Grimoire</div>
-            <div className="text-sm text-[var(--color-text-secondary)]">版本 v7.2.0 · AGPL-3.0-only</div>
+            <div className="text-sm text-[var(--color-text-secondary)]">版本 v0.7.3-alpha · AGPL-3.0-only</div>
             <div className="text-sm text-[var(--color-text-secondary)]">作者：hanqingyan3293 · GitHub：github.com/hanqingyan3293/Grimoire-Prompt-Combiner</div>
             <div className="text-sm text-[var(--color-text-secondary)]">Electron + React + TypeScript + Vite + Tailwind CSS + SQLite</div>
             <div className="text-sm leading-6 text-[var(--color-text-secondary)]">本项目是开源软件，允许使用、研究、修改和再分发。分发修改后的版本或通过网络提供服务时，请按照 AGPL-3.0 的要求提供对应源代码和许可证文本。</div>
@@ -585,6 +620,7 @@ export function SettingsWindow({ onClose, embedded = false }: { onClose?: () => 
           </SettingsSectionCard>
         )}
         </div>
+        </StackedResults.Provider>
       </div>
       <Modal title='删除供应商' open={providerToDelete !== null} onClose={() => setProviderToDelete(null)}>
         <p className='text-sm text-[var(--color-text-primary)]'>确认删除供应商“{providerToDelete?.name}”？保存的配置与认证信息将一并移除。</p>
@@ -750,6 +786,8 @@ function showToast(message: string, type: "success" | "error" | "info") {
  * still see which category is hidden; expanded, only the chevron shows and the section's own
  * heading carries the title (avoids printing it twice).
  */
+const StackedResults = React.createContext(false)
+
 function SettingsSectionCard({ id, title, collapsed, onToggle, children }: {
   id: string
   title: string
@@ -757,6 +795,13 @@ function SettingsSectionCard({ id, title, collapsed, onToggle, children }: {
   onToggle: () => void
   children: React.ReactNode
 }) {
+  if (!React.useContext(StackedResults)) {
+    return (
+      <section id={'settings-section-' + id} data-ui="settings.section" data-section={id} className="ui-settings-section" aria-label={title}>
+        {children}
+      </section>
+    )
+  }
   return (
     <section
       id={'settings-section-' + id}

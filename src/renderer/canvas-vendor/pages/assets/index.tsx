@@ -47,6 +47,8 @@ export default function AssetsPage() {
     const [isAssetOpen, setIsAssetOpen] = useState(false);
     const [previewAsset, setPreviewAsset] = useState<Asset | null>(null);
     const [deletingAsset, setDeletingAsset] = useState<Asset | null>(null);
+    const [deletionBusy, setDeletionBusy] = useState(false);
+    const deletingInFlight = useRef(false);
     const [formKind, setFormKind] = useState<AssetKind>("text");
     const [imageDraft, setImageDraft] = useState<ImageDraft>(null);
     const coverUrl = Form.useWatch("coverUrl", form) || "";
@@ -187,11 +189,20 @@ export default function AssetsPage() {
         }
     };
 
-    const confirmDelete = () => {
-        if (!deletingAsset) return;
-        removeAsset(deletingAsset.id);
-        message.success(t("assets.deleted"));
-        setDeletingAsset(null);
+    const confirmDelete = async () => {
+        if (!deletingAsset || deletingInFlight.current) return;
+        deletingInFlight.current = true;
+        setDeletionBusy(true);
+        try {
+            await removeAsset(deletingAsset.id);
+            message.success(t("assets.deleted"));
+            setDeletingAsset(null);
+        } catch (error) {
+            message.error(error instanceof Error ? error.message : String(error));
+        } finally {
+            deletingInFlight.current = false;
+            setDeletionBusy(false);
+        }
     };
 
     return (
@@ -406,7 +417,7 @@ export default function AssetsPage() {
 
             <input ref={assetInputRef} type="file" accept="application/zip,.zip" className="hidden" onChange={(event) => void importAssetZip(event.target.files?.[0])} />
 
-            <Modal title={t("assets.deleteTitle")} open={Boolean(deletingAsset)} onCancel={() => setDeletingAsset(null)} onOk={confirmDelete} okText={t("common.delete")} okButtonProps={{ danger: true }} cancelText={t("common.cancel")}>
+            <Modal title={t("assets.deleteTitle")} open={Boolean(deletingAsset)} onCancel={() => { if (!deletionBusy) setDeletingAsset(null); }} onOk={confirmDelete} confirmLoading={deletionBusy} okText={t("common.delete")} okButtonProps={{ danger: true }} cancelButtonProps={{ disabled: deletionBusy }} cancelText={t("common.cancel")}>
                 {t("assets.deleteConfirm", { name: deletingAsset?.title })}
             </Modal>
         </div>

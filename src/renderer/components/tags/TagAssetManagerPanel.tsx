@@ -3,6 +3,7 @@ import { Check, Link2, Plus, Search, ShieldCheck, Tag as TagIcon, X } from 'luci
 import { Button, IconButton } from '../ui/Button'
 import { EmptyState, PanelHeader, StatusBadge } from '../ui/Feedback'
 import { TagAutocomplete } from './TagAutocomplete'
+import { TagBatchToolsPanel } from './TagBatchToolsPanel'
 import { useTagsStore } from '../../stores/tags.store'
 
 type SearchResult = { tag: { id: string; en: string; zh: string; source: string }; matchedBy: string; score: number; usageCount: number; subcategory?: { subcategoryZh: string; subcategoryEn: string; categoryZh: string; categoryEn: string } }
@@ -10,7 +11,7 @@ type Suggestion = { id: string; assetType: string; assetKey: string; rawValue: s
 type Intelligence = { tag: { id: string; en: string; zh: string }; aliases: Array<{ id: string; alias: string; isBuiltin: boolean }>; relations: Array<{ id: string; sourceTagId: string; targetTagId: string; relationType: string; confidence: number; enabled?: boolean }> }
 
 export function TagAssetManagerPanel() {
-  const [tab, setTab] = useState<'search' | 'suggestions' | 'asset'>('search')
+  const [tab, setTab] = useState<'search' | 'suggestions' | 'asset' | 'batch'>('search')
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<SearchResult[]>([])
   const [selected, setSelected] = useState<Intelligence | null>(null)
@@ -150,10 +151,11 @@ export function TagAssetManagerPanel() {
     <div className='shrink-0 border-b border-[var(--color-border)] p-3'>
       <PanelHeader icon={TagIcon} title='标签与资产' description='统一管理标签关系、候选和资产标注' />
       <div className='mt-3 flex gap-1'>
-        {([['search', '标签字典'], ['suggestions', '候选标签'], ['asset', '资产标注']] as const).map(([key, label]) => <button key={key} type='button' className={'ui-nav-tab flex-1 py-2 ' + (tab === key ? 'ui-nav-tab-active' : '')} onClick={() => setTab(key)}>{label}</button>)}
+        {([['search', '标签字典'], ['suggestions', '候选标签'], ['asset', '资产标注'], ['batch', '批量工具']] as const).map(([key, label]) => <button key={key} type='button' className={'ui-nav-tab flex-1 py-2 ' + (tab === key ? 'ui-nav-tab-active' : '')} onClick={() => setTab(key)}>{label}</button>)}
       </div>
     </div>
     <div className='min-h-0 flex-1 overflow-auto p-3 space-y-3'>
+      {tab === 'batch' && <TagBatchToolsPanel embedded />}
       {tab === 'search' && <>
         <div className='flex flex-wrap gap-2'><input className='ui-field min-w-[8rem] flex-1' value={query} onChange={event => setQuery(event.target.value)} onKeyDown={event => { if (event.key === 'Enter') void search() }} placeholder='搜索中文、英文或别名' /><Button size='sm' icon={Search} onClick={() => void search()}>搜索</Button></div>
         <div className='space-y-1'>{results.map(item => {

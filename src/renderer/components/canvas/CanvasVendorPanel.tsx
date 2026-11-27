@@ -1,5 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { useUnifiedAgentStore } from '../../stores/unified-agent.store'
+import { useOptionalWorkspaceEditorState } from '../workspace/WorkspaceEditorHost'
+import { parseCanvasEditorView, parseCanvasEditorViewEvent } from '../../../shared/canvas-editor-transfer'
+import { CanvasEditorFrameClient } from './canvas-editor-frame-client'
 
 function canvasEntryUrl() {
   if (window.location.protocol === 'file:') return new URL('../canvas.html', import.meta.url).toString()
@@ -9,12 +12,67 @@ function canvasEntryUrl() {
 type CanvasFrameStatus = 'loading' | 'ready' | 'error'
 
 export function CanvasVendorPanel() {
+  const editor = useOptionalWorkspaceEditorState()
+  if (editor?.status === 'loading') return <div role='status' className='flex h-full items-center justify-center text-sm text-[var(--color-text-secondary)]'>正在读取画布编辑状态…</div>
+  return <CanvasFramePanel key={editor?.stateKey || 'standalone'} editor={editor} />
+}
+
+function CanvasFramePanel({ editor }: { editor: ReturnType<typeof useOptionalWorkspaceEditorState> }) {
+  const editorKey = editor?.stateKey || 'canvas:standalone'
+  const editorRef = useRef(editor); editorRef.current = editor
+  const initialView = useMemo(() => parseCanvasEditorView(editor?.state), [editorKey])
   const iframeRef = useRef<HTMLIFrameElement>(null)
-  const src = useMemo(canvasEntryUrl, [])
+  const src = useMemo(() => {
+    const url = new URL(canvasEntryUrl()); url.searchParams.set('editorKey', editorKey)
+    if (editor?.transferTarget || initialView?.projectId) url.searchParams.set('editorFrozen', '1')
+    if (initialView && !initialView.projectId) url.searchParams.set('editorLibrary', '1')
+    return url.toString()
+  }, [editorKey])
   const [status, setStatus] = useState<CanvasFrameStatus>('loading')
   const [error, setError] = useState('')
   const [reloadKey, setReloadKey] = useState(0)
+  const [generation, setGeneration] = useState('')
+  const generationRef = useRef('')
+  const viewSequence = useRef(0)
+  const [initialized, setInitialized] = useState(!editor?.transferTarget && !initialView?.projectId)
+  const initializedRef = useRef(initialized); initializedRef.current = initialized
   const mirrorSessionRef = useRef<{ projectId: string; sessionId: string } | null>(null)
+  const clientRef = useRef<CanvasEditorFrameClient | null>(null)
+  const statusRef = useRef(status); statusRef.current = status
+  const wasFrozen = useRef(Boolean(editor?.frozen))
+  useEffect(() => {
+    const client = new CanvasEditorFrameClient(editorKey, () => iframeRef.current?.contentWindow || null, window)
+    clientRef.current = client
+    return () => { client.dispose(); if (clientRef.current === client) clientRef.current = null }
+  }, [editorKey, reloadKey])
+  useEffect(() => {
+    if (!editor?.registerTransferAdapter) return
+    const client = (requireView = true) => { if (!clientRef.current || statusRef.current !== 'ready' || requireView && !initializedRef.current) throw new Error('CANVAS_NOT_READY: 请等待画布读取完成后重试'); return clientRef.current }
+    const thaw = () => { void clientRef.current?.request('thaw').catch(error => console.warn('Canvas transfer thaw failed', error instanceof Error ? error.message : String(error))) }
+    return editor.registerTransferAdapter({
+      freeze: async () => { await client().request('freeze') },
+      thaw,
+      capture: async () => { const view = await client().request('flush'); if (!view) throw new Error('CANVAS_REVISION_NOT_READY: 画布没有返回持久句柄'); return view },
+      hydrate: async state => { const view = parseCanvasEditorView(state); if (!view) throw new Error('CANVAS_TRANSFER_INVALID: 画布移交句柄格式无效'); await client(false).request('hydrate', view); initializedRef.current = true; setInitialized(true) },
+      ready: () => statusRef.current === 'ready',
+    })
+  }, [editor?.registerTransferAdapter, status, reloadKey])
+  useEffect(() => {
+    if (status !== 'ready' || editor?.transferTarget || initialized) return
+    const saved = parseCanvasEditorView(editorRef.current?.state)
+    if (!saved) { initializedRef.current = true; setInitialized(true); return }
+    let disposed = false
+    void clientRef.current?.request('restore', saved).then(restored => {
+      if (disposed) return
+      if (restored) editorRef.current?.setState(restored)
+      initializedRef.current = true; setInitialized(true)
+    }).catch(error => { if (!disposed) { setStatus('error'); setError(error instanceof Error ? error.message : String(error)) } })
+    return () => { disposed = true }
+  }, [status, generation, editor?.transferTarget, editor?.state, initialized])
+  useEffect(() => {
+    if (status === 'ready' && initialized && !editor?.frozen && (wasFrozen.current || new URL(src).searchParams.get('editorFrozen') === '1')) void clientRef.current?.request('thaw').catch(error => console.warn('Canvas transfer thaw failed', error instanceof Error ? error.message : String(error)))
+    wasFrozen.current = Boolean(editor?.frozen)
+  }, [editor?.frozen, status, reloadKey, src, generation, initialized])
 
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout> | null = setTimeout(() => {
@@ -33,8 +91,22 @@ export function CanvasVendorPanel() {
         }
         if (timer) clearTimeout(timer)
         timer = null
+        const nextGeneration = typeof event.data.detail.generationId === 'string' ? event.data.detail.generationId : 'legacy-' + reloadKey
+        if (generationRef.current !== nextGeneration) {
+          if (generationRef.current) { clientRef.current?.dispose(); clientRef.current = new CanvasEditorFrameClient(editorKey, () => iframeRef.current?.contentWindow || null, window) }
+          generationRef.current = nextGeneration; viewSequence.current = 0; setGeneration(nextGeneration)
+          const saved = parseCanvasEditorView(editorRef.current?.state)
+          const readyView = !editorRef.current?.transferTarget && !saved?.projectId
+          initializedRef.current = readyView; setInitialized(readyView)
+        }
         setStatus('ready')
         setError('')
+      }
+      if (event.data?.type === 'grimoire:canvas-editor-view') {
+        const view = parseCanvasEditorViewEvent(event.data)
+        if (!view || view.editorKey !== editorKey || view.generationId !== generationRef.current || view.sequence <= viewSequence.current || !initializedRef.current || editorRef.current?.frozen) return
+        viewSequence.current = view.sequence
+        editorRef.current?.setState(view.state)
       }
       if (event.data?.type === 'grimoire:canvas-agent-mirror') {
         void mirrorCanvasAgentEvent(event.data, mirrorSessionRef)

@@ -8,7 +8,7 @@ This file records findings from actual LICENSE files and source headers. README 
 | Cherry Studio 2.1.4 | 项目参考/cherry-studio-main/LICENSE | AGPL-3.0 actual license header | Preserve AGPL text, copyright, source notices, and modifications | Direct copying requires notice audit |
 | OpenCode | 项目参考/opencode-dev/LICENSE | MIT actual license header | Preserve MIT notice for copied/adapted files | Copy compatible after file audit |
 | Pi 0.0.3 snapshot | 项目参考/pi-main/LICENSE | MIT actual license header | Preserve MIT notice for copied/adapted files | Copy compatible after file audit |
-| Dockview core 8.4.0 | 项目参考/dockview-master/packages/dockview-core | Root LICENSE not found in initial scan | Inspect package metadata and Enterprise boundary before copying | BLOCKED pending package audit |
+| Dockview core 8.4.0 | src/vendor/dockview/source/packages/dockview-core/LICENCE.md and dockview-react/LICENCE.md | Actual MIT License; Copyright (c) 2021 mathuo | Both original texts distributed via extraResources; source-only vendor, engine is not claimed loaded | MIT source-only audit confirmed 2026-11-04 |
 | Infinite Canvas main and 0.18.0 | 无限参考/*/LICENSE | MIT actual license headers in both snapshots | Preserve MIT notices and compare snapshot differences | Copy compatible after file audit |
 | idecn | 项目参考/idecn-main/LICENSE | MIT actual license header | Preserve MIT notice | Copy compatible after file audit |
 | Prompt Studio 1.0.0 | 项目参考/prompt-studio-main/LICENSE | MIT actual license header | Preserve MIT notice | Copy compatible after file audit |

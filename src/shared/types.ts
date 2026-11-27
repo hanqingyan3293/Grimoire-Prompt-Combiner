@@ -274,6 +274,8 @@ export const IPC_CHANNELS = {
   IMAGES_LIST_PAGED: "images:listPaged",
   IMAGES_ADD: "images:add",
   IMAGES_DELETE: "images:delete",
+  IMAGES_DELETE_BATCH: "images:deleteBatch",
+  IMAGES_EXISTING_IDS: "images:existingIds",
   IMAGES_IMPORT_DATA: "images:importData",
   IMAGES_READ_DATA: "images:readData",
   MEDIA_LIST: "media:list",
@@ -388,12 +390,28 @@ export const IPC_CHANNELS = {
 
   // Workspace popout windows
   WORKSPACE_OPEN_POPOUT: "workspace:openPopout",
+  WORKSPACE_IS_POPOUT_OPEN: "workspace:isPopoutOpen",
   WORKSPACE_CLOSE_POPOUT: "workspace:closePopout",
   WORKSPACE_FOCUS_POPOUT: "workspace:focusPopout",
   WORKSPACE_LOAD_DOCUMENT: "workspace:loadDocument",
   WORKSPACE_SAVE_DOCUMENT: "workspace:saveDocument",
   WORKSPACE_DOCUMENT_CHANGED: "workspace:documentChanged",
   WORKSPACE_LOAD_EDITOR_STATE: "workspace:loadEditorState",
+  WORKSPACE_EDIT_ACQUIRE: "workspace:edit:acquire",
+  WORKSPACE_EDIT_HEARTBEAT: "workspace:edit:heartbeat",
+  WORKSPACE_EDIT_RELEASE: "workspace:edit:release",
+  WORKSPACE_TRANSFER_PREPARE: "workspace:transfer:prepare",
+  WORKSPACE_TRANSFER_GET: "workspace:transfer:get",
+  WORKSPACE_TRANSFER_PENDING: "workspace:transfer:pending",
+  WORKSPACE_TRANSFER_READY: "workspace:transfer:ready",
+  WORKSPACE_TRANSFER_COMMIT: "workspace:transfer:commit",
+  WORKSPACE_TRANSFER_FINISH: "workspace:transfer:finish",
+  WORKSPACE_EDITOR_ACCESS: "workspace:editorAccess",
+  WORKSPACE_EDITOR_ACCESS_CHANGED: "workspace:editorAccessChanged",
+  WORKSPACE_TRANSFER_ABORT: "workspace:transfer:abort",
+  WORKSPACE_TRANSFER_EVENT: "workspace:transfer:event",
+  WORKSPACE_TRANSFER_RETURN_REQUEST: "workspace:transfer:returnRequest",
+  WORKSPACE_TRANSFER_CLOSE_SOURCE: "workspace:transfer:closeSource",
   WORKSPACE_SAVE_EDITOR_STATE: "workspace:saveEditorState",
   WORKSPACE_EDITOR_STATE_CHANGED: "workspace:editorStateChanged",
   WORKSPACE_POPOUT_CLOSED: "workspace:popoutClosed",
@@ -476,6 +494,7 @@ export const IPC_CHANNELS = {
   NOVELAI_VERSION_DELETE_MANY: "novelai:version:deleteMany",
   NOVELAI_VERSION_RESTORE_MANY: "novelai:version:restoreMany",
   NOVELAI_VERSION_PURGE_MANY: "novelai:version:purgeMany",
+  NOVELAI_ORGANIZE_PROPOSE: "novelai:organize:propose",
   SCREENSHOT_CAPTURE: "screenshot:capture",
   SELECTION_OPEN: "selection:open",
   SELECTION_CURRENT: "selection:current",
@@ -529,7 +548,12 @@ export const IPC_CHANNELS = {
   // ComfyUI
   COMFY_STATUS: "comfy:status",
   COMFY_MODELS: "comfy:models",
+  COMFY_QUEUE: "comfy:queue",
+  COMFY_HISTORY: "comfy:history",
   COMFY_WORKFLOWS_LIST: "comfy:workflows:list",
+  COMFY_OBJECT_INFO: "comfy:objectInfo",
+  COMFY_REMOTE_WORKFLOWS_LIST: "comfy:workflows:remoteList",
+  COMFY_REMOTE_WORKFLOW_IMPORT: "comfy:workflows:remoteImport",
   COMFY_WORKFLOW_IMPORT: "comfy:workflows:import",
   COMFY_WORKFLOW_DELETE: "comfy:workflows:delete",
   COMFY_CREATE_TASK: "comfy:createTask",
@@ -557,6 +581,27 @@ export const IPC_CHANNELS = {
   PROMPT_ASSET_CATEGORIES_ASSIGN: "promptAssetCategories:assign",
   PROMPT_ASSET_CATEGORIES_MOVE: "promptAssetCategories:move",
 } as const
+
+export interface ComfyQueue {
+  queue_pending: number
+  queue_running: number
+  queued: boolean
+  running: boolean
+  queue_remaining: number
+}
+
+export interface ComfyResultImage {
+  filename: string
+  subfolder: string
+  type: string
+  url: string
+}
+
+export interface ComfyHistoryResult {
+  status: 'running' | 'done' | 'error'
+  message?: string
+  images?: ComfyResultImage[]
+}
 
 /** Default tag weight */
 export const DEFAULT_WEIGHT = 1.0

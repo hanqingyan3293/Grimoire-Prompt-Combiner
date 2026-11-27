@@ -1,9 +1,13 @@
 import React, { useEffect, useMemo, useRef, useState } from "react"
+import { flushSync } from 'react-dom'
 import { PanelShell, type CornerMergeSide } from "./PanelShell"
 import { ENABLED_PANEL_OPTIONS, PANEL_DEFINITIONS, PANEL_OPTION_GROUPS, renderPanel } from "./PanelRegistry"
 import { findPanelNode, useWorkspaceStore } from "../../stores/workspace.store"
 import { normalizePanelTabs, type MergeSide, type WorkspaceLayoutNode, type WorkspacePanelRect } from "../../stores/workspace.store"
 import { WorkspaceEditorHost } from "./WorkspaceEditorHost"
+import { performEditorTransfer, waitForEditorTransferHandle } from './editor-transfer-client'
+import { useIncomingEditorTransfers, editorTransferPanelKey } from './use-editor-transfer'
+import { EDITOR_TRANSFER_TYPES } from '../../../shared/editor-transfer'
 
 type MergePreview = {
   panelId: string
@@ -22,6 +26,7 @@ export function FixedWorkspace() {
   const maximizedPanels = useWorkspaceStore(s => s.maximizedPanels)
   const floatingPanels = useWorkspaceStore(s => s.floatingPanels)
   const popoutPanels = useWorkspaceStore(s => s.popoutPanels)
+  const restoringPopouts = useWorkspaceStore(s => s.restoringPopouts)
   const popoutBounds = useWorkspaceStore(s => s.popoutBounds)
   const floatingPositions = useWorkspaceStore(s => s.floatingPositions)
   const setPanelType = useWorkspaceStore(s => s.setPanelType)
@@ -39,6 +44,69 @@ export function FixedWorkspace() {
   const setPopoutPanel = useWorkspaceStore(s => s.setPopoutPanel)
   const setFloatingPanelPosition = useWorkspaceStore(s => s.setFloatingPanelPosition)
   const focusFloatingPanel = useWorkspaceStore(s => s.focusFloatingPanel)
+  const incomingTransfers = useIncomingEditorTransfers()
+  const [transferringPanels, setTransferringPanels] = useState<Set<string>>(new Set())
+  const restoring = useRef(false)
+  const [restoreWake, setRestoreWake] = useState(0)
+  const finishRestore = (workspaceId: string, panelId: string) => useWorkspaceStore.setState(state => ({ restoringPopouts: { ...state.restoringPopouts, [workspaceId]: (state.restoringPopouts[workspaceId] || []).filter(id => id !== panelId) } }))
+  const transferPanel = async (workspaceId: string, panelId: string) => {
+    const panel = findPanelNode(useWorkspaceStore.getState().getLayout(workspaceId), panelId)
+    const tab = panel ? normalizePanelTabs(panel).find(item => item.id === panel.activeTabId) || normalizePanelTabs(panel)[0] : null
+    if (!tab || transferringPanels.has(panelId)) return
+    const title = PANEL_DEFINITIONS[tab.type].title
+    if (!EDITOR_TRANSFER_TYPES.has(tab.type)) {
+      setPopoutPanel(workspaceId, panelId, true)
+      try { await window.api.workspace.openPopout({ popoutId: workspaceId + ':' + panelId, panelType: tab.type, title, bounds: popoutBounds[workspaceId]?.[panelId] }) }
+      catch { setPopoutPanel(workspaceId, panelId, false) }
+      return
+    }
+    setTransferringPanels(value => new Set(value).add(panelId))
+    try {
+      await performEditorTransfer({ direction: 'popout', workspaceId, panelId, editorId: tab.id, editorKey: workspaceId + ':' + tab.id + ':' + tab.type, panelType: tab.type, title, bounds: popoutBounds[workspaceId]?.[panelId] }, window.api.workspace, async () => {
+        flushSync(() => { finishRestore(workspaceId, panelId); setPopoutPanel(workspaceId, panelId, true) })
+      }, () => { finishRestore(workspaceId, panelId); setPopoutPanel(workspaceId, panelId, false) })
+    } catch (error) {
+      const stillOpen = typeof window.api.workspace.isPopoutOpen === 'function' && await window.api.workspace.isPopoutOpen(workspaceId + ':' + panelId).catch(() => true)
+      finishRestore(workspaceId, panelId); if (!stillOpen) setPopoutPanel(workspaceId, panelId, false)
+      window.dispatchEvent(new CustomEvent('grimoire:toast', { detail: { type: 'error', message: error instanceof Error ? error.message : '编辑器移交失败，原草稿已保留' } }))
+    }
+    finally { setTransferringPanels(value => { const next = new Set(value); next.delete(panelId); return next }) }
+  }
+  useEffect(() => {
+    const panelId = restoringPopouts[activeWorkspaceId]?.[0]
+    if (!panelId || restoring.current) return
+    const state = useWorkspaceStore.getState()
+    const panel = findPanelNode(state.getLayout(activeWorkspaceId), panelId)
+    const tab = panel ? normalizePanelTabs(panel).find(item => item.id === panel.activeTabId) || normalizePanelTabs(panel)[0] : null
+    if (!tab) { finishRestore(activeWorkspaceId, panelId); return }
+    let cancelled = false
+    const wanted = () => !cancelled && Boolean(useWorkspaceStore.getState().popoutPanels[activeWorkspaceId]?.includes(panelId) && useWorkspaceStore.getState().restoringPopouts[activeWorkspaceId]?.includes(panelId))
+    restoring.current = true
+    const previousMaximized = state.maximizedPanels[activeWorkspaceId]
+    if (previousMaximized && previousMaximized !== panelId) state.setMaximizedPanel(activeWorkspaceId, null)
+    void (async () => {
+      try {
+        if (await waitForEditorTransferHandle(activeWorkspaceId + ':' + tab.id + ':' + tab.type, () => !wanted())) {
+          const alreadyOpen = await window.api.workspace.isPopoutOpen(activeWorkspaceId + ':' + panelId)
+          if (!wanted()) return
+          if (alreadyOpen) finishRestore(activeWorkspaceId, panelId)
+          else await transferPanel(activeWorkspaceId, panelId)
+        }
+      } catch (error) {
+        if (!cancelled) {
+          const stillOpen = await window.api.workspace.isPopoutOpen(activeWorkspaceId + ':' + panelId).catch(() => true)
+          finishRestore(activeWorkspaceId, panelId); if (!stillOpen) setPopoutPanel(activeWorkspaceId, panelId, false)
+          window.dispatchEvent(new CustomEvent('grimoire:toast', { detail: { type: 'error', message: error instanceof Error ? error.message : '独立窗口恢复失败，草稿保留在主工作区' } }))
+        }
+      } finally {
+        const current = useWorkspaceStore.getState()
+        if (!current.popoutPanels[activeWorkspaceId]?.includes(panelId)) finishRestore(activeWorkspaceId, panelId)
+        if (previousMaximized && !current.maximizedPanels[activeWorkspaceId]) current.setMaximizedPanel(activeWorkspaceId, previousMaximized)
+        restoring.current = false; setRestoreWake(value => value + 1)
+      }
+    })()
+    return () => { cancelled = true }
+  }, [activeWorkspaceId, restoringPopouts, restoreWake])
   const containerRef = useRef<HTMLDivElement>(null)
   const [mergePreview, setMergePreview] = useState<MergePreview>(null)
   const workspace = useMemo(
@@ -72,11 +140,7 @@ export function FixedWorkspace() {
         event.preventDefault()
         const panel = findPanelNode(layout || useWorkspaceStore.getState().getLayout(workspace.id), panelId)
         const active = panel ? normalizePanelTabs(panel).find(tab => tab.id === panel.activeTabId) || normalizePanelTabs(panel)[0] : null
-        if (active) {
-          const definition = PANEL_DEFINITIONS[active.type]
-          setPopoutPanel(workspace.id, panelId, true)
-          void window.api.workspace.openPopout({ popoutId: workspace.id + ":" + panelId, panelType: active.type, title: definition.title }).catch(() => setPopoutPanel(workspace.id, panelId, false))
-        }
+        if (active) { void transferPanel(workspace.id, panelId) }
       }
     }
     window.addEventListener("keydown", handleShortcut)
@@ -188,10 +252,11 @@ export function FixedWorkspace() {
 
   const renderNode = (node: WorkspaceLayoutNode, renderFloating = false): React.ReactNode => {
     if (node.kind === "panel") {
-      if (!renderFloating && ((floatingPanels[workspace.id] || []).includes(node.id) || (popoutPanels[workspace.id] || []).includes(node.id))) return <div className="h-full w-full" aria-hidden="true" />
+      const incoming = incomingTransfers[editorTransferPanelKey(workspace.id, node.id)] || null
+      if (!renderFloating && !incoming && !restoringPopouts[workspace.id]?.includes(node.id) && ((floatingPanels[workspace.id] || []).includes(node.id) || (popoutPanels[workspace.id] || []).includes(node.id))) return <div className="h-full w-full" aria-hidden="true" />
       const tabs = normalizePanelTabs(node)
-      const activeTabId = node.activeTabId || tabs[0].id
-      const activeType = tabs.find(tab => tab.id === activeTabId)?.type || node.type
+      const activeTabId = incoming?.editorId || node.activeTabId || tabs[0].id
+      const activeType = incoming ? incoming.panelType as typeof node.type : tabs.find(tab => tab.id === activeTabId)?.type || node.type
       const definition = PANEL_DEFINITIONS[activeType]
       return (
         <PanelShell
@@ -200,6 +265,7 @@ export function FixedWorkspace() {
           title={definition.title}
           style={{ width: "100%", height: "100%" }}
           showHeader
+          transferring={transferringPanels.has(node.id) || Boolean(incoming && incoming.phase !== 'committed')}
           panelOptions={ENABLED_PANEL_OPTIONS}
           panelOptionGroups={PANEL_OPTION_GROUPS}
           onTypeChange={(type) => setPanelType(workspace.id, node.id, type)}
@@ -216,12 +282,7 @@ export function FixedWorkspace() {
           onMaximize={() => setMaximizedPanel(workspace.id, maximizedPanelId === node.id ? null : node.id)}
           onFloat={() => setFloatingPanel(workspace.id, node.id, !(floatingPanels[workspace.id] || []).includes(node.id))}
           onFloatingDragStart={(event) => startFloatingDrag(node.id, event)}
-          onPopout={() => {
-            const popoutId = workspace.id + ':' + node.id
-            const bounds = popoutBounds[workspace.id]?.[node.id]
-            setPopoutPanel(workspace.id, node.id, true)
-            void window.api.workspace.openPopout({ popoutId, panelType: activeType, title: definition.title, bounds }).catch(() => setPopoutPanel(workspace.id, node.id, false))
-          }}
+          onPopout={() => { void transferPanel(workspace.id, node.id) }}
           floating={(floatingPanels[workspace.id] || []).includes(node.id)}
           onClose={() => closePanel(workspace.id, node.id)}
           maximized={maximizedPanelId === node.id}
@@ -229,9 +290,11 @@ export function FixedWorkspace() {
           mergeHighlighted={mergePreview?.panelId === node.id}
           mergePreviewRect={mergePreview?.panelId === node.id ? mergePreview.rect : null}
         >
-          <WorkspaceEditorHost workspaceId={workspace.id} editorId={activeTabId} type={activeType}>
+          <div className='flex h-full min-h-0 flex-col' style={{ visibility: incoming && incoming.phase !== 'committed' ? 'hidden' : 'visible' }}>
+          <WorkspaceEditorHost workspaceId={workspace.id} editorId={activeTabId} type={activeType} transfer={incoming}>
           {renderPanel(activeType, { agentMode: tabs.find(tab => tab.id === activeTabId)?.mode })}
           </WorkspaceEditorHost>
+          </div>
         </PanelShell>
       )
     }
@@ -270,6 +333,8 @@ export function FixedWorkspace() {
     <div ref={containerRef} className="relative flex min-h-0 min-w-0 flex-1 overflow-hidden p-[3px]">
       {layout && renderNode(maximizedPanel || layout)}
       {workspace && (floatingPanels[workspace.id] || []).map(panelId => {
+        if (restoringPopouts[workspace.id]?.includes(panelId)) return null
+        if (incomingTransfers[editorTransferPanelKey(workspace.id, panelId)]) return null
         const panel = layout ? findPanelNode(layout, panelId) : null
         if (!panel) return null
         const position = floatingPositions[workspace.id]?.[panelId]

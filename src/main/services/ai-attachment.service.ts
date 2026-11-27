@@ -3,6 +3,7 @@ import fs from 'fs'
 import path from 'path'
 import { getDatabase, getResourceRoot, saveDatabase } from '../database'
 import type { AiAttachmentRecord } from '../../shared/ai-types'
+import { cleanupOwnedCopies, copyFinalizationFailure, OwnedCopyCleanupError, type OwnedCopyCleanupResult } from './owned-copy-cleanup'
 
 export const AI_ATTACHMENT_MAX_BYTES = 100 * 1024 * 1024
 export const AI_MESSAGE_MAX_ATTACHMENTS = 10
@@ -106,14 +107,33 @@ export function linkAiAttachment(id: string, messageId: string): AiAttachmentRec
   return getAiAttachment(id)!
 }
 
+export function cleanupAiAttachmentCopies(ids: readonly string[]): OwnedCopyCleanupResult {
+  const removing = new Set(ids)
+  const attachments = [...removing].map(getAiAttachment).filter((item): item is AiAttachmentRecord => item !== null && item.status !== 'deleted')
+  const copies = attachments.map(attachment => {
+    const live = getDatabase().exec("SELECT id FROM ai_attachments WHERE file_path=? AND status<>'deleted'", [attachment.file_path])[0]?.values || []
+    return { id: attachment.id, filePath: attachment.file_path, retained: live.some(row => !removing.has(String(row[0]))) }
+  })
+  return cleanupOwnedCopies(copies, 'ai-attachments', 'unlink')
+}
+
 export function deleteAiAttachment(id: string): boolean {
-  const attachment = getAiAttachment(id)
-  if (!attachment) return false
-  getDatabase().run('UPDATE ai_attachments SET status=\'deleted\',updated_at=? WHERE id=?', [new Date().toISOString(), id])
-  const references = getDatabase().exec('SELECT COUNT(*) FROM ai_attachments WHERE file_path=? AND status<>\'deleted\'', [attachment.file_path])[0]?.values?.[0]?.[0]
-  if (Number(references || 0) === 0 && attachment.file_path && fs.existsSync(attachment.file_path)) fs.promises.unlink(attachment.file_path).catch(() => {})
-  saveDatabase()
-  return true
+  const db = getDatabase()
+  let cleanup: OwnedCopyCleanupResult | undefined
+  db.exec('BEGIN IMMEDIATE')
+  try {
+    if (!getAiAttachment(id)) { db.exec('COMMIT'); return false }
+    cleanup = cleanupAiAttachmentCopies([id])
+    if (cleanup.status !== 'completed') throw new OwnedCopyCleanupError('AI_ATTACHMENT_CLEANUP_FAILED', cleanup)
+    db.run("UPDATE ai_attachments SET status='deleted',updated_at=? WHERE id=?", [new Date().toISOString(), id])
+    db.exec('COMMIT')
+    saveDatabase()
+    return true
+  } catch (error) {
+    try { db.exec('ROLLBACK') } catch (rollbackError) { console.debug('[attachments] rollback settled', rollbackError) }
+    if (cleanup && !(error instanceof OwnedCopyCleanupError)) throw new OwnedCopyCleanupError('AI_ATTACHMENT_DELETE_DB_FAILED', copyFinalizationFailure(cleanup, error, id))
+    throw error
+  }
 }
 
 export async function readAiAttachment(id: string): Promise<{ id: string; mimeType: string; originalName: string; status: AiAttachmentRecord['status']; dataUrl?: string; text?: string }> {

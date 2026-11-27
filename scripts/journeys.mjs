@@ -5,6 +5,10 @@
 // takes several minutes and is meant for after a batch of UI changes or before handing work over. Run with
 // `--quick` to skip the two widest matrix runs.
 import { spawnSync } from 'node:child_process'
+import fs from 'node:fs'
+import path from 'node:path'
+import { createHash } from 'node:crypto'
+import { aggregateStatus, validateBatch, buildFingerprint, mergeJourneyRecord } from './journey-evidence.mjs'
 
 const quick = process.argv.includes('--quick')
 const journeys = [
@@ -50,38 +54,103 @@ const journeys = [
   ]),
 ]
 
-const results = []
-const runOnce = journey => {
+const artifactDir = path.join(process.cwd(), 'artifacts/m5')
+fs.mkdirSync(artifactDir, { recursive: true })
+const stamp = process.argv.find(arg => arg.startsWith('--run-id='))?.slice(9) || new Date().toISOString().replace(/[:.]/g, '-')
+const from = Number(process.argv.find(arg => arg.startsWith('--from='))?.slice(7) || 1)
+const count = Number(process.argv.find(arg => arg.startsWith('--count='))?.slice(8) || journeys.length)
+validateBatch(from, count, stamp, journeys.length)
+const aggregateOnly = process.argv.includes('--aggregate-only')
+const fromAggregate = process.argv.find(arg => arg.startsWith('--from-aggregate='))?.slice('--from-aggregate='.length)
+const batchBudgetMs = Number(process.argv.find(arg => arg.startsWith('--batch-budget-ms='))?.slice('--batch-budget-ms='.length) || 0)
+
+function compiledOutputs() {
+  const paths = []
+  const walk = dir => {
+    if (!fs.existsSync(dir)) return
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      const file = path.join(dir, entry.name)
+      if (entry.isDirectory()) walk(file)
+      else paths.push(file)
+    }
+  }
+  walk(path.join(process.cwd(), 'dist'))
+  for (const extra of ['src/vendor/cherry/compat/dist-source-shell/source-shell.html']) {
+    const file = path.join(process.cwd(), extra)
+    if (fs.existsSync(file)) paths.push(file)
+  }
+  return paths
+}
+// SHA-256 over every compiled output (not size+mtime). This is the identity
+// that binds the aggregate to the exact build that produced the journey logs.
+const build = buildFingerprint(compiledOutputs(), { root: process.cwd() })
+const aggregatePath = path.join(artifactDir, `journeys-${stamp}.json`)
+let sourceAggregate = null
+let results = []
+let batchTimedOut = false
+const batchStarted = Date.now()
+if (fromAggregate) {
+  const absolute = path.resolve(process.cwd(), fromAggregate)
+  const bytes = fs.readFileSync(absolute)
+  const imported = JSON.parse(bytes.toString('utf8'))
+  if (imported.expected !== journeys.length) throw new Error('Imported aggregate has a different journey count')
+  if (imported.build?.combinedSha256 !== build.combinedSha256 || imported.build?.fileCount !== build.fileCount) throw new Error('Imported aggregate belongs to a different build; stale journey inheritance is rejected')
+  if ((imported.results || []).some(record => (record.attempts || []).some(attempt => attempt.buildSha256 !== build.combinedSha256))) throw new Error('Imported aggregate contains attempts that are not bound to the current build')
+  sourceAggregate = { path: path.relative(process.cwd(), absolute).replaceAll(path.sep, '/'), sha256: createHash('sha256').update(bytes).digest('hex'), status: imported.status ?? null, runId: imported.runId ?? null }
+  results = (imported.results || []).reduce((acc, record) => mergeJourneyRecord(acc, record), [])
+} else {
+  const prior = fs.existsSync(aggregatePath) ? JSON.parse(fs.readFileSync(aggregatePath, 'utf8')) : { results: [] }
+  if (prior.build?.combinedSha256 && prior.build.combinedSha256 !== build.combinedSha256) throw new Error('Build artifacts changed within journey run')
+  results = (prior.results || []).reduce((acc, record) => mergeJourneyRecord(acc, record), [])
+}
+function flush() {
+  const failed = results.filter(result => (!result.ok && !result.budgetExhausted) || result.stickyFailed || (result.attempts || []).some(attempt => !attempt.ok && attempt.budgetExhausted !== true))
+  const aggregate = { schemaVersion: 2, generatedAt: new Date().toISOString(), runId: stamp, expected: journeys.length, status: aggregateStatus(results, journeys.length, { buildSha: build.combinedSha256 }), total: results.length, failedIndexes: failed.map(result => result.index), failed: failed.map(result => result.flag), build, sourceAggregate, batch: aggregateOnly ? null : { from, count, batchBudgetMs: batchBudgetMs || null, timedOut: batchTimedOut }, results }
+  fs.writeFileSync(aggregatePath, JSON.stringify(aggregate, null, 2) + String.fromCharCode(10))
+  fs.writeFileSync(path.join(artifactDir, 'journeys-latest.json'), JSON.stringify(aggregate, null, 2) + String.fromCharCode(10))
+  return aggregate
+}
+if (!aggregateOnly) flush()
+const runOnce = (journey, timeoutMs = 600000) => {
   const script = journey.script || 'scripts/ui-parity.mjs'
+  const startedAt = new Date().toISOString()
+  const started = Date.now()
   const run = spawnSync(process.execPath, [script, ...journey.flag.split(' ')], {
     encoding: 'utf8',
     // ELECTRON_RUN_AS_NODE='' (empty string) is enough for ui-parity, but the audit script spawns its OWN
     // electron and an empty value makes that child run as Node — no window, so `NO_TARGET`. Delete the
     // variable for journeys that bring their own script instead of clearing it.
     env: journey.script ? (() => { const env = { ...process.env }; delete env.ELECTRON_RUN_AS_NODE; return env })() : { ...process.env, ELECTRON_RUN_AS_NODE: '' },
-    timeout: 600000,
+    timeout: timeoutMs,
   })
   const output = (run.stdout || '') + (run.stderr || '')
   const headline = output.split('\n').find(line => /^(WORKBENCH|ASSETS|GALLERY|TOOLTIP|COMFY-PERSIST|STYLE-CONTRACT|ERROR-PATHS|SELECTION-POPUP|SLIM-SWEEP|MATRIX|NARROW|API|Web|Screenshot|Settings|Browser)/i.test(line)) || ''
-  return { ok: run.status === 0, status: run.status, headline: headline.slice(0, 400) }
+  const budgetExhausted = timeoutMs < 600000 && (run.error?.code === 'ETIMEDOUT' || run.signal === 'SIGTERM' || run.status === null)
+  return { ok: run.status === 0, status: run.status, exitCode: run.status, signal: run.signal || null, budgetExhausted, timedOut: budgetExhausted, startedAt, finishedAt: new Date().toISOString(), durationMs: Date.now() - started, headline: headline.slice(0, 400), stdout: run.stdout || '', stderr: run.stderr || '' }
 }
 
-for (const journey of journeys) {
+for (const journey of aggregateOnly ? [] : journeys.slice(from - 1, from - 1 + count)) {
+  const remaining = batchBudgetMs ? batchBudgetMs - (Date.now() - batchStarted) : 600000
+  if (remaining <= 0) { batchTimedOut = true; break }
   process.stdout.write('· ' + journey.label + ' ... ')
-  let attempt = runOnce(journey)
-  // Eleven renderer boots in a row leave the machine busy enough that the last one can time out while
-  // passing on its own. One retry, recorded — a silent retry would hide a real regression, a hard fail
-  // would report load as a defect.
-  let retried = false
-  if (!attempt.ok) {
-    retried = true
-    attempt = runOnce(journey)
-  }
-  results.push({ flag: journey.flag, label: journey.label, ...attempt, retried })
-  console.log(attempt.ok ? (retried ? 'PASS (retry)' : 'PASS') : 'FAIL')
+  const attempt = runOnce(journey, Math.min(600000, remaining))
+  // Genuine failures are never retried into green. Each run retains the only attempt.
+  const index = journeys.indexOf(journey) + 1
+  const attemptNumber = (results.find(result => result.index === index)?.attempts?.length || 0) + 1
+  const stdoutArtifact = path.join(artifactDir, `journey-${stamp}-${index}-attempt-${attemptNumber}.stdout.log`)
+  const stderrArtifact = path.join(artifactDir, `journey-${stamp}-${index}-attempt-${attemptNumber}.stderr.log`)
+  fs.writeFileSync(stdoutArtifact, attempt.stdout)
+  fs.writeFileSync(stderrArtifact, attempt.stderr)
+  const { stdout, stderr, ...evidence } = attempt
+  const record = { index, attempt: attemptNumber, flag: journey.flag, label: journey.label, ...evidence, buildSha256: build.combinedSha256, stdoutSha256: createHash('sha256').update(stdout).digest('hex'), stdoutArtifact: path.relative(process.cwd(), stdoutArtifact), stderrArtifact: path.relative(process.cwd(), stderrArtifact) }
+  results = mergeJourneyRecord(results, record)
+  flush()
+  console.log(attempt.ok ? 'PASS' : 'FAIL')
 }
 
-const failed = results.filter(result => !result.ok)
-for (const result of results) console.log((result.ok ? '  ok   ' : '  FAIL ') + result.label + (result.retried ? ' [retry]' : '') + '   ' + result.headline)
-console.log(failed.length ? 'JOURNEYS FAILED: ' + failed.map(result => result.flag).join(', ') : 'ALL JOURNEYS PASSED')
-process.exit(failed.length ? 1 : 0)
+const final = flush()
+console.log(JSON.stringify({ runId: stamp, recorded: results.length, expected: journeys.length, status: final.status, failed: final.failed, build: final.build.combinedSha256, sourceAggregate: final.sourceAggregate, batchTimedOut }))
+// A completed bounded batch with an incomplete aggregate is progress, not a product failure.
+// The final aggregate gate decides 25/25. Exit 1 only when a real journey attempt failed.
+process.exitCode = final.failed.length > 0 || final.status === 'failed' ? 1 : batchTimedOut ? 2 : 0
+process.exit(process.exitCode)

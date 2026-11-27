@@ -58,11 +58,12 @@ export function approvalIdFromInput(input: unknown): string {
 /**
  * The decision to send for a plain allow/deny answer.
  *
- * Deliberately NOT `allowForSession`: Grimoire's session grant is keyed by permission
- * KIND, so answering an approval with it would authorise every future tool of that
- * kind — far broader than what the user was asked. An allow/deny answer settles the
- * call and nothing else; a persistent rule goes through {@link withoutToolFromDenylist}
- * for the one tool the user actually named.
+ * Deliberately NOT `allowForSession`: this helper backs the source's plain allow/deny
+ * buttons, which mean "settle this call" and did not ask to persist anything. Grimoire's
+ * main broker can persist exact owner/session/action/pattern grants, but only when the
+ * user takes the explicit session action; inferring one from a plain allow would grant
+ * more than the user answered. Native approval replies themselves remain once/reject;
+ * a native process-wide `always` is never emitted.
  */
 export function decisionForApproval(approved: unknown): 'allowOnce' | 'deny' {
   return approved === true ? 'allowOnce' : 'deny'

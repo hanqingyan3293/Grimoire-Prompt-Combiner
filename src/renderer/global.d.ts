@@ -1,13 +1,49 @@
 // Vite 环境变量类型
 /// <reference types="vite/client" />
-import type { Provider, ProviderSaveInput } from '../shared/types'
+import type { ComfyHistoryResult, ComfyQueue, Provider, ProviderSaveInput } from '../shared/types'
 import type { TaskEvent, TaskRecord, TaskStatus } from '../shared/task-types'
+import type { ImageDeleteBatchResult } from '../shared/image-deletion-types'
 import type { CanvasDocument, CanvasProject } from '../shared/canvas-types'
 import type { PromptAssetPage, PromptAssetQuery } from '../shared/prompt-asset-types'
 import type { WD14HistoryRecord } from '../shared/wd14-types'
 import type { CherryCacheEntry, CherryCacheSyncMessage, CherryDataApiDataChangeEffect, CherryDataApiRequest, CherryDataApiResponse } from '../shared/cherry-preload-types'
 import type { AgentSessionAttachment, AgentSessionEventRecord, AgentSessionRecord, AgentSessionSnapshot, AgentSessionWorkspace, McpServerRecord } from '../shared/agent-types'
 import type { AiAssistantRecord, AiEventRecord, AiMessageRecord, AiResourceOrderAnchor, AiSessionRecord, AiTopicRecord } from '../shared/ai-types'
+
+/** NovelAI generation parameters embedded in the PNG Comment block (M6.6). */
+export interface NovelaiMetadataParams {
+  prompt: string
+  negativePrompt?: string
+  steps?: number
+  cfg?: number
+  seed?: number
+  sampler?: string
+  scheduler?: string
+  width?: number
+  height?: number
+  model?: string
+  checkpoint?: string
+  loras?: string[]
+}
+
+/** `unknown` carries keys this UI version has no field for, preserved for the next write. */
+export interface NovelaiMetadataDecoded {
+  params: NovelaiMetadataParams
+  unknown: Record<string, unknown>
+  version: number | null
+}
+
+export interface NovelaiMetadataExportResult {
+  canceled?: boolean
+  writtenPath?: string
+  bytes?: number
+  error?: string
+}
+
+export interface NovelaiMetadataReadResult {
+  canceled?: boolean
+  decoded?: NovelaiMetadataDecoded | null
+}
 
 // 预加载 API 类型
 export interface GrimoireAPI {
@@ -151,6 +187,8 @@ export interface GrimoireAPI {
     listPaged: (input?: { limit?: number; offset?: number }) => Promise<{ items: Array<{ id: number; file_path: string; storage_mode: 'managed' | 'external'; asset_hash: string | null; mime_type: string | null; file_size: number | null; original_name: string | null; available: boolean; created_at: string }>; total: number; limit: number; offset: number }>
     add: (mode?: 'managed' | 'external') => Promise<{ id: number; file_path: string; storage_mode: 'managed' | 'external' } | null>
     delete: (id: number) => Promise<boolean>
+    deleteBatch: (input: { ids: number[] }) => Promise<ImageDeleteBatchResult>
+    existingIds: (input: { ids: number[] }) => Promise<number[]>
     importData: (dataBase64: string, originalName: string) => Promise<unknown>
     readData: (id: number) => Promise<string>
   }
@@ -264,9 +302,9 @@ export interface GrimoireAPI {
         models: (input?: { query?: string; providerId?: string; capability?: string; limit?: number }) => Promise<unknown[]>
       }
       runtimes: {
-        list: () => Promise<Array<{ kind: string; available: boolean; source: string; executable: string | null; version: string | null; message: string; checkedAt: string }>>
+        list: () => Promise<Array<{ kind: string; available: boolean; source: string; executable: string | null; version: string | null; message: string; checkedAt: string; contract: { provider: 'grimoire' | 'runtime'; model: 'catalog' | 'freeform' } }>>
         capabilities: (kind: string) => Promise<Record<string, { state: 'supported' | 'unavailable' | 'blocked' | 'not-implemented'; reason: string; unblock?: string }>>
-        prepare: (kind: string) => Promise<{ kind: string; available: boolean; source: string; executable: string | null; version: string | null; message: string; checkedAt: string }>
+        prepare: (kind: string) => Promise<{ kind: string; available: boolean; source: string; executable: string | null; version: string | null; message: string; checkedAt: string; contract: { provider: 'grimoire' | 'runtime'; model: 'catalog' | 'freeform' } }>
       }
       appendMessage: (input: Record<string, unknown>) => Promise<AiMessageRecord>
       updateMessage: (input: Record<string, unknown>) => Promise<AiMessageRecord>
@@ -338,11 +376,27 @@ export interface GrimoireAPI {
     openPopout: (input: { popoutId: string; panelType: string; title: string; bounds?: { x?: number; y?: number; width?: number; height?: number } }) => Promise<boolean>
     closePopout: (popoutId: string) => Promise<boolean>
     focusPopout: (popoutId: string) => Promise<boolean>
+    isPopoutOpen: (popoutId: string) => Promise<boolean>
     loadDocument: (workspaceId: string) => Promise<{ workspaceId: string; revision: number; document: unknown } | null>
     saveDocument: (workspaceId: string, expectedRevision: number, document: unknown) => Promise<{ saved: boolean; conflict?: boolean; value?: { workspaceId: string; revision: number; document: unknown }; current?: { workspaceId: string; revision: number; document: unknown } | null }>
     onDocumentChanged: (callback: (value: { workspaceId: string; revision: number; document: unknown }) => void) => () => void
     loadEditorState: (editorKey: string) => Promise<{ editorKey: string; revision: number; state: unknown } | null>
-    saveEditorState: (editorKey: string, expectedRevision: number, state: unknown) => Promise<{ saved: boolean; conflict?: boolean; value?: { editorKey: string; revision: number; state: unknown }; current?: { editorKey: string; revision: number; state: unknown } | null }>
+    prepareTransfer: (input: import('../shared/editor-transfer').EditorTransferInput) => Promise<import('../shared/editor-transfer').EditorTransferResult>
+    getTransfer: (id: string) => Promise<import('../shared/editor-transfer').EditorTransferRecord | null>
+    pendingTransfers: () => Promise<import('../shared/editor-transfer').EditorTransferRecord[]>
+    readyTransfer: (id: string, revision: number) => Promise<import('../shared/editor-transfer').EditorTransferResult>
+    commitTransfer: (id: string) => Promise<import('../shared/editor-transfer').EditorTransferResult>
+    finishTransfer: (id: string) => Promise<import('../shared/editor-transfer').EditorTransferResult>
+    getEditorAccess: (key: string) => Promise<import('../shared/editor-transfer').WorkspaceEditorAccess>
+    onEditorAccessChanged: (callback: (value: { editorKey: string }) => void) => () => void
+    abortTransfer: (id: string) => Promise<import('../shared/editor-transfer').EditorTransferResult>
+    closeTransferredSource: () => Promise<boolean>
+    onTransferChanged: (callback: (event: import('../shared/editor-transfer').EditorTransferEvent) => void) => () => void
+    onTransferReturnRequested: (callback: () => void) => () => void
+    acquireEditLease: (resource: import('../shared/novelai-edit-types').NovelaiEditResource, editorKey: string) => Promise<import('../shared/novelai-edit-types').NovelaiEditLeaseResult>
+    heartbeatEditLease: (resource: import('../shared/novelai-edit-types').NovelaiEditResource, editorKey: string, leaseId: string) => Promise<import('../shared/novelai-edit-types').NovelaiEditLeaseResult>
+    releaseEditLease: (resource: import('../shared/novelai-edit-types').NovelaiEditResource, editorKey: string, leaseId: string) => Promise<import('../shared/novelai-edit-types').NovelaiEditReleaseResult>
+    saveEditorState: (editorKey: string, expectedRevision: number, state: unknown) => Promise<import('../shared/workspace-editor-state').SaveWorkspaceEditorStateResult>
     onEditorStateChanged: (callback: (value: { editorKey: string; revision: number; state: unknown }) => void) => () => void
     onPopoutClosed: (callback: (value: { popoutId: string; bounds?: { x: number; y: number; width: number; height: number } }) => void) => () => void
   }
@@ -393,6 +447,16 @@ export interface GrimoireAPI {
     selectFriendPrompts: () => Promise<{ token: string; fingerprint: string; total: number; additions: number; duplicates: number; skipped: number; warnings: string[]; sample: Array<{ name: string; chapter: string }> } | null>
     importFriendPrompts: (token: string, fingerprint: string) => Promise<{ addedCount: number; total: number; duplicates: Array<unknown>; skipped: number; warnings: string[] }>
   }
+  novelai: {
+    assets: {
+      remove: (id: string, force?: boolean, expectedImageIds?: string[], options?: { edit?: import('../shared/novelai-edit-types').NovelaiEditProof; expectedRevision?: number }) => Promise<boolean>
+    }
+    metadata: {
+      /** Known keys are NovelaiMetadataParams; the record also carries preserved unknown keys. */
+      exportTo: (params: Record<string, unknown>) => Promise<NovelaiMetadataExportResult>
+      readFrom: () => Promise<NovelaiMetadataReadResult>
+    }
+  }
   tasks: {
     create: (input: { id?: string; kind: 'wd14' | 'comfyui' | 'ai-vision'; input: unknown; maxRetries?: number }) => Promise<TaskRecord>
     list: (status?: TaskStatus) => Promise<TaskRecord[]>
@@ -420,8 +484,13 @@ export interface GrimoireAPI {
     }
   }
   comfy: {
+    objectInfo: () => Promise<Record<string, unknown>>
+    remoteWorkflows: () => Promise<string[]>
+    importRemoteWorkflow: (handle: string) => Promise<import('../shared/comfy-workflow-types').ComfyPublicWorkflow>
     status: () => Promise<{ online: boolean; comfyui_version: string | null; error?: string }>
     models: () => Promise<{ checkpoints: string[]; unets: string[]; loras: string[] }>
+    queue: (promptId?: string) => Promise<ComfyQueue>
+    history: (promptId: string) => Promise<ComfyHistoryResult>
     workflows: () => Promise<Array<{ id: string; name: string; analysis: { nodeCount?: number; warnings?: string[] }; bindings: Array<{ key: string; label: string; nodeId: string; field: string; valueType: 'string' | 'number' | 'integer' | 'json' }>; defaults: Record<string, unknown>; source: string; created_at: string; updated_at: string }>>
     importWorkflow: () => Promise<Record<string, unknown> | null>
     deleteWorkflow: (id: string) => Promise<boolean>

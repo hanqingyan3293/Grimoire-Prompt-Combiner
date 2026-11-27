@@ -8,7 +8,8 @@ import { createRequire } from 'node:module'
 import { spawn, spawnSync } from 'node:child_process'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import net from 'node:net'
-import { verifiedCapture } from './cherry-ui-capture-evidence.mjs'
+import { verifiedCapture, pngDigest, pngHeader, fileSha256, surfaceIdentity, canonicalRoute, DEFAULT_OBSERVED_PARAMETERS, CONTENT_RESOLUTIONS } from './cherry-ui-capture-evidence.mjs'
+import { buildFingerprint } from './journey-evidence.mjs'
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const catalogRoot = path.join(root, 'artifacts/cherry-ui-catalog')
@@ -23,6 +24,22 @@ const artifact = path.join(root, 'src/vendor/cherry/compat/dist-source-shell/sou
 fs.mkdirSync(catalogRoot, { recursive: true })
 fs.mkdirSync(runRoot, { recursive: true })
 if (!fs.existsSync(artifact)) throw new Error(`缺少 source-shell 构建产物：${artifact}`)
+// Every piece of capture evidence is bound to this exact source-shell build.
+const sourceShellSha256 = fileSha256(artifact)
+const walkFiles = dir => {
+  const files = []
+  const walk = current => {
+    if (!fs.existsSync(current)) return
+    for (const entry of fs.readdirSync(current, { withFileTypes: true })) {
+      const file = path.join(current, entry.name)
+      if (entry.isDirectory()) walk(file)
+      else files.push(file)
+    }
+  }
+  walk(dir)
+  return files.sort()
+}
+const captureBuild = buildFingerprint([...walkFiles(path.join(root, 'dist')), artifact], { root })
 
 const profile = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), 'grimoire-cherry-ui-catalog-')))
 const port = await new Promise((resolve, reject) => {
@@ -93,6 +110,56 @@ function routePath(item) {
   if (item.route === '/app/mini-app/' || item.route === '/app/paintings/') return item.route.slice(0, -1)
   if (item.route === '/settings/' || item.route === '/settings/mcp/') return item.route.slice(0, -1)
   return item.route
+}
+
+const DATA_PANEL_CONTENT = {
+  local_backup: { label: '本地备份', selector: '#setting-data-local-backup-directory' },
+  import_settings: { label: '导入外部应用数据', selector: '#setting-data-import-chatgpt' },
+  markdown_export: { label: 'Markdown 导出', selector: '#setting-data-markdown-export-path' }
+}
+
+function tabUrlExpression() {
+  return `(() => {
+    try {
+      const cache = JSON.parse(localStorage.getItem('cs_cache_persist') || '{}')
+      const tabs = [...(cache['ui.tab.pinned_tabs'] || []), ...(cache['ui.tab.normal_tabs'] || [])]
+      return tabs.find(tab => tab.id === cache['ui.tab.active_tab_id'])?.url || ''
+    } catch { return '' }
+  })()`
+}
+
+function clickByTextExpression(label, contains = false) {
+  return `(() => {
+    const wanted = ${JSON.stringify(label)}
+    const wantsContains = ${JSON.stringify(contains)}
+    const nodes = Array.from(document.querySelectorAll('button,[role="button"],[role="menuitem"],a,div'))
+      .filter(el => (wantsContains ? (el.textContent || '').includes(wanted) : (el.textContent || '').trim() === wanted) && el.getBoundingClientRect().width > 0 && el.getBoundingClientRect().height > 0)
+      .sort((a, b) => {
+        const ra = a.getBoundingClientRect(); const rb = b.getBoundingClientRect()
+        return ra.width * ra.height - rb.width * rb.height
+      })
+    const node = nodes[0]
+    if (!node) return { clicked: false, targetLabel: wanted }
+    const r = node.getBoundingClientRect()
+    node.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, clientX: r.x + r.width / 2, clientY: r.y + r.height / 2 }))
+    return { clicked: true, targetLabel: wanted, tag: node.tagName, role: node.getAttribute('role') }
+  })()`
+}
+
+function assertionExpression(kind, contentSelector) {
+  return `(() => {
+    const candidates = [...document.querySelectorAll('[data-ui="app.content"], [data-cherry-root], main, [role="main"], #root')]
+    const node = candidates.find(el => { const r = el.getBoundingClientRect(); return r.width > 0 && r.height > 0 }) || document.body
+    const r = node.getBoundingClientRect()
+    const style = getComputedStyle(node)
+    return {
+      passed: true,
+      visible: r.width > 0 && r.height > 0 && style.visibility !== 'hidden' && style.display !== 'none',
+      bounds: { x: r.x, y: r.y, width: r.width, height: r.height },
+      kind: ${JSON.stringify(kind)},
+      contentSelector: ${JSON.stringify(contentSelector)}
+    }
+  })()`
 }
 function expectedSignals(item) {
   const route = item.route
@@ -170,10 +237,10 @@ function updateManifest() {
   manifest.generatedAt = new Date().toISOString()
   manifest.captureRun = path.relative(root, runRoot).replaceAll(path.sep, '/')
   fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2) + '\n')
-  const lines = ['# Cherry Studio 2.1.4 UI 截图清单', '', `生成时间：${manifest.generatedAt}`, '', '| 序号 | 类别 | 名称 | 路由/窗口 | 状态 | 截图 | 无 PNG 原因 |', '|---:|---|---|---|---|---|---|']
+  const lines = ['# Cherry Studio 2.1.4 UI 截图清单', '', `生成时间：${manifest.generatedAt}`, '', `构建：source-shell SHA-256 ${sourceShellSha256}`, '', '截图只证明`表面已捕获`；功能验收一律 pending，不因 PNG 存在而变成 accepted。', '', '| 序号 | 类别 | 名称 | 路由/窗口 | 状态 | 截图 | 功能验收 | 无 PNG/受阻原因 |', '|---:|---|---|---|---|---|---|---|']
   for (const item of manifest.items) {
-    const reason = item.screenshot ? '' : (item.note || (item.status === '非渲染器' ? '非渲染器条目，不生成 PNG' : '独立窗口/平台生命周期未接入，保留无 PNG 诊断'))
-    lines.push(`| ${String(item.sequence).padStart(4, '0')} | ${item.categoryName} | ${item.name} | ${item.route ?? item.window ?? ''} | ${item.status} | ${item.screenshot ?? '无 PNG'} | ${reason} |`)
+    const reason = item.blocker || item.captureEvidence?.blockedReason || (item.screenshot ? '' : (item.note || (item.status === '非渲染器' ? '非渲染器条目，不生成 PNG' : '独立窗口/平台生命周期未接入，保留无 PNG 诊断')))
+    lines.push(`| ${String(item.sequence).padStart(4, '0')} | ${item.categoryName} | ${item.name} | ${item.route ?? item.window ?? ''} | ${item.status} | ${item.screenshot ?? '无 PNG'} | pending | ${reason} |`)
   }
   fs.writeFileSync(markdownPath, lines.join('\n') + '\n')
 }
@@ -184,13 +251,37 @@ function ensureInteractionItems() {
   for (const item of interactionItems) {
     const existing = manifest.items.find(candidate => candidate.sequence === item.sequence)
     if (!existing) manifest.items.push({ ...item, screenshot: null, capture: 'pending' })
-    else if (['context-menu', 'quick-panel', 'dialog'].includes(existing.kind) && !verifiedCapture(existing, catalogRoot)) {
+    else if (['context-menu', 'quick-panel', 'dialog'].includes(existing.kind) && !verifiedCapture(existing, catalogRoot, { buildSha256: sourceShellSha256 })) {
       // These three rows previously inherited ordinary /app/chat frames. Those are not
       // action evidence. Keep them pending until a real pointer/keyboard action opens the
       // menu/panel/dialog and a non-zero visible bounding box is asserted.
       existing.screenshot = null
       existing.capture = 'pending'
       delete existing.captureEvidence
+    }
+    // The source inventory already contained rows 74-76 without a kind. Without
+    // this merge they fell through to the generic branch and asked the navigation
+    // admission for a query URL, which is (correctly) forbidden. These panels are
+    // reached by navigating to /settings/data and clicking the real submenu item.
+    if ([74, 75, 76].includes(item.sequence)) {
+      const row = manifest.items.find(candidate => candidate.sequence === item.sequence)
+      if (row) {
+        row.kind = 'data-panel'
+        if (!verifiedCapture(row, catalogRoot, { buildSha256: sourceShellSha256 })) {
+          row.screenshot = null
+          row.capture = 'pending'
+          delete row.captureEvidence
+        }
+      }
+    }
+  }
+  for (const row of manifest.items) {
+    row.featureAccepted = false
+    row.manualAcceptance = 'pending'
+    if (/受阻|不可用|非渲染器|diagnostic|blocked/i.test(String(row.status) + ' ' + String(row.kind))) {
+      row.blocker = row.blocker || (row.sequence === 79
+        ? 'Source AgentPage renders in the isolated source shell, but runtime execution, approval and recovery are not proven by this surface capture.'
+        : row.note || 'Blocked or non-renderer surface; no functional acceptance is claimed.')
     }
   }
   manifest.items.sort((a, b) => a.sequence - b.sequence)
@@ -202,12 +293,13 @@ async function cleanup() {
 }
 
 async function main() {
+  const startedAt = Date.now()
   ensureInteractionItems()
   // Old startup frames are historical evidence only; do not attach a previous run's
   // PNG to this run's main-window capture verdict.
   child = spawn(electron, ['.', `--user-data-dir=${profile}`, '--remote-debugging-address=127.0.0.1', `--remote-debugging-port=${port}`], {
     cwd: root,
-    env: { ...process.env, GRIMOIRE_UI_CATALOG_CAPTURE: '1', GRIMOIRE_CHERRY_ENTRY: 'source-shell' },
+    env: (() => { const env = { ...process.env, GRIMOIRE_UI_CATALOG_CAPTURE: '1', GRIMOIRE_CHERRY_ENTRY: 'source-shell', GRIMOIRE_OPEN_CHERRY: '1' }; delete env.ELECTRON_RUN_AS_NODE; delete env.GRIMOIRE_VISUAL_CAPTURE; return env })(),
     stdio: ['ignore', 'pipe', 'pipe']
   })
   child.stdout.on('data', () => {})
@@ -264,92 +356,151 @@ async function main() {
   for (const item of entries) {
     const actual = routePath(item)
     const signals = expectedSignals(item)
+    const isDataPanel = item.kind === 'data-panel' || String(item.route).startsWith('/settings/data?panel=')
+    let navPath = actual
+    let domClick = null
+    let contentSelector = null
     try {
       let nav
-      if (item.kind === 'data-panel') {
-        nav = await evaluate(`window.api.ipcApi.request('navigation.open_route_in_main', { path: '/settings/data' })`)
-        if (nav?.ok !== true) throw new Error(`数据设置导航被拒绝：${JSON.stringify(nav)}`)
-        await waitFor(`(() => {
-          try {
-            const cache = JSON.parse(localStorage.getItem('cs_cache_persist') || '{}')
-            const tabs = [...(cache['ui.tab.pinned_tabs'] || []), ...(cache['ui.tab.normal_tabs'] || [])]
-            return tabs.find(tab => tab.id === cache['ui.tab.active_tab_id'])?.url === '/settings/data'
-          } catch { return false }
-        })()`, '数据设置页面')
-        const panelLabels = { local_backup: '本地备份', import_settings: '导入外部应用数据', markdown_export: 'Markdown 导出' }
-        const label = panelLabels[actual.split('panel=')[1]]
-        const clicked = await evaluate(`(() => {
-          const nodes = Array.from(document.querySelectorAll('button,[role="button"],[role="menuitem"]'))
-          const node = nodes.find(el => (el.textContent || '').trim() === ${JSON.stringify(label)} && el.getBoundingClientRect().width > 0)
-          if (!node) return false
-          node.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }))
-          return true
-        })()`)
-        if (!clicked) throw new Error(`数据设置子面板入口未找到：${label}`)
-        nav = { ok: true, data: undefined }
+      if (isDataPanel) {
+        const panelKey = String(item.route).split('panel=')[1]
+        const panel = DATA_PANEL_CONTENT[panelKey]
+        if (!panel) throw new Error('Unknown data panel: ' + panelKey)
+        navPath = '/settings/data'
+        // Navigation admission intentionally rejects query strings. The real
+        // product path is the base route plus the source submenu click.
+        nav = await evaluate('window.api.ipcApi.request("navigation.open_route_in_main", { path: "/settings/data" })')
+        if (nav?.ok !== true) throw new Error('数据设置导航被拒绝：' + JSON.stringify(nav))
+        await waitFor('(() => { try { const cache = JSON.parse(localStorage.getItem("cs_cache_persist") || "{}"); const tabs = [...(cache["ui.tab.pinned_tabs"] || []), ...(cache["ui.tab.normal_tabs"] || [])]; return tabs.find(tab => tab.id === cache["ui.tab.active_tab_id"])?.url === "/settings/data" } catch { return false } })()', '数据设置页面')
+        domClick = await evaluate(clickByTextExpression(panel.label))
+        if (!domClick?.clicked) throw new Error('数据设置子面板入口未找到：' + panel.label)
+        contentSelector = panel.selector
+        await waitFor('(() => { const el = document.querySelector(' + JSON.stringify(contentSelector) + '); if (!el) return false; const r = el.getBoundingClientRect(); return r.width > 0 && r.height > 0 })()', panel.label + ' 内容')
       } else if (actual === '/settings' || actual === '/settings/' || actual === '/settings/system' || actual === '/settings/code-execution' || actual === '/app') {
         const redirectTarget = actual === '/settings/system' ? '/settings/general' : actual === '/settings/code-execution' ? '/settings/appearance' : actual === '/app' ? '/app/launchpad' : '/settings/provider'
-        nav = await evaluate(`window.api.ipcApi.request('navigation.open_route_in_main', { path: ${JSON.stringify(redirectTarget)} })`)
+        navPath = redirectTarget
+        nav = await evaluate('window.api.ipcApi.request("navigation.open_route_in_main", { path: ' + JSON.stringify(redirectTarget) + ' })')
       } else if (actual === '/settings/mcp/bailian') {
-        nav = await evaluate(`window.api.ipcApi.request('navigation.open_route_in_main', { path: ${JSON.stringify('/settings/mcp')} })`)
+        navPath = '/settings/mcp'
+        nav = await evaluate('window.api.ipcApi.request("navigation.open_route_in_main", { path: "/settings/mcp" })')
         await sleep(800)
-        const clicked = await evaluate(`(() => {
-          const nodes = Array.from(document.querySelectorAll('button,[role="menuitem"],[role="button"]'))
-          const node = nodes.find(el => (el.textContent || '').includes('阿里云百炼') && el.getBoundingClientRect().width > 0)
-          if (!node) return false
-          const r = node.getBoundingClientRect()
-          node.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, clientX: r.x + r.width / 2, clientY: r.y + r.height / 2 }))
-          return true
-        })()`)
-        if (!clicked) throw new Error('MCP provider menu item 阿里云百炼 未找到')
+        domClick = await evaluate(clickByTextExpression('阿里云百炼', true))
+        if (!domClick?.clicked) throw new Error('MCP provider menu item 阿里云百炼 未找到')
+        contentSelector = CONTENT_RESOLUTIONS.get(item.route)?.selector || 'input[type="password"]'
+        await waitFor('(() => { const el = document.querySelector(' + JSON.stringify(contentSelector) + '); if (!el) return false; const r = el.getBoundingClientRect(); return r.width > 0 && r.height > 0 })()', 'MCP 提供商内容')
       } else {
-        nav = await evaluate(`window.api.ipcApi.request('navigation.open_route_in_main', { path: ${JSON.stringify(actual)} })`)
+        navPath = actual
+        nav = await evaluate('window.api.ipcApi.request("navigation.open_route_in_main", { path: ' + JSON.stringify(actual) + ' })')
       }
-      if (nav?.ok !== true) throw new Error(`导航被拒绝：${JSON.stringify(nav)}`)
-      await waitFor(`(() => {
-        const text = document.body?.innerText || ''
-        const fatal = text.includes('打开调试面板') && text.includes('重新加载')
-        let route = ''
-        try {
-          const cache = JSON.parse(localStorage.getItem('cs_cache_persist') || '{}')
-          const tabs = [...(cache['ui.tab.pinned_tabs'] || []), ...(cache['ui.tab.normal_tabs'] || [])]
-          route = tabs.find(tab => tab.id === cache['ui.tab.active_tab_id'])?.url || ''
-        } catch {}
-        const requested = ${JSON.stringify(actual)}
-        const routeOk = route === requested || route.startsWith(requested + '?') || (requested.startsWith('/settings/data?panel=') && route === '/settings/data') || (requested === '/settings' && route === '/settings/provider') || (requested === '/settings/' && route === '/settings/provider') || (requested === '/settings/system' && route === '/settings/general') || (requested === '/settings/code-execution' && route === '/settings/appearance') || (requested === '/app' && route === '/app/launchpad') || ((requested === '/settings/mcp' || requested === '/settings/mcp/') && route === '/settings/mcp/servers') || requested === '/settings/mcp/bailian'
-        const panelKey = requested.startsWith('/settings/data?panel=') ? requested.split('panel=')[1] : ''
-        const panelNeed = ({ local_backup: '本地备份', import_settings: '导入设置', markdown_export: 'Markdown 导出' })[panelKey] || ''
-        const panelOk = !panelKey || text.includes(panelNeed)
-        return routeOk && !fatal && text.trim().length > 30 && panelOk && ${JSON.stringify(signals)}.every(signal => text.includes(signal))
-      })()`, `${actual} 内容断言`)
-      const safeName = `${String(item.sequence).padStart(4, '0')}_${item.categoryName}-${item.name}`.replace(/[\\/:*?"<>|]/g, '-')
-      const filename = `${item.category}-${safeName}.png`
+      if (nav?.ok !== true) throw new Error('导航被拒绝：' + JSON.stringify(nav))
+      if (contentSelector) {
+        await waitFor('(() => { const text = document.body?.innerText || ""; const fatal = text.includes("打开调试面板") && text.includes("重新加载"); return !fatal && text.trim().length > 30 })()', actual + ' 内容断言')
+      } else {
+        await waitFor('(() => { const text = document.body?.innerText || ""; const fatal = text.includes("打开调试面板") && text.includes("重新加载"); let route = ""; try { const cache = JSON.parse(localStorage.getItem("cs_cache_persist") || "{}"); const tabs = [...(cache["ui.tab.pinned_tabs"] || []), ...(cache["ui.tab.normal_tabs"] || [])]; route = tabs.find(tab => tab.id === cache["ui.tab.active_tab_id"])?.url || "" } catch {} const requested = ' + JSON.stringify(actual) + '; const routeOk = route === requested || (requested === "/app/browser" && route === "/app/browser?url=about%3Ablank") || (requested === "/settings" && route === "/settings/provider") || (requested === "/settings/" && route === "/settings/provider") || (requested === "/settings/system" && route === "/settings/general") || (requested === "/settings/code-execution" && route === "/settings/appearance") || (requested === "/app" && route === "/app/launchpad") || ((requested === "/settings/mcp" || requested === "/settings/mcp/") && route === "/settings/mcp/servers") || requested === "/settings/mcp/bailian"; return routeOk && !fatal && text.trim().length > 30 && ' + JSON.stringify(signals) + '.every(signal => text.includes(signal)) })()', actual + ' 内容断言')
+      }
+      const assertion = await evaluate(assertionExpression(item.kind || 'route', contentSelector))
+      const observedTabUrl = await evaluate(tabUrlExpression())
+      const catalog = canonicalRoute(item.route)
+      if (!catalog) throw new Error('Invalid catalog route: ' + item.route)
+      const observed = canonicalRoute(observedTabUrl || navPath)
+      let observedCanonicalRoute = observed?.canonical || null
+      let observedRoute = observed?.path || null
+      let routeResolution = null
+      if (contentSelector && CONTENT_RESOLUTIONS.has(item.route)) {
+        // The source page may keep /settings/data in the tab while the real
+        // submenu click changed the panel, or render a provider detail inside
+        // /settings/mcp/servers. The fixed content selector is the proof.
+        routeResolution = 'dom-click-content-selector'
+      }
+      if (!isDataPanel && observedCanonicalRoute && observedCanonicalRoute !== catalog.canonical) {
+        const defaults = DEFAULT_OBSERVED_PARAMETERS.get(catalog.canonical)
+        const parsed = canonicalRoute(observedCanonicalRoute)
+        if (defaults && parsed && JSON.stringify(Object.keys(parsed.parameters).sort()) === JSON.stringify(Object.keys({ ...catalog.parameters, ...defaults }).sort()) && Object.entries({ ...catalog.parameters, ...defaults }).every(([key, value]) => parsed.parameters[key] === value)) {
+          routeResolution = 'declared-default-parameters'
+        }
+      }
+      const redirect = !isDataPanel && observedCanonicalRoute && observedCanonicalRoute !== catalog.canonical
+        ? { from: catalog.canonical, to: observedCanonicalRoute }
+        : null
+      const safeName = (String(item.sequence).padStart(4, '0') + '_' + item.categoryName + '-' + item.name).replace(/[\/:*?"<>|]/g, '-')
+      const filename = item.category + '-' + safeName + '.png'
       const destination = path.join(catalogRoot, filename)
       await screenshot(destination)
+      const action = {
+        inputMethod: domClick ? 'IPC navigation.open_route_in_main + DOM click' : 'IPC navigation.open_route_in_main',
+        description: domClick ? 'navigate ' + navPath + ' then click ' + domClick.targetLabel : 'navigate ' + navPath,
+        ipc: { route: 'navigation.open_route_in_main', requestedPath: navPath, resultOk: true }
+      }
+      if (domClick) action.domClick = domClick
+      const candidate = {
+        ...item,
+        screenshot: filename,
+        capture: 'passed',
+        captureEvidence: {
+          run: path.relative(root, runRoot).replaceAll(path.sep, '/'),
+          entry: 'source-shell',
+          routeTemplate: item.route,
+          requestedRoute: isDataPanel ? '/settings/data' : actual,
+          canonicalRoute: catalog.canonical,
+          routeParameters: catalog.parameters,
+          observedRoute,
+          observedCanonicalRoute,
+          observedTabUrl,
+          routeResolution,
+          redirect,
+          action,
+          assertion,
+          viewport: { width: 1920, height: 1080, deviceScaleFactor: 1 },
+          png: pngHeader(destination),
+          build: { artifactSha256: sourceShellSha256, artifact: path.relative(root, artifact).replaceAll(path.sep, '/') },
+          theme: 'light',
+          zoom: 1,
+          realDpi: 'renderer viewport; native DPI not proven',
+          exitCode: 0,
+          pngSha256: pngDigest(destination),
+          surfaceIdentity: surfaceIdentity(item),
+          featureAccepted: false,
+          ...(item.blocker ? { blockedReason: item.blocker } : {})
+        }
+      }
+      if (!verifiedCapture(candidate, catalogRoot, { buildSha256: sourceShellSha256 })) {
+        throw new Error('capture evidence contract rejected for ' + item.route + ' (action/route/params/build/IHDR/bounds)')
+      }
       item.screenshot = filename
       item.capture = 'passed'
-      item.captureEvidence = { run: path.relative(root, runRoot).replaceAll(path.sep, '/'), actualRoute: actual, viewport: { width: 1920, height: 1080 }, theme: 'light', zoom: 1, realDpi: 'renderer viewport; native DPI not proven', exitCode: 0 }
+      item.captureEvidence = candidate.captureEvidence
     } catch (error) {
       item.capture = 'failed'
       item.screenshot = null
       let diagnostic = null
       try {
-        diagnostic = await evaluate(`(() => {
-          const cache = JSON.parse(localStorage.getItem('cs_cache_persist') || '{}')
-          const tabs = [...(cache['ui.tab.pinned_tabs'] || []), ...(cache['ui.tab.normal_tabs'] || [])]
-          return { hash: location.hash, route: tabs.find(tab => tab.id === cache['ui.tab.active_tab_id'])?.url || '', text: (document.body?.innerText || '').slice(0, 1200) }
-        })()`)
+        diagnostic = await evaluate('(() => { const cache = JSON.parse(localStorage.getItem("cs_cache_persist") || "{}"); const tabs = [...(cache["ui.tab.pinned_tabs"] || []), ...(cache["ui.tab.normal_tabs"] || [])]; return { hash: location.hash, route: tabs.find(tab => tab.id === cache["ui.tab.active_tab_id"])?.url || "", text: (document.body?.innerText || "").slice(0, 1200) } })()')
       } catch {}
-      item.captureEvidence = { run: path.relative(root, runRoot).replaceAll(path.sep, '/'), actualRoute: actual, noPngReason: error instanceof Error ? error.message : String(error), diagnostic, exitCode: 1 }
+      item.featureAccepted = false
+      item.captureEvidence = { run: path.relative(root, runRoot).replaceAll(path.sep, '/'), actualRoute: actual, noPngReason: error instanceof Error ? error.message : String(error), diagnostic, exitCode: 1, blocker: item.blocker || null, featureAccepted: false }
       failures.push({ sequence: item.sequence, route: item.route, error: item.captureEvidence.noPngReason, diagnostic })
     }
   }
   ensureInteractionItems()
   manifest.manualAcceptance = 'pending'
-  manifest.captureSummary = { attempted: entries.length + (manifest.items.find(item => item.sequence === 60)?.screenshot ? 1 : 0), captured: manifest.items.filter(item => item.capture === 'passed').length, failed: failures.length, failures, interactionRowsPending: interactionItems.filter(item => !manifest.items.find(existing => existing.sequence === item.sequence)?.screenshot).length }
-  manifest.pendingNoPng = manifest.items.filter(item => !item.screenshot).map(item => ({ sequence: item.sequence, name: item.name, status: item.status, route: item.route ?? null, window: item.window ?? null, reason: item.note || (item.status === '非渲染器' ? '非渲染器条目，不生成 PNG' : '独立窗口/平台生命周期未接入，保留无 PNG 诊断') }))
+  const verifiedItems = manifest.items.filter(item => verifiedCapture(item, catalogRoot, { buildSha256: sourceShellSha256 }))
+  const interactionKinds = new Set(['context-menu', 'quick-panel', 'dialog'])
+  const pendingItems = manifest.items.filter(item => !item.screenshot)
+  const capturablePending = pendingItems.filter(item => typeof item.route === 'string' && item.route.startsWith('/') && !interactionKinds.has(item.kind) && item.status !== '非渲染器')
+  manifest.captureSummary = {
+    attempted: entries.length + (manifest.items.find(item => item.sequence === 60)?.screenshot ? 1 : 0),
+    surfaceCaptured: verifiedItems.length,
+    featureVerified: 0,
+    pending: manifest.items.length - verifiedItems.length,
+    capturablePending: capturablePending.length,
+    failed: failures.length,
+    failures,
+    build: { sourceShellSha256 },
+    interactionRowsPending: interactionItems.filter(item => !manifest.items.find(existing => existing.sequence === item.sequence)?.screenshot).length
+  }
+  manifest.pendingNoPng = manifest.items.filter(item => !item.screenshot).map(item => ({ sequence: item.sequence, name: item.name, status: item.status, route: item.route ?? null, window: item.window ?? null, reason: item.blocker || item.captureEvidence?.blockedReason || item.note || (item.status === '非渲染器' ? '非渲染器条目，不生成 PNG' : '独立窗口/平台生命周期未接入，保留无 PNG 诊断') }))
   updateManifest()
-  fs.writeFileSync(path.join(runRoot, 'capture-report.json'), JSON.stringify({ runRoot, profile, failures, manifest: path.relative(root, manifestPath) }, null, 2))
+    fs.writeFileSync(path.join(runRoot, 'capture-report.json'), JSON.stringify({ runRoot, profile, sourceShellSha256, buildFingerprint: captureBuild, startedAt: new Date(startedAt).toISOString(), endedAt: new Date().toISOString(), durationMs: Date.now() - startedAt, exitCode: failures.length ? 1 : 0, failures, summary: manifest.captureSummary, manifest: path.relative(root, manifestPath) }, null, 2))
   if (failures.length) throw new Error(`${failures.length} 个 UI 条目未通过真实内容断言；详情见 ${path.relative(root, runRoot)}`)
 }
 

@@ -3,13 +3,16 @@ import fs from 'fs'
 import path from 'path'
 import { IPC_CHANNELS } from '../../shared/types'
 import { createPersistedTask } from '../services/task-repository'
-import { optionalText, optionalBoundedNumber, requireId, requireText } from '../services/input-validation'
+import { optionalText, optionalBoundedNumber, requireId, requireNonEmptyText, requireText } from '../services/input-validation'
 import { comfyUIClient } from '../services/comfy-client'
-import { parseComfyWorkflow } from '../services/comfy-workflow.core'
+import { ComfyUIError } from '../services/comfy-error'
+import { COMFY_MAX_JSON_BYTES } from '../services/comfy-workflow-validation'
+import type { ComfyPublicWorkflow } from '../../shared/comfy-workflow-types'
+import { isComfyFrontendWorkflow, parseComfyFrontendWorkflow, parseComfyWorkflow, type ComfyWorkflow } from '../services/comfy-workflow.core'
 import { deleteComfyWorkflow, getComfyWorkflow, importComfyWorkflow, listComfyWorkflows } from '../services/comfy-workflow.service'
 
-function publicWorkflow(item: ReturnType<typeof listComfyWorkflows>[number]) {
-  const analysis = JSON.parse(item.analysis_json) as { bindings?: Array<{ key: string; nodeId: string; field: string }> }
+function publicWorkflow(item: ReturnType<typeof listComfyWorkflows>[number]): ComfyPublicWorkflow {
+  const analysis = JSON.parse(item.analysis_json) as ComfyPublicWorkflow['analysis']
   const raw = JSON.parse(item.raw_json) as Record<string, { inputs?: Record<string, unknown> }>
   const defaults: Record<string, unknown> = {}
   for (const binding of analysis.bindings || []) {
@@ -28,23 +31,50 @@ function publicWorkflow(item: ReturnType<typeof listComfyWorkflows>[number]) {
   }
 }
 
+async function importGraph(raw: unknown, name: string, source: string) {
+  const warnings: string[] = []
+  let workflow: ComfyWorkflow
+  if (isComfyFrontendWorkflow(raw)) {
+    const objectInfo = await comfyUIClient.objectInfo()
+    const conversion = parseComfyFrontendWorkflow(raw, { objectInfo })
+    workflow = conversion.workflow
+    warnings.push(...conversion.warnings)
+  } else workflow = parseComfyWorkflow(raw)
+  return publicWorkflow(importComfyWorkflow(name, workflow, source, warnings))
+}
+
 export function registerComfyIPC(): void {
   ipcMain.handle(IPC_CHANNELS.COMFY_STATUS, async () => comfyUIClient.status())
   ipcMain.handle(IPC_CHANNELS.COMFY_MODELS, async () => comfyUIClient.models())
+  ipcMain.handle(IPC_CHANNELS.COMFY_QUEUE, async (_event, promptId: unknown) => {
+    return comfyUIClient.queue(optionalText(promptId, 'ComfyUI 任务 ID', 200) ?? '')
+  })
+  ipcMain.handle(IPC_CHANNELS.COMFY_HISTORY, async (_event, promptId: unknown) => {
+    return comfyUIClient.history(requireNonEmptyText(promptId ?? '', 'ComfyUI 任务 ID', 200))
+  })
   ipcMain.handle(IPC_CHANNELS.COMFY_WORKFLOWS_LIST, async () => listComfyWorkflows().map(publicWorkflow))
+  ipcMain.handle(IPC_CHANNELS.COMFY_OBJECT_INFO, async () => comfyUIClient.objectInfo())
+  ipcMain.handle(IPC_CHANNELS.COMFY_REMOTE_WORKFLOWS_LIST, async () => comfyUIClient.remoteWorkflows())
+  ipcMain.handle(IPC_CHANNELS.COMFY_REMOTE_WORKFLOW_IMPORT, async (_event, value: unknown) => {
+    const handle = requireNonEmptyText(value, '远端工作流路径', 2048)
+    return importGraph(await comfyUIClient.readRemoteWorkflow(handle), handle, 'remote')
+  })
 
   ipcMain.handle(IPC_CHANNELS.COMFY_WORKFLOW_IMPORT, async () => {
     const result = await dialog.showOpenDialog({
       properties: ['openFile'],
-      filters: [{ name: 'ComfyUI API 工作流', extensions: ['json'] }],
+      filters: [{ name: 'ComfyUI 工作流 JSON', extensions: ['json'] }],
     })
     if (result.canceled || !result.filePaths.length) return null
 
     const filePath = path.resolve(result.filePaths[0])
-    const raw = fs.readFileSync(filePath, 'utf8')
-    const workflow = parseComfyWorkflow(JSON.parse(raw))
-    const name = path.basename(filePath, path.extname(filePath))
-    return publicWorkflow(importComfyWorkflow(name, workflow, 'imported'))
+    const stat = fs.statSync(filePath)
+    if (!stat.isFile() || stat.size > COMFY_MAX_JSON_BYTES) throw new ComfyUIError('COMFY_WORKFLOW_INVALID', '工作流 JSON 过大或不是文件', false)
+    const text = fs.readFileSync(filePath, 'utf8')
+    if (Buffer.byteLength(text, 'utf8') > COMFY_MAX_JSON_BYTES) throw new ComfyUIError('COMFY_WORKFLOW_INVALID', '工作流 JSON 过大', false)
+    let raw: unknown
+    try { raw = JSON.parse(text) } catch { throw new ComfyUIError('COMFY_WORKFLOW_INVALID', '工作流 JSON 格式无效', false) }
+    return importGraph(raw, path.basename(filePath, path.extname(filePath)), 'imported')
   })
 
   ipcMain.handle(IPC_CHANNELS.COMFY_WORKFLOW_DELETE, async (_event, id: unknown) => {

@@ -1,5 +1,6 @@
 import type { AiAssistantRecord, AiAttachmentRecord, AiEventRecord, AiMessageRecord, AiResourceOrderAnchor, AiResourceRecord, AiRuntimeKind, AiSessionKind, AiSessionRecord, AiTopicRecord } from './ai-types'
 import type { Provider, ProviderSaveInput } from './types'
+import type { RuntimeSelectionContract } from './runtime-contract'
 
 export type CherryCapabilityState = 'available' | 'partial' | 'blocked' | 'unsupported'
 
@@ -58,10 +59,13 @@ export type CherryRuntimeStatus = {
   kind: AiRuntimeKind | string
   available: boolean
   source: string
+  /** Main-process driver selected for this runtime; used for diagnostics, not UI branching. */
+  driver?: string
   executable: string | null
   version: string | null
   message: string
   checkedAt?: string
+  contract: RuntimeSelectionContract
 }
 
 export interface CherryChatEngine {

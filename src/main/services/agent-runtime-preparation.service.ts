@@ -67,7 +67,7 @@ export async function prepareNativeRuntime(input: {
     try {
       const identity: RuntimeExecutionIdentity = { ...baseIdentity, driver: 'opencode-legacy', binaryVersion: managed.binaryVersion }
       const remoteSessionId = resolveRuntimeExecutionReference(input.store, input.sessionId, identity)
-      return { config: { endpoint: managed.endpoint, directory, model: managed.defaultModel, remoteSessionId, nativeToolPolicy: 'ask', enableNativeSessionOperations: flags.nativeSessionOperations }, identity, release: managed.release }
+      return { config: { endpoint: managed.endpoint, directory, model: managed.defaultModel, remoteSessionId, nativeToolPolicy: 'ask', enableNativeSessionOperations: flags.nativeSessionOperations, hostPermissionBroker: true, managed: true }, identity, release: managed.release }
     } catch (error) { await managed.release(); throw error }
   }
   if (sdkSelected) {

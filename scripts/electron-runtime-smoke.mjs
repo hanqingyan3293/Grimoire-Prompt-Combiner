@@ -31,7 +31,6 @@ const KEEP_POPOUT = args.includes('--keep')
 
 const PANEL_MARKERS = {
   'gallery-search': [{ label: '语法查询栏', selector: '[aria-label="图库语法查询"]' }, { text: '重置筛选' }, { text: '批量标注' }],
-  'tag-batch': [{ text: 'dry-run 预览' }, { text: '目标筛选' }, { text: '仅空文件' }],
   wd14: [{ text: '反推' }, { text: '阈值' }],
   'prompt-workbench': [{ text: '正面' }, { text: '负面' }, { text: '输出' }],
   'tag-asset-manager': [{ text: '标签' }],

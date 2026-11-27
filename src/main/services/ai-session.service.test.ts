@@ -60,6 +60,8 @@ describe('unified AI session service', () => {
     const resolved = resolveAiPermission({ requestId: 'req_test', decision: 'allowOnce' })
     expect(resolved).toMatchObject({ request_id: 'req_test', permission: 'write', decision: 'allowOnce' })
     expect(resolved?.resolved_at).toBeTruthy()
+    const late = resolveAiPermission({ requestId: 'req_test', decision: 'deny' })
+    expect(late?.decision).toBe('allowOnce')
   })
 
   it('edits and deletes messages without changing the session identity', async () => {
@@ -178,4 +180,3 @@ describe('unified AI session service', () => {
     expect(getLatestAiSession()?.id).toBe(agent.id)
   })
 })
-

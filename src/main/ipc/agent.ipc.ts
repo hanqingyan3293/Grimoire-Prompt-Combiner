@@ -6,7 +6,7 @@ import { requireId } from '../services/input-validation'
 import { appendAgentSessionEvent, attachAgentSession, branchAgentSession, createAgentSession, deleteAgentSession, getAgentSession, listAgentSessions, snapshotAgentSession, updateAgentSession } from '../services/agent-session.service'
 import { callMcpTool, connectMcpServer, deleteMcpServer, disconnectMcpServer, isMcpToolForcePrompt, listMcpServers, saveMcpServer } from '../services/mcp.service'
 import { getActiveProvider } from './providers.ipc'
-import { agentRuntimeSessionDirectory, resolveAgentRuntimeCommand, startOpenCodeRuntime } from '../services/agent-runtime-manager'
+import { agentRuntimeSessionDirectory, resolveAgentRuntimeCommand, runtimeSelectionContract, startOpenCodeRuntime } from '../services/agent-runtime-manager'
 import { createAgentRuntime } from '../ai/runtime/registry'
 import { runtimePermissionForAction, type ToolPermission } from '../ai/runtime/tools'
 import type { RuntimeMessage, RuntimeSession } from '../ai/runtime/types'
@@ -20,6 +20,7 @@ import { safeRuntimeError } from '../services/agent-runtime-safety.service'
 import { piSdkHostTools, piSdkPermission } from '../services/pi-sdk-tool-bridge.service'
 import { composeAgentSystemPrompt } from '../services/cherry-preference-consumers'
 import { CherryAgentRuntimeUnavailableError, createCherryAgentRuntimePump } from '../services/cherry-agent-stream.service'
+import { runtimeModelFallback } from '../../shared/runtime-contract'
 
 function readAgentId(input: Record<string, unknown>): string | null | undefined {
   const value = input.agentId
@@ -216,7 +217,12 @@ export async function handleAgentSessionSend(_event: { sender: Electron.WebConte
     const provider = await getActiveProvider()
     if (!provider) throw new Error('请先配置 API 供应商')
     const providerWithSecret = provider as typeof provider & { api_key?: string; base_url?: string }
-    const model = typeof input.model === 'string' && input.model.trim() ? input.model.trim() : snapshot.session.model || provider.default_model
+    const model = runtimeModelFallback({
+      contract: runtimeSelectionContract(snapshot.session.runtime),
+      explicitModel: typeof input.model === 'string' ? input.model : '',
+      sessionModel: snapshot.session.model,
+      providerDefaultModel: provider.default_model,
+    })
     if (!model) throw new Error('请先选择模型')
     const sender = _event.sender
     const messages: RuntimeMessage[] = []

@@ -3,6 +3,7 @@ import path from 'path'
 import { getDatabase, saveDatabase } from '../database'
 import { importAiAttachment } from './ai-attachment.service'
 import { cherryFileTypeForExtension } from './cherry-file-type-map.generated'
+import { assertImageReferencesRemovable, assertManagedResourcePath, imageReferencesAtPath } from './image-asset.service'
 
 /**
  * The source `file.*` IPC routes the Files page calls, backed by Grimoire's real stores.
@@ -209,29 +210,56 @@ export async function batchCreateInternalEntries(
  * own file on disk — a destructive act on a path Grimoire only references. The source's own
  * component does not offer rename for external rows.
  */
+function linkOrCopyExclusive(source: string, target: string): void {
+  try { fs.linkSync(source, target) } catch (error) {
+    const code = (error as { code?: string }).code
+    if (!['EPERM', 'ENOTSUP', 'EOPNOTSUPP', 'EXDEV', 'ENOSYS'].includes(code || '')) throw error
+    fs.copyFileSync(source, target, fs.constants.COPYFILE_EXCL)
+  }
+}
+
 export async function renameEntry(entryId: string, newName: string): Promise<{ ok: true } | { ok: false; error: string }> {
   const { table, rawId } = parseLibraryEntryId(entryId)
-  if (table !== 'ai_attachments') {
-    return { ok: false, error: table === 'image_refs' ? '外部引用文件不能重命名（会改到用户自己的文件）' : '未知条目：' + entryId }
-  }
+  if (table !== 'ai_attachments') return { ok: false, error: table === 'image_refs' ? '外部引用文件不能重命名（会改到用户自己的文件）' : '未知条目：' + entryId }
   const safeName = String(newName || '').trim()
   if (!safeName || /[\\/:*?"<>|]/.test(safeName)) return { ok: false, error: '文件名无效' }
-
-  const row = getDatabase().exec("SELECT file_path FROM ai_attachments WHERE id=? AND status<>'deleted'", [rawId])[0]?.values?.[0]
-  const current = row && row[0] ? String(row[0]) : ''
-  if (!current) return { ok: false, error: '文件不存在：' + entryId }
-
-  // Rename on disk only when the content still exists; a missing file still gets its stored name
-  // updated so the library reflects what the user asked for.
-  const ext = path.extname(current)
-  const nextPath = path.join(path.dirname(current), safeName + ext)
-  if (fs.existsSync(current)) {
-    try { await fs.promises.rename(current, nextPath) }
-    catch (error) { return { ok: false, error: error instanceof Error ? error.message : String(error) } }
+  const db = getDatabase()
+  let current = ''; let nextPath = ''; let linked = false; let moved = false
+  db.exec('BEGIN IMMEDIATE')
+  try {
+    const row = db.exec("SELECT file_path FROM ai_attachments WHERE id=? AND status<>'deleted'", [rawId])[0]?.values?.[0]
+    current = row && row[0] ? String(row[0]) : ''
+    if (!current) throw new Error('文件不存在：' + entryId)
+    const ext = path.extname(current)
+    nextPath = path.join(path.dirname(current), safeName + ext)
+    if (nextPath !== current) {
+      if (imageReferencesAtPath(current).length) throw new Error('FILE_IN_USE: 副本已由图片库引用，改名会影响原图')
+      const shared = Number(db.exec("SELECT count(*) FROM ai_attachments WHERE file_path=? AND id<>? AND status<>'deleted'", [current, rawId])[0]?.values?.[0]?.[0] || 0)
+      if (shared) throw new Error('FILE_IN_USE: 副本仍由其他附件引用')
+      if (fs.existsSync(nextPath) || imageReferencesAtPath(nextPath).length) throw new Error('FILE_TARGET_EXISTS: 目标文件已存在或已被图片库引用')
+      if (fs.existsSync(current)) {
+        assertManagedResourcePath(current, 'ai-attachments')
+        assertManagedResourcePath(nextPath, 'ai-attachments')
+        // Exclusive destination creation avoids rename's replace-existing race.
+        linkOrCopyExclusive(current, nextPath); linked = true
+        fs.unlinkSync(current); moved = true
+      }
+    }
+    db.run('UPDATE ai_attachments SET original_name=?,file_path=?,updated_at=? WHERE id=?', [safeName + ext, nextPath, new Date().toISOString(), rawId])
+    db.exec('COMMIT')
+    saveDatabase()
+    return { ok: true }
+  } catch (error) {
+    let message = error instanceof Error ? error.message : String(error)
+    if (linked) {
+      try {
+        if (moved) linkOrCopyExclusive(nextPath, current)
+        fs.unlinkSync(nextPath)
+      } catch (restoreError) { message += '; FILE_RENAME_PARTIAL: 副本保留在 ' + nextPath + '; ' + String(restoreError) }
+    }
+    try { db.exec('ROLLBACK') } catch (rollbackError) { console.debug('[file rename] rollback settled', rollbackError) }
+    return { ok: false, error: message }
   }
-  getDatabase().run('UPDATE ai_attachments SET original_name=?,file_path=?,updated_at=? WHERE id=?', [safeName + ext, nextPath, new Date().toISOString(), rawId])
-  saveDatabase()
-  return { ok: true }
 }
 
 /**
@@ -245,32 +273,40 @@ export function batchRemoveFromLibrary(ids: string[]): FileBatchMutationResult {
   const succeeded: string[] = []
   const failed: { id: string; error: string }[] = []
   const db = getDatabase()
+  const keys = (Array.isArray(ids) ? ids : []).map(String)
+  // Validate the full image subset before even an unrelated attachment can change.
+  try {
+    assertImageReferencesRemovable(keys.map(parseLibraryEntryId).filter(entry => entry.table === 'image_refs').map(entry => entry.rawId))
+  } catch (error) {
+    return { succeeded: [], failed: keys.map(id => ({ id, error: error instanceof Error ? error.message : String(error) })) }
+  }
 
-  for (const id of Array.isArray(ids) ? ids : []) {
+  for (const id of keys) {
     const key = String(id)
     const { table, rawId } = parseLibraryEntryId(key)
     if (table === 'ai_attachments') {
       const row = db.exec('SELECT file_path FROM ai_attachments WHERE id=?', [rawId])[0]?.values?.[0]
       const target = row && row[0] ? String(row[0]) : ''
-      db.run("UPDATE ai_attachments SET status='deleted',updated_at=? WHERE id=?", [new Date().toISOString(), rawId])
-      // Only unlink when no other live row still points at the same content.
-      //
-      // SYNCHRONOUS on purpose. The first version used `fs.promises.unlink(...)` without awaiting
-      // it, so the call returned before the file was gone: a caller (or a test) that checked
-      // immediately saw the file still there, and any process exit in that window leaked it. The
-      // whole batch is short, and "removed from the library" must mean the bytes are gone by the
-      // time this returns.
-      const shared = Number(db.exec("SELECT count(*) FROM ai_attachments WHERE file_path=? AND status<>'deleted'", [target])[0]?.values?.[0]?.[0] || 0)
-      if (target && shared === 0 && fs.existsSync(target)) {
-        try { fs.unlinkSync(target) } catch { /* a locked file must not fail the library update */ }
+      // A file can also be an external image original. Keep those bytes even when this
+      // attachment entry is removed; an IO failure must retain the live attachment index.
+      const shared = Number(db.exec("SELECT count(*) FROM ai_attachments WHERE file_path=? AND id<>? AND status<>'deleted'", [target, rawId])[0]?.values?.[0]?.[0] || 0)
+      try {
+        if (target && shared === 0 && fs.existsSync(target) && imageReferencesAtPath(target).length === 0) fs.unlinkSync(target)
+        db.run("UPDATE ai_attachments SET status='deleted',updated_at=? WHERE id=?", [new Date().toISOString(), rawId])
+        succeeded.push(key)
+      } catch (error) {
+        failed.push({ id: key, error: error instanceof Error ? error.message : String(error) })
       }
-      succeeded.push(key)
       continue
     }
     if (table === 'image_refs') {
       // Reference only. The file on disk stays exactly where it is.
-      db.run('DELETE FROM image_refs WHERE id=?', [Number(rawId)])
-      succeeded.push(key)
+      try {
+        db.run('DELETE FROM image_refs WHERE id=?', [Number(rawId)])
+        succeeded.push(key)
+      } catch (error) {
+        failed.push({ id: key, error: error instanceof Error ? error.message : String(error) })
+      }
       continue
     }
     failed.push({ id: key, error: '未知条目' })

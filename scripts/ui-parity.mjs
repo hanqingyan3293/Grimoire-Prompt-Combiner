@@ -883,7 +883,7 @@ if (process.argv.includes('--style-contract')) {
     { className: 'ui-segmented', tag: 'div', property: 'minHeight', expect: '36px' },
     { className: 'ui-segmented', tag: 'div', property: 'paddingTop', expect: '3px' },
     // Surfaces
-    { className: 'ui-popover-surface', tag: 'div', property: 'borderRadius', expect: '8px' },
+    { className: 'ui-popover-surface', tag: 'div', property: 'borderRadius', expect: '5px' },
     { className: 'ui-popover-panel', tag: 'div', property: 'width', expect: '288px' },
     { className: 'ui-popover-panel', tag: 'div', property: 'paddingTop', expect: '16px' },
     { className: 'ui-tooltip', tag: 'div', property: 'position', expect: 'fixed' },
@@ -898,7 +898,7 @@ if (process.argv.includes('--style-contract')) {
     { className: 'ui-button', tag: 'button', property: 'borderStyle', expect: 'solid' },
     { className: 'ui-inline-alert', tag: 'div', property: 'paddingTop', expect: '9px' },
     { className: 'ui-inline-alert', tag: 'div', property: 'alignItems', expect: 'flex-start' },
-    { className: 'ui-list-card', tag: 'div', property: 'borderRadius', expect: '7px' },
+    { className: 'ui-list-card', tag: 'div', property: 'borderRadius', expect: '5px' },
     { className: 'ui-list-card', tag: 'div', property: 'paddingTop', expect: '12px' },
     { className: 'ui-segmented-item', tag: 'button', property: 'borderStyle', expect: 'solid' },
     // Third wave (coverage ratchet): properties copied from src/renderer/index.css so a rule that loses its
@@ -906,7 +906,7 @@ if (process.argv.includes('--style-contract')) {
     { className: 'ui-status-badge', tag: 'span', property: 'gap', expect: '5px' },
     { className: 'ui-empty-state', tag: 'div', property: 'minHeight', expect: '96px' },
     { className: 'ui-empty-state', tag: 'div', property: 'borderTopStyle', expect: 'dashed' },
-    { className: 'ui-empty-state', tag: 'div', property: 'borderRadius', expect: '8px' },
+    { className: 'ui-empty-state', tag: 'div', property: 'borderRadius', expect: '5px' },
     { className: 'ui-progress', tag: 'div', property: 'height', expect: '6px' },
     { className: 'ui-progress', tag: 'div', property: 'borderRadius', expect: '999px' },
     // 0.78rem with a 14px root (not 16px): measured, not assumed.

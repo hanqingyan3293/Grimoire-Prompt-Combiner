@@ -358,7 +358,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
     }
 
     // 8. 更新对话列表顺序
-    get().loadConversations().catch(() => {})
+    get().loadConversations().catch(error => { console.debug('conversation load failed', error) })
   },
 
   editAndResend: async (messageId, newContent) => {

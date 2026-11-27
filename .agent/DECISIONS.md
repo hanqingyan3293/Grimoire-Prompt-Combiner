@@ -1,5 +1,55 @@
 # Grimoire migration decisions
 
+## 2026-11-07 C1 execution ownership, result truth and selected source closure
+
+- C1继续现task_jobs，schema40→41只新增nullable execution_json；六字段v1和原始JSON CAS唯一所有者，不建任务副库/第二业务真相。输入/endpoint/requested UUID在网络前冻结，真实responseID在任何后续DB访问前抓为ACK owner；POST结果未知不从HTTP/timeout/retryable推断“未发送”。
+- 所有读取使用本attempt READ controller，POST不接本地READ abort；暂停/退出只park原ID或显式requested-ID核实，业务counter不因local stop增加。原Cherry waitWithSignal/targeted cancellation经CJS原函数直接复用，取消证明/版本/前缀与Queue观察只读边界保持。
+- ACK、read partial与普通business failure result都有settlement-only存活/force drain。关闭前仍未落库分别以coded TASK_ACK_PERSIST_PENDING/TASK_READ_RESUME_PERSIST_PENDING/TASK_RESULT_PERSIST_PENDING保留原库/owner，不把一次SELECT失败当not-found。取消结算消费正确attempt的retained partial，不允许普通scan先写没有输出的终态。
+- 来源采用现task_image_refs.source_filename的versioned tuple/alias ledger，legacy无歧义filename在升级后仍复用，不新增schema42。逐图输出以实际task/image/关系提交为依据，中断/cleanup携带当轮结果；manual known-ID read重试保留partial/progress/input/identity，与重新生成区分。
+- [shared retry policy](../src/shared/task-policy.ts)从原main admission提取，renderer与repo同用；unknown/legacy/corrupt/cap不展示合法可用retry。UI仅凭真实queued+deadline的显式标志描述自动重试，坏结构不被status字符串转换伪装成功；异步latest显示和每task RPC fence与refresh lifecycle分开。
+- 选定Comfy source bundle的完整resolved图由真实rolldown moduleParsed记录，130file/130module输入及nearest package metadata、locks/generator/builder/runtime都入收据。Zod沿当前compat4.6.5 ESM入口，不偷换root4.3.4；原AGPL/Zod MIT全文旁置，vendor源码不改。缺失vendor根package manifest按实际缺失处理，不补假文件；不是全Cherry依赖审计完成。
+- [Lead修订记录](records/2026-11-06-sol-execution/C1-r6-lead-review.md)、[R8](records/2026-11-06-sol-execution/C1-R8.md)、[R10](records/2026-11-06-sol-execution/C1-R10.md)存定序RED/GREEN与原始日志。C1全组/完整gates/真实Electron及manual与这些分段分别核实；C2完整DNS/IP/redirect/stream、C3转换、C5seed/批次/归因仍后续，未扩大外部生成API或安装政策。
+
+## 2026-11-06 P1 末端复核与 P2 生成重试边界
+
+- P1首轮124focused/G1-G14过后逐条合同复核补出Canvas末端void/假success；先RED4/5，改async store及两处等待/busy/error。最新129focused、完整G1-G14均过，snapshot21-02-06-412Z绑定27c37ff2…（3823files/88640266bytes），root1716/2skip；RPC-only原政策噪声留存。旧8826021b…只保留为首轮历史，不跨构建混算ROOT-3X。
+- P2先修合法原子失败/重试、取消、调度；进入Comfy submit后任何失败均不整段auto重发。当前retryable/429/5xx不证明远端未接受生成，普通manual retry也防提交未知/已提交失败的复发；明确重生走新task。
+- 真实网络恢复positiveAuto测试仍必须做，归C1持久promptId/阶段后；不是减少验收要求。P2-next.md是批准PLAN的执行细化，未建第二总计划/第二DB，P2生产代码和新test文件尚未改写。
+- 原接手基线/branch/HEAD、vendor9639只读源、schema40保留；live删除交互、最终ROOT-3X、package/人工仍待后续，不宣告整份计划完成。
+
+## 2026-11-06 P1 真实删除边界与复用副本
+
+- 复用既有NovelAI引用guard，物理图库ID显式String(realImageRefId)，不把旧任意img_*当作真实文件。整个批次在首个变化前验证；Media逻辑projection语义保留，物理batch统一删除canonical image_refs。
+- 图片/派生/附件/WD14快照/缓存各物理所有者都按live image_ref路径保留共享字节。固定子域以canonical资源根作锚，不信任被重定向的images/derivatives/ai-attachments/wd14-history根；目录保护同时检查真实和逻辑路径。
+- Files rename检查source共享/target覆盖，exclusive link或COPYFILE_EXCL避免替换目标；失败保留或恢复可追踪路径。清理失败先保留索引，无法回滚的物理变化准确partial，不冒充DB+FS事务。
+- 图库新deleteBatch回普通DTO；legacybool/count保持形状，copy cleanup/DB失败通过message携带code/phase counts，因为Electron不会序列化Error自定义属性。
+- 素材前台预览必须带exact expectedImageIds；事务内不符ASSET_CHANGED零写入。全入口revision/lease/token仍在后续W1/N4/T1。
+- cache tests原先会扫描/清除全OS-temp前缀，本轮隔离为本测试专有root。没有扩大cache产品范围，仍只现有临时目录/日志。
+- 本轮最终focused 11files/124tests、双端typecheck通过；vendor9639 files未改、silent catches150/原baseline154。完整阶段build/gates、真实Electron与人工仍分开验收，不能凭这些数字宣布全迁移完成。
+
+## 2026-11-06 完整后续计划批准与 P0 接手
+
+- 本会话用户批准完整后续开发与验收计划，并启动持续执行目标；执行模型已切换为 GPT-6.1 Sol。唯一计划整合至 `.agent/PLAN.md`；原 PLAN/STATE/GATES/MATRIX/DECISIONS 完整归档，未删除历史。
+- 首个执行动作保存10,890个工作树文件（含168个untracked）及完整binary diff；恢复manifest见 `.agent/records/2026-11-06-sol-execution/baseline.json`。保留原feature分支，不commit/push。
+- 范围来源为原Cherry79逐项表和NovelAI94逐项表；新增 `.agent/feature-scope.json` 稳定195项，67采纳、18reserve、9排除。生成的 `src/shared/cherry-product-scope.ts` 与manifest由回归测试保持一致；UI消费归S1，生成表不冒充已收口曝光。
+- 四个原待定设置页（归档/通知/联网搜索/本地备份）默认hidden、深链说明；现后端保留，会话归档不受裁撤。A默认，B独立验证；主题昼夜+色轮+a855f7。数据只完善原数据库导出/导入，依赖只本地检测，无云备份/自动下载安装扩张。
+- Native recovery/replay/prewarm缺实现继续显式blocked；没有用户逐项接受之前不写完整交付。MOSS保持120+120，测试样本与场景耦合按N7标注，不改成118。
+- STATE累计旧结论已归档并以当前摘要替代：当前门禁证据b696b39b…不等于旧M5接受245647e5…；聚合目前8项因旧证据失效，仍未全验收。
+- 新增功能按TDD推进，P1先图片/素材删除保护，P2再Comfy重试。P0自动验证4tests/双端typecheck/矩阵/证据路径通过；记录不代表P1-P2已修。
+
+## User layered-delivery acceptance (2026-11-05)
+
+用户明确选择“接受当前分层交付”。该选择单独记录在 `artifacts/m5/layered-delivery-acceptance.json`，并绑定当前 build SHA-256 与 `.agent/MIGRATION_MATRIX.md` SHA-256；最终 aggregate、acceptance index 与截图清单根节点保持 `manualAcceptance=pending`、`blockedAcceptance=pending`，只增加 `layeredDeliveryAcceptance={accepted:true, record, recordSha256, buildBound:true}`、`gapDispositionAcceptance=inventory-acknowledged` 与状态 `automated-passed-layered-accepted-manual-pending`。接受范围仅限：自动门禁结果、65 条已捕获表面截图、已披露的 blocker 清单。14 条待验截图行仍逐项 `manualAcceptance=pending`；53 条未完成 matrix 行与 BLOCKED/NOT_IMPLEMENTED 能力仍未被声明为已实现、仍逐项 `blockedAcceptance=pending`，每位 blocker 自身状态保持原值。该选择不等于逐截图人工验收，也不等于全部迁移完成。
+
+## M5 evidence and packaging decisions (2026-11-04)
+
+- 默认入口继续使用 A compat hash shell；B authentic MainApp 只能通过显式 `build:cherry-source-shell` + isolated source-shell smoke 验证，不以隔离成功为默认切换依据。
+- G1–G14 轻量门禁保持与 `scripts/gates.mjs` 对齐；pack 与 secrets 是 M5 mandatory gates，但不把重型 pack 偷塞进每轮轻量 gate。`verify:full` 负责编排二者。
+- `m5-pack.mjs --pack --require-pack` 必须运行新鲜 `npm run pack`，读取新生成的 `release/win-unpacked/resources/app.asar`，检查 app.asar hash 与实际条目；旧 app.asar 的存在/大小不能证明本轮打包。
+- 许可证以实际 LICENSE/LICENCE 原文为准：root LICENSE 进入 package files；Cherry/OpenCode/Pi/Dockview 原文通过 extraResources 随包；Dockview 当前为 source-only，不声称实际 engine 已加载。Infinite Canvas notice 只描述真实 host adapter/SQLite 边界。
+- Capture 证据统一要求 entry、observedRoute、action、可见非零 bounds、PNG SHA-256、assertion；普通 route 也不再 blind preserve。旧 captured 条目缺新合同即 pending，必须新拍。
+- `manualAcceptance` 与 BLOCKED 接受始终由用户决定，本轮不自动转为 accepted。
+
 ## Cherry 分层验收决策（2026-10-12）
 
 用户在阶段门禁选择中明确选择“分层验收推进”。P0 按准确清单、基线和已实现契约验收；完整 compat strict gate 继续保留失败，并逐诊断关联 P1–P9 的真实依赖，最终必须通过。分层检查补充而不替换完整检查；不使用 noCheck、排除源码或虚构 API。阶段功能与源码审计继续执行，未实现能力仍显示 BLOCKED。该选择不授权最终完成声明、默认入口切换、commit/push 或自动远程操作。
@@ -294,6 +344,11 @@
 
 ## Cherry prompts surface and the leaked-Electron root cause (2026-10-10)
 
+> **Superseded on 2026-11-05:** the storage claims below (visibility always global, no
+> update operation, no binding table) describe the 2026-10-10 snapshot. v28/v29 added
+> `cherry_prompt_bindings` and `prompt_assets.visibility`, and the 2026-11-05 update path is
+> recorded in "M3 retained prompt visibility update" below.
+
 - **The prompt page is the one page whose backend this app actually owns.** Grimoire's core domain is prompt management, so `/settings/prompts` maps onto `prompt_assets` (1,742 real rows) rather than onto an empty store. The source reads `/prompts` + `/prompt-bindings` over the DataApi; the adapter serves the former from `queryPromptAssets` and the latter as an empty list. This is the honest case where "the panel renders" and "the feature works" coincide for the read path, and it was verified against the real library rather than a fixture.
 - **Three schema fields with no Grimoire column, each mapped for a stated reason** (the mappings live in `sourcePromptFromAsset` with the reasoning in the doc comment):
   - `visibility` → always `'global'`. Grimoire shares every asset with every session, so `'restricted'` would make the UI hide prompts that are in fact available. `'global'` is the only true answer.
@@ -318,6 +373,78 @@
   - `/archives` **is** in the vendored closure (`handlers/archives.ts`, `services/archive.ts`); my grep searched the wrong directories. The genuine `ArchiveSettings` blocker is semantic: the source route is a soft-delete recycle bin (`deleted_at IS NOT NULL`) while every Grimoire delete is a physical `DELETE FROM`. Mounting it would render a permanently empty bin whose 永久删除 reports success for rows already gone. `cherry_resource_state.archived` is a different column and is backed.
   - `GeneralSettings` needs **no missing services** — its only bridge call is the already-implemented `application.relaunch`. It stays blocked because no main-process service consumes its preference keys (0 references in `src/main/`), so mounting would render ~20 inert toggles. The outcome was right; the reason I wrote was not, and a wrong reason is what sends the next session building infrastructure that already exists.
 - **A recurring shape worth naming**: every one of these errors — the broad refusal, the greedy strip, the two blocked verdicts — came from reasoning about the code instead of exercising it, and each was caught by running something (a round trip, a grep over the right directory, a count of consumers). The gates that caught them were written earlier in this session for exactly this reason.
+## M3 retained prompt visibility update (2026-11-05)
+
+- **The update path now ports the source guard instead of hiding it.** `PromptService.update` (336-393) requires `expectedBindings` only when a `restricted` prompt is becoming `global` and currently has bindings; a missing or mismatched snapshot is a concurrent modification. This adapter applies the same rule to `cherry_prompt_bindings`, using the same `type:id` keys, and clears bindings only after the snapshot matches. The visibility write, binding clear, and re-read run in one `BEGIN IMMEDIATE` transaction; a forced binding-delete failure rolls the visibility change back (covered by a trigger test).
+- **Restricted updates preserve the selected targets and never invent one.** A global→restricted update writes only the visibility flag; a restricted→restricted update leaves every edge alone. This matches the source, which does not auto-bind on update. Create is the different case: this adapter still requires an explicit `bindingTarget` for a restricted prompt so it cannot be created invisible.
+- **The returned DTO reads stored visibility.** `updatePromptAsset` previously returned a projection without `visibility`, so `sourcePromptFromAsset` fell back to `global` even after the column stored `restricted`. Create and update now both return the stored value; the list projection already did.
+- **Status mapping follows the source contract.** Invalid visibility and `expectedBindings` outside a global update are 400; a bindings snapshot conflict is 409 `CONCURRENT_MODIFICATION`; built-in/imported rows remain 403. The service keeps a descriptive internal `PROMPT_BINDINGS_CONFLICT` code and the DataApi maps it to the source code.
+- **Remaining gap is verification breadth, not a missing operation.** The mounted prompt page's full edit/visibility/bind round trip has not been live-verified in this round, so the matrix row stays PARTIALLY_MIGRATED. Focused evidence: `prompt-asset-browser.test.ts` 25/25 and `cherry-data-api.ipc.test.ts` 191/191, main typecheck exit 0 (2026-11-05).
+
+## M2 stream smoke readiness stable (2026-11-06)
+
+- **修复**：stream smoke 选用与 source-shell audit 相同的 Cherry page target predicate，增加 non-about:blank 与 preload API readiness wait。
+- **证据**：fresh build + `npm run smoke:stream` exit 0；独立报告 `artifacts/stream-readiness-round25.json` `ok=true`，chat persistence、Agent、allow/deny approval、vision 全部通过；script syntax、matrix、diff check 通过。
+
+
+- **根因**：CDP `/json/list` 的 page target 在 Electron 启动期间会短暂出现 about:blank，脚本过早执行 pageScript，误判 provider bridge 缺失。
+- **修复**：目标选择限定真实 Cherry page，并在执行 pageScript 前等待非-about:blank URL 与 `window.api.ipcApi`、`window.api.ai.sessions.create` 就绪。
+- **证据**：fresh build-bound `npm run smoke:stream` exit 0；独立复跑报告 `artifacts/stream-readiness-round25.json` `ok=true`，chat/持久化、Agent、allow/deny approval、vision 全部通过。
+
+
+- **修复**：`chat-stream-smoke.mjs` provider setup now uses `window.api.providers` when available and falls back to current `window.api.dataApi` `/providers` routes when the legacy facade is absent.
+- **证据**：`npm run smoke:stream` exit 0；chat text/persistence、Agent stream、allow approval (`工具已完成`)、deny typed permission error、vision (`看到图片`) all pass。
+- **边界**：keep provider bridge compatibility branch because source-shell and legacy compat surfaces may expose different preload projections.
+
+
+- **事实**：`npm run smoke:stream` reaches a real Cherry page but its page script assumes `window.api.providers.save/list/setActive`; current source-shell runtime exposes the provider capability through the compat host/catalog bridge differently, so the script throws before streaming (`window.api.providers` undefined).
+- **决定**：保留该 smoke 的真实失败，不修改结果生成器或基线来制造通过；source-shell audit remains the current passing functional evidence.
+- **下一步**：rewrite the smoke setup against the current `CherryHostBridge`/`ipcApi` contract, then rerun chat/Agent/approval/vision assertions.
+
+
+- **流程**：先运行 `npm run build` 同步当前 source 与 dist，再运行完整 `npm run gates`，避免 BUILD-STABLE 比较旧 dist 与当前构建。
+- **证据**：G1–G14、G3 root tests、G4 compat、G6 build 与 BUILD-STABLE 全部 PASS；snapshot `artifacts/gates-2026-11-05T23-06-31-008Z.json`。
+
+
+- **事实**：完整 G3 首轮暴露 legacy `categories` 表没有 `group_id`，而 INDEX_SQL 在升级阶段创建 `idx_cat_group`，导致 lifecycle/v21/v22 migration suites 失败。
+- **修复**：在既有 pre-index additive migration 中补 `ALTER TABLE categories ADD COLUMN group_id TEXT DEFAULT 'default'`，与 subcategories/tags 的迁移保持同一顺序与幂等策略。
+- **证据**：受影响 3 suites 共 `8 passed`；随后完整 `npm run gates` G1–G14 全部 PASS、BUILD-STABLE，snapshot `artifacts/gates-2026-11-05T22-42-22-701Z.json`。
+
+
+- **决定**：对本轮门禁指出的新增 renderer promise catch 使用 `console.debug` 保留可观测失败路径；不通过抬高 baseline 掩盖增长。
+- **证据**：silent catches 从 154 基线降至 153；`npm run gates:fast` 的 G1/G2/G5/G7/G8/G9/G10/G11/G12/G13/G14 全部 PASS，snapshot `artifacts/gates-2026-11-05T22-18-37-489Z.json`。
+
+
+- **决定**：TasksPanel 直接展示持久化 `error_code` 与 `error_message`；Comfy timeout/transport/429/5xx 显示自动重试提示，其他错误只显示稳定 code + message。
+- **依据**：错误码已在 main boundary 分类并持久化；renderer 不按具体 runtime 分支，仅按 task kind 与 typed code 选择用户反馈。
+- **证据**：新增 TasksPanel formatter test 1/1；renderer typecheck、full build、matrix check、diff check exit 0。
+
+
+- **决定**：在 `task_jobs` 增加 nullable `next_attempt_at`，通过现有 additive legacy migration 补列；TaskRecord、repository、state machine 与 runner 共同使用该字段。
+- **行为**：retryTask 根据 next retry count 写入 deadline；runner 只领取 deadline 已到的 queued task，因此应用重启后不会丢失退避窗口。
+- **依据**：仅依赖既有 Grimoire SQLite 任务真相，不引入第二个调度存储；旧数据库通过 `ALTER TABLE ... ADD COLUMN` 兼容。
+- **证据**：task-state 4 tests、main typecheck、full build、matrix check、diff check exit 0。
+- **边界**：UI retry affordance 与完整错误文案映射仍待后续切片。
+
+
+- **决定**：可重试的 typed ComfyUI transport/5xx/429 failure 在 `max_retries` 内重新进入 queued；重试间隔按 next retry count 指数增长 `1s, 2s, 4s...`，上限 `30s`。
+- **实现边界**：任务记录中的 retry_count/max_retries 持久化；当前 retry-not-before 时间窗只驻留 main-process 内存，应用重启后 queued task 会按队列继续执行，完整 schedule persistence 留待后续 schema 切片。
+- **证据**：task-state + Comfy client 共 16 tests；main typecheck、full build、matrix check、diff check exit 0。
+
+
+- **决定**：在 `ComfyUIClient` transport boundary 引入 `ComfyUIError`，保留稳定 `code`、`retryable` 与可选 HTTP `status`；HTTP 5xx/429 可重试，4xx 默认不可重试，timeout/transport 单独编码。
+- **任务持久化**：`task-runner` 对 `comfyui` 任务保留 typed Comfy code，WD14 与其他执行器继续使用 `TASK_EXECUTION_ERROR`，避免跨域错误码混用。
+- **证据**：Comfy client 12 tests、task state 3 tests、main typecheck、full build、matrix check 均 exit 0。
+- **边界**：队列 retry/backoff、错误码到 UI 文案的完整映射、人工重试策略仍待后续切片。
+
+
+- **决定**：复用已有 `BrowserPanel` 与 main-owned `WebContentsView` host，通过 Comfy 工作台 tabs 接入网页视图；不在 renderer 用 iframe 或静态 HTML 仿制 ComfyUI。
+- **降级**：网页 tab 只在 status online 时可用；刷新发现断连时自动切回控制台并禁用网页 tab。控制台地址、队列、工作流和快捷生成继续可用。
+- **依据**：浏览器宿主已有 URL 清洗、bounds clamp、独立 partition、导航历史和 close 生命周期；复用它能保留窗口隔离和主进程导航边界，避免新增第二套嵌入宿主。
+- **证据**：`ComfyUIPanel.test.tsx` 6/6，通过 `browser.host.open` URL 断言、offline disabled、active-web disconnect fallback；renderer typecheck、panel-layout、full build、matrix check、`git diff --check` 均 exit 0。
+- **剩余边界**：真实 Electron 中的 WebContentsView 导航、resize/drag bounds、Comfy 服务错误页反馈和多实例隔离仍需手工验收，因此矩阵状态保持 `PARTIALLY_MIGRATED`。
+
+
 ## Pending decisions
 
 - Exact source-file mapping for every matrix row.
@@ -455,3 +582,169 @@
 ### P-12 主题沿用现有系统
 
 昼夜两套 + 色轮自定义主色（已有），新增主题桥把我们自己的变量映射到 Cherry 的变量族并同步深色开关；用户换任何主色，Cherry 页面跟着变。
+
+## 2026-11-04 M4 runtime 等价语义定稿
+
+### D-M4-01 能力账本读实例上下文，不读 runtime 名字
+
+- **决定**：`nativeRuntimeCapabilities(kind, context)` 的 `session.fork`、`compaction`、`permission.session`、`native.tools`、`process.lease` 由 `nativeSessionOperations`、`hostPermissionBroker`、`nativeToolPolicy`、`managed` 决定。UI 只消费主进程给出的 contract，不按 `codex`/`opencode`/`pi` 分支。
+- **依据**：`OpenCodeRuntime.forkSession`/`compactSession` 已实现但受 `enableNativeSessionOperations` 门控；`process.lease` 只在 `prepareNativeRuntime` 启动 managed OpenCode 后存在；把整个 kind 写成 `not-implemented`/`unavailable` 会让账本与实例事实相反。
+- **后果**：同为空上下文时 OpenCode 的 fork/compact/session-grant 报 `unavailable`，Pi RPC 也报 `unavailable`；区别由 context 表达，不靠名字猜测。
+
+### D-M4-02 `permission.session` 指本地精确 scope，不指 native `always`
+
+- **决定**：`permission.session` 仅在 `hostPermissionBroker:true` 时 `supported`，理由写明 owner/session/action/pattern 精确 grant；native process-wide `always` 明确不发送，也不作为能力承诺。
+- **依据**：OpenCode `Permission.state.approved` 是实例级，不是 session 级；adapter 的 approve/reject 永远发 `once`/`reject`。Grimoire broker 的持久化是 sender+session scope+精确 action/pattern，比 native `always` 窄。
+- **不做什么**：不把 native `always` 映射成 `allowForSession`，也不为了"session 支持"而放宽成 permission kind 级 grant。
+
+### D-M4-03 pure adapter 的 once/deny 与 broker session 分开
+
+- **决定**：`permission.once`/`permission.deny` 在 `nativeToolPolicy:'ask'` 下即 `supported`；是否存在 host broker 只影响 `permission.session`。
+- **依据**：adapter 本身能回 `once`/`reject` 并拿到工具继续/错误；broker 只是决定"是否自动回答下一同 pattern 请求"。把两者绑在一起会把纯 adapter 的能力写成 `unavailable`。
+- **失败关闭**：`decide('allowForSession')` 若无精确 grant（force-prompt 或 detail 无法提炼 scope），降级 `allowOnce`，不写宽 grant。
+
+### D-M4-04 OpenCode fork/compact 在 opt-in 下 supported，Pi RPC 仍 unavailable
+
+- **决定**：`nativeSessionOperations:true` 的 OpenCode 报 `session.fork`/`compaction` supported；Pi RPC 即使传该标志也报 unavailable。
+- **依据**：legacy `/session/:id/fork` 与 `/session/:id/summarize` 已在 adapter 实现并 await 原生结果；Pi RPC 没有对应的版本匹配操作，Pi SDK 是另一个 driver，不能冒充 RPC。
+- **边界**：fork 只复制 native history，Grimoire 必须重写 provenance；compaction 只 await 原生 summarize，不伪造 `compaction-started`/recovery。
+
+### D-M4-05 v2 probe 是结论测试，不是 execution 验证
+
+- **决定**：`scripts/opencode-event-replay-smoke.mjs` 的 `passed` 只表示"已确认 v2 只到 admission"；结果固定写 `admissionOnly:true`、`executionVerified:false`，并记录 `/doc` 接口与真实 `POST /api/session/:id/wait` 的 503 响应。
+- **依据**：真实 1.18.34 上 v2 prompt 返回 `SessionInput.Admitted`，durable events 只有 admitted/prompted，provider 调用为 0；wait 返回 `ServiceUnavailableError: Session wait is not available yet`。
+- **不做什么**：不把 admission 当成模型执行，不把 durable event 当成 legacy live event 的 replay 桥。
+
+### D-M4-06 未接压缩时 AI compact 失败关闭
+
+- **决定**：`AI_SESSION_COMPACT` 在没有已验证压缩操作时抛 `AI_SESSION_COMPACT_NOT_IMPLEMENTED`；不写 `compaction-finished`，不写 `compactedAt`/`compactedMessageCount`。
+- **依据**：旧 handler 只改 metadata 并追加成功事件，会让 UI 显示压缩成功而实际没有压缩。回归测试断言事件与 metadata 均不变。OpenCode 的原生压缩走 `OpenCodeRuntime.compactSession`，不在这个 IPC 上伪造。
+
+### D-M4-07 UI runtime 选择契约
+
+- **决定**：runtime status 增加主进程拥有的 `contract:{provider:'grimoire'|'runtime', model:'catalog'|'freeform'}`；`ProviderModelSelector` 与 `AgentWorkspacePanel` 用它决定 provider 选择器是否可用、模型是目录选择还是自由输入。
+- **依据**：UI 不得按 `pi`/`opencode`/`codex` 名字分支；runtime 名字只用于显示。
+- **不做**：不在 renderer 里维护第二张 runtime→行为表。
+
+### D-M4-08 recovery 保持 projection-only
+
+- **决定**：`recovery` 仍为 `not-implemented`；没有 runtime/adapter 构造 `recovery` 事件。
+- **依据**：没有 source-backed recovery 证据；构造空事件会让 UI 等待永不发生的事件，属于伪造能力。
+
+### D-M5-01 capture 只证明表面，不证明功能接受
+
+- **决定**：catalog 证据分开记录 `surfaceCaptured`、`featureVerified`、`manualAcceptance`；截图通过只把 `surfaceCaptured` 记为 true，`featureAccepted` 始终 false，直到用户明确接受。
+- **依据**：PNG 存在、内容 selector 可见，都不能证明功能语义正确。用户要求“诊断 captured 不代表 feature accepted”。
+- **契约**：普通页面 action 必须是真实 `navigation.open_route_in_main`；PNG 必须解析 IHDR 正宽高；bounds 必须在 viewport 内；route/query 参数 canonical 精确；证据绑定当前 source-shell SHA-256。
+
+### D-M5-02 74–76 走允许的 base route + 源子菜单
+
+- **决定**：不放开导航 admission 的 query 禁令；data-settings 子面板先导航到允许的 `/settings/data`，再点击源子菜单，断言源内容 selector，并按 catalog route 精确绑定 `panel` 参数。
+- **依据**：admission 明确拒绝 query/fragment/编码/空白，这是安全边界；放开它会把 provider/OAuth 等 payload 带进导航。子面板本来就不是独立可导航 URL。
+- **结果**：74–76 从 `NAVIGATION_ROUTE_FORBIDDEN` 变为真实捕获；`/settings/mcp/$` 用显式内容解析（`/settings/mcp/servers` + password input selector）记录，不放宽为前缀匹配。
+
+### D-M5-03 journeys 失败粘性
+
+- **决定**：resume 保留每次 attempt；任何历史失败把 aggregate 固定为 failed；partial/duplicate 索引只能 blocked 或 failed，不能 passed。
+- **依据**：后一次绿色覆盖前一次红色会隐藏 flaky/真实失败；批量 partial 不是整体通过。
+
+### D-M5-04 final aggregate 不重跑即汇总
+
+- **决定**：`m5-final-aggregate.mjs` 从现有 gates/root logs/journeys/pack/packaged GUI/secrets/A-B/index 原始证据汇总，校验当前构建 SHA-256 与 pack 精确 hash；不为了“绿”重跑 45 分钟套件。
+- **依据**：本轮未改产品源码；已有 raw evidence 可复核。任何 evidence 与当前构建不匹配、或任何红色项，aggregate 保持 failed。
+
+### D-M4-09 Review-3：模型选择、driver 契约与 effective permission
+
+- **决定**：本地 runtime 的模型只来自显式选择/session/同 runtime 记忆，不读 active provider 默认值；切 runtime 用主进程 `RuntimeSelectionContract` 清理不兼容 provider/model，切回时只恢复 provider/catalog 仍承认的模型。Pi SDK 开启时 status 直接报 `pi-sdk`，不探测 `pi` CLI；capability 查询带 `provenance`，静态 metadata 的 `session.resume` 保持 `blocked`，真实实例复用 `getCapabilities()`；OpenCode 用 `opencode-unprepared`/`opencode-managed` 区分实例边界。
+- **权限**：broker `decideWithDecision` 返回并应用 effective decision，`decide` 保持 bool 兼容；IPC 与 host-tool 路径持久化 effective decision，`resolveAiPermission` 只接受首个终态，避免先写原始 `allowForSession` 再被降级覆盖。
+- **依据**：provider default 不是本地 runtime 的模型来源；静态能力不能知道 resume 引用或 host tool allowlist；raw UI 选择不等于 broker 实际应用的 decision。
+- **不做什么**：不把 SDK 能力写成 RPC 能力，不从 renderer flags 推断 managed/lease/权限，不把 fixed `allowOnce` 写进 host-tool 的真实 session 决定，不重跑无关 journeys 来制造全量重跑证据。
+
+### D-M7-06 ComfyUI 地址策略只判定字面量，不扩散到 provider
+
+- **决定**：新增 `requireComfyAddress`，保留 `requireHttpUrl` 对供应商地址的既有语义；只让 `ComfyUIClient` 的 constructor、`setBaseUrl`、`downloadImage` 使用新策略。
+- **边界**：允许 loopback（`127.0.0.1`、`localhost`、`::1`）HTTP/HTTPS 与公网 HTTPS；拒绝非 loopback HTTP、私有/链路本地/元数据 IPv4 字面量（`0/8`、`10/8`、`100.64/10`、非 loopback `127/8`、`169.254/16`、`172.16/12`、`192.168/16`）以及 IPv6 ULA（`fc00::/7`）、link-local/site-local（`fe80::/9`）、IPv4-mapped 私有字面量。
+- **不做什么**：不做 DNS 解析、连接目标 IP pinning 或 rebinding 防护；公网 hostname 解析到私有地址仍可能通过。`settings.ipc` 的通用预校验不在本切片修改，实际网络访问仍由客户端 setBaseUrl 拒绝。（2026-11-05 后续切片已让 `settings.ipc` 复用同一校验，见 D-M7-07。）
+- **证据**：`input-validation.test.ts` + `comfy-client.test.ts` 共 22 tests；renderer/main typecheck exit 0；完整 `npm run build` exit 0。
+
+### D-M7-07 settings IPC 复用 ComfyUI 地址策略
+
+- **决定**：`settings.ipc.ts` 的 `comfyui_base_url` GET 回退、SET 校验与 `configureComfyUI` 调用统一使用 `requireComfyAddress`，不再用只校验 scheme 的 `requireHttpUrl` 预校验。
+- **依据**：旧的 SET 路径会接受 `https://10.0.0.1` 并先写库，直到 `ComfyUIClient.setBaseUrl` 才拒绝；GET 也会把不合规的存储值直接交给 configure。设置写入边界与客户端必须使用同一策略，非法地址应在写库前失败。
+- **边界**：只改 ComfyUI 设置键与 `settings.ipc.ts` 内的相关 configure 路径；供应商 `base_url` 仍使用 `requireHttpUrl`。DNS 解析与 IP pinning 仍不在范围。`src/main/index.ts` 的启动读取仍在切片外，保持 `requireHttpUrl` 预校验，违规值由 `ComfyUIClient` 的 `requireComfyAddress` 拒绝。
+- **证据**：新增 4 条 settings IPC 用例（私有 HTTPS 写库前拒绝、loopback HTTP 接受、公网 HTTPS 接受、GET 存储值不合规回退默认）；`src/main/ipc/settings.ipc.test.ts` 8/8 通过，`npx tsc -p tsconfig.node.json --noEmit` exit 0。
+
+### D-M6-06 元数据 UI 以草稿对象承载全字段与未知键
+
+- **决定**：`NovelAIPromptPanel` 的生成参数以文本草稿保存，空值表示字段缺省；导出时转换成 `steps/cfg/seed/width/height` 数字与 `loras: string[]`，未知键从草稿 metadata 对象展开回导出载荷。导入时全部已知字段回填输入框，未知键只保存在草稿对象并显示键名。
+- **依据**：空文本框不能被写成 `0`/空串，否则往返会把“未设置”伪装成真实值；未知键若丢掉，新版工具写出的文件经过本 UI 再导出就会降级。
+- **边界**：只改面板与 renderer 全局契约，不新增存储、不改 vendor/source；兄弟 `.meta.png` 写入仍由既有文件服务负责。
+- **证据**：面板 16 tests（含全字段导出、全字段导入、未知键保留、`.meta.png` 路径）+ 元数据 8 tests；renderer/main typecheck exit 0；G9 panel-layout 0/0。
+
+
+### D-C2-01 Codex 接手的 Comfy 受控网络合同（2026-11-08）
+
+- 沿用已批准PLAN和work/2026-10-27-m0；DSH user-aborted终态与11736文件接手快照已核实，不重新审批或替换用户基线。
+- Cherry remoteFetch原有直连、固定lookup、Host/SNI、流式读取和settlement经ADAPTER/MINIMAL_MODIFICATION进入Comfy transport；只读remoteUrlSafety直接复用。保留原始Source及MIT/AGPL声明，不重新实现IP解析。
+- 使用本机compat锁中已存在的ipaddr.js 1.9.1；IPv4 198.18/15和IPv6 2001:2::/48用源策略明确要求的CIDR补齐。原始source测试88项中86通过/2项受旧库benchmarking标签缺失影响，该失败历史保留；Comfy生产adapter通过独立源地址语料验证，不声称原始source测试全绿。
+- 设置地址复用C1 requireComfyExecutionEndpoint，拒绝凭据/query/hash/空白；资源URL另用同一网络策略但保留query。SET前零写验证，GET对非法旧地址只返回安全运行默认值，原库值保留且不导出凭据。
+- 所有Comfy JSON、图片及默认source取消请求使用main Node HTTP/HTTPS、全部A/AAAA验证及已验证IP固定；保留Host/SNI/证书验证，3次同源redirect，view路径固定。
+- JSON10MiB/图片100MiB按实际stream计数；caller取消优先，超限优先于可重试HTTP，HTTP非JSON错误保持状态，JSON错误体保留有效服务消息。所有解析在拥有的deadline内。
+- 源cancelAction的后台GET保留源码行为，但通过本次scope追踪、中止和await排空；不删除源快照、不放宽精确prompt_id取消版本门槛。
+- focused、源码/构建来源、类型、全量gates、native fixture和人工接受分开；最后两项仍按当前证据标注，不把历史C1通过计入当前源码。
+
+
+### D-W1-01 编辑草稿与领域租约（2026-11-08）
+
+- 既有workspace_editor_states是唯一持久草稿真相，原SQL revision CAS复用；草稿baseRevision/observedRevision/localSequence与业务work/asset revision分别维护。flush不自动createVersion。
+- Host每key独立控制器，不可变快照、旧加载/ACK/广播隔离、显式conflict与remote选择、失败原输入可重试；返回普通结构DTO，不用boolean隐含窗口移交成功。
+- 主进程owner从IPC sender+editorKey确定；renderer输入owner/source不能提升权限。NovelAI work/asset TTL30s、heartbeat10s，destroy释放，重新acquire旋转leaseId防迟release关新租约；默认runtime/legacy写有用户租约时EDIT_LOCKED。
+- schema42仅给现novelai_asset加revision，旧内容默认1；与原C1execution及schema晋级事务边界同回滚。原C1升级用例仍覆盖40迁移，版本断言跟实际CURRENT_SCHEMA_VERSION而不强行停在41。
+- 两个面板消费Host，按work/asset隔离草稿，完整现有metadata包括unknown；保存草稿和保存业务版本分开。W2正式移交/N1全多角色文档/N2全部版本CAS事务未因W1stage计入完成。
+- 116focused/two-end types通过，完整自动、native双sender接受和manual分别记录，不自动commit/push。
+
+### D-W2-01 有序窗口移交与既有画布恢复（2026-11-10）
+
+- main签发transferId、sequence、revision和阶段；只投影已知input/bounds字段，renderer的recovery/phase/owner标记不进入authority。普通流程严格freeze/flush→hidden hydrate-ready→转owner→真实源卸载ACK→activate，不等待隐藏窗口的rAF作为卸载证据。
+- 活跃移交一直监听终止事件；target timeout/crash/write/conflict撤销并恢复原租约proof和generic owner。已停止renderer由main读取最后持久状态发起恢复；不向crashed sender发送UI事件。恢复通知使用应用已有info类型，避免unsupported icon导致全app error boundary。
+- Canvas仍用原vendor保存链和SQLite项目表；真实失败/未排空不冒saved，canonical revision与本地投机revision分离。Workspace只存项目、版本、视口与选择，不增业务文档副本。正式hydrate清除失效缓存，普通resume使用原recovery-aware store保留既有恢复能力。
+- 同一已ready画布的普通restore不重新导航；正式hydrate以requestId内部key强制新页面实例并等待新adapter，防旧实例的ready和迟load回滚视口。冻结期间拒绝未完成交互和运行任务，鼠标释放/移动/滚轮均不改文档。
+- 旧prompt按原singleton store复用，因此全部视图共享window owner；本地所有写动作在移交/foreign owner时冻结，main也校验family owner。正常草稿消费及完整现有undo/权重/BREAK/排除记录保持；不重造prompt业务引擎。Settings只转移搜索/分区/展开，credential form不转移。
+- 当前使用native DatabaseSync SQLite，saveDatabase是兼容no-op；未因旧CodeGraph行号推测重写持久事务。所有source snapshots继续只读，docking engine不替换。
+- 原生失败与成功attempt全部保留；当前frame首次启动timeout仍属于S2/V2自启动调查，单次成功不抹掉失败。完整W2门禁、N1之后及最终人工接受分别验收，不自动commit/push。
+
+### D-W2-02 复审后的窗口身份与保存基线（2026-11-15）
+- Window/CAS/Canvas原队列继续直接复用；新增页代次、ACK基线与只读原生窗口状态为ADAPTER/MINIMAL_MODIFICATION，不更换布局引擎。重启等待源Host后走既有协议；inactive工作区选中后恢复。页面window.close与原生close分别验证，不假设Electron生命周期相同。
+- 所有旧收据/失败保留，当前W2-v2绑定09c42ad1…/51native/14gates；原文文档和完整版本仍归N1/N2，人工与完整计划未接受。
+
+### D-UI-01 商业级界面收口：设置布局、资产分类、面板合并、字体与圆角（2026-11-26）
+
+- **设置面板**：报障「点击只滚动、按钮不变色」的根因不是样式缺失，而是 embedded 分支只调用了 `scrollIntoView()`、从不 `setSection()`，`aria-current` 与激活类冻结在「通用」。改为同一套 shell：左侧 rail（图标+标题+描述，窄容器经 container query 收成图标磁贴）+ 右侧只渲染当前分区（page 语义）；搜索时才切换为堆叠可折叠结果视图。激活态=accent 底色+左边 2px 指示条+accent 文字，与内容一一对应，不可能再漂移。窄容器用 `@container` 而非 `sm:`/`md:`（G9 明确禁止面板内视口断点）。
+- **提示词资产**：两个独立缺陷。①卡片封面曾用 `aspect-[4/3] w-full`，单列时一张图撑满整个面板；改为固定 80px 高缩略图 + `auto-fill minmax(148px,1fr)`，动作行不再换行（图标复制/预览 + 文本「应用」）。②「空类目」不是空数据，而是面板按 40 条分页后拿当前页过滤分类树，其余分区的类目必然显示 0/暂无内容；改为浏览时按 100 条分块取全量（IPC 单页上限 100 保持不放宽），搜索仍真分页。
+- **资产分类**：内置源共 568 个自由 tag，直接当类目产出数百个单资产货架；改为 9 个固定货架（角色/风格/场景/商品电商/海报排版/UI 界面/信息图/摄影写实/生活趣味）+ 其他，tag 仍留在卡片上作元数据。已带类目名的 tag（如 MOSS 的 角色/风格）优先采信，保证 96/24 不变。7 个提示词源合并到「提示词资产合集」一个根，MOSS 保留独立根（策展集而非源转储）；种子后再删除无链接且无子节点的内置类目。标记 v10，旧版重导入自动重建。
+- **面板合并**：`tag-batch` 面板并入「标签与资产」第 4 个页签「批量工具」，同时移除 panelTypes 联合、PanelRegistry 定义/分组/渲染分支、`WORKSPACE_POPOUT_TYPES` 白名单，并在 `LEGACY_PANEL_ALIASES` 加 `tag-batch → tag-asset-manager`，旧布局文档不跳空。
+- **Emoji**：自有源码零 emoji（Sidebar 22 处、canvas 插件 15 处、会话侧栏、宿主工具条），一律换 lucide（开源图标库，已是本仓依赖）。canvas 的插件 `icon` 是字符串契约，新增 `node-glyph.tsx` 做语义键 → 图标映射，并为已保存数据保留 emoji 键（以 `\u{...}` 转义书写，源码不再出现字形）；未知键渲染为空而非回退成 emoji。
+- **字体**：`--font-sans/--font-display` 全面改用「Sarasa UI SC（更纱黑体 UI）」，本机已安装 SarasaUiSC-Regular/Bold；用 `@font-face { src: local(...) }` 覆盖多种别名，**不打包** 48MB TTF，缺字体机器回落到原 Segoe/雅黑链。
+- **圆角**：全站 ≤5px。`--gr-radius-sm/md/lg/xl/2xl` 与 `--radius-*` 收为 4/4/5/5/5，Tailwind v4 的 `rounded-*` 由 `@theme` 同名变量派生（91 处硬编码调用点无需逐个改），index.css 里 6/7/8px 字面量统一改 5px；pills（999px）与 50% 环不属「角」保持原样。G11 样式契约的三条实测期望同步（8→5、7→5、6→4），canvas 内联 16/18px 一并收紧。
+- 证据：`.agent/records/2026-11-06-sol-execution/ui-2026-11-26/`（主窗/设置两态/提示词资产/标签批量页签截图）+ `commands/ui-overhaul-*` 回执；未做 commit/push。
+
+### D-REL-01 v1.7.2.1-alpha 发版准备（2026-11-26）
+
+- **版本号**：package.json 用 `1.7.2-alpha.1`——四段的 `1.7.2.1-alpha` 不是合法 semver（`semver.valid(x[,"loose"])` 全为 null），electron-builder 的 `normalizePackageData` 会直接抛 `Invalid version`。用户可见处（README、StatusBar、设置关于页、MCP clientInfo）统一写 `1.7.2.1-alpha`；安装包文件名用 `nsis.artifactName` / `portable.artifactName` 硬编码成 `Grimoire.Setup.1.7.2.1-alpha.exe` 与 `Grimoire.1.7.2.1-alpha.exe`，与 UI 一致。
+- **字体打包**：`public/fonts/` + `src/renderer/fonts.ts` 运行时 `FontFace` 注册。原因：把 24MB×2 的 TTF 写进 `index.css` 的 `url()` 会让 Vite 的 CSS 管线在 `@import "tailwindcss"` 内联后的超长行上抛 postcss「Missed semicolon」（`assetsInlineLimit: 0` 也不解决，已实测），改用 public 静态资源 + 相对 `document.baseURI` 解析，dev 与 `file://` 打包两边同一条 URL。`asarUnpack: dist/renderer/fonts/**` 让 Chromium 能读 asar 外的字体；CSS 的 `local()` 仍优先命中已装字体。OFL 1.1 全文随 `public/fonts/SarasaGothic-LICENSE (OFL-1.1).txt` 分发。
+- **首帧白窗兜底**：主进程 `createWindow` 里 `did-fail-load`（忽略 ERR_ABORTED）与 2.5s 无 URL 的 blankGuard 各重载一次、累计最多两次，避免安装版用户看到 about:blank 却不知道按 Ctrl+R。日志写 `renderer/RENDERER_NAV_RETRY`。
+- **产物体积**：NSIS 271.7MB / 便携单文件 271.5MB / ZIP 389.7MB；体积主要来自 Electron + 生产依赖（字体 47.9MB、资产 12MB）。未做字体子集化与依赖裁剪，宁可大也不破坏字形与运行时。
+- **未执行**：commit/tag/push 与 GitHub Release 上传（仓规禁止未经确认的 push，且 V1–V3 未做）；NSIS 安装流程未实机点完，仅验证 `win-unpacked` 实机启动、标题、`file://` 页面 3.1M 字符正文与 Sarasa 字面量加载。
+
+### D-UI-02 字体回退：不随包分发更纱黑体（2026-11-26）
+
+- 用户决定「只是不打包」：删 `public/fonts/`（两个 TTF 45.4MB + OFL 文件）、`src/renderer/fonts.ts` 与 main.tsx 的运行时注册、`build.asarUnpack`；**保留** `index.css` 里 `@font-face { src: local(...) }` 与 `--font-sans/--font-display` 的首选链，因此本机已装更纱黑体时仍用它（`document.fonts.check('14px "Sarasa UI SC"') === true` 实测），未装机器回落到 Segoe UI / 微软雅黑。
+- 顺带删掉上一轮新增、但从未被引用的 `--gr-font-ui` / `--gr-font-display` token（tokens.css），避免留死代码。
+- 体积实测：安装包 271.7→252.3MB、便携单文件 271.5→252.1MB、ZIP 389.7→366.1MB（TTF 仅 gzip 51%，所以 ZIP 只减 23.6MB）。
+- 截图 5 张全部按新版本号重拍（设置两图改 1280×880，1600 宽时 `max-w-3xl` 内容偏空）。
+
+### D-REL-02 版本号定为 0.7.3-alpha（2026-11-26）
+
+- `0.7.3-alpha` 是合法 semver（major 0 / minor 7 / patch 3 / prerelease ["alpha"]）；四段的 `1.7.2.1-alpha` 非法，已弃用。
+- 影响：项目无 `electron-updater`，降号不触发任何更新器判定；NSIS 不比较版本，可覆盖安装；数据库 schema 42 不变。代价是 Release 列表出现 7.x→0.7.3 的观感倒退，已在 RELEASE_NOTES 首屏写明「版本号重置」。
+- 产物名改为 `Grimoire.Setup.0.7.3-alpha.exe` / `Grimoire.0.7.3-alpha.exe` / `Grimoire-portable-0.7.3-alpha.zip` / `SHA256SUMS-0.7.3-alpha.txt`；UI、MCP clientInfo、README、README.en 同步。

@@ -10,6 +10,9 @@ import os from 'node:os'
 import path from 'node:path'
 import net from 'node:net'
 import { fileURLToPath, pathToFileURL } from 'node:url'
+import { buildFingerprint } from './journey-evidence.mjs'
+import { fileSha256 } from './cherry-ui-capture-evidence.mjs'
+import { manifestDigest } from './m5-evidence.mjs'
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const require = createRequire(import.meta.url)
@@ -20,7 +23,25 @@ const outDir = path.join(root, 'artifacts/source-shell', runId)
 fs.mkdirSync(outDir, { recursive: true })
 const sourcePhases = ['source-bootstrap', 'tab-interaction', 'navigation-producer', 'tab-close', 'distinct-routes', 'source-reload', 'reload-handshake', 'reload-route-switch', 'agent-page', 'agent-create', 'agent-select', 'agent-rename', 'agent-new-conversation']
 const fileTreeOnly = process.argv.includes('--file-tree-acceptance')
-const report = { startedAt: new Date().toISOString(), runId, artifact, acceptance: fileTreeOnly ? 'bounded-file-tree-ipc' : 'full-source-shell', passed: false, observations: [], events: [], checks: {} }
+const walkFiles = dir => {
+  const files = []
+  const walk = current => {
+    if (!fs.existsSync(current)) return
+    for (const entry of fs.readdirSync(current, { withFileTypes: true })) {
+      const file = path.join(current, entry.name)
+      if (entry.isDirectory()) walk(file)
+      else files.push(file)
+    }
+  }
+  walk(dir)
+  return files.sort()
+}
+const distFiles = walkFiles(path.join(root, 'dist'))
+const sourceShellFiles = walkFiles(path.dirname(artifact))
+const artifactSha256 = fs.existsSync(artifact) ? fileSha256(artifact) : null
+const build = buildFingerprint([...distFiles, ...(artifactSha256 ? [artifact] : [])], { root })
+const sourceShellDistDigest = manifestDigest(sourceShellFiles.map(file => ({ path: path.relative(root, file).replaceAll(path.sep, '/'), sha256: fileSha256(file) })))
+const report = { startedAt: new Date().toISOString(), runId, artifact, artifactSha256, sourceShellDistDigest, buildFingerprint: build, acceptance: fileTreeOnly ? 'bounded-file-tree-ipc' : 'full-source-shell', passed: false, observations: [], events: [], checks: {} }
 if (fileTreeOnly) report.fullSmoke = { status: 'NOT_RUN', blockers: ['Genuine runtime prewarm unavailable', 'Source runtime stream acceptance not verified'], scope: 'Independent file-tree acceptance does not waive or pass the full smoke prewarm/stream gates.' }
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms))
 let child, ws, profile, fixture, cleaning

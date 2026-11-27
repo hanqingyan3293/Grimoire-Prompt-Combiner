@@ -13,10 +13,10 @@ type BrowserApi = {
   request: (route: string, input?: unknown) => Promise<{ ok: boolean; data?: unknown; error?: { code: string; message: string } }>
 }
 
-export function BrowserPanel({ panelId = 'browser-panel' }: { panelId?: string }) {
+export function BrowserPanel({ panelId = 'browser-panel', initialUrl = 'https://example.com' }: { panelId?: string; initialUrl?: string }) {
   const slotRef = useRef<HTMLDivElement | null>(null)
   const openedRef = useRef(false)
-  const [address, setAddress] = useState('https://example.com')
+  const [address, setAddress] = useState(initialUrl)
   const [current, setCurrent] = useState('')
   const [visits, setVisits] = useState<Visit[]>([])
   const [error, setError] = useState<string | null>(null)
@@ -38,9 +38,9 @@ export function BrowserPanel({ panelId = 'browser-panel' }: { panelId?: string }
     if (!api) return
     const rect = bounds()
     if (!rect) return
-    const result = await api.request('browser.host.' + route, route === 'open' ? { id: panelId, url: url ?? address, bounds: rect } : { id: panelId, bounds: rect })
+    const result = await api.request('browser.host.' + route, route === 'open' ? { id: panelId, url: url ?? initialUrl, bounds: rect } : { id: panelId, bounds: rect })
     if (!result?.ok) setError(result?.error?.message ?? 'browser host unavailable')
-  }, [address, api, bounds, panelId])
+  }, [initialUrl, api, bounds, panelId])
 
   useEffect(() => {
     if (!api) return

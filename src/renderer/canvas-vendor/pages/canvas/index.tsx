@@ -14,6 +14,7 @@ import { useCanvasStore } from "@canvas/stores/canvas/use-canvas-store";
 import { useCanvasUiStore } from "@canvas/stores/canvas/use-canvas-ui-store";
 import { exportCanvasProjects } from "@canvas/lib/canvas/canvas-export";
 import { hasAgentUrlBootstrap } from "@canvas/lib/agent/agent-url-bootstrap";
+import { getCanvasTransferFrozen, publishCanvasEditorView } from "@canvas/canvas-editor-transfer";
 
 export default function CanvasPage() {
     const { message } = App.useApp();
@@ -30,6 +31,10 @@ export default function CanvasPage() {
     const setDeleteIds = useCanvasUiStore((state) => state.setDeleteProjectIds);
 
     const mode = searchParams.get("mode");
+    useEffect(() => {
+        if (!hydrated || mode === "new" || mode === "recent" || getCanvasTransferFrozen()) return;
+        publishCanvasEditorView({ version: 1, projectId: null, projectRevision: 0, viewport: { x: 0, y: 0, k: 1 }, selectedNodeIds: [], selectedConnectionId: null });
+    }, [hydrated, mode]);
     const agentMode = mode === "new" || mode === "recent" || mode === "choose";
     const agentQuery = agentMode ? `?${searchParams.toString()}` : "";
     const enterProject = (id: string) => {

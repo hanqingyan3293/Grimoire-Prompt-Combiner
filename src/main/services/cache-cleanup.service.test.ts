@@ -23,27 +23,26 @@ import {
   runGroup
 } from './cache-cleanup.service'
 import { getActiveLogPath } from './logger.service'
+import { closeDatabase, initDatabase } from '../database'
+const actualTempRoot = os.tmpdir()
 
-beforeEach(() => {
-  testRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'grimoire-cache-'))
-  // The service owns two locations: the OS temp root (for `normal_cache`) and the log
-  // directory. Redirecting `TMPDIR`-family vars is unreliable across platforms, so the
-  // temp targets are exercised through the real os.tmpdir() with prefixed fixtures that
-  // this suite creates and removes itself.
-  tempRoot = os.tmpdir()
-  logRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'grimoire-cache-logs-'))
+beforeEach(async () => {
+  testRoot = fs.mkdtempSync(path.join(actualTempRoot, 'grimoire-cache-'))
+  tempRoot = path.join(testRoot, 'owned-temp')
+  fs.mkdirSync(tempRoot)
+  // Never sweep another running app's OS-temp directories while running the root suite.
+  vi.spyOn(os, 'tmpdir').mockReturnValue(tempRoot)
+  logRoot = path.join(testRoot, 'owned-logs')
+  fs.mkdirSync(logRoot)
   process.env.GRIMOIRE_LOG_DIR = logRoot
+  await initDatabase()
 })
 
 afterEach(() => {
   delete process.env.GRIMOIRE_LOG_DIR
-  for (const prefix of ['grimoire-api-image-', 'grimoire-image-import-', 'grimoire-package-', 'grimoire-comfy-', 'grimoire-opencode-']) {
-    for (const name of fs.readdirSync(tempRoot).filter(entry => entry.startsWith(prefix))) {
-      fs.rmSync(path.join(tempRoot, name), { recursive: true, force: true })
-    }
-  }
+  closeDatabase()
+  vi.restoreAllMocks()
   fs.rmSync(testRoot, { recursive: true, force: true })
-  fs.rmSync(logRoot, { recursive: true, force: true })
 })
 
 /** Creates a temp dir with the given prefix, holding `files` of `size` bytes each. */

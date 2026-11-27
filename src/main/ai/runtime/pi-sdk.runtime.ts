@@ -188,6 +188,8 @@ export class PiSdkRuntime implements AgentRuntime {
     return result
   }
 
+  getCapabilityDriver(): 'pi-sdk' { return 'pi-sdk' }
+
   createSession(model: string, messages: RuntimeMessage[] = []): RuntimeSession {
     this.assertOpen()
     if (model !== this.config.model) throw new Error('Pi SDK selected model mismatch')

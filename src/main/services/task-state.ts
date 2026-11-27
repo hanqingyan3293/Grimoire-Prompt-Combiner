@@ -17,7 +17,8 @@ export function createTask(input: TaskCreateInput, now = new Date()): TaskRecord
   return {
     id: input.id || 'task_' + crypto.randomUUID().replaceAll('-', '').slice(0, 20),
     kind: input.kind, status: 'queued', input_json: JSON.stringify(input.input), output_json: null,
-    error_code: null, error_message: null, progress: 0, retry_count: 0, max_retries: maxRetries,
+    error_code: null, error_message: null, progress: 0, retry_count: 0, max_retries: maxRetries, next_attempt_at: null,
+    execution: null,
     created_at: timestamp, started_at: null, finished_at: null, updated_at: timestamp,
   }
 }
@@ -25,7 +26,9 @@ export function createTask(input: TaskCreateInput, now = new Date()): TaskRecord
 export function transitionTask(task: TaskRecord, next: TaskStatus, patch: Partial<TaskRecord> = {}, now = new Date()): TaskRecord {
   if (TERMINAL.has(task.status)) throw new Error('终态任务不能再次变更')
   const allowed: Record<TaskStatus, TaskStatus[]> = {
-    queued: ['running', 'cancelled'], running: ['paused', 'cancelling', 'succeeded', 'failed'],
+    // A queued row that already owns a submitted prompt still needs the runner's
+    // remote-cancel path; a never-submitted queued row goes straight to cancelled.
+    queued: ['running', 'cancelling', 'cancelled'], running: ['paused', 'cancelling', 'succeeded', 'failed'],
     paused: ['running', 'cancelling', 'cancelled'], cancelling: ['cancelled', 'failed'],
     succeeded: [], failed: [], cancelled: [],
   }
@@ -35,6 +38,11 @@ export function transitionTask(task: TaskRecord, next: TaskStatus, patch: Partia
   if (TERMINAL.has(next)) updated.finished_at = now.toISOString()
   if (next === 'succeeded') { updated.progress = 1; updated.error_code = null; updated.error_message = null }
   return updated
+}
+
+export function retryDelayMs(nextRetryCount: number): number {
+  const attempt = Math.max(0, Math.floor(nextRetryCount))
+  return Math.min(30_000, 1_000 * (2 ** attempt))
 }
 
 export function retryTask(task: TaskRecord, now = new Date()): TaskRecord {
@@ -51,9 +59,19 @@ export function retryTask(task: TaskRecord, now = new Date()): TaskRecord {
     started_at: null,
     finished_at: null,
     updated_at: now.toISOString(),
+    next_attempt_at: new Date(now.getTime() + retryDelayMs(task.retry_count)).toISOString(),
   }
 }
 
 export function taskEvent(task: TaskRecord): TaskEvent {
-  return { taskId: task.id, kind: task.kind, status: task.status, progress: task.progress, errorCode: task.error_code || undefined, errorMessage: task.error_message || undefined }
+  return {
+    taskId: task.id,
+    kind: task.kind,
+    status: task.status,
+    progress: task.progress,
+    errorCode: task.error_code || undefined,
+    errorMessage: task.error_message || undefined,
+    execution: task.execution ?? null,
+    executionError: task.execution_error || undefined,
+  }
 }

@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react'
 import { createRoot } from 'react-dom/client'
-import { createMemoryRouter, RouterProvider } from 'react-router-dom'
+import { createMemoryRouter, RouterProvider, useLocation } from 'react-router-dom'
 import 'antd/dist/reset.css'
 import 'streamdown/styles.css'
 import './canvas-vendor/styles/globals.css'
@@ -10,7 +10,8 @@ import CanvasProjectPage from './canvas-vendor/pages/canvas/project'
 import './canvas-vendor/i18n'
 import { registerBuiltinNodes } from './canvas-vendor/components/canvas/nodes/builtin-nodes'
 import { registerBundledCanvasPlugins } from './canvas-vendor-plugins'
-import { useCanvasStore } from './canvas-vendor/stores/canvas/use-canvas-store'
+import { useCanvasStore, flushCanvasSaves, hydrateCanvasTransferProject } from './canvas-vendor/stores/canvas/use-canvas-store'
+import { installCanvasEditorTransfer, getCanvasEditorGenerationId } from './canvas-vendor/canvas-editor-transfer'
 import { getCanvasBootstrapState } from '@shared/canvas-bootstrap'
 import { useAgentStore } from './canvas-vendor/stores/use-agent-store'
 import { AgentPanel } from './canvas-vendor/components/agent/agent-panel'
@@ -58,11 +59,27 @@ function CanvasSurface({ children }: { children: React.ReactNode }) {
   )
 }
 
+function CanvasProjectSurface() {
+  const location = useLocation()
+  const hydration = new URLSearchParams(location.search).get('__editorHydration')
+  return <CanvasSurface><CanvasProjectPage key={hydration || location.pathname} /></CanvasSurface>
+}
+const editorParams = new URLSearchParams(window.location.search)
 const router = createMemoryRouter([
   { path: '/', element: <CanvasSurface><CanvasPage /></CanvasSurface> },
   { path: '/canvas', element: <CanvasSurface><CanvasPage /></CanvasSurface> },
-  { path: '/canvas/:id', element: <CanvasSurface><CanvasProjectPage /></CanvasSurface> },
-], { initialEntries: ['/canvas?mode=recent'] })
+  { path: '/canvas/:id', element: <CanvasProjectSurface /> },
+], { initialEntries: [editorParams.get('editorFrozen') === '1' || editorParams.get('editorLibrary') === '1' ? '/canvas' : '/canvas?mode=recent'] })
+
+const editorKey = editorParams.get('editorKey')
+if (editorKey) installCanvasEditorTransfer(window, editorKey, {
+  ready: () => useCanvasStore.getState().hydrated && !useCanvasStore.getState().hydrationError && !(router.state.location.pathname === '/canvas' && ['new', 'recent'].includes(new URLSearchParams(router.state.location.search).get('mode') || '')),
+  projectId: () => { const match = /^\/canvas\/([^/]+)$/.exec(router.state.location.pathname); return match ? decodeURIComponent(match[1]) : null },
+  flush: flushCanvasSaves,
+  readProject: id => window.api.canvas.vendor.get(id) as Promise<{ revision: number } | null>,
+  hydrateProject: hydrateCanvasTransferProject,
+  navigate: path => router.navigate(path),
+})
 
 document.documentElement.classList.add('grimoire-canvas-vendor')
 document.documentElement.style.height = '100%'
@@ -91,7 +108,7 @@ function CanvasBootGate() {
     }
     if (bootstrapState !== 'ready') return
     const frame = requestAnimationFrame(() => {
-      window.parent?.postMessage({ type: 'grimoire:canvas-ready', detail: { apiReady: true, hydrated: true } }, targetOrigin)
+      window.parent?.postMessage({ type: 'grimoire:canvas-ready', detail: { apiReady: true, hydrated: true, generationId: getCanvasEditorGenerationId() } }, targetOrigin)
     })
     return () => cancelAnimationFrame(frame)
   }, [bootstrapState, hydrationError])

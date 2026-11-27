@@ -27,7 +27,7 @@ import { createLegacyDatabase, type LegacyDatabase } from './services/sqlite.com
 // v38: NovelAI asset library + asset_usage (which image used which asset).
 // v39: embedded browser history (browser_history). Empty on upgrade — nothing to infer.
 // v40: imported bookmarks (browser_bookmark). Deduplicated by URL.
-export const CURRENT_SCHEMA_VERSION = 40
+export const CURRENT_SCHEMA_VERSION = 42
 let nativeDb: DatabaseSync | null = null
 let db: LegacyDatabase | null = null
 let dbPath = ''
@@ -318,7 +318,8 @@ CREATE TABLE IF NOT EXISTS task_jobs (
   created_at TEXT NOT NULL,
   started_at TEXT,
   finished_at TEXT,
-  updated_at TEXT NOT NULL
+  updated_at TEXT NOT NULL,
+  next_attempt_at TEXT
 );
 
 CREATE TABLE IF NOT EXISTS wd14_history (
@@ -764,13 +765,15 @@ function assertGrimoireDatabase(connection: DatabaseSync): void {
   const missing = REQUIRED_GRIMOIRE_TABLES.filter(table => !tables.has(table))
   if (missing.length) throw new Error('导入文件不是可识别的魔导书数据库')
 
-  if (tables.has('schema_meta')) {
-    const row = connection.prepare("SELECT value FROM schema_meta WHERE key='schema_version'").get() as { value?: string } | undefined
-    const version = Number(row?.value)
-    if (Number.isFinite(version) && version > CURRENT_SCHEMA_VERSION) {
-      throw new Error(`导入数据库版本 ${version} 高于当前支持版本 ${CURRENT_SCHEMA_VERSION}`)
-    }
-  }
+  assertSupportedSchemaVersion(connection)
+}
+
+function assertSupportedSchemaVersion(connection: DatabaseSync): void {
+  const table = connection.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='schema_meta'").get()
+  if (!table) return
+  const row = connection.prepare("SELECT value FROM schema_meta WHERE key='schema_version'").get() as { value?: string } | undefined
+  const version = Number(row?.value)
+  if (Number.isFinite(version) && version > CURRENT_SCHEMA_VERSION) throw new Error(`数据库版本 ${version} 高于当前支持版本 ${CURRENT_SCHEMA_VERSION}`)
 }
 
 function assertIntegrity(connection: DatabaseSync, message = '数据库完整性检查失败'): void {
@@ -1267,11 +1270,13 @@ function migrateAgentSessionReadModel(legacy: LegacyDatabase): void {
 
 export function initializeDatabaseConnection(connection: DatabaseSync, requireExistingGrimoire = false): LegacyDatabase {
   if (requireExistingGrimoire) assertGrimoireDatabase(connection)
+  else assertSupportedSchemaVersion(connection)
   configureConnection(connection)
   const legacy = createLegacyDatabase(connection)
   legacy.exec(SCHEMA_SQL)
 
   // Columns must be added before indexes that reference them are created.
+  try { legacy.run("ALTER TABLE task_jobs ADD COLUMN next_attempt_at TEXT") } catch {}
   try { legacy.run("ALTER TABLE categories ADD COLUMN group_id TEXT DEFAULT 'default'") } catch {}
   try { legacy.run("ALTER TABLE subcategories ADD COLUMN group_id TEXT DEFAULT 'default'") } catch {}
   try { legacy.run("ALTER TABLE tags ADD COLUMN group_id TEXT DEFAULT 'default'") } catch {}
@@ -1324,7 +1329,19 @@ export function initializeDatabaseConnection(connection: DatabaseSync, requireEx
 
   legacy.exec(INDEX_SQL)
   legacy.run("CREATE INDEX IF NOT EXISTS idx_history_task ON history(task_id)")
-  legacy.run("INSERT OR REPLACE INTO schema_meta (key, value) VALUES ('schema_version', ?)", [String(CURRENT_SCHEMA_VERSION)])
+  // v41/v42: execution identity and asset content CAS advance with the schema.
+  legacy.exec('BEGIN IMMEDIATE')
+  try {
+    const columns = legacy.exec('PRAGMA table_info(task_jobs)')[0]?.values || []
+    if (!columns.some(row => row[1] === 'execution_json')) legacy.run('ALTER TABLE task_jobs ADD COLUMN execution_json TEXT')
+    const assetColumns = legacy.exec('PRAGMA table_info(novelai_asset)')[0]?.values || []
+    if (!assetColumns.some(row => row[1] === 'revision')) legacy.run('ALTER TABLE novelai_asset ADD COLUMN revision INTEGER NOT NULL DEFAULT 1 CHECK(revision >= 1)')
+    legacy.run("INSERT OR REPLACE INTO schema_meta (key, value) VALUES ('schema_version', ?)", [String(CURRENT_SCHEMA_VERSION)])
+    legacy.exec('COMMIT')
+  } catch (error) {
+    try { legacy.exec('ROLLBACK') } catch (rollbackError) { console.debug('[database] v41 rollback settled', rollbackError instanceof Error ? rollbackError.message : String(rollbackError)) }
+    throw error
+  }
   return legacy
 }
 

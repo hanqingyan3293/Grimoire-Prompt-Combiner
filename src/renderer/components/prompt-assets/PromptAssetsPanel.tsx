@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { AlertTriangle, ChevronLeft, ChevronRight, Clock3, Copy, Database, FolderOpen, Heart, Layers3, LoaderCircle, Plus, RefreshCw, Search, X } from 'lucide-react'
+import { AlertTriangle, ChevronLeft, ChevronRight, Clock3, Copy, Database, Eye, FolderOpen, Heart, Layers3, LoaderCircle, Plus, RefreshCw, Search, X } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import type { PromptAssetItem, PromptAssetPage, PromptAssetSourceFilter } from '../../../shared/prompt-asset-types'
 import { usePromptsStore } from '../../stores/prompts.store'
@@ -11,6 +11,7 @@ import { Modal } from '../ui/Modal'
 import { ResourceCard, ResourceGroup } from '../ui/ResourceCards'
 import { FloatingPreview } from '../ui/FloatingPreview'
 
+const BROWSE_LIMIT = 2000
 const PAGE_SIZE = 40
 
 const SOURCES: Array<{ value: PromptAssetSourceFilter; label: string }> = [
@@ -60,6 +61,22 @@ export function PromptAssetsPanel() {
     const currentRequest = ++requestId.current
     setLoading(true)
     try {
+      // A tree cannot be built from one page of rows: every shelf whose assets sat on another page
+      // reported 0 and rendered 暂无内容 — the "空类目" report. Browsing therefore pages through the
+      // whole set (the IPC caps a page at 100, so this walks it in chunks); search keeps real paging
+      // because its result set can grow without bound.
+      if (!query) {
+        const first = await window.api.promptAssets.list({ query, source, limit: PAGE_SIZE, offset: 0 })
+        if (currentRequest !== requestId.current) return
+        const total = Math.min(first.total, BROWSE_LIMIT)
+        const offsets: number[] = []
+        for (let next = PAGE_SIZE; next < total; next += PAGE_SIZE) offsets.push(next)
+        const rest = offsets.length ? await Promise.all(offsets.map(next => window.api.promptAssets.list({ query, source, limit: PAGE_SIZE, offset: next }))) : []
+        if (currentRequest !== requestId.current) return
+        setPage({ ...first, items: [first.items, ...rest.map(page => page.items)].flat() })
+        setError(null)
+        return
+      }
       const result = await window.api.promptAssets.list({ query, source, limit: PAGE_SIZE, offset })
       if (currentRequest !== requestId.current) return
       if (result.total > 0 && offset >= result.total) {
@@ -174,7 +191,7 @@ export function PromptAssetsPanel() {
         <EmptyState icon={Search} title={query ? '没有匹配的提示词资产' : '暂无提示词资产'} description={query ? '尝试缩短关键词或切换来源' : '导入朋友项目提示词、保存预设或产生历史记录后会显示在这里'} />
       ) : (
         <div className='space-y-3'>
-          {page.total > PAGE_SIZE && <div className='sticky top-0 z-30 -mx-1 flex items-center justify-between rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-secondary)]/95 px-3 py-2 shadow-sm backdrop-blur'><span className='text-xs text-[var(--color-text-secondary)]'>第 {currentPage} / {totalPages} 页</span><div className='flex items-center gap-1'><IconButton icon={ChevronLeft} label='上一页' onClick={() => setOffset(Math.max(0, offset - PAGE_SIZE))} disabled={offset === 0 || loading} /><IconButton icon={ChevronRight} label='下一页' onClick={() => setOffset(offset + PAGE_SIZE)} disabled={offset + PAGE_SIZE >= page.total || loading} /></div></div>}
+          {page.total > (query ? PAGE_SIZE : BROWSE_LIMIT) && <div className='sticky top-0 z-30 -mx-1 flex items-center justify-between rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-secondary)]/95 px-3 py-2 shadow-sm backdrop-blur'><span className='text-xs text-[var(--color-text-secondary)]'>第 {currentPage} / {totalPages} 页</span><div className='flex items-center gap-1'><IconButton icon={ChevronLeft} label='上一页' onClick={() => setOffset(Math.max(0, offset - PAGE_SIZE))} disabled={offset === 0 || loading} /><IconButton icon={ChevronRight} label='下一页' onClick={() => setOffset(offset + PAGE_SIZE)} disabled={offset + PAGE_SIZE >= page.total || loading} /></div></div>}
           {(['asset', 'history', 'preset', 'favorite'] as PromptAssetItem['source'][]).map(group => {
             const items = page.items.filter(item => item.source === group)
             const title = SOURCE_META[group].label
@@ -213,23 +230,20 @@ function SourceBadge({ item }: { item: PromptAssetItem }) {
 
 function AssetCard({ item, tagLabels = [], onPreview, onCopy, onApply, onDragStart }: { item: PromptAssetItem; tagLabels?: string[]; onPreview: () => void; onCopy: () => void; onApply: () => void; onDragStart?: (event: React.DragEvent) => void }) {
   return (
-    <div className='min-w-0 p-3' draggable={Boolean(onDragStart)} onDragStart={onDragStart}>
-      {/* The action group is shrink-0, so in a 210px panel it squeezed the text column to 57px and every
-          character stacked vertically. Wrap the row and give the text a floor instead. */}
-      <div className='flex min-w-0 flex-wrap items-start justify-between gap-2'>
-        <div className='min-w-[9rem] flex-1'>
-          <h3 className='min-w-0 break-words text-sm font-medium leading-5 text-[var(--color-text-primary)] line-clamp-2' title={item.name || '未命名资产'}>{item.name || '未命名资产'}</h3>
-          <div className='mt-1 flex min-w-0 flex-wrap items-center gap-1.5'><SourceBadge item={item} />{item.nsfw && <Badge tone='danger'>NSFW</Badge>}</div>
-          {item.detail && <div className='mt-1 truncate text-[11px] text-[var(--color-text-secondary)]' title={item.detail}>{item.detail}</div>}
-          <p className='mt-2 line-clamp-3 break-words font-mono text-xs leading-5 text-[var(--color-text-primary)]'>{item.prompt || '无提示词文本'}</p>
-          {tagLabels.length > 0 && <div className='mt-2 flex flex-wrap gap-1'>{tagLabels.slice(0, 5).map(label => <Badge key={label} tone='neutral'>{label}</Badge>)}</div>}
-        </div>
-        <div className='flex shrink-0 gap-1'>
-          <IconButton icon={Copy} label={`复制 ${item.name}`} onClick={onCopy} />
-          <Button size='sm' onClick={onPreview}>预览</Button>
-        </div>
+    <div className='flex min-w-0 flex-col p-2' draggable={Boolean(onDragStart)} onDragStart={onDragStart}>
+      {item.coverUrl && <img src={item.coverUrl} alt={item.name || '提示词示例图'} loading='lazy' className='mb-2 h-20 w-full rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-tertiary)] object-cover' />}
+      <h3 className='min-w-0 break-words text-[12px] font-semibold leading-4 text-[var(--color-text-primary)] line-clamp-2' title={item.name || '未命名资产'}>{item.name || '未命名资产'}</h3>
+      <div className='mt-1 flex min-w-0 flex-wrap items-center gap-1'><SourceBadge item={item} />{item.nsfw && <Badge tone='danger'>NSFW</Badge>}</div>
+      <p className='mt-1.5 line-clamp-2 break-words font-mono text-[11px] leading-4 text-[var(--color-text-secondary)]'>{item.prompt || '无提示词文本'}</p>
+      {tagLabels.length > 0 && <div className='mt-1.5 flex flex-wrap gap-1'>{tagLabels.slice(0, 3).map(label => <Badge key={label} tone='neutral'>{label}</Badge>)}</div>}
+      {/* One action row, never wrapping: a 148px card squeezed “应用到提示词” into two lines and pushed
+          the copy/preview icons onto their own row. Icon-only copy keeps the row inside the card. */}
+      <div className='mt-auto flex items-center gap-1 pt-2'>
+        <IconButton icon={Copy} label={`复制 ${item.name}`} onClick={onCopy} />
+        <IconButton icon={Eye} label={`预览 ${item.name}`} onClick={onPreview} />
+        {/* Text only: an icon plus two characters did not fit a 148px card and wrapped to one glyph per line. */}
+        <Button size='sm' variant='primary' onClick={onApply} className='ml-auto whitespace-nowrap px-2.5 text-[11px]'>应用</Button>
       </div>
-      <Button size='sm' variant='primary' icon={FolderOpen} onClick={onApply} className='mt-3 w-full'>应用到提示词</Button>
     </div>
   )
 }
@@ -247,7 +261,7 @@ function PromptAssetCategoryBranch({ category, categoriesByParent, items, onAssi
   const categoryItems = items.filter(item => item.categoryIds?.includes(category.id))
   return <ResourceGroup id={`prompt-assets:category:${category.id}`} title={category.name} count={categoryItems.length} empty={!categoryItems.length && !children.length} forceOpen={forceOpen} contentClassName='col-span-full block'>
     <div className='col-span-full min-w-0 space-y-2' style={{ marginLeft: Math.min(depth, 4) * 10 }} onDragOver={event => event.preventDefault()} onDrop={event => { const assetId = event.dataTransfer.getData('text/prompt-asset-id'); if (assetId) void onAssign(category.id, assetId) }}>
-      {categoryItems.length > 0 && <div className='grid min-w-0 gap-3 [grid-template-columns:repeat(auto-fit,minmax(190px,1fr))]'>{categoryItems.map(renderCard)}</div>}
+      {categoryItems.length > 0 && <div className='grid min-w-0 gap-2 [grid-template-columns:repeat(auto-fill,minmax(148px,1fr))]'>{categoryItems.map(renderCard)}</div>}
       {children.map(child => <PromptAssetCategoryBranch key={child.id} category={child} categoriesByParent={categoriesByParent} items={items} onAssign={onAssign} renderCard={renderCard} forceOpen={forceOpen} depth={depth + 1} />)}
     </div>
   </ResourceGroup>
@@ -257,6 +271,7 @@ function AssetPreview({ item, onCopy, onApply }: { item: PromptAssetItem; onCopy
   return (
     <div className='flex h-full min-h-0 min-w-0 flex-1 flex-col gap-4'>
       <div className='flex min-w-0 flex-wrap gap-2'><SourceBadge item={item} />{item.nsfw && <Badge tone='danger'>NSFW</Badge>}{item.variantCount > 0 && <Badge>{item.variantCount} 个变体</Badge>}</div>
+      {item.coverUrl && <img src={item.coverUrl} alt={item.name || '提示词示例图'} className='max-h-[40vh] w-full rounded-lg border border-[var(--color-border)] object-contain' />}
       {item.detail && <p className='rounded-lg bg-[var(--color-bg-secondary)] px-3 py-2 text-xs leading-5 text-[var(--color-text-secondary)]'>{item.detail}</p>}
       <pre className='min-h-0 max-h-none min-w-0 flex-1 overflow-auto whitespace-pre-wrap break-words rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-primary)] p-4 text-xs leading-5 text-[var(--color-text-primary)]'>{item.prompt || '该资产没有可显示的提示词文本'}</pre>
       <div className='flex flex-row flex-wrap gap-2'><Button icon={Copy} onClick={onCopy} className='flex-1'>复制原文</Button><Button variant='primary' icon={FolderOpen} onClick={onApply} className='flex-1'>应用到提示词</Button></div>

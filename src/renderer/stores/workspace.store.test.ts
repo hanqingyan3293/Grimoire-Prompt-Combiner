@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it } from 'vitest'
-import { getDefaultLayout, isPersistablePanelType, useWorkspaceStore, type WorkspacePanelRect } from './workspace.store'
+import { createWorkspacePersistenceDocument, getDefaultLayout, isPersistablePanelType, useWorkspaceStore, type WorkspacePanelRect } from './workspace.store'
 
 function resetWorkspace() {
   window.localStorage.clear()
@@ -16,8 +16,17 @@ function resetWorkspace() {
 afterEach(resetWorkspace)
 
 describe('workspace panel persistence', () => {
+  it('keeps an editor ID equal to its panel ID stable across repeated canonical restores', () => {
+    resetWorkspace()
+    const document=createWorkspacePersistenceDocument()
+    useWorkspaceStore.getState().applyPersistenceDocument(1,document)
+    const first=useWorkspaceStore.getState().findPanel('compose','left-sidebar')!
+    expect(first.tabs?.[0].id).toBe('left-sidebar')
+    useWorkspaceStore.getState().applyPersistenceDocument(2,createWorkspacePersistenceDocument())
+    expect(useWorkspaceStore.getState().findPanel('compose','left-sidebar')?.tabs?.[0].id).toBe('left-sidebar')
+  })
   it('accepts all enabled tool panel types used by saved layouts', () => {
-    for (const type of ['tasks', 'wd14', 'comfyui', 'canvas', 'prompt-assets', 'logs', 'provider-manager', 'model-manager', 'tag-asset-manager', 'tag-batch', 'gallery-search']) {
+    for (const type of ['tasks', 'wd14', 'comfyui', 'canvas', 'prompt-assets', 'logs', 'provider-manager', 'model-manager', 'tag-asset-manager', 'gallery-search']) {
       expect(isPersistablePanelType(type)).toBe(true)
     }
   })

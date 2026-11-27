@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { createTask, retryTask, taskEvent, transitionTask } from './task-state'
+import { createTask, retryDelayMs, retryTask, taskEvent, transitionTask } from './task-state'
 
 describe('task state machine', () => {
   it('allows queued to running to succeeded', () => {
@@ -22,10 +22,18 @@ describe('task state machine', () => {
   it('requeues failed tasks until the retry limit is reached', () => {
     const created = createTask({ kind: 'wd14', input: {}, maxRetries: 1 })
     const failed = transitionTask(transitionTask(created, 'running'), 'failed', { error_code: 'WORKER_ERROR' })
-    const queued = retryTask(failed)
+    const queued = retryTask(failed, new Date('2026-09-04T00:00:01.000Z'))
     expect(queued.status).toBe('queued')
     expect(queued.retry_count).toBe(1)
+    expect(queued.next_attempt_at).toBe('2026-09-04T00:00:02.000Z')
     const failedAgain = transitionTask(transitionTask(queued, 'running'), 'failed')
     expect(() => retryTask(failedAgain)).toThrow('最大重试')
+  })
+
+  it('calculates bounded exponential retry delays from the next retry count', () => {
+    expect(retryDelayMs(0)).toBe(1000)
+    expect(retryDelayMs(1)).toBe(2000)
+    expect(retryDelayMs(5)).toBe(30000)
+    expect(retryDelayMs(99)).toBe(30000)
   })
 })

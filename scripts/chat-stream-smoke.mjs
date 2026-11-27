@@ -8,8 +8,25 @@ import fs from 'node:fs'
 import http from 'node:http'
 import os from 'node:os'
 import path from 'node:path'
+import { buildFingerprint } from './journey-evidence.mjs'
 
 const root = process.cwd()
+const walkFiles = dir => {
+  const files = []
+  const walk = current => {
+    if (!fs.existsSync(current)) return
+    for (const entry of fs.readdirSync(current, { withFileTypes: true })) {
+      const file = path.join(current, entry.name)
+      if (entry.isDirectory()) walk(file)
+      else files.push(file)
+    }
+  }
+  walk(dir)
+  return files.sort()
+}
+const compiledFiles = walkFiles(path.join(root, 'dist'))
+const shellFile = path.join(root, 'src/vendor/cherry/compat/dist-source-shell/source-shell.html')
+const build = buildFingerprint([...compiledFiles, ...(fs.existsSync(shellFile) ? [shellFile] : [])], { root })
 const userData = fs.mkdtempSync(path.join(os.tmpdir(), 'grimoire-stream-'))
 const port = 18000 + Math.floor(Math.random() * 900)
 const debugPort = 9300 + Math.floor(Math.random() * 90)
@@ -71,7 +88,7 @@ function teardown() {
   }
 }
 
-const child = spawn(process.platform === 'win32' ? 'npx.cmd' : 'npx', ['electron', '.', '--user-data-dir=' + userData, '--remote-debugging-port=' + debugPort], {
+const child = spawn(process.platform === 'win32' ? 'npx.cmd' : 'npx', ['electron', '.', '--user-data-dir=' + userData, '--remote-debugging-address=127.0.0.1', '--remote-debugging-port=' + debugPort], {
   cwd: root,
   env: { ...process.env, ELECTRON_RUN_AS_NODE: undefined, GRIMOIRE_OPEN_CHERRY: '1' },
   stdio: 'ignore',
@@ -83,7 +100,7 @@ for (let i = 0; i < 90 && !target; i += 1) {
   await sleep(1000)
   try {
     const list = await (await fetch('http://127.0.0.1:' + debugPort + '/json/list')).json()
-    target = list.find(entry => entry.url && entry.url.includes('cherry') && entry.url.includes('index.html'))
+     target = list.find(entry => entry.type === 'page' && /cherry[\\/-].*\/index\.html/.test(entry.url))
   } catch {}
 }
 if (!target) { console.log(JSON.stringify({ ok: false, error: 'NO_CHERRY_WINDOW' })); teardown(); server.close(); process.exit(1) }
@@ -110,10 +127,19 @@ async function evaluate(expression) {
 
 const pageScript = `(async () => {
   const api = window.api
-  const diagnostics = { hasApi: !!api, hasIpcApi: !!(api && api.ipcApi), href: location.href }
-  const saved = await api.providers.save({ name: 'Smoke', access_mode: 'api', protocol: 'chat_completions', base_url: 'http://127.0.0.1:${port}/v1', api_key: 'smoke-key', default_model: 'smoke-model', models: ['smoke-model'] })
-  const providerId = saved && saved.id ? saved.id : (await api.providers.list())[0].id
-  await api.providers.setActive(providerId)
+  const diagnostics = { hasApi: !!api, hasIpcApi: !!(api && api.ipcApi), hasProviders: !!(api && api.providers), href: location.href }
+  let providerId
+  if (api?.providers) {
+    const saved = await api.providers.save({ name: 'Smoke', access_mode: 'api', protocol: 'chat_completions', base_url: 'http://127.0.0.1:${port}/v1', api_key: 'smoke-key', default_model: 'smoke-model', models: ['smoke-model'] })
+    providerId = saved && saved.id ? saved.id : (await api.providers.list())[0].id
+    await api.providers.setActive(providerId)
+  } else if (api?.dataApi) {
+    const response = await api.dataApi.request({ id: 'stream-smoke-provider', method: 'POST', path: '/providers', body: { name: 'Smoke', endpointConfigs: { openai: { baseUrl: 'http://127.0.0.1:${port}/v1' } }, defaultChatEndpoint: 'openai', settings: { defaultModel: 'smoke-model' }, models: [{ id: 'smoke-model', name: 'smoke-model' }], apiKeys: [{ key: 'smoke-key', isEnabled: true }] } })
+    const created = response && response.data ? response.data : response
+    providerId = created && created.id ? created.id : (await api.dataApi.request({ id: 'stream-smoke-provider-list', method: 'GET', path: '/providers' })).data[0].id
+  } else {
+    throw new Error('provider bridge unavailable: ' + JSON.stringify(diagnostics))
+  }
   const runTurn = async (topicId, options = {}) => {
     const chunks = []
     let terminal = null
@@ -174,6 +200,14 @@ const pageScript = `(async () => {
 
 let report
 try {
+  const readinessDeadline = Date.now() + 30000
+  let readiness
+  do {
+    readiness = await evaluate(`({ href: location.href, ready: location.href !== 'about:blank' && typeof window.api?.ipcApi?.request === 'function' && typeof window.api?.ai?.sessions?.create === 'function' })`)
+    if (readiness?.ready) break
+    await sleep(200)
+  } while (Date.now() < readinessDeadline)
+  if (!readiness?.ready) throw new Error('PRELOAD_NOT_READY: ' + JSON.stringify({ targetUrl: target.url, ...readiness }))
   report = await evaluate(pageScript)
 } catch (error) {
   report = { error: String(error) }
@@ -187,7 +221,10 @@ const approvalOk = !!report && !!report.approval && report.approval.approvalIds.
 // a failed turn and surfaces the reason; the smoke asserts that terminal fact, not a hang.
 const denialOk = !!report && !!report.denial && report.denial.approvalIds.length > 0 && !!report.denial.terminal && !!report.denial.terminal.error && String(report.denial.terminal.error.message).includes('权限被拒绝')
 const ok = text === EXPECTED && !!report && !!report.terminal && report.terminal.status === 'success' && persistedText && agentOk && approvalOk && denialOk && !!report && !!report.vision && report.vision.success === true && report.vision.text === '看到图片'
-console.log(JSON.stringify({ ok, expected: EXPECTED, chat: { text, persisted: report?.persisted, ack: report?.ack, terminal: report?.terminal, chunkTypes: report?.chunkTypes }, agent: report?.agent, approval: report?.approval, denial: report?.denial, toolSession: report?.toolSession, vision: report?.vision,  diagnostics: report?.diagnostics, error: report?.error }, null, 2))
+const json = JSON.stringify({ ok, buildSha256: build.combinedSha256, build, expected: EXPECTED, chat: { text, persisted: report?.persisted, ack: report?.ack, terminal: report?.terminal, chunkTypes: report?.chunkTypes }, agent: report?.agent, approval: report?.approval, denial: report?.denial, toolSession: report?.toolSession, vision: report?.vision,  diagnostics: report?.diagnostics, error: report?.error }, null, 2)
+const outArg = process.argv.find(arg => arg.startsWith('--out='))?.slice('--out='.length)
+if (outArg) fs.writeFileSync(path.resolve(outArg), json + String.fromCharCode(10))
+console.log(json)
 socket.close()
 teardown()
 server.close()

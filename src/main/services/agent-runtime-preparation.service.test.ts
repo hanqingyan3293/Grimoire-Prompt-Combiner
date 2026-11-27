@@ -4,6 +4,7 @@ import path from 'node:path'
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest'
 import { initDatabase, closeDatabase } from '../database'
 import { prepareNativeRuntime } from './agent-runtime-preparation.service'
+import { createAiSession } from './ai-session.service'
 
 vi.mock('electron', () => ({ app: { getPath: () => 'D:/runtime-prep-test' } }))
 vi.mock('./agent-runtime-manager', () => ({
@@ -25,5 +26,22 @@ describe('native runtime preparation', () => {
   it('refuses missing providers and unsupported OAuth routes before launch', async () => {
     await expect(prepareNativeRuntime({ store: 'ai', sessionId: 's', kind: 'pi', provider: null, model: 'm', metadata: {} })).rejects.toThrow('PROVIDER_REQUIRED')
     await expect(prepareNativeRuntime({ store: 'ai', sessionId: 's', kind: 'pi', provider: { id: 'p', base_url: 'https://p.invalid', access_mode: 'login' }, model: 'm', metadata: {} })).rejects.toThrow('OAUTH_ROUTE')
+  })
+
+  it('keeps the opt-in Pi SDK query path separate from the RPC command', async () => {
+    const previous = process.env.GRIMOIRE_PI_SDK_RUNTIME
+    process.env.GRIMOIRE_PI_SDK_RUNTIME = '1'
+    try {
+      const sessionId = createAiSession({ runtime: 'pi', modelId: 'm' }).id
+      const prepared = await prepareNativeRuntime({ store: 'ai', sessionId, kind: 'pi', provider: { id: 'p', base_url: 'https://p.invalid', api_key: 'k' }, model: 'm', metadata: {} })
+      expect(prepared.config.driver).toBe('pi-sdk')
+      expect(prepared.config.command).toBeUndefined()
+      expect(prepared.config.args).toBeUndefined()
+      expect(prepared.config.sdk).toMatchObject({ enabled: true, ownerId: 'ai:' + sessionId })
+      expect(prepared.identity.driver).toBe('pi-sdk')
+    } finally {
+      if (previous === undefined) delete process.env.GRIMOIRE_PI_SDK_RUNTIME
+      else process.env.GRIMOIRE_PI_SDK_RUNTIME = previous
+    }
   })
 })

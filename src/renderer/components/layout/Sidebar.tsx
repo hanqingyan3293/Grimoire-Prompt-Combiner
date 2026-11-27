@@ -4,6 +4,7 @@ import { useTagsStore } from "../../stores/tags.store"
 import { useFavoritesStore } from "../../stores/favorites.store"
 import { usePromptsStore } from "../../stores/prompts.store"
 import { Modal } from "../ui/Modal"
+import { Check, CheckSquare, ChevronDown, CircleDot, Download, Folder, Pencil, Plus, Share2, Square, Star, StarOff, Tags, X } from "lucide-react"
 import { FavoritesPanel } from "./FavoritesPanel"
 
 type TabType = "tags" | "favorites"
@@ -233,11 +234,11 @@ const handleCtxEdit = () => {
       <div className="ui-toolbar flex">
         <button onClick={() => setActiveTab("tags")}
           className={"ui-nav-tab flex-1 py-2 " + (activeTab === "tags" ? "ui-nav-tab-active" : "")}>
-          🏷 标签库
+          <span className="inline-flex items-center gap-1.5"><Tags size={14} aria-hidden='true' />标签库</span>
         </button>
         <button onClick={() => setActiveTab("favorites")}
           className={"ui-nav-tab flex-1 py-2 " + (activeTab === "favorites" ? "ui-nav-tab-active" : "")}>
-          ⭐ 收藏
+          <span className="inline-flex items-center gap-1.5"><Star size={14} aria-hidden='true' />收藏</span>
         </button>
       </div>
 
@@ -248,16 +249,16 @@ const handleCtxEdit = () => {
               placeholder="搜索..."
               className="flex-1 px-3 py-2 bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded text-xs text-[var(--color-text-primary)] placeholder-[var(--color-text-secondary)] focus:outline-none focus:border-[var(--color-accent)]" />
             <button onClick={handleClearAll} title="清除全部选中"
-              className="ui-subtle-button px-2 py-2 text-xs hover:text-red-400">✕</button>
+              className="ui-subtle-button px-2 py-2 text-xs hover:text-red-400"><X size={13} aria-hidden='true' /></button>
           </div>
 
                                         <div className="p-2 border-b border-[var(--color-border)]">
             <button onClick={() => setGroupMenuOpen(!groupMenuOpen)}
               className="ui-subtle-button flex w-full items-center gap-2 px-3 py-2 text-sm font-medium">
-              <span className="text-base">{'📁'}</span>
+              <Folder size={16} className="shrink-0" aria-hidden='true' />
               <span className="truncate">标签组</span>
               <span className="text-xs text-[var(--color-text-secondary)]">{groups.length}</span>
-              <span className="ml-auto text-xs transition-transform" style={{ transform: groupMenuOpen ? 'rotate(180deg)' : 'rotate(0deg)' }}>▼</span>
+              <span className="ml-auto text-xs transition-transform" style={{ transform: groupMenuOpen ? 'rotate(180deg)' : 'rotate(0deg)' }}><ChevronDown size={13} aria-hidden='true' /></span>
             </button>
             {groupMenuOpen && (
               <div className="ui-popover-surface mt-1">
@@ -268,7 +269,7 @@ const handleCtxEdit = () => {
                   {groups.map((g: any) => (
                     <div key={g.id}
                       className={"flex items-center gap-2 px-3 py-2 text-sm transition-colors " + (g.id === activeGroupId ? "ui-tree-row-active" : "ui-tree-row")}>
-                      {g.id === activeGroupId && <span className="text-xs">◉</span>}
+                      {g.id === activeGroupId && <CircleDot size={12} className="shrink-0" aria-hidden='true' />}
                       {renamingGroup?.id === g.id ? (
                         <input value={renamingGroup?.name || ''}
                           onChange={e => setRenamingGroup({ id: g.id, name: e.target.value })}
@@ -282,14 +283,14 @@ const handleCtxEdit = () => {
                       {g.id === activeGroupId && !renamingGroup && (
                         <div className="flex gap-0.5">
                           <button onClick={(e) => { e.stopPropagation(); setRenamingGroup({ id: g.id, name: g.name }) }}
-                            className="px-1.5 py-0.5 text-xs text-[var(--color-text-secondary)] hover:text-[var(--color-accent-text)] rounded" title="重命名">✏</button>
+                            className="px-1.5 py-0.5 text-xs text-[var(--color-text-secondary)] hover:text-[var(--color-accent-text)] rounded" title="重命名"><Pencil size={12} aria-hidden='true' /></button>
                           <button onClick={(e) => { e.stopPropagation(); exportGroup(g.id) }}
-                            className="px-1.5 py-0.5 text-xs text-[var(--color-text-secondary)] hover:text-[var(--color-accent-text)] rounded" title="导出">📤</button>
+                            className="px-1.5 py-0.5 text-xs text-[var(--color-text-secondary)] hover:text-[var(--color-accent-text)] rounded" title="导出"><Share2 size={12} aria-hidden='true' /></button>
                         </div>
                       )}
                       {g.id !== activeGroupId && !renamingGroup && (
                         <button onClick={(e) => { e.stopPropagation(); deleteGroup(g.id) }}
-                          className="px-1.5 py-0.5 text-xs text-[var(--color-text-secondary)] hover:text-red-400 rounded" title="删除">✕</button>
+                          className="px-1.5 py-0.5 text-xs text-[var(--color-text-secondary)] hover:text-red-400 rounded" title="删除"><X size={12} aria-hidden='true' /></button>
                       )}
                     </div>
                   ))}
@@ -308,12 +309,12 @@ const handleCtxEdit = () => {
                   ) : (
                     <button onClick={() => setShowNewGroupInput(true)}
                       className="ui-menu-item flex items-center gap-2 px-3 py-1.5 text-xs">
-                      <span>➕</span> 新建标签组
+                      <Plus size={13} aria-hidden='true' /> 新建标签组
                     </button>
                   )}
                   <button onClick={importGroup}
                     className="ui-menu-item flex items-center gap-2 px-3 py-1.5 text-xs">
-                    <span>📥</span> 导入标签组
+                    <Download size={13} aria-hidden='true' /> 导入标签组
                   </button>
                 </div>
               </div>
@@ -333,9 +334,9 @@ const handleCtxEdit = () => {
                     <span className="flex-1 text-sm font-medium text-[var(--color-text-primary)]">{cat.zh}</span>
                     <span className="ui-count-badge">{cat.subcategories.length}</span>
                     <button onClick={(e) => { e.stopPropagation(); setEditModal({ type: "category", id: cat.id, zh: cat.zh }); setEditZh(cat.zh) }}
-                      className="text-[10px] text-[var(--color-text-secondary)] hover:text-[var(--color-accent-text)] px-1" title="编辑">✏</button>
+                      className="text-[10px] text-[var(--color-text-secondary)] hover:text-[var(--color-accent-text)] px-1" title="编辑"><Pencil size={12} aria-hidden='true' /></button>
                     <button onClick={(e) => { e.stopPropagation(); setDeleteConfirm({ type: "category", id: cat.id, name: cat.zh }) }}
-                      className="text-[10px] text-[var(--color-text-secondary)] hover:text-red-400 px-1" title="删除">✕</button>
+                      className="text-[10px] text-[var(--color-text-secondary)] hover:text-red-400 px-1" title="删除"><X size={12} aria-hidden='true' /></button>
                   </div>
                   {isExpanded && (
                     <div className="border-t border-[var(--color-border)]/50 bg-[var(--color-bg-primary)]/30">
@@ -347,13 +348,13 @@ const handleCtxEdit = () => {
                             onClick={() => store.toggleSubSelect(sub.id)}
                             onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); setCtxMenu({ x: e.clientX, y: e.clientY, type: "subcategory", id: sub.id, name: sub.zh, parentId: cat.id }) }}
                     className={"flex cursor-pointer items-center gap-1 pl-5 pr-2 py-1.5 text-xs group " + (sel ? "ui-tree-row-active" : "ui-tree-row")}>
-                            <span className="flex-1">{sub.zh}{isFav ? " ⭐" : ""}</span>
+                            <span className="flex-1">{sub.zh}{isFav ? <Star size={11} className="ml-1 inline text-[var(--color-warning)]" aria-hidden='true' /> : null}</span>
                             <span className="text-[9px] opacity-50 w-5 text-right">{sub.tags.length}</span>
-                            {sel && <span className="text-[10px]">✓</span>}
+                            {sel && <Check size={11} aria-hidden='true' />}
                             <button onClick={(e) => { e.stopPropagation(); setEditModal({ type: "subcategory", id: sub.id, parentId: cat.id, zh: sub.zh }); setEditZh(sub.zh) }}
-                              className="opacity-0 group-hover:opacity-100 text-[10px] text-[var(--color-text-secondary)] hover:text-[var(--color-accent-text)] px-0.5" title="编辑">✏</button>
+                              className="opacity-0 group-hover:opacity-100 text-[10px] text-[var(--color-text-secondary)] hover:text-[var(--color-accent-text)] px-0.5" title="编辑"><Pencil size={12} aria-hidden='true' /></button>
                             <button onClick={(e) => { e.stopPropagation(); setDeleteConfirm({ type: "subcategory", id: sub.id, name: sub.zh }) }}
-                              className="opacity-0 group-hover:opacity-100 text-[10px] text-[var(--color-text-secondary)] hover:text-red-400 px-0.5" title="删除">✕</button>
+                              className="opacity-0 group-hover:opacity-100 text-[10px] text-[var(--color-text-secondary)] hover:text-red-400 px-0.5" title="删除"><X size={12} aria-hidden='true' /></button>
                           </div>
                         )
                       })}
@@ -385,20 +386,20 @@ const handleCtxEdit = () => {
         <div className="fixed z-50 bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded shadow-lg py-1 min-w-[140px]"
           style={{ left: ctxMenu.x, top: ctxMenu.y }}>
           <button onClick={handleCtxEdit}
-            className="w-full text-left px-3 py-2 text-xs text-[var(--color-text-primary)] hover:bg-[var(--color-accent)]/10 flex items-center gap-2">✏ 编辑</button>
+            className="w-full text-left px-3 py-2 text-xs text-[var(--color-text-primary)] hover:bg-[var(--color-accent)]/10 flex items-center gap-2"><Pencil size={12} aria-hidden='true' /> 编辑</button>
           {ctxMenu.type === "category" && (
             <button onClick={handleCtxSelectAll}
-              className="w-full text-left px-3 py-2 text-xs text-[var(--color-text-primary)] hover:bg-[var(--color-accent)]/10 flex items-center gap-2">☑ 全选子类</button>
+              className="w-full text-left px-3 py-2 text-xs text-[var(--color-text-primary)] hover:bg-[var(--color-accent)]/10 flex items-center gap-2"><CheckSquare size={12} aria-hidden='true' /> 全选子类</button>
           )}
           {ctxMenu.type === "subcategory" && (
             <button onClick={handleCtxFavSub}
               className="w-full text-left px-3 py-2 text-xs text-[var(--color-text-primary)] hover:bg-[var(--color-accent)]/10 flex items-center gap-2">
-              ⭐ {favStore.isSubFav(ctxMenu.id) ? "取消收藏" : "收藏此子类"}
+              <Star size={12} aria-hidden='true' /> {favStore.isSubFav(ctxMenu.id) ? "取消收藏" : "收藏此子类"}
             </button>
           )}
           <div className="border-t border-[var(--color-border)]/50 my-1" />
           <button onClick={handleCtxDelete}
-            className="w-full text-left px-3 py-2 text-xs text-red-400 hover:bg-red-400/10 flex items-center gap-2">✕ 删除</button>
+            className="w-full text-left px-3 py-2 text-xs text-red-400 hover:bg-red-400/10 flex items-center gap-2"><X size={12} aria-hidden='true' /> 删除</button>
         </div>
       )}
 
@@ -413,7 +414,7 @@ const handleCtxEdit = () => {
             else ps.addPositive(favCtxMenu.tag, favCtxMenu.catZh, favCtxMenu.subZh)
             setFavCtxMenu(null)
           }} className="w-full text-left px-4 py-2 text-sm text-[var(--color-text-primary)] hover:bg-[var(--color-accent)]/15">
-            ☑ {new Set(usePromptsStore.getState().positive.map(p => p.tag.id)).has(favCtxMenu.tag.id) ? "✓ 取消正面" : "加入正面"}
+            {(() => { const active = new Set(usePromptsStore.getState().positive.map(p => p.tag.id)).has(favCtxMenu.tag.id); return <>{active ? <CheckSquare size={12} aria-hidden='true' /> : <Square size={12} aria-hidden='true' />} {active ? "取消正面" : "加入正面"}</> })()}
           </button>
           <button onClick={() => {
             const ps = usePromptsStore.getState()
@@ -422,11 +423,11 @@ const handleCtxEdit = () => {
             else ps.addNegative(favCtxMenu.tag, favCtxMenu.catZh, favCtxMenu.subZh)
             setFavCtxMenu(null)
           }} className="w-full text-left px-4 py-2 text-sm text-[var(--color-text-primary)] hover:bg-[var(--color-accent)]/15">
-            ☒ {favCtxMenu.isNegative ? "✓ 取消负面" : "加入负面"}
+            {favCtxMenu.isNegative ? <CheckSquare size={12} aria-hidden='true' /> : <Square size={12} aria-hidden='true' />} {favCtxMenu.isNegative ? "取消负面" : "加入负面"}
           </button>
           <div className="border-t border-[var(--color-border)] my-1" />
           <button onClick={() => { favStore.toggleTagFav(favCtxMenu.tag.id); setFavCtxMenu(null) }}
-            className="w-full text-left px-4 py-2 text-sm text-[var(--color-text-primary)] hover:bg-[var(--color-accent)]/15">★ 取消收藏</button>
+            className="w-full text-left px-4 py-2 text-sm text-[var(--color-text-primary)] hover:bg-[var(--color-accent)]/15"><StarOff size={12} aria-hidden='true' /> 取消收藏</button>
         </div>
       </>)}
 

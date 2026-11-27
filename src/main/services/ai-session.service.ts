@@ -1,10 +1,11 @@
 import crypto from "crypto"
-import fs from "fs"
 import type { AiAttachmentRecord, AiEventRecord, AiEventType, AiMessageRecord, AiMessageRole, AiMessageStatus, AiPermissionRecord, AiRuntimeKind, AiSessionKind, AiSessionRecord, AiSessionStatus } from "../../shared/ai-types"
 import { getDatabase, saveDatabase } from "../database"
 import { toAiMessagePartsContent } from "../../shared/ai-message-parts"
 import { compareOrderKeysEmptyLast, evenlySpacedKeys, hasRoomBetween, orderKeyBetween } from "./resource-order"
 import { preserveRuntimeMetadata, publicRuntimeMetadata } from './agent-runtime-reference.service'
+import { cleanupAiAttachmentCopies } from './ai-attachment.service'
+import { copyFinalizationFailure, OwnedCopyCleanupError, type OwnedCopyCleanupResult } from './owned-copy-cleanup'
 
 function parseJson<T>(value: unknown, fallback: T): T {
   try {
@@ -349,6 +350,10 @@ export function createAiPermission(input: { sessionId: string; requestId: string
 export function resolveAiPermission(input: { requestId: string; decision: AiPermissionRecord['decision'] }): AiPermissionRecord | null {
   const row = getDatabase().exec('SELECT id,session_id,request_id,permission,detail_json,decision,created_at,resolved_at FROM ai_permissions WHERE request_id=?', [input.requestId])[0]?.values?.[0]
   if (!row) return null
+  // A permission decision is terminal. Keeping the first value means the IPC
+  // answer and the send loop cannot overwrite one another with a second
+  // (possibly downgraded) decision.
+  if (String(row[5] || 'pending') !== 'pending') return permissionFromRow(row)
   const resolvedAt = new Date().toISOString()
   getDatabase().run('UPDATE ai_permissions SET decision=?,resolved_at=? WHERE request_id=?', [input.decision, resolvedAt, input.requestId])
   saveDatabase()
@@ -402,16 +407,21 @@ export function importAiSessionSnapshot(input: { session?: Partial<AiSessionReco
 }
 
 export function deleteAiSession(id: string): boolean {
-  const attachments = getDatabase().exec('SELECT file_path FROM ai_attachments WHERE session_id=? AND status<>\'deleted\'', [id])[0]?.values || []
-  const result = getDatabase().run('DELETE FROM ai_sessions WHERE id=?', [id])
-  getDatabase().run("DELETE FROM cherry_resource_state WHERE entity_type='session' AND entity_id=?", [id])
-  for (const row of attachments) {
-    const filePath = String(row[0] || '')
-    if (!filePath) continue
-    const refs = getDatabase().exec('SELECT COUNT(*) FROM ai_attachments WHERE file_path=? AND status<>\'deleted\'', [filePath])[0]?.values?.[0]?.[0]
-    if (Number(refs || 0) === 0) fs.promises.unlink(filePath).catch(() => {})
+  const db = getDatabase()
+  let cleanup: OwnedCopyCleanupResult | undefined
+  db.exec('BEGIN IMMEDIATE')
+  try {
+    const attachments = db.exec("SELECT id FROM ai_attachments WHERE session_id=? AND status<>'deleted' ORDER BY rowid", [id])[0]?.values || []
+    cleanup = cleanupAiAttachmentCopies(attachments.map(row => String(row[0])))
+    if (cleanup.status !== 'completed') throw new OwnedCopyCleanupError('AI_ATTACHMENT_CLEANUP_FAILED', cleanup)
+    const result = db.run('DELETE FROM ai_sessions WHERE id=?', [id])
+    db.run("DELETE FROM cherry_resource_state WHERE entity_type='session' AND entity_id=?", [id])
+    db.exec('COMMIT')
+    saveDatabase()
+    return Number(result.changes || 0) > 0
+  } catch (error) {
+    try { db.exec('ROLLBACK') } catch (rollbackError) { console.debug('[sessions] rollback settled', rollbackError) }
+    if (cleanup && !(error instanceof OwnedCopyCleanupError)) throw new OwnedCopyCleanupError('AI_ATTACHMENT_DELETE_DB_FAILED', copyFinalizationFailure(cleanup, error, id))
+    throw error
   }
-  saveDatabase()
-  return Number(result.changes || 0) > 0
 }
-

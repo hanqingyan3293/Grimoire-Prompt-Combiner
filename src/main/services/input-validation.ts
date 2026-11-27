@@ -1,3 +1,7 @@
+import { isIP } from 'node:net'
+import { classifyComfyIpAddress } from '../../integrations/cherry/comfy-source-loader'
+import { requireComfyExecutionEndpoint } from '../../shared/comfy-execution'
+
 const MAX_TEXT_LENGTH = 10000
 
 export function requireText(value: unknown, field: string, maxLength = MAX_TEXT_LENGTH): string {
@@ -31,6 +35,44 @@ export function requireHttpUrl(value: unknown, field = 'URL'): string {
   const isLoopback = url.hostname === '127.0.0.1' || url.hostname === 'localhost' || url.hostname === '[::1]'
   if (url.protocol !== 'https:' && !(url.protocol === 'http:' && isLoopback)) throw new Error(field + ' 必须使用 HTTPS；本机服务才允许 HTTP')
   return raw.replace(/\/+$/, '')
+}
+
+export function requireComfyAddress(value: unknown, field = 'ComfyUI 地址'): string {
+  const raw = requireComfyRequestUrl(value, field).replace(/\/+$/, '')
+  return requireComfyExecutionEndpoint(raw)
+}
+
+/** Resource URLs keep their query; configured endpoints use the frozen C1 grammar. */
+export function requireComfyRequestUrl(value: unknown, field = 'ComfyUI 请求地址'): string {
+  const raw = requireText(value, field, 2048)
+  let url: URL
+  try { url = new URL(raw) } catch { throw new Error(field + ' 格式无效') }
+  if (url.protocol !== 'http:' && url.protocol !== 'https:') throw new Error(field + ' 必须使用 HTTP 或 HTTPS')
+  if (url.username || url.password) throw new Error(field + ' 不能包含凭据（用户名或密码）')
+  if (/\s/.test(raw)) throw new Error(field + ' 不能包含空白')
+  if (raw.includes('#')) throw new Error(field + ' 不能包含 hash 片段')
+  const host = stripIpv6Brackets(url.hostname).toLowerCase()
+  const isLoopback = host === '127.0.0.1' || host === 'localhost' || host === '::1'
+  if (!isLoopback) {
+    if (url.protocol === 'http:') throw new Error(field + ' 必须使用 HTTPS；只有本机回环地址允许 HTTP')
+    if (isUnsafeComfyLiteral(host)) throw new Error(field + ' 不能指向私有、链路本地或元数据地址')
+  }
+  return raw
+}
+
+export function comfyAddressOrDefault(value: unknown, fallback: string, onInvalid?: (error: unknown) => void): string {
+  try { return requireComfyAddress(value) } catch (error) {
+    onInvalid?.(error)
+    return requireComfyAddress(fallback)
+  }
+}
+
+function stripIpv6Brackets(hostname: string): string {
+  return hostname.startsWith('[') && hostname.endsWith(']') ? hostname.slice(1, -1) : hostname
+}
+
+function isUnsafeComfyLiteral(host: string): boolean {
+  return isIP(host) !== 0 && !classifyComfyIpAddress(host).public
 }
 
 export function optionalBoundedNumber(value: unknown, field: string, min: number, max: number): number | null | undefined {

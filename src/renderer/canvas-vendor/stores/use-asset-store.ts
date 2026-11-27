@@ -13,7 +13,7 @@ type AssetStore = {
   assets: Asset[]
   addAsset: (asset: Omit<Asset, 'id' | 'createdAt' | 'updatedAt'>) => string
   updateAsset: (id: string, patch: Partial<Omit<Asset, 'id' | 'createdAt'>>) => void
-  removeAsset: (id: string) => void
+  removeAsset: (id: string) => Promise<void>
   replaceAssets: (assets: Asset[]) => void
   cleanupImages: (extra?: unknown) => void
   refresh: () => Promise<void>
@@ -76,10 +76,11 @@ export const useAssetStore = create<AssetStore>((set, get) => ({
     return id
   },
   updateAsset: (id, patch) => set(state => ({ assets: state.assets.map(asset => asset.id === id ? ({ ...asset, ...patch, updatedAt: new Date().toISOString() } as Asset) : asset) })),
-  removeAsset: (id) => {
+  removeAsset: async (id) => {
+    if (id.startsWith('image:') && !await window.api.images.delete(Number(id.slice(6)))) throw new Error('图片删除未完成，请重试')
+    if (id.startsWith('prompt:') && !await window.api.promptAssets.delete(id.slice(7))) throw new Error('提示词删除未完成，请重试')
     set(state => ({ assets: state.assets.filter(asset => asset.id !== id) }))
-    if (id.startsWith('image:')) void window.api.images.delete(Number(id.slice(6))).then(() => get().refresh()).catch(console.error)
-    if (id.startsWith('prompt:')) void window.api.promptAssets.delete(id.slice(7)).then(() => get().refresh()).catch(console.error)
+    if (id.startsWith('image:') || id.startsWith('prompt:')) void get().refresh().catch(error => console.error('canvas asset refresh failed after confirmed deletion', error))
   },
   replaceAssets: (assets) => set({ assets }),
   cleanupImages: () => undefined,

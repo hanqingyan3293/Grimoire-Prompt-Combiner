@@ -23,6 +23,7 @@ vi.mock('../services/app-preferences.service', () => ({ applyLaunchOnBoot: vi.fn
 vi.mock('../services/logger.service', () => ({ logEvent: vi.fn(), logError: vi.fn() }))
 
 import { initDatabase, closeDatabase, getDatabase } from '../database'
+import { configureComfyUI } from '../services/comfy-client'
 import { registerSettingsIPC } from './settings.ipc'
 
 async function call(channel: string, ...args: unknown[]): Promise<unknown> {
@@ -35,6 +36,7 @@ beforeEach(async () => {
   root = fs.mkdtempSync(path.join(os.tmpdir(), 'grimoire-settings-privacy-'))
   handlers.clear()
   send.mockClear()
+  vi.mocked(configureComfyUI).mockClear()
   await initDatabase()
   registerSettingsIPC()
 })
@@ -91,5 +93,52 @@ describe('main-only Cherry credential settings boundary', () => {
     await expect(call(IPC_CHANNELS.SETTINGS_GET_ALL)).rejects.toThrow('could not be safely decoded')
     expect(await call(IPC_CHANNELS.SETTINGS_SET, 'cherry_pref.ui.theme_mode', '"dark"')).toBe(true)
     expect(send).toHaveBeenCalledWith('data:refresh')
+  })
+})
+
+describe('ComfyUI settings address policy', () => {
+  const key = 'comfyui_base_url'
+  const defaultAddress = 'http://127.0.0.1:8188'
+
+  it('rejects a private HTTPS literal before writing the database', async () => {
+    await expect(call(IPC_CHANNELS.SETTINGS_SET, key, 'https://10.0.0.1')).rejects.toThrow('私有')
+    expect(getDatabase().exec('SELECT value FROM settings WHERE key=?', [key])[0]?.values ?? []).toHaveLength(0)
+    expect(configureComfyUI).not.toHaveBeenCalled()
+  })
+
+  it('accepts loopback HTTP and persists the normalized address', async () => {
+    await call(IPC_CHANNELS.SETTINGS_SET, key, 'http://127.0.0.1:8188/')
+    expect(getDatabase().exec('SELECT value FROM settings WHERE key=?', [key])[0].values[0][0]).toBe(defaultAddress)
+    expect(configureComfyUI).toHaveBeenCalledWith(defaultAddress)
+  })
+
+  it('accepts public HTTPS and persists the normalized address', async () => {
+    await call(IPC_CHANNELS.SETTINGS_SET, key, 'https://comfy.example.com:443/')
+    expect(getDatabase().exec('SELECT value FROM settings WHERE key=?', [key])[0].values[0][0]).toBe('https://comfy.example.com:443')
+    expect(configureComfyUI).toHaveBeenCalledWith('https://comfy.example.com:443')
+  })
+
+  it('falls back to the loopback default when the stored address fails the policy', async () => {
+    getDatabase().run('INSERT INTO settings (key,value) VALUES (?,?)', [key, 'https://10.0.0.1'])
+    const settings = await call(IPC_CHANNELS.SETTINGS_GET_ALL)
+    expect(configureComfyUI).toHaveBeenCalledWith(defaultAddress)
+    expect(settings).toMatchObject({ [key]: defaultAddress })
+    expect(getDatabase().exec('SELECT value FROM settings WHERE key=?', [key])[0].values[0][0]).toBe('https://10.0.0.1')
+  })
+
+  it.each(['https://user:synthetic@comfy.example', 'http://localhost:8188?x=1', 'http://localhost:8188/#graph'])('rejects invalid configured endpoints before DB, configuration or broadcast: %s', async endpoint => {
+    await expect(call(IPC_CHANNELS.SETTINGS_SET, key, endpoint)).rejects.toThrow()
+    expect(getDatabase().exec('SELECT value FROM settings WHERE key=?', [key])[0]?.values ?? []).toHaveLength(0)
+    expect(configureComfyUI).not.toHaveBeenCalled(); expect(send).not.toHaveBeenCalled()
+  })
+
+  it('returns the safe runtime endpoint without exporting credentials from a legacy saved URL', async () => {
+    const saved = 'https://user:synthetic-old-secret@comfy.example'
+    getDatabase().run('INSERT INTO settings (key,value) VALUES (?,?)', [key, saved])
+    const settings = await call(IPC_CHANNELS.SETTINGS_GET_ALL)
+    expect(settings).toMatchObject({ [key]: defaultAddress })
+    expect(JSON.stringify(settings)).not.toContain('synthetic-old-secret')
+    expect(configureComfyUI).toHaveBeenCalledWith(defaultAddress)
+    expect(getDatabase().exec('SELECT value FROM settings WHERE key=?', [key])[0].values[0][0]).toBe(saved)
   })
 })

@@ -1,7 +1,7 @@
 # 门禁定义（GATES）
 
 > 2026-10-27 制定。每条门禁必须**可一条命令复现**、**有明确判定**、**结果写进 STATE.md**。
-> 当前值是今天的实测，不是历史引用。改门禁定义要同步改本文并在 DECISIONS.md 记一条。
+> 本文定义判据，旧“当前”数字是注明日期的历史基线；最新事实统一见 STATE.md。2026-11-06 起执行后续计划，修改判据需同步代码/测试与 DECISIONS，禁止以更新基线掩盖失败。
 
 ## 判定总原则
 
@@ -58,7 +58,7 @@ cd src/vendor/cherry/compat && npx vitest run
 
 - 范围：`src/vendor/cherry/compat/src/**`（我们写的适配层）+ `src/shared/**`
 - 判定：这些文件里 **0 条 `error TS`**
-- **当前：2 条**（`cherry-chat-shell-entry.tsx:1097` TS2367 死分支；`CompatModelSettings.test.tsx:31` 测试里的断言类型）
+- **自有基线：0 条**（2026-10-27 已修死分支与测试类型；每次执行仍要求重新检查，自有错误不豁免）
 - 这是真门禁：它抓到过 D1 那个死分支。
 
 ### G5b 只读源码诊断：棘轮，不得增长
@@ -93,7 +93,78 @@ npm run check:cherry-css
 ```
 - 判定：≥90%（历史 98.6%）
 
-## G9 路由审计
+## G9 面板布局约定
+
+```bash
+node scripts/check-panel-layout.mjs
+```
+- 判定：不超过 `scripts/panel-layout-baseline.json`。
+
+## G10 路由覆盖
+
+```bash
+node scripts/check-route-coverage.mjs
+```
+- 判定：已挂载页面调用的 IPC/DataApi 路由全部有处理分支。
+
+## G11 样式契约
+
+```bash
+node scripts/ui-parity.mjs --style-contract
+```
+- 判定：真实渲染器 computed-style 契约与覆盖棘轮通过。
+
+## G12 静默失败棘轮
+
+```bash
+node scripts/check-silent-catches.mjs
+```
+- 判定：不得超过基线。
+
+## G13 IPC 双端接线
+
+```bash
+node scripts/check-ipc-coverage.mjs
+```
+- 判定：缺失接线仅可在明确白名单中。
+
+## G14 台账证据路径
+
+```bash
+node scripts/check-evidence-paths.mjs
+```
+- 判定：引用文件与 npm scripts 可解析。
+
+## G15 打包（M5 mandatory）
+
+```bash
+npm run verify:pack
+npm run pack
+node scripts/m5-pack.mjs --require-pack
+```
+- 判定：asar 内**全部** `dist/**` 文件必须与当前 `dist/**` 逐文件 SHA-256 一致；`missingInAsar`、`missingInDist`、`different` 任一非空即红。许可证、Pi ESM、runtime resources 另行校验。若包已是最新，只跑 `--require-pack` 验证，不再重建导致 hash 漂移。
+- 不并入轻量默认 gates；`verify:full` 必须包含此门。
+
+## G16 秘密扫描（M5 mandatory）
+
+```bash
+npm run check:secrets
+```
+- 判定：真实 token/key/password/Authorization 格式不得进入 renderer DTO、日志、fixture、截图、manifest；公开 fixture 例外必须明确标记。
+- 规则覆盖 `sk-proj-`、`sk-ant-`、JWT、`client_secret`、`Authorization: Bearer|Basic|Token`，并有负向测试 `scripts/check-secrets.test.mjs`。
+- 扫描范围：`artifacts/**`（含最终 aggregate）与 `dist/**` 文本 + asar 内 `dist/**` 文本；明确排除 `docs/**`、`resources/**` 运行时二进制、`node_modules/**`，但 `scanText` 本身不做上下文豁免。报告必须带 `buildSha256`、`sourceShellSha256` 与 `scanManifest`（文件清单 digest + 当前 dist digest）；最后一次扫描必须包含 `final-aggregate-latest.json`。
+- fixture 例外只能是精确 `路径 + kind + 值`；当前 6 条（源/打包各 3 条），不得按目录或宽泛上下文放行。
+
+## 功能门：Packaged GUI（M5 mandatory）
+
+```bash
+npm run acceptance:packaged-gui
+```
+- 判定：真实 `release/win-unpacked/Grimoire.exe` + 隔离 `--user-data-dir` 启动；CDP 验证 main/compat preload、`app.get_info`、`isPackaged:true`、默认 compat 路由、PNG IHDR 正尺寸、settings 回读、无 uncaught；owned PID 退出、临时 profile 删除、原用户 profile 未触碰。
+- 本环境 main 窗口 loadFile 可能停在 `about:blank`；脚本可对同一 target 执行 `Page.navigate`，但必须写 `forcedNavigation`，不得冒充应用自身加载成功。
+- 输出 `artifacts/m5/packaged-gui-latest.json` 与截图目录。
+
+## 功能门：真实路由审计（非 G9 编号）
 
 ```bash
 node scripts/audit-cherry-routes.mjs
@@ -102,30 +173,19 @@ node scripts/audit-cherry-routes.mjs
 - 判定：0 content failure
 - 当前未复跑；上次 51 routes / 3 failed，**且这 3 个是信号定义问题（中文标题缺失）**——修信号再判定，不许放宽
 
-## G10 截图证据
+## 功能门：截图证据与人工验收
 
 - 判定：每条 `passed` 必须有 entry + observedRoute + action + 可见非零 bounds + PNG SHA-256 + assertion；只有 PNG 文件存在不算
+- 2026-11-04 强化：action 对普通页面必须是真实 `navigation.open_route_in_main`（不是虚构的 `CDP Input.navigation`）；PNG 必须解析 IHDR 宽高且为正整数；bounds 必须在 viewport 内；route/query 参数必须 canonical 精确绑定；证据必须绑定当前 source-shell SHA-256。
+- `surfaceCaptured`（表面已捕获）≠ `featureVerified`（功能已验证）≠ `manualAcceptance`（用户接受）。当前 `featureVerified=0`、`manualAcceptance=pending` 是事实，不是失败。
 - `manualAcceptance` 只有用户明确确认后才能从 `pending` 改
 
-## G11 打包
+## 一键跑
 
-```bash
-npm run pack
-```
-- 判定：exit 0，unpacked `app.asar` 里能动态加载 Pi SDK ESM surface
-- 当前未复跑
+`scripts/gates.mjs` 运行 G1–G14（G11 是真实渲染器样式契约）；`--fast` 跳过 G3/G4/G6，不等价完整验收。输出 `artifacts/gates-<timestamp>.json`。
 
-## G12 秘密扫描（待建）
-
-- 目标：renderer DTO、日志、fixture、截图、manifest 里不出现 api key / token / password / Authorization
-- 现状：有三个受保护 key 的读写脱敏与拒绝（见 STATE.md 第 5 节），但没有全仓扫描脚本
-- 计划：M0 里加 `scripts/check-secrets.mjs`，跑在 `artifacts/` 与 `dist/` 上
-
----
-
-## 一键跑（待建）
-
-`scripts/gates.mjs`（M0 交付）按 G1→G2→G3→G4→G5→G6→G7→G8 顺序跑，输出 JSON 摘要到 `artifacts/gates-<timestamp>.json`，任一失败即非零退出。G9/G11 需要 GUI/打包，单独 `--full` 开启。
+ `npm run verify:full` 调用 `scripts/m5-acceptance.mjs --full`，串行记录精确 G1–G14（raw logs + build before/after）、三次根测试（每次独立 `meta.json`）、25 条 journeys（五批、每批 10 分钟预算、同一当前 build、禁止旧 aggregate 继承）、B build/smoke、G15 fresh pack+exact hash+packaged ESM、packaged GUI、G16 秘密扫描、A/B 比较、capture 审核和 final aggregate。任一真实失败保持 failed；批次预算耗尽记 `budgetExhausted` 并保留 attempt，后续 bounded 重跑；人工/capture 缺项记 BLOCKED，manualAcceptance 保持 pending。
+- 只想从现有原始证据汇总而不重跑套件时：`npm run acceptance:final`（`scripts/m5-final-aggregate.mjs`）。它要求自动项精确 10 个，校验 gates 精确 G1–G14/raw log/build before-after、root 3 个 meta、journeys 25 条全当前 build 且无 sourceAggregate、pack 全 dist manifest、capture/index、packaged GUI、secrets build/manifest、source-shell B artifact hash 和 A/B 表。缺文件、旧 build、旧 hash 或子集一律 `automated-failed`、exit 1；`status=automated-passed-manual-pending` 只表示自动项齐，人工仍未接受。
 
 ## 面板布局约定（G9 强制）
 

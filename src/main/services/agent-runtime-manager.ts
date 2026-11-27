@@ -8,6 +8,10 @@ import { app } from "electron"
 import { RuntimeLeasePool, type ManagedRuntimeResource } from './agent-runtime-lease.service'
 import { runtimeWorkingDirectory, runtimeProcessEnvironment } from './agent-runtime-safety.service'
 import type { AiRuntimeKind } from "../../shared/ai-types"
+import type { RuntimeSelectionContract } from '../../shared/runtime-contract'
+import { readRuntimeFeatureFlags } from '../ai/runtime/features'
+
+export type AgentRuntimeDriver = 'provider-adapter' | 'pi-rpc' | 'pi-sdk' | 'opencode-unprepared' | 'codex-cli'
 
 export type AgentRuntimeStatus = {
   kind: AiRuntimeKind
@@ -17,6 +21,16 @@ export type AgentRuntimeStatus = {
   version: string | null
   message: string
   checkedAt: string
+  /** Main-selected driver. A CLI presence check does not override the Pi SDK gate. */
+  driver: AgentRuntimeDriver
+  contract: RuntimeSelectionContract
+}
+
+/** Main-owned UI metadata; renderers never decide provider/model mode by runtime name. */
+export function runtimeSelectionContract(kind: AiRuntimeKind): RuntimeSelectionContract {
+  return kind === 'openai-compatible' || kind === 'anthropic' || kind === 'google'
+    ? { provider: 'grimoire', model: 'catalog' }
+    : { provider: 'runtime', model: 'freeform' }
 }
 
 export type ManagedOpenCodeRuntime = {
@@ -90,15 +104,22 @@ function version(executable: string): string | null {
 
 export function inspectAgentRuntime(kind: AiRuntimeKind): AgentRuntimeStatus {
   const checkedAt = new Date().toISOString()
-  if (["openai-compatible", "anthropic", "google"].includes(kind)) return { kind, available: true, source: "system", executable: null, version: "provider-adapter", message: "由 Grimoire Provider Adapter 提供", checkedAt }
+  const contract = runtimeSelectionContract(kind)
+  if (["openai-compatible", "anthropic", "google"].includes(kind)) return { kind, available: true, source: "system", executable: null, version: "provider-adapter", message: "由 Grimoire Provider Adapter 提供", checkedAt, driver: 'provider-adapter', contract }
+  // The SDK is an in-process ESM driver. Its availability must not be tied to
+  // a `pi` CLI that the SDK path never launches.
+  if (kind === 'pi' && readRuntimeFeatureFlags().piSdk) {
+    return { kind, available: true, source: "embedded", executable: null, version: "1.0.1", message: "Pi SDK（进程内 ESM）已启用", checkedAt, driver: 'pi-sdk', contract }
+  }
+  const driver: AgentRuntimeDriver = kind === 'pi' ? 'pi-rpc' : kind === 'opencode' ? 'opencode-unprepared' : 'codex-cli'
   const root = path.join(runtimeRoot(), kind)
   for (const name of candidates(kind)) {
     const file = path.join(root, name)
-    if (fs.existsSync(file)) return { kind, available: true, source: "embedded", executable: file, version: version(file), message: "已找到内置 Runtime", checkedAt }
+    if (fs.existsSync(file)) return { kind, available: true, source: "embedded", executable: file, version: version(file), message: "已找到内置 Runtime", checkedAt, driver, contract }
   }
   const system = systemPath(kind)
-  if (system) return { kind, available: true, source: "system", executable: system, version: version(system), message: "使用系统 PATH 中的 Runtime", checkedAt }
-  return { kind, available: false, source: "missing", executable: null, version: null, message: "未找到 " + kind + " Runtime。请准备 resources/agent-runtimes/" + kind + " 或安装系统命令。", checkedAt }
+  if (system) return { kind, available: true, source: "system", executable: system, version: version(system), message: "使用系统 PATH 中的 Runtime", checkedAt, driver, contract }
+  return { kind, available: false, source: "missing", executable: null, version: null, message: "未找到 " + kind + " Runtime。请准备 resources/agent-runtimes/" + kind + " 或安装系统命令。", checkedAt, driver, contract }
 }
 
 export function inspectAgentRuntimes() {
@@ -315,4 +336,3 @@ export async function startOpenCodeRuntime(provider?: OpenCodeProviderBridge): P
 export async function shutdownAgentRuntimes(): Promise<void> {
   await managedOpenCodeLeases.shutdown()
 }
-

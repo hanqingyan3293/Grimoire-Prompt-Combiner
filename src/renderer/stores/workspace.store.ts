@@ -141,6 +141,7 @@ export const WORKSPACES: WorkspaceDefinition[] = [
 
 interface WorkspaceState {
   hydrated: boolean
+  restoringPopouts: PopoutPanels
   persistenceRevision: number
   persistenceError: string | null
   activeWorkspaceId: string
@@ -223,6 +224,8 @@ const LEGACY_PANEL_ALIASES: Record<string, PanelType> = {
   "agent-sessions": "agent",
   mcp: "agent",
   presets: "prompt-assets",
+  // 批量标签工具已并入标签与资产面板（2026-11-26），旧布局里的该页签落到台账页。
+  "tag-batch": "tag-asset-manager",
 }
 
 export function legacyPanelMode(value: unknown): WorkspaceTab["mode"] {
@@ -387,7 +390,8 @@ function sanitizeLayoutId(id: unknown, prefix: string, usedIds: Set<string>) {
 function sanitizeLayoutNode(
   node: unknown,
   usedIds = new Set<string>(),
-  depth = 0
+  depth = 0,
+  usedEditorIds = new Set<string>()
 ): WorkspaceLayoutNode | null {
   if (depth > MAX_LAYOUT_DEPTH) return null
   if (!node || typeof node !== "object") return null
@@ -400,7 +404,7 @@ function sanitizeLayoutNode(
       const tab = rawTab && typeof rawTab === "object" ? rawTab as Partial<WorkspaceTab> : {}
       const originalType = typeof tab.type === "string" ? tab.type : panelType
       return {
-        id: sanitizeLayoutId(tab.id, index === 0 ? panelId : "tab_", usedIds),
+        id: sanitizeLayoutId(tab.id, index === 0 ? panelId : "tab_", usedEditorIds),
         type: normalizePersistedPanelType(originalType) || panelType,
         ...(legacyPanelMode(originalType) ? { mode: legacyPanelMode(originalType) } : {}),
       }
@@ -413,8 +417,8 @@ function sanitizeLayoutNode(
     }
   }
   if (value.kind === "split") {
-    const first = sanitizeLayoutNode(value.first, usedIds, depth + 1)
-    const second = sanitizeLayoutNode(value.second, usedIds, depth + 1)
+    const first = sanitizeLayoutNode(value.first, usedIds, depth + 1, usedEditorIds)
+    const second = sanitizeLayoutNode(value.second, usedIds, depth + 1, usedEditorIds)
     if (!first && !second) return null
     if (!first) return second
     if (!second) return first
@@ -844,6 +848,7 @@ function normalizedLegacyNode(node: WorkspaceLayoutNode): WorkspaceLayoutNode {
 
 export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   hydrated: false,
+  restoringPopouts: {},
   persistenceRevision: 0,
   persistenceError: null,
   activeWorkspaceId: getInitialWorkspaceId(INITIAL_WORKSPACES),

@@ -1,6 +1,6 @@
 {
   "name": "grimoire",
-  "version": "7.2.0",
+  "version": "0.7.3-alpha",
   "description": "魔导书 Grimoire — 本地 AI 提示词工作台、无限画布与多供应商助手",
   "main": "dist/main/main/index.js",
   "scripts": {
@@ -9,7 +9,8 @@
     "dev:renderer": "vite",
     "dev:electron": "wait-on http://localhost:5173 && electron .",
     "build:renderer": "vite build",
-    "build:main": "tsc -p tsconfig.node.json",
+    "build:main": "tsc -p tsconfig.node.json && node scripts/build-comfy-source.mjs",
+    "build:comfy-source": "node scripts/build-comfy-source.mjs",
     "build": "npm run build:cherry-compat && npm run build:renderer && npm run build:main && node scripts/copy-cherry-compat.mjs && node -e \"require('fs').cpSync('data/tags.json','dist/main/data/tags.json',{recursive:true}); require('fs').cpSync('data/default-prompt-assets','dist/main/data/default-prompt-assets',{recursive:true})\"",
     "start": "electron .",
     "pack": "npm run build && electron-builder --dir",
@@ -27,6 +28,7 @@
     "runtime:pi-sdk-surface": "npm run build:main && node scripts/pi-sdk-surface-smoke.mjs",
     "runtime:opencode-smoke": "npm run build:main && node scripts/opencode-adapter-smoke.mjs",
     "runtime:opencode-permission-smoke": "npm run build:main && node scripts/opencode-permission-smoke.mjs",
+    "runtime:opencode-v2-probe": "npm run build:main && node scripts/opencode-event-replay-smoke.mjs",
     "generate:cherry-file-type-map": "node scripts/generate-cherry-file-type-map.mjs",
     "check:cherry-file-type-map": "node scripts/generate-cherry-file-type-map.mjs --check",
     "audit:cherry-panels": "node scripts/audit-cherry-panels.mjs",
@@ -40,7 +42,15 @@
     "gates:fast": "node scripts/gates.mjs --fast",
     "smoke:stream": "node scripts/chat-stream-smoke.mjs",
     "verify": "npm run clean:electron && node scripts/gates.mjs && npm run journeys",
-    "verify:full": "npm run verify",
+    "verify:full": "node scripts/m5-acceptance.mjs --full",
+    "verify:pack": "node scripts/m5-pack.mjs",
+    "acceptance:index": "node scripts/m5-index.mjs",
+    "acceptance:packaged-gui": "node scripts/m5-packaged-gui.mjs",
+    "acceptance:final": "node scripts/m5-final-aggregate.mjs",
+    "build:cherry-source-shell": "node src/vendor/cherry/compat/node_modules/vite/bin/vite.js build --config src/vendor/cherry/compat/vite.source-shell.config.ts",
+    "smoke:cherry-source-shell": "node scripts/audit-cherry-source-shell.mjs",
+    "audit:cherry-ab": "node scripts/m5-ab.mjs",
+    "check:secrets": "node scripts/check-secrets.mjs",
     "verify:visual": "node scripts/ui-parity.mjs --visual-matrix --diff",
     "verify:visual:record": "node scripts/ui-parity.mjs --visual-matrix --record",
     "probe:route": "node scripts/audit-cherry-routes.mjs --probe-route=app/files",
@@ -146,6 +156,7 @@
     "files": [
       "dist/**/*",
       "data/tags.json",
+      "LICENSE",
       "THIRD_PARTY_NOTICES.md"
     ],
     "extraResources": [
@@ -161,6 +172,22 @@
       {
         "from": "src/vendor/cherry/source/LICENSE",
         "to": "CHERRY_STUDIO_LICENSE (AGPL-3.0).txt"
+      },
+      {
+        "from": "src/vendor/opencode/source/LICENSE",
+        "to": "OPENCODE_LICENSE (MIT).txt"
+      },
+      {
+        "from": "src/vendor/pi/source/LICENSE",
+        "to": "PI_LICENSE (MIT).txt"
+      },
+      {
+        "from": "src/vendor/dockview/source/packages/dockview-core/LICENCE.md",
+        "to": "DOCKVIEW_CORE_LICENSE (MIT).md"
+      },
+      {
+        "from": "src/vendor/dockview/source/packages/dockview-react/LICENCE.md",
+        "to": "DOCKVIEW_REACT_LICENSE (MIT).md"
       },
       {
         "from": "resources/agent-runtimes",
@@ -191,10 +218,14 @@
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
-      "shortcutName": "Grimoire"
+      "shortcutName": "Grimoire",
+      "artifactName": "Grimoire.Setup.0.7.3-alpha.${ext}"
     },
     "extraMetadata": {
       "main": "dist/main/main/index.js"
+    },
+    "portable": {
+      "artifactName": "Grimoire.0.7.3-alpha.${ext}"
     }
   }
 }

@@ -133,6 +133,8 @@ export interface AgentRuntime {
   /** Main-owned native/remote session identity for persistence and recovery. */
   getSessionReference?(sessionId: string): string | undefined
   getCapabilities?(): RuntimeCapabilities
+  /** Main-owned driver identity used to label capability provenance. */
+  getCapabilityDriver?(): string
   send(input: RuntimeSendInput): AsyncGenerator<RuntimeEvent, void, unknown>
   interrupt?(sessionId: string): Promise<void>
   approve?(input: RuntimeApprovalInput): Promise<void>

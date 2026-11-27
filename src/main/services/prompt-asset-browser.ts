@@ -6,6 +6,7 @@ import crypto from 'crypto'
 import { saveDatabase } from '../database'
 import { compareOrderKeysEmptyLast, evenlySpacedKeys, hasRoomBetween, orderKeyBetween } from './resource-order'
 import { createTagSuggestions } from './tag-intelligence.service'
+import { localAssetCoverUrl } from './default-prompt-assets.service'
 
 const SOURCES = new Set<PromptAssetSourceFilter>(['all', 'asset', 'history', 'preset', 'favorite'])
 
@@ -13,6 +14,7 @@ const UNIFIED_QUERY = `
 WITH unified AS (
   SELECT
     'asset:' || id AS id, id AS source_ref, 'asset' AS source, name, prompt,
+    source_id AS asset_source_id,
     trim(source || CASE WHEN chapter <> '' THEN ' · ' || chapter ELSE '' END || CASE WHEN section <> '' THEN ' / ' || section ELSE '' END || CASE WHEN subsection <> '' THEN ' / ' || subsection ELSE '' END) AS detail,
     coalesce(nullif(section, ''), nullif(chapter, ''), source) AS group_name,
     __CATEGORY_IDS__ AS category_ids,
@@ -24,7 +26,7 @@ WITH unified AS (
   FROM prompt_assets
   UNION ALL
   SELECT
-    'history:' || id, id, 'history', substr(replace(prompt, char(10), ' '), 1, 80), prompt,
+    'history:' || id, id, 'history', substr(replace(prompt, char(10), ' '), 1, 80), prompt, NULL,
     '正面 ' || positive_count || ' · 负面 ' || negative_count, '历史', NULL, NULL, created_at, 0, 0,
     'global'
   FROM history
@@ -33,13 +35,14 @@ WITH unified AS (
     'preset:' || p.id, p.id, 'preset', p.name,
     coalesce((SELECT group_concat(t.en, ', ') FROM json_each(p.data, '$.positive') j JOIN tags t ON t.id = json_extract(j.value, '$.tag_id')), '') ||
     CASE WHEN EXISTS (SELECT 1 FROM json_each(p.data, '$.negative')) THEN char(10) || '--neg ' || coalesce((SELECT group_concat(t.en, ', ') FROM json_each(p.data, '$.negative') j JOIN tags t ON t.id = json_extract(j.value, '$.tag_id')), '') ELSE '' END,
+    NULL,
     '提示词预设', '预设', NULL, p.data, p.updated_at, 0, 0,
     'global'
   FROM presets p
   WHERE json_valid(p.data)
   UNION ALL
   SELECT
-    'favorite:' || t.id, t.id, 'favorite', coalesce(nullif(t.zh, ''), t.en), t.en,
+    'favorite:' || t.id, t.id, 'favorite', coalesce(nullif(t.zh, ''), t.en), t.en, NULL,
     trim(coalesce(c.zh, '') || CASE WHEN s.zh IS NOT NULL AND s.zh <> '' THEN ' / ' || s.zh ELSE '' END),
     '收藏', NULL, json_object('tagId', t.id), f.created_at, 0, 0,
     'global'
@@ -100,13 +103,15 @@ export function queryPromptAssets(db: LegacyDatabase, input: unknown): PromptAss
     const items: PromptAssetItem[] = rows.map(row => {
       const source = String(row.source) as PromptAssetItem['source']
       const payload = typeof row.payload_json === 'string' ? row.payload_json : ''
+      const sourceRef = String(row.source_ref)
       return {
         id: String(row.id),
-        sourceRef: String(row.source_ref),
+        sourceRef,
         source,
         name: String(row.name || ''),
         prompt: String(row.prompt || ''),
         detail: String(row.detail || ''),
+        coverUrl: source === 'asset' ? localAssetCoverUrl(String(row.asset_source_id || '')) : undefined,
         group: String(row.group_name || row.detail || source),
         categoryIds: typeof row.category_ids === 'string' && row.category_ids ? String(row.category_ids).split(',').filter(Boolean) : [],
         createdAt: String(row.created_at || ''),
@@ -186,7 +191,89 @@ export function assignPromptAssetCategory(db: LegacyDatabase, input: unknown): b
   return true
 }
 
-export function createPromptAsset(db: LegacyDatabase, input: unknown, visibility: 'global' | 'restricted' = 'global'): PromptAssetItem {
+export type PromptAssetVisibility = 'global' | 'restricted'
+
+export type PromptAssetBindingTarget = {
+  type: 'assistant' | 'agent'
+  id: string
+}
+
+/** A validation or concurrent-modification failure the DataApi adapter maps to 4xx. */
+export class PromptAssetUpdateError extends Error {
+  constructor(
+    readonly status: number,
+    readonly code: string,
+    message: string
+  ) {
+    super(code + ': ' + message)
+    this.name = 'PromptAssetUpdateError'
+  }
+}
+
+function promptVisibility(value: unknown): PromptAssetVisibility {
+  if (value === 'global' || value === 'restricted') return value
+  throw new PromptAssetUpdateError(400, 'INVALID_VISIBILITY', '提示词可见性必须是 global 或 restricted')
+}
+
+function promptBindingTargets(value: unknown): PromptAssetBindingTarget[] {
+  if (!Array.isArray(value)) {
+    throw new PromptAssetUpdateError(400, 'INVALID_EXPECTED_BINDINGS', 'expectedBindings 必须是绑定目标数组')
+  }
+  return value.map(target => {
+    const record = target && typeof target === 'object' && !Array.isArray(target) ? target as Record<string, unknown> : null
+    if (!record || (record.type !== 'assistant' && record.type !== 'agent') || typeof record.id !== 'string' || record.id.length === 0) {
+      throw new PromptAssetUpdateError(400, 'INVALID_EXPECTED_BINDINGS', 'expectedBindings 的每一项都需要 type 与 id')
+    }
+    return { type: record.type, id: record.id }
+  })
+}
+
+function bindingTargetKey(target: PromptAssetBindingTarget): string {
+  return target.type + ':' + target.id
+}
+
+/**
+ * The stored-id forms a binding row may use for one prompt.
+ *
+ * Bindings are written from the source-visible id, while this service is called with the
+ * stored row id. The list projection is `'asset:' || id`, so a user-created row can be
+ * addressed as `asset:<uuid>` (create response) or `asset:asset:<uuid>` (list); a binding
+ * made through either path must be counted and cleared for the same prompt.
+ */
+function promptIdForms(id: string): string[] {
+  const forms = new Set<string>([id, 'asset:' + id])
+  if (id.startsWith('asset:')) forms.add(id.slice('asset:'.length))
+  return [...forms]
+}
+
+function readPromptBindingTargets(db: LegacyDatabase, id: string): PromptAssetBindingTarget[] {
+  const forms = promptIdForms(id)
+  const rows = db.exec(
+    'SELECT target_type, target_id FROM cherry_prompt_bindings WHERE prompt_id IN (' + forms.map(() => '?').join(',') + ')',
+    forms
+  )[0]?.values || []
+  return rows.map(row => ({ type: String(row[0]) as PromptAssetBindingTarget['type'], id: String(row[1]) }))
+}
+
+function clearPromptBindings(db: LegacyDatabase, id: string): void {
+  const forms = promptIdForms(id)
+  db.run(
+    'DELETE FROM cherry_prompt_bindings WHERE prompt_id IN (' + forms.map(() => '?').join(',') + ')',
+    forms
+  )
+}
+
+function promptAssetFromRow(row: Record<string, unknown>): PromptAssetItem {
+  return {
+    id: String(row.id), sourceRef: String(row.source_id), source: 'asset',
+    name: String(row.name || ''), prompt: String(row.prompt || ''), detail: String(row.chapter || ''),
+    createdAt: String(row.created_at || ''),
+    visibility: row.visibility === 'restricted' ? 'restricted' : 'global',
+    nsfw: Number(row.nsfw) === 1, variantCount: Number(row.variant_count) || 0
+  }
+}
+
+export function createPromptAsset(db: LegacyDatabase, input: unknown, visibility: PromptAssetVisibility = 'global'): PromptAssetItem {
   if (!input || typeof input !== 'object' || Array.isArray(input)) throw new Error('提示词资产参数无效')
   const value = input as Record<string, unknown>
   const name = requireText(value.name ?? '', '资产名称', 500)
@@ -204,7 +291,7 @@ export function createPromptAsset(db: LegacyDatabase, input: unknown, visibility
     if (values.length) createTagSuggestions(db, { assetType: 'prompt', assetKey: 'prompt:' + id, source: 'parsed', values })
   }
   saveDatabase()
-  return { id, sourceRef: sourceId, source: 'asset', name, prompt, detail, createdAt: now, nsfw: value.nsfw === true, variantCount: Number.isInteger(value.variantCount) ? Math.max(0, Number(value.variantCount)) : 0 }
+  return { id, sourceRef: sourceId, source: 'asset', name, prompt, detail, createdAt: now, visibility, nsfw: value.nsfw === true, variantCount: Number.isInteger(value.variantCount) ? Math.max(0, Number(value.variantCount)) : 0 }
 }
 
 export function deletePromptAsset(db: LegacyDatabase, sourceId: unknown): boolean {
@@ -231,74 +318,112 @@ export function isImportedPromptRow(id: string): boolean {
   return id.startsWith('builtin_')
 }
 
+export type PromptAssetUpdatePatch = {
+  name?: unknown
+  prompt?: unknown
+  visibility?: unknown
+  expectedBindings?: unknown
+}
+
 /**
- * Updates a user-created prompt asset's name and/or prompt text.
+ * Updates a user-created prompt asset's name, prompt text, and/or visibility.
  *
- * Mirrors `PromptService.update` in the source in the parts that apply here: only the
- * supplied fields change, and the row is re-read afterwards so the caller gets the stored
- * state rather than the value it sent. `visibility` IS stored now (v29) and IS projected by
- * `UNIFIED_QUERY`, so the source's `restricted` state round-trips. The source's
- * `expectedBindings` concurrent-modification guard is still not implemented — it protects a
- * transition that this adapter does not expose.
+ * Ports `PromptService.update` (source lines 336-393) onto Grimoire's v29 columns:
+ *
+ *  - only supplied fields change, and the stored row is re-read before returning, so the
+ *    caller receives the stored DTO (including `visibility`) rather than its own input;
+ *  - making a `restricted` prompt `global` requires the `expectedBindings` snapshot when the
+ *    prompt currently has bindings, and any mismatch is a concurrent-modification conflict;
+ *  - a successful restricted→global transition clears the prompt's bindings, because a
+ *    global prompt is visible everywhere and the edges no longer describe anything;
+ *  - updating to/staying `restricted` leaves existing bindings untouched and never invents
+ *    targets. The source has no implicit target for a restricted prompt.
+ *
+ * The guard, visibility write, binding clear, and re-read run in one write transaction, so a
+ * failure cannot leave a global row with stale bindings or a restricted row with cleared ones.
  *
  * Scoped to `source='asset'`: built-in and imported rows are not user-owned, and the source
- * likewise only lets a user edit prompts they created.
- *
- * Returns `null` when the row does not exist or is not editable, so the caller can answer a
- * real 404/403 instead of an empty success.
+ * likewise only lets a user edit prompts they created. Returns `null` for a missing or
+ * non-editable row so the caller can answer a real 404/403 instead of an empty success.
  */
-export function updatePromptAsset(db: LegacyDatabase, idValue: unknown, patch: { name?: unknown; prompt?: unknown }): PromptAssetItem | null {
+export function updatePromptAsset(db: LegacyDatabase, idValue: unknown, patch: PromptAssetUpdatePatch): PromptAssetItem | null {
   const id = requireText(idValue ?? '', '提示词资产 ID', 500)
-  const row = db.exec("SELECT id, source_id, source, name, prompt, chapter, created_at, nsfw, variant_count FROM prompt_assets WHERE id=?", [id])[0]?.values?.[0]
-  if (!row) return null
-  // `source='asset'` is NOT a user-created discriminator: every imported/built-in row also
-  // carries it (all 1,742 on this machine do). The real marker is the id the service itself
-  // mints — `createPromptAsset` writes `asset:<uuid>` while imports keep `builtin_<hex>` /
-  // their original id. Checking `source` alone let a built-in prompt be edited, which a live
-  // probe caught (`builtinEdit: 200`).
-  if (isImportedPromptRow(id)) return null
-
-  const sets: string[] = []
-  const params: unknown[] = []
-  if (patch.name !== undefined) {
-    sets.push('name=?')
-    params.push(requireText(patch.name, '资产名称', 500))
-  }
-  if (patch.prompt !== undefined) {
-    // The source caps prompt content at 100,000 characters (`PromptContentSchema`); the
-    // same bound is enforced here so a save cannot store something the client would then
-    // refuse to render.
-    sets.push('prompt=?')
-    params.push(requireText(patch.prompt, '资产提示词', 100_000))
-  }
-  if (sets.length === 0) {
-    // Nothing to change: answer the current row rather than issuing an empty UPDATE.
-    return {
-      id: String(row[0]), sourceRef: String(row[1]), source: 'asset',
-      name: String(row[3] || ''), prompt: String(row[4] || ''), detail: String(row[5] || ''),
-      createdAt: String(row[6] || ''), nsfw: Number(row[7]) === 1, variantCount: Number(row[8]) || 0
+  const nextVisibility = patch.visibility === undefined ? undefined : promptVisibility(patch.visibility)
+  let expectedKeys: string[] | undefined
+  if (patch.expectedBindings !== undefined) {
+    if (nextVisibility !== 'global') {
+      throw new PromptAssetUpdateError(400, 'INVALID_EXPECTED_BINDINGS', 'expectedBindings 只能在把提示词设为 global 时提供')
     }
+    expectedKeys = promptBindingTargets(patch.expectedBindings).map(bindingTargetKey).sort()
   }
+  const nextName = patch.name === undefined ? undefined : requireText(patch.name, '资产名称', 500)
+  // The source caps prompt content at 100,000 characters (`PromptContentSchema`); the same
+  // bound is enforced here so a save cannot store something the client would refuse to render.
+  const nextPrompt = patch.prompt === undefined ? undefined : requireText(patch.prompt, '资产提示词', 100_000)
 
-  const now = new Date().toISOString()
-  sets.push('updated_at=?')
-  params.push(now)
-  // `source_fingerprint` is derived from the mutable fields in `createPromptAsset`; leaving
-  // it stale after an edit would make the same fingerprint describe two different prompts,
-  // which is exactly what the column exists to prevent.
-  const nextName = patch.name !== undefined ? String(requireText(patch.name, '资产名称', 500)) : String(row[3] || '')
-  const nextPrompt = patch.prompt !== undefined ? String(requireText(patch.prompt, '资产提示词', 100_000)) : String(row[4] || '')
-  sets.push('source_fingerprint=?')
-  params.push(crypto.createHash('sha256').update(`${String(row[1])}:${nextName}:${nextPrompt}`).digest('hex'))
+  db.exec('BEGIN IMMEDIATE')
+  try {
+    const row = db.prepare('SELECT id, source_id, source, name, prompt, chapter, created_at, nsfw, variant_count, visibility FROM prompt_assets WHERE id=?').get([id])
+    if (!row) {
+      db.exec('ROLLBACK')
+      return null
+    }
+    // `source='asset'` is NOT a user-created discriminator: every imported/built-in row also
+    // carries it (all 1,742 on this machine do). The real marker is the id the service itself
+    // mints — `createPromptAsset` writes `asset:<uuid>` while imports keep `builtin_<hex>` /
+    // their original id. Checking `source` alone let a built-in prompt be edited, which a live
+    // probe caught (`builtinEdit: 200`).
+    // The id prefix catches imported rows that carry `source='asset'`; the source check also
+    // catches legacy index rows, which are imported too even though their ids look generic.
+    if (String(row.source) !== 'asset' || isImportedPromptRow(id)) {
+      db.exec('ROLLBACK')
+      return null
+    }
 
-  db.run(`UPDATE prompt_assets SET ${sets.join(', ')} WHERE id=?`, [...params, id])
-  // `db.run` does not persist on its own — see the same note on the delete path.
-  saveDatabase()
+    const storedVisibility: PromptAssetVisibility = row.visibility === 'restricted' ? 'restricted' : 'global'
+    const makingGlobal = storedVisibility === 'restricted' && nextVisibility === 'global'
+    if (makingGlobal) {
+      // The two accepted prompt-id forms can each hold the same logical edge; the source
+      // snapshot is a set of targets, so compare (and later clear) in target space.
+      const actualKeys = [...new Set(readPromptBindingTargets(db, id).map(bindingTargetKey))].sort()
+      const exactSnapshot = expectedKeys !== undefined &&
+        expectedKeys.length === actualKeys.length &&
+        expectedKeys.every((key, index) => key === actualKeys[index])
+      if ((actualKeys.length > 0 && expectedKeys === undefined) || (expectedKeys !== undefined && !exactSnapshot)) {
+        throw new PromptAssetUpdateError(409, 'PROMPT_BINDINGS_CONFLICT', '提示词绑定已变化，请刷新后重试')
+      }
+    }
 
-  return {
-    id: String(row[0]), sourceRef: String(row[1]), source: 'asset',
-    name: nextName, prompt: nextPrompt, detail: String(row[5] || ''),
-    createdAt: String(row[6] || ''), nsfw: Number(row[7]) === 1, variantCount: Number(row[8]) || 0
+    const sets: string[] = []
+    const params: unknown[] = []
+    if (nextName !== undefined) { sets.push('name=?'); params.push(nextName) }
+    if (nextPrompt !== undefined) { sets.push('prompt=?'); params.push(nextPrompt) }
+    if (nextVisibility !== undefined) { sets.push('visibility=?'); params.push(nextVisibility) }
+    if (sets.length === 0) {
+      // Nothing to change: answer the current stored row rather than issuing an empty UPDATE.
+      db.exec('COMMIT')
+      return promptAssetFromRow(row)
+    }
+
+    sets.push('updated_at=?')
+    params.push(new Date().toISOString())
+    // `source_fingerprint` is derived from the mutable fields in `createPromptAsset`; leaving
+    // it stale after an edit would make the same fingerprint describe two different prompts.
+    const storedName = nextName ?? String(row.name || '')
+    const storedPrompt = nextPrompt ?? String(row.prompt || '')
+    sets.push('source_fingerprint=?')
+    params.push(crypto.createHash('sha256').update(`${String(row.source_id)}:${storedName}:${storedPrompt}`).digest('hex'))
+
+    db.run(`UPDATE prompt_assets SET ${sets.join(', ')} WHERE id=?`, [...params, id])
+    if (makingGlobal) clearPromptBindings(db, id)
+
+    const stored = db.prepare('SELECT id, source_id, name, prompt, chapter, created_at, nsfw, variant_count, visibility FROM prompt_assets WHERE id=?').get([id])
+    if (!stored) throw new Error('提示词更新后不存在')
+    db.exec('COMMIT')
+    return promptAssetFromRow(stored)
+  } catch (error) {
+    try { db.exec('ROLLBACK') } catch {}
+    throw error
   }
 }
 

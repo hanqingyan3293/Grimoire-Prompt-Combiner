@@ -103,10 +103,16 @@ export class RuntimePermissionBroker {
     })
   }
 
-  decide(sender: PermissionOwner, requestId: string, decision: unknown): boolean {
-    if (!['allowOnce', 'allowForSession', 'deny', 'cancel'].includes(String(decision))) return false
+  /**
+   * Return the decision the broker actually applied. A `allowForSession` with
+   * no exact grant is downgraded to `allowOnce`; callers that persist the
+   * answer must use this value, not the raw UI choice.
+   */
+  decideWithDecision(sender: PermissionOwner, requestId: string, decision: unknown): RuntimePermissionDecision | null {
+    if (!['allowOnce', 'allowForSession', 'deny', 'cancel'].includes(String(decision))) return null
     const request = this.pending.get(requestId)
-    if (!request || request.sender !== sender || sender.isDestroyed()) return false
+    if (!request || request.sender !== sender || sender.isDestroyed()) return null
+    const effective: RuntimePermissionDecision = decision === 'allowForSession' && !request.grant ? 'allowOnce' : decision as RuntimePermissionDecision
     if (decision === 'allowForSession' && request.grant) {
       const scopes = this.grants.get(sender) || new Map<string, Set<string>>()
       const grants = scopes.get(request.scope) || new Set<string>()
@@ -115,8 +121,13 @@ export class RuntimePermissionBroker {
       this.grants.set(sender, scopes)
       this.trackGrantedSender(sender)
     }
-    request.finish(decision as RuntimePermissionDecision)
-    return true
+    request.finish(effective)
+    return effective
+  }
+
+  /** Boolean compatibility for existing callers; use decideWithDecision to persist the effective answer. */
+  decide(sender: PermissionOwner, requestId: string, decision: unknown): boolean {
+    return this.decideWithDecision(sender, requestId, decision) !== null
   }
 
   clearScope(scope: string): void {

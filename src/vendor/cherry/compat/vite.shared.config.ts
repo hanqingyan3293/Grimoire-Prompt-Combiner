@@ -64,8 +64,34 @@ export const dedupePackages = [
 
 /** Alias list, in order. Order matters: the absolute-path entries must precede the bare ones. */
 export function compatAliases(root: string = compatRoot, source: string = sourceRoot) {
+  const usageDir = path.resolve(source, 'src/renderer/pages/settings/UsageSettings').replace(/\\/g, '/').toLowerCase()
+  const shim = (name: string) => path.resolve(root, 'src/shims', name)
+  const fromUsageSource = (importer?: string) =>
+    Boolean(importer) && importer!.split('?')[0].replace(/\\/g, '/').toLowerCase().startsWith(usageDir + '/')
+  const usageAlias = (find: string | RegExp, sourceModule: string, shimName: string) => ({
+    find,
+    replacement: path.resolve(source, sourceModule),
+    customResolver(_updatedId: string, importer?: string) {
+      return fromUsageSource(importer) ? shim(shimName) : path.resolve(source, sourceModule)
+    }
+  })
+
   return [
     { find: '@shared/cherry-host-types', replacement: path.resolve(root, '../../../shared/cherry-host-types.ts') },
+    // UsageSettings keeps the mature source page. Only its presentation,
+    // analytics, metric-primitive and heatmap modules are shimmed. The number
+    // alias is scoped by importer so unrelated formatters keep the source
+    // behavior (`formatCompactNumber(null)` elsewhere is unchanged).
+    { find: '@renderer/pages/settings/UsageSettings/usageDisplay', replacement: shim('usage-display.ts') },
+    { find: '@renderer/pages/settings/UsageSettings/usageAnalytics', replacement: shim('usage-analytics.ts') },
+    { find: '@renderer/pages/settings/UsageSettings/UsageSettingsPrimitives', replacement: shim('usage-primitives.tsx') },
+    { find: '@renderer/pages/settings/UsageSettings/UsageHeatmap', replacement: shim('usage-heatmap.tsx') },
+    usageAlias(/^\.\/usageDisplay(?:\.ts)?$/, 'src/renderer/pages/settings/UsageSettings/usageDisplay.ts', 'usage-display.ts'),
+    usageAlias(/^\.\/usageAnalytics(?:\.ts)?$/, 'src/renderer/pages/settings/UsageSettings/usageAnalytics.ts', 'usage-analytics.ts'),
+    usageAlias(/^\.\/UsageSettingsPrimitives(?:\.tsx)?$/, 'src/renderer/pages/settings/UsageSettings/UsageSettingsPrimitives.tsx', 'usage-primitives.tsx'),
+    usageAlias(/^\.\/UsageHeatmap(?:\.tsx)?$/, 'src/renderer/pages/settings/UsageSettings/UsageHeatmap.tsx', 'usage-heatmap.tsx'),
+    usageAlias(/^@renderer\/components\/Chart$/, 'src/renderer/components/Chart/index.ts', 'usage-chart.tsx'),
+    usageAlias(/^@renderer\/utils\/number$/, 'src/renderer/utils/number.ts', 'usage-number.ts'),
     { find: '@cherrystudio/ui/icons/providers', replacement: path.resolve(source, 'packages/ui/src/components/icons/providers/index.ts') },
     { find: '@cherrystudio/ui/icons', replacement: path.resolve(source, 'packages/ui/src/components/icons/index.ts') },
     { find: 'og-crd/style.css', replacement: path.resolve(root, 'node_modules/og-crd/dist/style.css') },

@@ -1,6 +1,6 @@
 // 魔导书 Grimoire v7 — 隐含/关联标签条
 // TagMaster behavior: selecting tags expands their implication closure into a
-// live strip. Clicking a chip promotes it to an explicit selection; the ✕
+// live strip. Clicking a chip promotes it to an explicit selection; the remove button
 // gesture excludes it from implication expansion until promoted again.
 import { useEffect, useMemo, useState } from 'react'
 import { Link2, X } from 'lucide-react'

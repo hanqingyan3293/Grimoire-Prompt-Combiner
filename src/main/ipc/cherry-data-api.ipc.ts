@@ -16,9 +16,9 @@ import { archiveAiAssistant, archiveAiTopic, getLatestAiTopic, listAiAssistants,
 import { deleteAiSession, getAiSession, listAiSessions, restoreAiSession } from '../services/ai-session.service'
 import { decideAiSessionPermission, handleAiSessionInterrupt, handleAiSessionSend } from './ai-sessions.ipc'
 import { decideAgentSessionPermission, handleAgentSessionSend } from './agent.ipc'
-import { createPromptAsset, deletePromptAsset, orderedPromptAssetIds, queryPromptAssets, reorderPromptAsset, updatePromptAsset } from '../services/prompt-asset-browser'
+import { createPromptAsset, deletePromptAsset, orderedPromptAssetIds, PromptAssetUpdateError, queryPromptAssets, reorderPromptAsset, updatePromptAsset } from '../services/prompt-asset-browser'
 import type { PromptOrderAnchor } from '../services/prompt-asset-browser'
-import { listAiUsage, listUsageTimeline, projectUsageEntry, projectUsageTotals, summarizeAiUsage } from '../services/usage.service'
+import { getUsageStats, getUsageTimeline, listUsageRecords, UsageQueryError } from '../services/usage.service'
 import { isPreventSleepActive, readLaunchOnBoot } from '../services/app-preferences.service'
 import { cherryPreferenceWiring, isCherryDeveloperModeEnabled, readCherryPreference as readCherryPref } from '../services/cherry-preference-consumers'
 import { getGatewayStatus, restartGateway, startGateway, stopGateway } from '../services/api-gateway.service'
@@ -590,16 +590,27 @@ function apiError(id: string, status: number, code: string, message: string) {
   return { id, status, error: { code, message, status, timestamp: Date.now() } }
 }
 
+/** Source GETs carry their query as `params`; URL query and body are accepted for the same
+ *  handler so direct IPC and deep-link forms resolve to one validated contract. */
+function usageQueryInput(
+  params: Record<string, unknown>,
+  search: URLSearchParams,
+  body: Record<string, unknown>
+): Record<string, unknown> {
+  const input: Record<string, unknown> = { ...body }
+  for (const [key, value] of search) input[key] = value
+  for (const [key, value] of Object.entries(params)) input[key] = value
+  return Object.fromEntries(Object.entries(input).filter(([, value]) => value !== undefined))
+}
+
 /**
  * Projects a Grimoire prompt asset onto the source `Prompt` shape
  * (`shared/data/types/prompt.ts`).
  *
- * Three fields have no direct Grimoire column, and each is mapped rather than invented:
+ * Two fields have no direct Grimoire column, and each is mapped rather than invented:
  *
- *  - `visibility` — Grimoire has no per-prompt visibility. Every asset is reported
- *    `'global'`, which is the source value meaning "usable everywhere". This is the only
- *    honest answer: Grimoire shares all prompt assets with every session, so calling them
- *    `'restricted'` would hide prompts that are in fact available.
+ *  - `visibility` — stored in `prompt_assets.visibility` (v29) and emitted as stored. A
+ *    missing/legacy value falls back to `'global'`, which is the migration default.
  *  - `orderKey` — no ordering column exists on `prompt_assets`. The source uses it to sort
  *    the list; the adapter instead returns rows already ordered by the service
  *    (`created_at DESC, id ASC`) and synthesises a zero-padded key from each row's position
@@ -1228,11 +1239,9 @@ function handleRequest(request: DataApiRequest): unknown {
       }
       return apiEnvelope(id, items)
     }
-    // Bindings (`/prompt-bindings`, `/prompts/:id/bindings`) have NO Grimoire counterpart:
-    // there is no prompt↔assistant/agent binding table. Answered as an empty list rather
-    // than refused, because an empty list is TRUE here — Grimoire binds no prompt to any
-    // target — and the page renders its "not bound anywhere" state from it. A refusal would
-    // surface as an error banner for a feature that is simply unused.
+    // Bindings (`/prompt-bindings`, `/prompts/:id/bindings`) are backed by the v28
+    // `cherry_prompt_bindings` table. The empty list is a real answer for an unbound prompt,
+    // not a stub: the page renders its "not bound anywhere" state from it.
     if (path === '/prompt-bindings' && method === 'GET') {
       return apiEnvelope(id, listBindingRelations())
     }
@@ -1248,14 +1257,10 @@ function handleRequest(request: DataApiRequest): unknown {
       const content = readBodyString(body, 'content')
       if (!title) return apiError(id, 400, 'INVALID_INPUT', '提示词标题不能为空')
       if (!content) return apiError(id, 400, 'INVALID_INPUT', '提示词内容不能为空')
-      // The source schema allows an initial binding only for `restricted` prompts. Grimoire
-      // has no binding table at all, so a restricted prompt would be created UNBOUND — a
-      // prompt the user asked to restrict would silently be globally visible. Refused rather
-      // than downgraded, because the created row would misrepresent the request.
+      // The source schema allows an initial binding only for `restricted` prompts. The binding
+      // table exists, so a restricted prompt is written AND its initial edge is created in the
+      // same request; without a valid target it is refused rather than left invisible.
       if (readBodyString(body, 'visibility') === 'restricted' || body.bindingTarget !== undefined) {
-        // Now that bindings exist, a restricted prompt can be created honestly: the row is
-        // written and the initial edge created. Without a `bindingTarget` the prompt would be
-        // restricted with NO target, i.e. invisible everywhere — refused rather than created.
         // Source `CreatePromptSchema` refuses this combination outright:
         // "Global prompts cannot have an initial binding target". Accepting it (as the first
         // version did) creates a global prompt that ALSO has a binding — a state the source
@@ -1271,6 +1276,9 @@ function handleRequest(request: DataApiRequest): unknown {
         if (!target || !targetId || (targetType !== 'assistant' && targetType !== 'agent')) {
           return apiError(id, 400, 'INVALID_INPUT',
             '受限提示词必须带 bindingTarget：没有目标的受限提示词对任何助手都不可见。')
+        }
+        if (targetType === 'assistant' && !getDatabase().exec('SELECT id FROM ai_assistants WHERE id=?', [targetId])[0]?.values?.length) {
+          return apiError(id, 400, 'INVALID_INPUT', '绑定目标无效，受限提示词未创建绑定：' + targetType + ':' + targetId)
         }
         const created = createPromptAsset(getDatabase(), { name: title, prompt: content, detail: '', nsfw: false, variantCount: 0 }, 'restricted')
         const bound = bindToTarget(created.id, targetType, targetId)
@@ -1627,32 +1635,13 @@ function handleRequest(request: DataApiRequest): unknown {
       return apiEnvelope(id, listArchives({ limit: Number.isFinite(limit) ? limit : 20, cursor }))
     }
     if (path === '/ai-usage-records' && method === 'GET') {
-      const limit = Number(body.limit ?? params.limit ?? 100)
-      const records = listAiUsage(Number.isFinite(limit) ? limit : 100)
-      // The source response is `CursorPaginationResponse & { total }`. Grimoire returns the
-      // whole (bounded) set in one page and omits `nextCursor` — the honest "no more pages"
-      // signal, rather than a cursor that would lead nowhere.
-      return apiEnvelope(id, {
-        items: records.map(record => projectUsageEntry(record, record.id)),
-        total: summarizeAiUsage().calls
-      })
+      return apiEnvelope(id, listUsageRecords(usageQueryInput(params, search, body)))
     }
     if (path === '/ai-usage-records/stats' && method === 'GET') {
-      // One bucket, not a top-N ranking: Grimoire records no provider/model attribution
-      // granular enough to rank groups without inventing them. `buckets` therefore carries the
-      // full range and `other` is empty, which is a truthful shape for "there is one group".
-      return apiEnvelope(id, {
-        buckets: [],
-        totals: projectUsageTotals(),
-        other: {
-          inputTokens: 0, outputTokens: 0, totalTokens: 0, reasoningTokens: null,
-          noCacheTokens: null, cacheReadTokens: 0, cacheWriteTokens: null, imageCount: null,
-          totalCost: null, costCurrency: null, recordCount: 0, requestCount: 0
-        }
-      })
+      return apiEnvelope(id, getUsageStats(usageQueryInput(params, search, body)))
     }
     if (path === '/ai-usage-records/timeline' && method === 'GET') {
-      return apiEnvelope(id, { buckets: listUsageTimeline(), costTotals: [], dailyCosts: [] })
+      return apiEnvelope(id, getUsageTimeline(usageQueryInput(params, search, body)))
     }
     // ── Models ───────────────────────────────────────────────────────────────
     // The source `/models` lists the per-provider model rows the settings, code and paintings
@@ -1751,24 +1740,20 @@ function handleRequest(request: DataApiRequest): unknown {
       saveDatabase()
       return apiEnvelope(id, undefined)
     }
-    // Update IS backed (added alongside this route): `updatePromptAsset` changes `name` and
-    // `prompt` on a user-created row and re-reads it. What it does NOT support is the
-    // `visibility` transition — Grimoire stores no visibility (every asset is global) and no
-    // bindings, so the source's `expectedBindings` concurrent-modification guard has nothing
-    // to guard. A request that tries to CHANGE visibility is refused rather than ignored:
-    // silently dropping it would report success for a state change that did not happen.
+    // Update is backed by `updatePromptAsset`, which ports the source `PromptService.update`
+    // rules: partial fields, stored visibility in the response, and the `expectedBindings`
+    // snapshot when a bound restricted prompt becomes global. A matching snapshot clears the
+    // bindings in the same transaction; a stale/missing snapshot is a 409 and no field is
+    // written. Updating to `restricted` leaves the selected prompt's bindings intact.
     if (/^\/prompts\/[^/]+$/.test(path) && method === 'PATCH') {
       const promptId = decodeURIComponent(path.slice('/prompts/'.length))
       const rowId = resolveAssetRowId(promptId)
       if (!rowId) return apiError(id, 404, 'NOT_FOUND', '提示词不存在：' + promptId)
-      const nextVisibility = readBodyString(body, 'visibility')
-      if (nextVisibility && nextVisibility !== 'global') {
-        return apiError(id, 501, 'NOT_IMPLEMENTED',
-          '提示词可见性未接入：Grimoire 不存储可见性（所有提示词都是全局），无法把提示词改为受限。')
-      }
       const updated = updatePromptAsset(getDatabase(), rowId, {
         ...(body.title !== undefined ? { name: body.title } : {}),
-        ...(body.content !== undefined ? { prompt: body.content } : {})
+        ...(body.content !== undefined ? { prompt: body.content } : {}),
+        ...(body.visibility !== undefined ? { visibility: body.visibility } : {}),
+        ...(body.expectedBindings !== undefined ? { expectedBindings: body.expectedBindings } : {})
       })
       if (!updated) {
         return apiError(id, 403, 'FORBIDDEN',
@@ -1941,6 +1926,12 @@ function handleRequest(request: DataApiRequest): unknown {
         : error.code === 'VALIDATION' ? 400 : error.code === 'INVALID_OPERATION' ? 409 : 500
       const code = error.code === 'UNSUPPORTED' ? 'NOT_IMPLEMENTED' : error.code === 'VALIDATION' ? 'VALIDATION_ERROR' : error.code
       return apiError(id, status, code, message)
+    }
+    if (error instanceof UsageQueryError) return apiError(id, error.status, error.code, error.message)
+    if (error instanceof PromptAssetUpdateError) {
+      // The source `concurrentModification` error is 409 with CONCURRENT_MODIFICATION.
+      const code = error.code === 'PROMPT_BINDINGS_CONFLICT' ? 'CONCURRENT_MODIFICATION' : error.code
+      return apiError(id, error.status, code, error.message)
     }
     if (error instanceof CherryAgentMessageError) return apiError(id, error.status, error.code, error.message)
     if (error instanceof URIError) return apiError(id, 400, 'VALIDATION_ERROR', 'Invalid resource id encoding')

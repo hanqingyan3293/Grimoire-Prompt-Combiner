@@ -1,4 +1,5 @@
 import React, { Suspense, lazy } from "react"
+import { LegacyPromptTransferAdapter } from './LegacyPromptTransferAdapter'
 import { LoaderCircle } from 'lucide-react'
 import { Sidebar } from "../layout/Sidebar"
 import { MainContent } from "../layout/MainContent"
@@ -11,7 +12,6 @@ import { AgentWorkspacePanel } from "../ai/AgentWorkspacePanel"
 import type { PanelDefinition, PanelType } from "./panelTypes"
 import type { EditorDefinition, EditorRegionDefinition } from "./editor-types"
 import { TagAssetManagerPanel } from "../tags/TagAssetManagerPanel"
-import { TagBatchToolsPanel } from "../tags/TagBatchToolsPanel"
 import { GallerySearchPanel } from "../gallery/GallerySearchPanel"
 import { WorkspaceLogsPanel, WorkspaceModelManagerPanel, WorkspaceProviderManagerPanel } from "./WorkspaceSystemPanels"
 
@@ -71,7 +71,6 @@ export const PANEL_DEFINITIONS: Record<PanelType, PanelDefinition> = {
   canvas: { type: "canvas", title: "无限画布", description: "图片、提示词和任务画布", enabled: true },
   "prompt-assets": { type: "prompt-assets", title: "提示词资产", description: "统一搜索资产、历史、预设和收藏", enabled: true },
   "tag-asset-manager": { type: "tag-asset-manager", title: "标签与资产", description: "标签关系、候选确认和资产标注", enabled: true },
-  "tag-batch": { type: "tag-batch", title: "标签批量工具", description: "按筛选批量添加、删除、替换资产标签", enabled: true },
   "gallery-search": { type: "gallery-search", title: "图库搜索", description: "筛选轨、虚拟网格、检查器与保存搜索", enabled: true },
   "browser": { type: "browser", title: "浏览器", description: "内嵌网页视图（主进程 WebContentsView），导航写入历史", enabled: true },
   "novelai-workbench": { type: "novelai-workbench", title: "提示词工作台", description: "块解析、版本线与回收站", enabled: true },
@@ -81,7 +80,7 @@ export const PANEL_DEFINITIONS: Record<PanelType, PanelDefinition> = {
 export const ENABLED_PANEL_OPTIONS = Object.values(PANEL_DEFINITIONS).filter(panel => panel.enabled)
 export const PANEL_OPTION_GROUPS: { title: string; types: PanelType[] }[] = [
   { title: "核心", types: ["tag-sidebar", "prompt-workbench", "utility-sidebar"] },
-  { title: "素材", types: ["prompt-assets", "novelai-workbench", "tag-asset-manager", "tag-batch", "gallery-search", "presets", "history", "images"] },
+  { title: "素材", types: ["prompt-assets", "novelai-workbench", "tag-asset-manager", "gallery-search", "presets", "history", "images"] },
   { title: "AI", types: ["agent"] },
   { title: "创作工具", types: ["canvas", "wd14", "comfyui", "tasks"] },
   { title: "设置", types: ["settings"] },
@@ -174,7 +173,7 @@ export function renderPanel(type: PanelType, options?: { agentMode?: "chat" | "v
     case "tag-sidebar":
       return <Sidebar />
     case "prompt-workbench":
-      return <MainContent />
+      return <LegacyPromptTransferAdapter><MainContent /></LegacyPromptTransferAdapter>
     case "utility-sidebar":
       return <RightPanel />
     case "presets":
@@ -207,8 +206,6 @@ export function renderPanel(type: PanelType, options?: { agentMode?: "chat" | "v
       return <LazyPanel><PromptAssetsPanel /></LazyPanel>
     case "tag-asset-manager":
       return <LazyPanel><TagAssetManagerPanel /></LazyPanel>
-    case "tag-batch":
-      return <TagBatchToolsPanel />
     case "browser":
       // Each panel instance needs its own host id, otherwise two browser panels would share one view.
       return <LazyPanel><BrowserPanel /></LazyPanel>

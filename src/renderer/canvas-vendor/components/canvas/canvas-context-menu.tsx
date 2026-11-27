@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { renderIconSlot } from "./node-glyph";
 import type { ReactNode } from "react";
 import { BetweenHorizontalStart, GalleryHorizontalEnd, GalleryHorizontal, Group, Plus, Trash2, Ungroup } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -49,7 +50,7 @@ function MenuButton({ icon, label, onClick, danger = false }: { icon: ReactNode;
 
     return (
         <button type="button" className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs transition-colors hover:opacity-80" style={{ color: danger ? "#f87171" : theme.node.text }} onClick={onClick}>
-            {icon}
+            {renderIconSlot(icon)}
             <span>{label}</span>
         </button>
     );

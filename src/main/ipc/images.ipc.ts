@@ -1,4 +1,4 @@
-﻿// 魔导书 Grimoire v7 — 图片 IPC 处理器
+// 魔导书 Grimoire v7 — 图片 IPC 处理器
 import { ipcMain, dialog } from 'electron'
 import fs from 'fs'
 import path from 'path'
@@ -6,7 +6,7 @@ import os from 'os'
 import { getDatabase, saveDatabase } from '../database'
 import { IPC_CHANNELS, type ImageRef } from '../../shared/types'
 import { inspectImageFile } from '../services/asset.core'
-import { deleteImageArtifacts, probeFileDimensions, registerManagedImage } from '../services/image-asset.service'
+import { deleteImagesFromLibrary, existingImageRefIds, ImageDeletionError, probeFileDimensions, registerManagedImage } from '../services/image-asset.service'
 import { parseMediaMetadata } from '../services/media-metadata.service'
 import { requireId } from '../services/input-validation'
 import { createImageDerivatives, ensureMediaAsset } from '../services/media.service'
@@ -83,14 +83,19 @@ export function registerImagesIPC(): void {
     return { id, file_path: filePath, storage_mode: mode }
   })
 
-  ipcMain.handle(IPC_CHANNELS.IMAGES_DELETE, async (_event, id: number) => {
-    requireId(String(id), '图片 ID')
-    const db = getDatabase()
-    // 先清磁盘产物（托管副本/派生图；外链原文件绝不触碰），再删 DB 行。
-    await deleteImageArtifacts(Number(id)).catch(() => { /* 文件清理失败不阻塞删除 */ })
-    db.run('DELETE FROM image_refs WHERE id=?', [id])
-    saveDatabase()
+  ipcMain.handle(IPC_CHANNELS.IMAGES_DELETE, async (_event, id: unknown) => {
+    const result = deleteImagesFromLibrary([id])
+    if (result.status !== 'completed') throw new ImageDeletionError('IMAGE_CLEANUP_FAILED', result.failures[0]?.message || '图片清理未完成', result)
     return true
+  })
+  ipcMain.handle(IPC_CHANNELS.IMAGES_DELETE_BATCH, async (_event, input: unknown) => {
+    if (!input || typeof input !== 'object' || !Array.isArray((input as { ids?: unknown }).ids)) throw new ImageDeletionError('INVALID_IMAGE_ID', '批量删除需要图片 ID 数组')
+    return deleteImagesFromLibrary((input as { ids: unknown[] }).ids)
+  })
+
+  ipcMain.handle(IPC_CHANNELS.IMAGES_EXISTING_IDS, async (_event, input: unknown) => {
+    if (!input || typeof input !== 'object' || !Array.isArray((input as { ids?: unknown }).ids)) throw new ImageDeletionError('INVALID_IMAGE_ID', '选择校验需要图片 ID 数组')
+    return existingImageRefIds((input as { ids: unknown[] }).ids)
   })
 
   ipcMain.handle(IPC_CHANNELS.IMAGES_IMPORT_DATA, async (_event, dataBase64: unknown, originalName: unknown) => {

@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { renderIconSlot } from "./node-glyph";
 import { ImageIcon, List, Music2, Settings2, Video, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
@@ -61,7 +62,7 @@ export function ConnectionCreateOption({ theme, icon, title, description, onClic
             onMouseLeave={(event) => (event.currentTarget.style.background = "transparent")}
         >
             <span className="grid size-11 shrink-0 place-items-center rounded-xl" style={{ background: theme.node.fill, color: theme.node.muted }}>
-                {icon}
+                {renderIconSlot(icon)}
             </span>
             <span className="min-w-0 flex-1">
                 <span className="flex items-center gap-2 text-base font-semibold leading-5">{title}</span>

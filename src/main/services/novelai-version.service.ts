@@ -1,6 +1,7 @@
 import crypto from 'node:crypto'
 
 import { getDatabase, saveDatabase } from '../database'
+import { novelaiEditSessions, type NovelaiEditOwner } from './novelai-edit-session.service'
 
 // NovelAI prompt work/version repository (M6.2). Shape follows the reference tool's model, code
 // is ours. Invariants enforced here rather than in the UI:
@@ -38,7 +39,7 @@ export interface NovelaiVersion {
 
 export class NovelaiVersionError extends Error {
   constructor(readonly code: 'WORK_NOT_FOUND' | 'VERSION_NOT_FOUND' | 'CROSS_WORK_PARENT' | 'REVISION_CONFLICT' | 'INVALID_INPUT', message: string) {
-    super(message)
+    super(code + ': ' + message)
     this.name = 'NovelaiVersionError'
   }
 }
@@ -141,6 +142,7 @@ export interface NewVersionInput {
   source?: NovelaiVersionSource
   operation?: string
   expectedRevision: number
+  owner?: NovelaiEditOwner
 }
 
 export function createNovelaiVersion(input: NewVersionInput): { version: NovelaiVersion; branched: boolean; unchanged: boolean } {
@@ -149,6 +151,7 @@ export function createNovelaiVersion(input: NewVersionInput): { version: Novelai
   if (!Number.isInteger(input.expectedRevision) || input.expectedRevision !== work.revision) {
     throw new NovelaiVersionError('REVISION_CONFLICT', 'work changed since revision ' + input.expectedRevision)
   }
+  novelaiEditSessions.assertWrite({ kind: 'work', id: work.id }, input.owner)
   const parent = getNovelaiVersion(input.parentVersionId)
   if (!parent) throw new NovelaiVersionError('VERSION_NOT_FOUND', 'parent version not found')
   if (parent.workId !== work.id) throw new NovelaiVersionError('CROSS_WORK_PARENT', 'parent version belongs to another work')
@@ -240,7 +243,8 @@ export function listNovelaiBranches(workId: string): NovelaiBranchSummary[] {
   })
 }
 
-export function setNovelaiBranchName(workId: string, branchId: string, name: string): void {
+export function setNovelaiBranchName(workId: string, branchId: string, name: string, owner?: NovelaiEditOwner): void {
+  novelaiEditSessions.assertWrite({ kind: 'work', id: workId }, owner)
   const work = getNovelaiWork(workId)
   if (!work) throw new NovelaiVersionError('WORK_NOT_FOUND', 'work not found')
   const branch = getNovelaiVersion(branchId)
@@ -256,9 +260,10 @@ export function getNovelaiBranchName(branchId: string): string | null {
   return row ? String(row[0]) : null
 }
 
-export function linkNovelaiVersionImage(input: { versionId: string; imageId: string; seed?: number | null; variant?: string }): void {
+export function linkNovelaiVersionImage(input: { versionId: string; imageId: string; seed?: number | null; variant?: string; owner?: NovelaiEditOwner }): void {
   const version = getNovelaiVersion(input.versionId)
   if (!version) throw new NovelaiVersionError('VERSION_NOT_FOUND', 'version not found')
+  novelaiEditSessions.assertWrite({ kind: 'work', id: version.workId }, input.owner)
   const imageId = text(input.imageId, 'imageId', 200)
   const sort = Number(getDatabase().exec('SELECT coalesce(max(sort),-1)+1 FROM novelai_version_image WHERE version_id=?', [version.id])[0].values[0][0])
   getDatabase().run('INSERT OR IGNORE INTO novelai_version_image (id,version_id,image_id,seed,variant,sort) VALUES (?,?,?,?,?,?)', [id('nai_vi'), version.id, imageId, input.seed ?? null, input.variant ?? '', sort])
@@ -293,10 +298,11 @@ function descendantsOf(versionId: string): string[] {
   return rows.map(row => String(row[0]))
 }
 
-export function softDeleteNovelaiVersion(input: { workId: string; versionId: string; mode: NovelaiDeleteMode; expectedRevision: number }): { deleted: string[] } {
+export function softDeleteNovelaiVersion(input: { workId: string; versionId: string; mode: NovelaiDeleteMode; expectedRevision: number; owner?: NovelaiEditOwner }): { deleted: string[] } {
   const work = getNovelaiWork(input.workId)
   if (!work) throw new NovelaiVersionError('WORK_NOT_FOUND', 'work not found')
   if (input.expectedRevision !== work.revision) throw new NovelaiVersionError('REVISION_CONFLICT', 'work changed since revision ' + input.expectedRevision)
+  novelaiEditSessions.assertWrite({ kind: 'work', id: work.id }, input.owner)
   const version = getNovelaiVersion(input.versionId)
   if (!version || version.workId !== work.id || version.deletedAt) throw new NovelaiVersionError('VERSION_NOT_FOUND', 'version not found')
   const targets = input.mode === 'branch' ? [version.id, ...descendantsOf(version.id)] : [version.id]
@@ -328,10 +334,11 @@ export function softDeleteNovelaiVersion(input: { workId: string; versionId: str
  * live version cannot leave the work half-deleted. The revision bumps once, which is what a single
  * user action deserves.
  */
-export function softDeleteNovelaiVersions(input: { workId: string; versionIds: string[]; expectedRevision: number }): { deleted: string[] } {
+export function softDeleteNovelaiVersions(input: { workId: string; versionIds: string[]; expectedRevision: number; owner?: NovelaiEditOwner }): { deleted: string[] } {
   const work = getNovelaiWork(input.workId)
   if (!work) throw new NovelaiVersionError('WORK_NOT_FOUND', 'work not found')
   if (input.expectedRevision !== work.revision) throw new NovelaiVersionError('REVISION_CONFLICT', 'work changed since revision ' + input.expectedRevision)
+  novelaiEditSessions.assertWrite({ kind: 'work', id: work.id }, input.owner)
   const ids = [...new Set(input.versionIds.filter(id => typeof id === 'string' && id))]
   if (!ids.length) throw new NovelaiVersionError('INVALID_INPUT', 'no versions selected')
   const versions = ids.map(id => {
@@ -364,18 +371,19 @@ export function softDeleteNovelaiVersions(input: { workId: string; versionIds: s
   }
 }
 
-export function restoreNovelaiVersions(versionIds: string[]): NovelaiVersion[] {
+export function restoreNovelaiVersions(versionIds: string[], owner?: NovelaiEditOwner): NovelaiVersion[] {
   const ids = [...new Set(versionIds.filter(id => typeof id === 'string' && id))]
   if (!ids.length) throw new NovelaiVersionError('INVALID_INPUT', 'no versions selected')
   for (const id of ids) {
     if (!getNovelaiVersion(id)) throw new NovelaiVersionError('VERSION_NOT_FOUND', 'version not found: ' + id)
   }
-  return ids.map(id => restoreNovelaiVersion(id))
+  return ids.map(id => restoreNovelaiVersion(id, owner))
 }
 
-export function restoreNovelaiVersion(versionId: string): NovelaiVersion {
+export function restoreNovelaiVersion(versionId: string, owner?: NovelaiEditOwner): NovelaiVersion {
   const version = getNovelaiVersion(versionId)
   if (!version) throw new NovelaiVersionError('VERSION_NOT_FOUND', 'version not found')
+  novelaiEditSessions.assertWrite({ kind: 'work', id: version.workId }, owner)
   const db = getDatabase()
   const restored: string[] = []
   let cursor: NovelaiVersion | null = version
@@ -389,9 +397,10 @@ export function restoreNovelaiVersion(versionId: string): NovelaiVersion {
 }
 
 /** Permanent removal. Refused while the version still has live children or the work is not empty. */
-export function purgeNovelaiVersion(versionId: string): void {
+export function purgeNovelaiVersion(versionId: string, owner?: NovelaiEditOwner): void {
   const version = getNovelaiVersion(versionId)
   if (!version) throw new NovelaiVersionError('VERSION_NOT_FOUND', 'version not found')
+  novelaiEditSessions.assertWrite({ kind: 'work', id: version.workId }, owner)
   if (childCount(version.id) > 0) throw new NovelaiVersionError('INVALID_INPUT', 'version still has live children')
   const db = getDatabase()
   db.exec('BEGIN IMMEDIATE')

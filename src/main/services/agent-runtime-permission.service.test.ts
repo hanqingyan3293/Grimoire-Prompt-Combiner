@@ -104,4 +104,35 @@ describe('main runtime permission scopes', () => {
     expect(runtimePermissionGrantKey('write', { tool: 'grimoire.a', input: { id: 1 } }, false)).not.toBe(runtimePermissionGrantKey('write', { tool: 'grimoire.b', input: { id: 1 } }, false))
     expect(runtimePermissionGrantKey('write', {}, false)).toBeUndefined()
   })
+
+  it('downgrades a session decision to allow-once when force-prompt or detail is invalid', async () => {
+    const cases = [
+      { id: 'forced', detail, forcePrompt: true },
+      { id: 'invalid', detail: {}, forcePrompt: false },
+    ]
+    for (const item of cases) {
+      const broker = new RuntimePermissionBroker()
+      const sender = owner()
+      const answer = broker.request({ sender, sessionId: 's', scope: 'ai:s', permission: 'execute', detail: item.detail, action: 'bash', native: true, forcePrompt: item.forcePrompt, channel: 'permission', requestId: item.id })
+      expect(broker.decide(sender, item.id, 'allowForSession')).toBe(true)
+      expect(await answer).toBe('allowOnce')
+      const second = broker.request({ sender, sessionId: 's', scope: 'ai:s', permission: 'execute', detail: item.detail, action: 'bash', native: true, channel: 'permission', requestId: item.id + '-second' })
+      expect(sender.send).toHaveBeenCalledTimes(2)
+      expect(broker.decide(sender, item.id + '-second', 'deny')).toBe(true)
+      await second
+    }
+  })
+
+  it('returns the effective decision for persistence without changing the boolean decide API', async () => {
+    const broker = new RuntimePermissionBroker()
+    const sender = owner()
+    const downgraded = broker.request({ sender, sessionId: 's', scope: 'ai:s', permission: 'execute', detail: {}, action: 'bash', native: true, channel: 'permission', requestId: 'invalid' })
+    expect(broker.decideWithDecision(sender, 'invalid', 'allowForSession')).toBe('allowOnce')
+    expect(await downgraded).toBe('allowOnce')
+    expect(broker.decide(sender, 'invalid', 'deny')).toBe(false)
+
+    const granted = broker.request({ sender, sessionId: 's', scope: 'ai:s', permission: 'execute', detail, action: 'bash', native: true, channel: 'permission', requestId: 'exact' })
+    expect(broker.decideWithDecision(sender, 'exact', 'allowForSession')).toBe('allowForSession')
+    expect(await granted).toBe('allowForSession')
+  })
 })

@@ -30,7 +30,6 @@ export const PANEL_TYPES = [
   "canvas",
   "prompt-assets",
   "tag-asset-manager",
-  "tag-batch",
   "gallery-search",
   "browser",
   "novelai-workbench",

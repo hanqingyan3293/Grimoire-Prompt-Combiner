@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import type { ChangeEvent as ReactChangeEvent, DragEvent as ReactDragEvent, MouseEvent as ReactMouseEvent, PointerEvent as ReactPointerEvent } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { Group, Video } from "lucide-react";
@@ -43,7 +43,8 @@ import { AssetPickerModal, type InsertAssetPayload } from "@canvas/components/ca
 import { CanvasSidePanel } from "@canvas/components/canvas/canvas-side-panel";
 import { CanvasZoomControls } from "@canvas/components/canvas/canvas-zoom-controls";
 import { useAgentStore } from "@canvas/stores/use-agent-store";
-import { useCanvasStore } from "@canvas/stores/canvas/use-canvas-store";
+import { useCanvasStore, getCommittedCanvasProjectRevision, hydrateCanvasTransferProject } from "@canvas/stores/canvas/use-canvas-store";
+import { getCanvasTransferFrozen, subscribeCanvasTransferFrozen, registerCanvasProjectTransferAdapter, publishCanvasEditorView } from "@canvas/canvas-editor-transfer";
 import { useAgentBridge } from "@canvas/pages/canvas/hooks/use-agent-bridge";
 import { usePluginHost } from "@canvas/pages/canvas/hooks/use-plugin-host";
 import { buildNodeMentionReferences, getGroupResourceNodes, isCanvasReferenceNode, type CanvasResourceReference } from "@canvas/lib/canvas/canvas-resource-references";
@@ -217,6 +218,10 @@ function InfiniteCanvasPage() {
     const renameProject = useCanvasStore((state) => state.renameProject);
     const deleteProjects = useCanvasStore((state) => state.deleteProjects);
     const currentProject = useCanvasStore((state) => state.projects.find((project) => project.id === projectId));
+    const canvasSaveError = useCanvasStore((state) => state.saveError);
+    const localSaveRevision = useCanvasStore((state) => state.localSaveRevisions[projectId]);
+    const canvasTransferFrozen = useSyncExternalStore(subscribeCanvasTransferFrozen, getCanvasTransferFrozen, getCanvasTransferFrozen);
+    const loadedRevisionRef = useRef(0);
     const theme = canvasThemes[useThemeStore((state) => state.theme)];
     const [nodes, setNodes] = useState<CanvasNodeData[]>([]);
     const [connections, setConnections] = useState<CanvasConnection[]>([]);
@@ -466,6 +471,7 @@ function InfiniteCanvasPage() {
                 showImageInfo: project.showImageInfo || false,
             };
             setHistoryState({ canUndo: false, canRedo: false });
+            loadedRevisionRef.current = getCommittedCanvasProjectRevision(projectId) ?? project.revision;
             setProjectLoaded(true);
         };
         void restore();
@@ -519,9 +525,9 @@ function InfiniteCanvasPage() {
     }, [activeChatId, backgroundMode, chatSessions, connections, createHistoryEntry, nodes, projectLoaded, showImageInfo]);
 
     useEffect(() => {
-        if (!projectLoaded || historyPausedRef.current) return;
-        updateProject(projectId, { nodes, connections, chatSessions, activeChatId, backgroundMode, showImageInfo });
-    }, [activeChatId, backgroundMode, chatSessions, connections, nodes, projectId, projectLoaded, showImageInfo, updateProject]);
+        if (!projectLoaded || historyPausedRef.current || canvasTransferFrozen) return;
+        updateProject(projectId, { nodes, connections, chatSessions, activeChatId, backgroundMode, showImageInfo }, loadedRevisionRef.current);
+    }, [activeChatId, backgroundMode, chatSessions, connections, nodes, projectId, projectLoaded, showImageInfo, updateProject, canvasTransferFrozen]);
 
     useEffect(() => {
         window.dispatchEvent(new CustomEvent('grimoire:canvas-document-updated', { detail: { projectId } }));
@@ -532,16 +538,64 @@ function InfiniteCanvasPage() {
     }, [dialogNodeId]);
 
     useEffect(() => {
-        if (!projectLoaded) return;
+        if (!projectLoaded || canvasTransferFrozen) return;
         if (viewportSaveTimerRef.current) clearTimeout(viewportSaveTimerRef.current);
         viewportSaveTimerRef.current = setTimeout(() => {
-            updateProject(projectId, { viewport: viewportRef.current });
+            updateProject(projectId, { viewport: viewportRef.current }, loadedRevisionRef.current);
             viewportSaveTimerRef.current = null;
         }, 500);
         return () => {
             if (viewportSaveTimerRef.current) clearTimeout(viewportSaveTimerRef.current);
         };
-    }, [projectId, projectLoaded, updateProject, viewport]);
+    }, [projectId, projectLoaded, updateProject, viewport, canvasTransferFrozen]);
+
+    const transferSnapshotRef = useRef({ projectLoaded, nodes, connections, chatSessions, activeChatId, backgroundMode, showImageInfo, viewport, selectedNodeIds, selectedConnectionId, isNodeResizing });
+    transferSnapshotRef.current = { projectLoaded, nodes, connections, chatSessions, activeChatId, backgroundMode, showImageInfo, viewport, selectedNodeIds, selectedConnectionId, isNodeResizing };
+    useLayoutEffect(() => registerCanvasProjectTransferAdapter({
+        projectId,
+        ready: () => transferSnapshotRef.current.projectLoaded,
+        assertCanTransfer: () => {
+            if (generationRequestsRef.current.size || videoPollIdsRef.current.size || useAgentStore.getState().sending || useAgentStore.getState().conversation.status === "running") throw new Error("CANVAS_TASK_ACTIVE: 当前画布生成或 Agent 任务仍在运行，请完成或停止后重试");
+            if (nodeDraggingRef.current) throw new Error("CANVAS_DRAG_ACTIVE: 请先完成节点拖动再移交");
+            if (connectingParamsRef.current || selectionBoxRef.current || pendingConnectionCreateRef.current || transferSnapshotRef.current.isNodeResizing) throw new Error("CANVAS_INTERACTION_ACTIVE: 请先完成连线、框选或调整节点大小，再移交");
+        },
+        flush: async () => {
+            const current = transferSnapshotRef.current;
+            if (!current.projectLoaded) throw new Error("CANVAS_NOT_READY: 当前画布项目尚未读取完成");
+            if (viewportSaveTimerRef.current) { clearTimeout(viewportSaveTimerRef.current); viewportSaveTimerRef.current = null; }
+            const saved = useCanvasStore.getState().openProject(projectId);
+            if (!saved) throw new Error("CANVAS_REVISION_NOT_READY: 当前画布项目已不存在");
+            if ((getCommittedCanvasProjectRevision(projectId) ?? 0) > loadedRevisionRef.current && (saved.nodes !== current.nodes || saved.connections !== current.connections || saved.chatSessions !== current.chatSessions)) throw new Error("CANVAS_REVISION_CONFLICT: 另一处已更新画布文档，本地内容已保留，请先确认版本后重试");
+            if (saved.nodes !== current.nodes || saved.connections !== current.connections || saved.chatSessions !== current.chatSessions || saved.activeChatId !== current.activeChatId || saved.backgroundMode !== current.backgroundMode || saved.showImageInfo !== current.showImageInfo || saved.viewport.x !== current.viewport.x || saved.viewport.y !== current.viewport.y || saved.viewport.k !== current.viewport.k) {
+                if (!updateProject(projectId, { nodes: current.nodes, connections: current.connections, chatSessions: current.chatSessions, activeChatId: current.activeChatId, backgroundMode: current.backgroundMode, showImageInfo: current.showImageInfo, viewport: current.viewport }, loadedRevisionRef.current)) throw new Error(useCanvasStore.getState().saveError || 'CANVAS_REVISION_CONFLICT');
+            }
+        },
+        view: () => {
+            const current = transferSnapshotRef.current;
+            return { version: 1, projectId, projectRevision: loadedRevisionRef.current, viewport: { ...current.viewport }, selectedNodeIds: [...current.selectedNodeIds], selectedConnectionId: current.selectedConnectionId };
+        },
+        restore: async (state, strict = true) => {
+            const current = transferSnapshotRef.current;
+            if (state.projectId !== projectId || loadedRevisionRef.current < state.projectRevision) throw new Error("CANVAS_REVISION_NOT_READY: 目标画布仍是旧版本");
+            const selected = state.selectedNodeIds.filter(id => current.nodes.some(node => node.id === id));
+            const connection = state.selectedConnectionId && current.connections.some(item => item.id === state.selectedConnectionId) ? state.selectedConnectionId : null;
+            if (strict && (selected.length !== state.selectedNodeIds.length || connection !== state.selectedConnectionId)) throw new Error("CANVAS_SELECTION_STALE: 画布选择对象已改变，请在原窗口确认后重试");
+            didInitialCenterRef.current = true;
+            setViewport({ ...state.viewport });
+            setSelectedNodeIds(new Set(selected));
+            setSelectedConnectionId(connection);
+        },
+    }), [projectId, updateProject]);
+
+    useLayoutEffect(() => {
+        if (currentProject?.nodes === nodes && currentProject.connections === connections && currentProject.chatSessions === chatSessions && currentProject.activeChatId === activeChatId && currentProject.backgroundMode === backgroundMode && currentProject.showImageInfo === showImageInfo) {
+            loadedRevisionRef.current = Math.max(loadedRevisionRef.current, localSaveRevision ?? loadedRevisionRef.current);
+        }
+    }, [currentProject, nodes, connections, chatSessions, activeChatId, backgroundMode, showImageInfo, projectId, localSaveRevision]);
+    useEffect(() => {
+        if (!projectLoaded || canvasTransferFrozen) return;
+        publishCanvasEditorView({ version: 1, projectId, projectRevision: loadedRevisionRef.current, viewport: { ...viewport }, selectedNodeIds: [...selectedNodeIds], selectedConnectionId });
+    }, [projectLoaded, canvasTransferFrozen, projectId, currentProject, viewport, selectedNodeIds, selectedConnectionId]);
 
     useLayoutEffect(() => {
         nodesRef.current = nodes;
@@ -1174,7 +1228,8 @@ function InfiniteCanvasPage() {
         if (!project) return message.error(t("canvas.projectPage.notFound"));
         const hide = message.loading(t("canvas.projectPage.exporting"), 0);
         try {
-            await exportCanvasProjects([project], project.title || t("canvas.title"));
+            const current = transferSnapshotRef.current;
+            await exportCanvasProjects([{ ...project, nodes: current.nodes, connections: current.connections, chatSessions: current.chatSessions, activeChatId: current.activeChatId, backgroundMode: current.backgroundMode, showImageInfo: current.showImageInfo, viewport: current.viewport }], project.title || t("canvas.title"));
             message.success(t("canvas.projectPage.exported"));
         } catch (error) {
             console.error(error);
@@ -3096,6 +3151,19 @@ function InfiniteCanvasPage() {
         <main className="flex h-full min-h-0 overflow-hidden" style={{ background: theme.canvas.background, color: theme.node.text }}>
             <CanvasSidePanel nodes={nodes} selectedNodeIds={selectedNodeIds} onFocusNode={focusNode} onPreviewNode={setPreviewNodeId} onInsertAsset={handleAssetInsert} />
             <section className="relative min-w-0 flex-1 overflow-hidden">
+                {canvasSaveError && <div role="alert" className="absolute left-3 right-3 top-14 z-50 flex flex-wrap items-center gap-2 rounded border border-amber-400/50 bg-[var(--color-bg-secondary)] p-2 text-xs">
+                    <span className="min-w-0 flex-1">{canvasSaveError.replace(/^[A-Z_]+: /, "")}</span>
+                    <Button size="small" onClick={() => void exportCurrentProject()}>下载当前副本</Button>
+                    <Button size="small" onClick={() => modal.confirm({
+                        title: "读取远端版本？", content: "会用远端画布替换当前未保存内容。请先下载当前副本。", okText: "使用远端版本", cancelText: "保留当前内容",
+                        onOk: async () => {
+                            const snapshot = () => JSON.stringify({ ...transferSnapshotRef.current, selectedNodeIds: [...transferSnapshotRef.current.selectedNodeIds] });
+                            const expected = snapshot();
+                            try { await hydrateCanvasTransferProject(projectId, 0, true, () => snapshot() === expected); window.location.reload(); }
+                            catch (error) { message.error(error instanceof Error ? error.message : "读取失败，当前内容已保留"); throw error; }
+                        },
+                    })}>读取远端版本</Button>
+                </div>}
                 <CanvasTopBar
                     title={currentProject?.title || t("canvas.projectPage.untitledCanvas")}
                     titleDraft={titleDraft}

@@ -26,6 +26,8 @@ export class OpenCodeRuntime extends HttpAgentRuntime {
   private readonly activeSends = new Map<string, { controller: AbortController; interrupted: boolean; remoteSessionId?: string }>()
   private readonly nativeToolPolicy: 'disabled' | 'ask'
   private readonly enableNativeSessionOperations: boolean
+  private readonly hostPermissionBroker: boolean
+  private readonly managed: boolean
   private closed = false
   constructor(config: {
     endpoint: string; token?: string; directory?: string; model?: string; remoteSessionId?: string
@@ -33,6 +35,10 @@ export class OpenCodeRuntime extends HttpAgentRuntime {
     nativeToolPolicy?: 'disabled' | 'ask'
     /** Legacy fork/summarize only; neither durable replay nor business-history recovery. */
     enableNativeSessionOperations?: boolean
+    /** Main attaches its exact-scope permission broker; never a native process-wide grant. */
+    hostPermissionBroker?: boolean
+    /** True only when main attached an owned process lease to this instance. */
+    managed?: boolean
   }) {
     super({ ...config, runtime: 'opencode', promptPath: '/session/:sessionID/message', interruptPath: '/session/:sessionID/abort', toolsPath: '/tool', approvalPath: '/permission/:requestID/reply' })
     this.endpoint = config.endpoint.replace(/\/$/, '')
@@ -43,6 +49,8 @@ export class OpenCodeRuntime extends HttpAgentRuntime {
     if (config.nativeToolPolicy !== undefined && config.nativeToolPolicy !== 'disabled' && config.nativeToolPolicy !== 'ask') throw new Error('OPENCODE_NATIVE_TOOL_POLICY_INVALID')
     this.nativeToolPolicy = config.nativeToolPolicy ?? 'disabled'
     this.enableNativeSessionOperations = config.enableNativeSessionOperations === true
+    this.hostPermissionBroker = config.hostPermissionBroker === true
+    this.managed = config.managed === true
   }
   private initialRemoteSessionId?: string
   private effectiveModel(model: string) {
@@ -65,7 +73,8 @@ export class OpenCodeRuntime extends HttpAgentRuntime {
     }
   }
   getSessionReference(sessionId: string) { return this.remoteSessions.get(sessionId) }
-  getCapabilities(): RuntimeCapabilities { return nativeRuntimeCapabilities('opencode', { persistent: this.remoteSessions.size > 0 }) }
+  getCapabilities(): RuntimeCapabilities { return nativeRuntimeCapabilities('opencode', { persistent: this.remoteSessions.size > 0, nativeToolPolicy: this.nativeToolPolicy, nativeSessionOperations: this.enableNativeSessionOperations, hostPermissionBroker: this.hostPermissionBroker, managed: this.managed }) }
+  getCapabilityDriver(): 'opencode-managed' | 'opencode-unprepared' { return this.managed ? 'opencode-managed' : 'opencode-unprepared' }
   private headers() { return { accept: 'application/json, text/event-stream', 'content-type': 'application/json', ...(this.token ? { authorization: 'Bearer ' + this.token } : {}) } }
   private modelRef(model: string) {
     const slash = model.indexOf('/')
@@ -543,6 +552,7 @@ export class PiRuntime implements AgentRuntime {
   loadSession(session: RuntimeSession) { this.sessions.set(session.id, session) }
   getSessionReference(sessionId: string) { return this.config.sessionDir && this.sessions.has(sessionId) ? sessionId : undefined }
   getCapabilities(): RuntimeCapabilities { return nativeRuntimeCapabilities('pi', { persistent: Boolean(this.config.sessionDir && this.config.sessionId) }) }
+  getCapabilityDriver(): 'pi-rpc' { return 'pi-rpc' }
   private effectiveModel(model = this.config.model || 'default'): string {
     const prefix = this.config.provider ? this.config.provider + '::' : ''
     return prefix && model.startsWith(prefix) ? model.slice(prefix.length) : model

@@ -89,6 +89,18 @@ describe('NovelAI asset library (M6.4)', () => {
     expect(listAssetsUsedByImage('img_9')).toEqual([])
   })
 
+  it('blocks confirmed force deletion when the previewed image usage set has changed', () => {
+    const asset = createNovelaiAsset({ kind: 'character', name: 'confirmed asset', payload: 'portrait' })
+    recordNovelaiAssetUsage({ assetId: asset.id, imageId: 'img_old' })
+    const expectedImageIds = listImagesUsingAsset(asset.id).map(item => item.imageId)
+    recordNovelaiAssetUsage({ assetId: asset.id, imageId: 'img_new' })
+    expect(() => deleteNovelaiAsset(asset.id, { force: true, expectedImageIds })).toThrow(/ASSET_CHANGED/)
+    expect(getNovelaiAsset(asset.id)).not.toBeNull()
+    expect(listImagesUsingAsset(asset.id).map(item => item.imageId).sort()).toEqual(['img_new', 'img_old'])
+    deleteNovelaiAsset(asset.id, { force: true, expectedImageIds: ['img_new', 'img_old'] })
+    expect(getNovelaiAsset(asset.id)).toBeNull()
+  })
+
   it('guards permanent image deletion while a version references it (F8)', () => {
     const { work, root } = createNovelaiWork({ name: 'w', snapshot: 'a' })
     createNovelaiVersion({ workId: work.id, parentVersionId: root.id, snapshot: 'a, b', expectedRevision: 1 })

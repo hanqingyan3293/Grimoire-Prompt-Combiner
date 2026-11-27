@@ -1,6 +1,7 @@
 import crypto from 'node:crypto'
 
 import { getDatabase, saveDatabase } from '../database'
+import { novelaiEditSessions, type NovelaiEditOwner } from './novelai-edit-session.service'
 
 // NovelAI asset library (M6.4). Assets are reusable prompt material (characters, styles, scenes);
 // `novelai_asset_usage` answers 「这块用在哪些图」 and 「这张图用了哪些素材」 without scanning text.
@@ -15,10 +16,11 @@ export interface NovelaiAsset {
   createdAt: string
   updatedAt: string
   uses: number
+  revision: number
 }
 
 export class NovelaiAssetError extends Error {
-  constructor(readonly code: 'ASSET_NOT_FOUND' | 'ASSET_IN_USE' | 'INVALID_INPUT', message: string) {
+  constructor(readonly code: 'ASSET_NOT_FOUND' | 'ASSET_IN_USE' | 'ASSET_CHANGED' | 'INVALID_INPUT' | 'REVISION_CONFLICT', message: string) {
     super(message)
     this.name = 'NovelaiAssetError'
   }
@@ -47,11 +49,12 @@ function rowToAsset(row: unknown[]): NovelaiAsset {
     createdAt: String(row[5]),
     updatedAt: String(row[6]),
     uses: Number(row[7] ?? 0),
+    revision: Number(row[8] ?? 1),
   }
 }
 
 const SELECT_ASSET = `SELECT a.id,a.kind,a.name,a.payload,a.examples,a.created_at,a.updated_at,
-  (SELECT count(*) FROM novelai_asset_usage u WHERE u.asset_id=a.id) AS uses FROM novelai_asset a`
+  (SELECT count(*) FROM novelai_asset_usage u WHERE u.asset_id=a.id) AS uses, a.revision FROM novelai_asset a`
 
 export function createNovelaiAsset(input: { kind: NovelaiAssetKind; name: string; payload?: string; examples?: string[] }): NovelaiAsset {
   if (!KINDS.includes(input.kind)) throw new NovelaiAssetError('INVALID_INPUT', 'unknown asset kind')
@@ -77,32 +80,43 @@ export function listNovelaiAssets(kind?: NovelaiAssetKind): NovelaiAsset[] {
   return rows.map(rowToAsset)
 }
 
-export function updateNovelaiAsset(id: string, patch: { name?: string; payload?: string; examples?: string[]; kind?: NovelaiAssetKind }): NovelaiAsset {
+export function updateNovelaiAsset(id: string, patch: { name?: string; payload?: string; examples?: string[]; kind?: NovelaiAssetKind; expectedRevision?: number; owner?: NovelaiEditOwner }): NovelaiAsset {
   const current = getNovelaiAsset(id)
   if (!current) throw new NovelaiAssetError('ASSET_NOT_FOUND', 'asset not found')
+  if (patch.expectedRevision !== undefined && patch.expectedRevision !== current.revision) throw new NovelaiAssetError('REVISION_CONFLICT', 'REVISION_CONFLICT: 素材内容已经改变')
+  novelaiEditSessions.assertWrite({ kind: 'asset', id }, patch.owner)
   const kind = patch.kind ?? current.kind
   if (!KINDS.includes(kind)) throw new NovelaiAssetError('INVALID_INPUT', 'unknown asset kind')
-  getDatabase().run('UPDATE novelai_asset SET kind=?, name=?, payload=?, examples=?, updated_at=? WHERE id=?', [
+  const result = getDatabase().run('UPDATE novelai_asset SET kind=?, name=?, payload=?, examples=?, updated_at=?, revision=revision+1 WHERE id=? AND revision=?', [
     kind,
     patch.name === undefined ? current.name : cleanName(patch.name),
     patch.payload === undefined ? current.payload : String(patch.payload),
     JSON.stringify(patch.examples === undefined ? current.examples : patch.examples),
     now(),
-    id,
+    id, current.revision,
   ])
+  if (Number(result.changes) !== 1) throw new NovelaiAssetError('REVISION_CONFLICT', 'REVISION_CONFLICT: 素材内容已经改变')
   saveDatabase()
   return getNovelaiAsset(id)!
 }
 
 /** Removing an asset that still has usages is refused by default: the caller must pass `force`,
  * which also removes the usage rows. Silently deleting usage would break 「这块用在哪些图」. */
-export function deleteNovelaiAsset(id: string, options: { force?: boolean } = {}): void {
-  const asset = getNovelaiAsset(id)
-  if (!asset) throw new NovelaiAssetError('ASSET_NOT_FOUND', 'asset not found')
-  if (asset.uses > 0 && !options.force) throw new NovelaiAssetError('ASSET_IN_USE', 'asset is used by ' + asset.uses + ' image(s)')
+export function deleteNovelaiAsset(id: string, options: { force?: boolean; expectedImageIds?: string[]; expectedRevision?: number; owner?: NovelaiEditOwner } = {}): void {
   const db = getDatabase()
   db.exec('BEGIN IMMEDIATE')
   try {
+    const asset = getNovelaiAsset(id)
+    if (!asset) throw new NovelaiAssetError('ASSET_NOT_FOUND', 'asset not found')
+    if (options.expectedRevision !== undefined && options.expectedRevision !== asset.revision) throw new NovelaiAssetError('REVISION_CONFLICT', 'REVISION_CONFLICT: 素材内容已经改变')
+    novelaiEditSessions.assertWrite({ kind: 'asset', id }, options.owner)
+    if (options.expectedImageIds !== undefined) {
+      if (!Array.isArray(options.expectedImageIds) || options.expectedImageIds.some(value => typeof value !== 'string' || !value)) throw new NovelaiAssetError('INVALID_INPUT', 'expectedImageIds must contain image IDs')
+      const expected = [...new Set(options.expectedImageIds)].sort()
+      const current = listImagesUsingAsset(id).map(item => item.imageId).sort()
+      if (JSON.stringify(expected) !== JSON.stringify(current)) throw new NovelaiAssetError('ASSET_CHANGED', 'ASSET_CHANGED: 素材引用已变化，请重新预览后确认')
+    }
+    if (asset.uses > 0 && !options.force) throw new NovelaiAssetError('ASSET_IN_USE', 'ASSET_IN_USE: asset is used by ' + asset.uses + ' image(s)')
     db.run('DELETE FROM novelai_asset_usage WHERE asset_id=?', [id])
     db.run('DELETE FROM novelai_asset WHERE id=?', [id])
     db.exec('COMMIT')
@@ -113,9 +127,10 @@ export function deleteNovelaiAsset(id: string, options: { force?: boolean } = {}
   }
 }
 
-export function recordNovelaiAssetUsage(input: { assetId: string; imageId: string; via?: string }): void {
+export function recordNovelaiAssetUsage(input: { assetId: string; imageId: string; via?: string; owner?: NovelaiEditOwner }): void {
   const asset = getNovelaiAsset(input.assetId)
   if (!asset) throw new NovelaiAssetError('ASSET_NOT_FOUND', 'asset not found')
+  novelaiEditSessions.assertWrite({ kind: 'asset', id: input.assetId }, input.owner)
   if (typeof input.imageId !== 'string' || !input.imageId) throw new NovelaiAssetError('INVALID_INPUT', 'imageId is required')
   getDatabase().run('INSERT INTO novelai_asset_usage (asset_id,image_id,via,used_at) VALUES (?,?,?,?) ON CONFLICT(asset_id,image_id) DO UPDATE SET used_at=excluded.used_at, via=excluded.via', [
     input.assetId, input.imageId, input.via ?? '', now(),
@@ -123,7 +138,8 @@ export function recordNovelaiAssetUsage(input: { assetId: string; imageId: strin
   saveDatabase()
 }
 
-export function removeNovelaiAssetUsage(assetId: string, imageId: string): void {
+export function removeNovelaiAssetUsage(assetId: string, imageId: string, owner?: NovelaiEditOwner): void {
+  novelaiEditSessions.assertWrite({ kind: 'asset', id: assetId }, owner)
   getDatabase().run('DELETE FROM novelai_asset_usage WHERE asset_id=? AND image_id=?', [assetId, imageId])
   saveDatabase()
 }
@@ -175,5 +191,5 @@ export function countNovelaiVersionReferences(imageId: string): number {
 /** F8: refuse permanent image deletion while a version still references it. */
 export function assertNovelaiImageRemovable(imageId: string): void {
   const references = countNovelaiVersionReferences(imageId)
-  if (references > 0) throw new NovelaiAssetError('ASSET_IN_USE', 'image is referenced by ' + references + ' version(s)')
+  if (references > 0) throw new NovelaiAssetError('ASSET_IN_USE', 'ASSET_IN_USE: image is referenced by ' + references + ' version(s)')
 }

@@ -23,6 +23,9 @@ import { registerComfyIPC } from "./ipc/comfy.ipc"
 import { registerCanvasIPC } from "./ipc/canvas.ipc"
 import { registerPromptAssetsIPC } from "./ipc/prompt-assets.ipc"
 import { registerWorkspaceIPC } from "./ipc/workspace.ipc"
+import { registerWorkspaceTransferIPC } from './ipc/workspace-transfer.ipc'
+import type { EditorTransferInput, EditorTransferRecord } from '../shared/editor-transfer'
+import { EditorTransferError, type EditorTransferManager } from './services/editor-transfer.service'
 import { registerAgentIPC } from "./ipc/agent.ipc"
 import { registerNovelaiIPC } from "./ipc/novelai.ipc"
 import { registerScreenshotIPC } from "./ipc/screenshot.ipc"
@@ -37,10 +40,12 @@ import { registerFileBridgeIPC } from './ipc/file-bridge.ipc'
 import { registerCherryDataApiIPC } from './ipc/cherry-data-api.ipc'
 import { registerCherryNavigationWindow } from './services/cherry-navigation.service'
 import { registerMcpCacheBridgeIPC } from './services/mcp-cache-bridge.service'
-import { importDefaultPromptAssets, seedDefaultPromptAssetCategories } from './services/default-prompt-assets.service'
+import { defaultPromptAssetRoot, importDefaultPromptAssets, seedDefaultPromptAssetCategories } from './services/default-prompt-assets.service'
+import { registerLocalAssetProtocol, registerLocalAssetSchemePrivileges } from './services/local-asset-protocol.service'
 import { configureComfyUI } from './services/comfy-client'
-import { requireHttpUrl } from './services/input-validation'
+import { comfyAddressOrDefault } from './services/input-validation'
 import { taskRunner } from "./services/task-runner"
+import { drainAndQuit } from './services/shutdown-coordinator'
 import { clearWD14ModelDirectory, clearWD14PythonPath, configureWD14ModelDirectory, configureWD14PythonPath, wd14Worker } from "./services/wd14-worker"
 import { configureClipModelDirectory, configureClipPythonPath } from "./services/clip-worker"
 import { markInterruptedTasks } from "./services/task-repository"
@@ -53,7 +58,15 @@ let settingsWindow: BrowserWindow | null = null
 let aiWindow: BrowserWindow | null = null
 let cherryWindow: BrowserWindow | null = null
 const workspacePopouts = new Map<string, BrowserWindow>()
+const workspacePopoutTransfers = new Map<number, EditorTransferInput>()
+const closingTransferredPopouts = new Set<number>()
+const failedPopoutRenderers = new Set<number>()
+let workspaceTransfers: EditorTransferManager | null = null
+let workspaceTransferShutdown = false
 const hasSingleInstanceLock = app.requestSingleInstanceLock()
+
+// Privileged scheme registration is only honored before the app becomes ready.
+registerLocalAssetSchemePrivileges()
 
 if (!hasSingleInstanceLock) {
   app.quit()
@@ -149,7 +162,9 @@ function applyPersistedIntegrationSettings(): void {
   const comfySetting = database.exec("SELECT value FROM settings WHERE key='comfyui_base_url'")
   const savedComfyUrl = comfySetting[0]?.values?.[0]?.[0]
   if (typeof savedComfyUrl === 'string') {
-    try { configureComfyUI(requireHttpUrl(savedComfyUrl, 'ComfyUI 地址')) } catch (error) { logEvent('warn', 'comfyui', 'Saved ComfyUI address ignored', { context: error instanceof Error ? error.message : String(error), errorCode: 'COMFY_CONFIG_INVALID', retryable: false }) }
+    configureComfyUI(comfyAddressOrDefault(savedComfyUrl, 'http://127.0.0.1:8188', error => {
+      logEvent('warn', 'comfyui', 'Saved ComfyUI address ignored', { context: error instanceof Error ? error.message : String(error), errorCode: 'COMFY_CONFIG_INVALID', retryable: false })
+    }))
   }
   const wd14Setting = database.exec("SELECT value FROM settings WHERE key='wd14_model_directory'")
   const savedWD14Directory = wd14Setting[0]?.values?.[0]?.[0]
@@ -314,7 +329,7 @@ function createCherryWindow(): void {
   })
 }
 
-function createWorkspacePopout(popoutId: string, panelType: string, title: string, parent?: BrowserWindow | null, requestedBounds?: { x?: number; y?: number; width?: number; height?: number }): boolean {
+function createWorkspacePopout(popoutId: string, panelType: string, title: string, parent?: BrowserWindow | null, requestedBounds?: { x?: number; y?: number; width?: number; height?: number }, transfer?: { record: EditorTransferRecord; bind: (window: BrowserWindow) => void }): boolean {
   if (!isWorkspacePopoutType(panelType)) throw new Error('不支持的 Workspace 面板类型')
   const existing = workspacePopouts.get(popoutId)
   if (existing && !existing.isDestroyed()) {
@@ -348,16 +363,42 @@ function createWorkspacePopout(popoutId: string, panelType: string, title: strin
     },
   })
   workspacePopouts.set(popoutId, popout)
-  popout.once('ready-to-show', () => { if (!popout.isDestroyed()) popout.show() })
+  if (!transfer) popout.once('ready-to-show', () => { if (!popout.isDestroyed()) popout.show() })
   configureWindowSecurity(popout)
   const hash = 'workspace-popout?popoutId=' + encodeURIComponent(popoutId) + '&panelType=' + encodeURIComponent(panelType) + '&title=' + encodeURIComponent(title || panelType)
-  popout.loadURL(getRendererURL(hash))
+    + (transfer ? '&transferId=' + encodeURIComponent(transfer.record.transferId) + '&editorId=' + encodeURIComponent(transfer.record.editorId) : '')
+  if (transfer) {
+    workspacePopoutTransfers.set(popout.webContents.id, transfer.record)
+    transfer.bind(popout)
+    popout.on('close', event => {
+      if (workspaceTransferShutdown || closingTransferredPopouts.has(popout.webContents.id)) return
+      event.preventDefault()
+      if (failedPopoutRenderers.has(popout.webContents.id) || popout.webContents.isCrashed()) {
+        recoverCrashedWorkspacePopout(popout)
+        return
+      }
+      popout.webContents.send(IPC_CHANNELS.WORKSPACE_TRANSFER_RETURN_REQUEST)
+    })
+    popout.webContents.on('render-process-gone', (_event, details) => {
+      failedPopoutRenderers.add(popoutWebContentsId)
+      logEvent('error', 'editor-transfer', 'Workspace renderer stopped; native close will restore the last persisted draft', { errorCode: 'EDITOR_SOURCE_CRASHED', context: details.reason, retryable: true })
+    })
+    popout.webContents.on('did-finish-load', () => failedPopoutRenderers.delete(popoutWebContentsId))
+  }
+  void popout.loadURL(getRendererURL(hash)).catch(error => {
+    logEvent('error', 'editor-transfer', 'Workspace target page failed to load', { errorCode: 'EDITOR_TARGET_LOAD_FAILED', context: error instanceof Error ? error.message : String(error), retryable: false })
+    if (transfer && workspaceTransfers && !popout.isDestroyed()) workspaceTransfers.abort(transfer.record.transferId, popout.webContents, 'EDITOR_TARGET_LOAD_FAILED')
+  })
+  const popoutWebContentsId = popout.webContents.id
   let lastBounds = popout.getBounds()
   const rememberBounds = () => { if (!popout.isDestroyed()) lastBounds = popout.getBounds() }
   popout.on('move', rememberBounds)
   popout.on('resize', rememberBounds)
   popout.on('closed', () => {
     workspacePopouts.delete(popoutId)
+    workspacePopoutTransfers.delete(popoutWebContentsId)
+    closingTransferredPopouts.delete(popoutWebContentsId)
+    failedPopoutRenderers.delete(popoutWebContentsId)
     for (const window of BrowserWindow.getAllWindows()) {
       if (!window.isDestroyed()) window.webContents.send(IPC_CHANNELS.WORKSPACE_POPOUT_CLOSED, { popoutId, bounds: lastBounds })
     }
@@ -365,9 +406,31 @@ function createWorkspacePopout(popoutId: string, panelType: string, title: strin
   return true
 }
 
+function recoverCrashedWorkspacePopout(popout: BrowserWindow): void {
+  if (!workspaceTransfers || popout.isDestroyed()) return
+  const source = popout.webContents
+  const origin = workspacePopoutTransfers.get(source.id)
+  if (!origin || workspaceTransfers.isFrozen(origin.editorKey)) return
+  let recovery: EditorTransferRecord | undefined
+  try {
+    if (!mainWindow || mainWindow.isDestroyed()) createWindow()
+    if (!mainWindow || mainWindow.isDestroyed()) throw new EditorTransferError('EDITOR_TARGET_UNAVAILABLE', '主工作区窗口无法创建')
+    recovery = workspaceTransfers.prepareRecovery(origin, source, failedPopoutRenderers.has(source.id))
+    workspaceTransfers.bindTarget(recovery.transferId, mainWindow.webContents)
+  } catch (error) {
+    if (recovery) workspaceTransfers.abort(recovery.transferId, source)
+    logEvent('error', 'editor-transfer', 'Persisted workspace draft recovery failed', { errorCode: 'EDITOR_RECOVERY_FAILED', context: error instanceof Error ? error.message : String(error), retryable: true })
+  }
+}
+
 function closeWorkspacePopout(popoutId: string): boolean {
   const popout = workspacePopouts.get(popoutId)
   if (!popout || popout.isDestroyed()) return false
+  const origin = workspacePopoutTransfers.get(popout.webContents.id)
+  if (origin && !workspaceTransferShutdown) {
+    const pending = workspaceTransfers?.pendingFor(mainWindow?.webContents || popout.webContents)
+    if (pending?.some(record => record.editorKey === origin.editorKey)) return false
+  }
   popout.close()
   return true
 }
@@ -398,11 +461,33 @@ function createWindow(): void {
   configureWindowSecurity(mainWindow)
 
   const devServerUrl = process.env.VITE_DEV_SERVER_URL || (!app.isPackaged ? 'http://localhost:5173' : '')
-  if (devServerUrl) {
-    mainWindow.loadURL(devServerUrl)
-  } else {
-    mainWindow.loadFile(path.join(__dirname, "../../renderer/index.html"))
+  const rendererFile = path.join(__dirname, "../../renderer/index.html")
+  // 首帧导航可能被 Chromium network service 崩溃吞掉（本机稳定复现，STATE 里记为 S2/V2 调查项）：
+  // loadURL/loadFile 不抛错、也不触发 did-fail-load，窗口就停在 about:blank。安装版用户不可能知道要按
+  // Ctrl+R，所以这里自己兜底：主框架失败或 2.5s 后仍无 URL 就重载一次，最多两次，之后不再动，
+  // 免得和用户的手动刷新互相打架。
+  let rendererReloads = 0
+  const loadRenderer = (): void => {
+    if (!mainWindow || mainWindow.isDestroyed()) return
+    const load = devServerUrl ? mainWindow.loadURL(devServerUrl) : mainWindow.loadFile(rendererFile)
+    void load.catch(error => logEvent('warn', 'renderer', 'Renderer load rejected', { context: String(error), errorCode: 'RENDERER_LOAD_REJECTED', retryable: true }))
   }
+  const reloadRendererOnce = (reason: string): void => {
+    if (!mainWindow || mainWindow.isDestroyed() || rendererReloads >= 2) return
+    rendererReloads += 1
+    logEvent('warn', 'renderer', 'Retrying the first renderer navigation', { context: 'reason=' + reason + ' attempt=' + rendererReloads, errorCode: 'RENDERER_NAV_RETRY', retryable: true })
+    setTimeout(() => loadRenderer(), 600)
+  }
+  mainWindow.webContents.on('did-fail-load', (_event, errorCode, errorDescription, _validatedUrl, isMainFrame) => {
+    if (!isMainFrame || errorCode === -3 /* ERR_ABORTED: a redirect or an intentional stop */) return
+    reloadRendererOnce(errorCode + ' ' + errorDescription)
+  })
+  const blankGuard = setTimeout(() => {
+    if (!mainWindow || mainWindow.isDestroyed()) return
+    if (!mainWindow.webContents.getURL()) reloadRendererOnce('blank-after-timeout')
+  }, 2500)
+  mainWindow.webContents.once('did-finish-load', () => clearTimeout(blankGuard))
+  loadRenderer()
 
   // Focus-based cross-window sync
   mainWindow.on('focus', () => {
@@ -537,6 +622,51 @@ async function registerAllIPC(): Promise<void> {
   registerCanvasIPC()
   registerPromptAssetsIPC()
   registerWorkspaceIPC()
+  workspaceTransfers = registerWorkspaceTransferIPC({
+    editorAccessChanged(editorKey) {
+      for (const window of BrowserWindow.getAllWindows()) {
+        if (window.isDestroyed() || window.webContents.isDestroyed() || window.webContents.isCrashed() || failedPopoutRenderers.has(window.webContents.id)) continue
+        try { window.webContents.send(IPC_CHANNELS.WORKSPACE_EDITOR_ACCESS_CHANGED, { editorKey }) }
+        catch (error) { logEvent('warn', 'editor-transfer', 'Editor access notification failed', { errorCode: 'EDITOR_ACCESS_DELIVERY_FAILED', context: error instanceof Error ? error.message : String(error), retryable: false }) }
+      }
+    },
+    validateSource(sender, input) {
+      if (!input || sender.isDestroyed()) throw new EditorTransferError('EDITOR_TRANSFER_OWNER', '发起窗口无效')
+      if (input.direction === 'popout') {
+        if (mainWindow?.webContents !== sender) throw new EditorTransferError('EDITOR_TRANSFER_OWNER', '弹出只能由主工作区发起')
+      } else {
+        const origin = workspacePopoutTransfers.get(sender.id)
+        if (!origin || origin.editorKey !== input.editorKey || origin.panelId !== input.panelId || origin.workspaceId !== input.workspaceId) throw new EditorTransferError('EDITOR_TRANSFER_OWNER', '返回请求不属于该弹出编辑器')
+      }
+    },
+    createTarget(record, source, bind) {
+      if (record.direction === 'return') {
+        if (!mainWindow || mainWindow.isDestroyed()) createWindow()
+        if (!mainWindow) throw new EditorTransferError('EDITOR_TARGET_UNAVAILABLE', '主工作区窗口无法创建')
+        bind(mainWindow.webContents)
+      } else {
+        const popoutId = record.workspaceId + ':' + record.panelId
+        if (workspacePopouts.has(popoutId)) throw new EditorTransferError('EDITOR_TARGET_BUSY', '该面板已有独立窗口')
+        createWorkspacePopout(popoutId, record.panelType, record.title, BrowserWindow.fromWebContents(source), record.bounds, { record, bind: window => bind(window.webContents) })
+      }
+    },
+    closeTarget(owner) {
+      const window = BrowserWindow.fromWebContents(owner)
+      if (window && window !== mainWindow && !window.isDestroyed()) { closingTransferredPopouts.add(owner.id); window.destroy() }
+    },
+    showTarget(owner) {
+      const window = BrowserWindow.fromWebContents(owner)
+      if (window && !window.isDestroyed()) { window.show(); window.focus() }
+    },
+  })
+  ipcMain.handle(IPC_CHANNELS.WORKSPACE_TRANSFER_CLOSE_SOURCE, (event) => {
+    const origin = workspacePopoutTransfers.get(event.sender.id)
+    if (!origin || !workspaceTransfers?.mayCloseSource(event.sender, origin.editorKey)) return false
+    closingTransferredPopouts.add(event.sender.id)
+    const window = BrowserWindow.fromWebContents(event.sender)
+    window?.close()
+    return true
+  })
   registerAgentIPC()
   registerNovelaiIPC()
   registerScreenshotIPC()
@@ -572,6 +702,10 @@ async function registerAllIPC(): Promise<void> {
   })
   ipcMain.handle(IPC_CHANNELS.WORKSPACE_CLOSE_POPOUT, async (_event, popoutId: unknown) => closeWorkspacePopout(String(popoutId || '')))
   ipcMain.handle(IPC_CHANNELS.WORKSPACE_FOCUS_POPOUT, async (_event, popoutId: unknown) => focusWorkspacePopout(String(popoutId || '')))
+  ipcMain.handle(IPC_CHANNELS.WORKSPACE_IS_POPOUT_OPEN, (_event, popoutId: unknown) => {
+    const window = workspacePopouts.get(String(popoutId || ''))
+    return Boolean(window && !window.isDestroyed())
+  })
 
 
   ipcMain.handle(IPC_CHANNELS.ERROR_GET_ALL, async () => getErrorLogs(50))
@@ -603,7 +737,7 @@ async function registerAllIPC(): Promise<void> {
     assertNotManagedTarget(r.filePath)
     fs.writeFileSync(r.filePath, content, "utf-8")
     return true
-  })
+  })
   // Picking a single existing image is needed by the gallery repair path (a moved file); the text and
   // directory dialogs cannot express an image filter.
   ipcMain.handle(IPC_CHANNELS.DIALOG_OPEN_IMAGE, async () => {
@@ -656,6 +790,7 @@ process.on("unhandledRejection", (reason) => { logError("未处理的 Promise: "
 
 if (hasSingleInstanceLock) {
 let isQuitting = false
+let shutdownComplete = false
   app.on('second-instance', () => {
     if (!mainWindow || mainWindow.isDestroyed()) return
     if (mainWindow.isMinimized()) mainWindow.restore()
@@ -672,6 +807,8 @@ app.whenReady().then(async () => {
     await initDatabase()
     await registerAllIPC()
     await initDefaultTags()
+    const defaultPromptAssetDirectory = defaultPromptAssetRoot({ isPackaged: app.isPackaged, appPath: app.getAppPath(), dirname: __dirname })
+    registerLocalAssetProtocol(defaultPromptAssetDirectory)
     createWindow()
     if ((process.env.GRIMOIRE_VISUAL_CAPTURE === '1' || process.env.GRIMOIRE_UI_CATALOG_CAPTURE === '1') && process.env.GRIMOIRE_VISUAL_CAPTURE_EMPTY !== '1') {
       // Seed before the Cherry window loads so the renderer's initial fetch sees the
@@ -695,11 +832,8 @@ app.whenReady().then(async () => {
     if (process.env.GRIMOIRE_OPEN_CHERRY === '1' || process.env.GRIMOIRE_VISUAL_CAPTURE === '1' || process.env.GRIMOIRE_UI_CATALOG_CAPTURE === '1') {
       setTimeout(() => createCherryWindow(), 700)
     }
-    const defaultPromptAssetDirectory = process.env.VITE_DEV_SERVER_URL
-      ? path.join(__dirname, '../../../data/default-prompt-assets')
-      : path.join(process.resourcesPath, 'data', 'default-prompt-assets')
     void importDefaultPromptAssets(defaultPromptAssetDirectory).then((added) => {
-      const linked = seedDefaultPromptAssetCategories()
+      const linked = seedDefaultPromptAssetCategories(defaultPromptAssetDirectory)
       if (added > 0) {
         logEvent('info', 'prompt-assets', 'Imported ' + added + ' built-in prompt assets')
         broadcastDatabaseReload()
@@ -717,13 +851,25 @@ app.whenReady().then(async () => {
 })
 
 app.on("before-quit", (event) => {
+  workspaceTransferShutdown = true
+  workspaceTransfers?.shutdown()
+  if (shutdownComplete) return
+  event.preventDefault()
   if (isQuitting) return
   isQuitting = true
-  event.preventDefault()
-  taskRunner.stop()
-  void Promise.allSettled([wd14Worker.stop(), shutdownAiSessions()]).finally(() => {
-    closeDatabase()
-    app.quit()
+  void drainAndQuit({
+    stopTasksAndWait: () => taskRunner.stopAndWait(),
+    stopWorker: () => wd14Worker.stop(),
+    shutdownSessions: shutdownAiSessions,
+    closeDatabase,
+    quit: () => { shutdownComplete = true; app.quit() },
+  }).catch(error => {
+    // Keep the original database / ACK owner available for a later drain.
+    isQuitting = false
+    workspaceTransferShutdown = false
+    const message = error instanceof Error ? error.message : String(error)
+    logEvent('error', 'application', 'Application shutdown drain failed', { context: message, stack: error instanceof Error ? error.stack : undefined, errorCode: error && typeof error === 'object' && 'code' in error ? String(error.code) : 'APP_SHUTDOWN_FAILED', retryable: true })
+    dialog.showErrorBox('退出排空失败', message)
   })
 })
 app.on("window-all-closed", () => { if (BrowserWindow.getAllWindows().length === 0) app.quit() })

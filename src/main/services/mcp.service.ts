@@ -267,7 +267,7 @@ async function connectStdio(server: McpServerRecord): Promise<McpServerRecord> {
     if (processes.get(server.id) === processState) processes.delete(server.id)
   })
   try {
-    await sendRequest(processState, 'initialize', { protocolVersion: '2025-06-18', capabilities: {}, clientInfo: { name: 'Grimoire', version: '7.2.0' } })
+    await sendRequest(processState, 'initialize', { protocolVersion: '2025-06-18', capabilities: {}, clientInfo: { name: 'Grimoire', version: '0.7.3-alpha' } })
     child.stdin.write(JSON.stringify({ jsonrpc: '2.0', method: 'notifications/initialized', params: {} }) + String.fromCharCode(10))
     const result = await sendRequest(processState, 'tools/list', {})
     const tools = Array.isArray(result?.tools) ? result.tools.map((tool: any) => ({ name: String(tool.name || ''), description: typeof tool.description === 'string' ? tool.description : undefined, inputSchema: tool.inputSchema })) : []
@@ -336,7 +336,7 @@ export async function connectMcpServer(id: string): Promise<McpServerRecord> {
   try {
     if (server.transport === 'stdio') return await connectStdio(server)
     if (!server.endpoint) throw new Error('HTTP MCP 缺少 endpoint')
-    await httpJsonRpc(server, 'initialize', { protocolVersion: '2025-06-18', capabilities: {}, clientInfo: { name: 'Grimoire', version: '7.2.0' }, }, 1)
+    await httpJsonRpc(server, 'initialize', { protocolVersion: '2025-06-18', capabilities: {}, clientInfo: { name: 'Grimoire', version: '0.7.3-alpha' }, }, 1)
     await httpJsonRpc(server, 'notifications/initialized', {})
     const result = await httpJsonRpc(server, 'tools/list', {}, 2)
     return updateMcpServerStatus(id, 'connected', null, mapMcpTools(result))

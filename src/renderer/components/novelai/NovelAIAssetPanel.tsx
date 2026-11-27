@@ -1,12 +1,16 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Image as ImageIcon, Library, Plus, RefreshCw, Search, Trash2 } from 'lucide-react'
 import { Badge } from '../ui/Badge'
 import { Button } from '../ui/Button'
 import { EmptyState, PanelHeader } from '../ui/Feedback'
+import { Modal } from '../ui/Modal'
+import { useOptionalWorkspaceEditorState } from '../workspace/WorkspaceEditorHost'
+import { useNovelaiEditLease } from './use-novelai-edit-lease'
+import type { NovelaiEditProof } from '../../../shared/novelai-edit-types'
 
 // NovelAI asset library (M6 UI). Presentation only: reference guarding, usage idempotence and the
 // delete guard live in novelai-asset.service and are covered by its tests.
-type Asset = { id: string; kind: string; name: string; payload: string; examples: string[]; uses: number; updatedAt: string }
+type Asset = { id: string; kind: string; name: string; payload: string; examples: string[]; uses: number; updatedAt: string; revision?: number }
 type Usage = { imageId: string; via: string; usedAt: string }
 type VersionUse = { versionId: string; workId: string; number: number; imageId: string }
 
@@ -22,17 +26,26 @@ const KINDS: Array<{ value: string; label: string }> = [
 type Api = {
   list: (kind?: string) => Promise<Asset[]>
   create: (input: { kind: string; name: string; payload?: string }) => Promise<Asset>
-  update: (id: string, patch: Record<string, unknown>) => Promise<Asset>
-  remove: (id: string, force?: boolean) => Promise<boolean>
-  use: (input: { assetId: string; imageId: string; via?: string }) => Promise<boolean>
+  update: (id: string, patch: Record<string, unknown>, edit?: NovelaiEditProof) => Promise<Asset>
+  remove: (id: string, force?: boolean, expectedImageIds?: string[], options?: { edit?: NovelaiEditProof; expectedRevision?: number }) => Promise<boolean>
+  use: (input: { assetId: string; imageId: string; via?: string; edit?: NovelaiEditProof }) => Promise<boolean>
   images: (assetId: string) => Promise<Usage[]>
   byImage: (imageId: string) => Promise<Asset[]>
   versions: (assetId: string) => Promise<VersionUse[]>
 }
 
+type AssetEditorState = { kind: 'novelai-assets'; version: 1; selectedAssetId: string | null; assets: Record<string, { payload: string; baseRevision: number }> }
+function assetEditorState(value: unknown): AssetEditorState {
+  const state = value as AssetEditorState | null
+  return state?.kind === 'novelai-assets' && state.version === 1 && state.assets && typeof state.assets === 'object' ? state : { kind: 'novelai-assets', version: 1, selectedAssetId: null, assets: {} }
+}
+
 export function NovelAIAssetPanel() {
+  const editor = useOptionalWorkspaceEditorState<AssetEditorState>()
+  const editorRef = useRef(editor); editorRef.current = editor
   const [kind, setKind] = useState('')
   const [assets, setAssets] = useState<Asset[]>([])
+  const [assetsLoaded, setAssetsLoaded] = useState(false)
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [usages, setUsages] = useState<Usage[]>([])
   const [versionUses, setVersionUses] = useState<VersionUse[]>([])
@@ -42,16 +55,58 @@ export function NovelAIAssetPanel() {
   const [lookupResult, setLookupResult] = useState<Asset[] | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [deletePreview, setDeletePreview] = useState<{ asset: Asset; images: Usage[]; versions: VersionUse[] } | null>(null)
+  const deletePreviewSequence = useRef(0)
+  const selectAsset = useCallback((id: string | null) => {
+    deletePreviewSequence.current += 1
+    setDeletePreview(null)
+    setSelectedId(id)
+    const host = editorRef.current
+    if (host && host.status !== 'loading') host.updateState(current => ({ ...assetEditorState(current), selectedAssetId: id }))
+  }, [])
 
   const api = (typeof window !== 'undefined' ? (window as unknown as { api?: { novelai?: { assets?: Api } } }).api?.novelai?.assets : undefined)
   const selected = useMemo(() => assets.find(asset => asset.id === selectedId) ?? null, [assets, selectedId])
+  const lease = useNovelaiEditLease(selected ? { kind: 'asset', id: selected.id } : null)
+  const readOnly = Boolean(editor?.frozen || selected && lease.supported && lease.status !== 'ready')
+  useEffect(() => {
+    if (!editor?.registerTransferAdapter) return
+    return editor.registerTransferAdapter({ ready: () => assetsLoaded && (assets.length === 0 || selected !== null) })
+  }, [editor?.registerTransferAdapter, selected?.id, assets.length, assetsLoaded])
+  const slot = selected ? assetEditorState(editor?.state).assets[selected.id] : undefined
+  const payload = slot?.payload ?? selected?.payload ?? ''
+  const setPayload = (value: string) => {
+    if (!selected || readOnly) return
+    const host = editorRef.current
+    if (host) host.updateState(current => {
+      const state = assetEditorState(current)
+      return { ...state, selectedAssetId: selected.id, assets: { ...state.assets, [selected.id]: { payload: value, baseRevision: state.assets[selected.id]?.baseRevision ?? selected.revision ?? 1 } } }
+    })
+    else setAssets(current => current.map(asset => asset.id === selected.id ? { ...asset, draftPayload: value } : asset))
+  }
+  const persistPayload = async (value: string) => {
+    if (!api || !selected || readOnly || value === selected.payload) return
+    const target = selected.id
+    const revision = slot?.baseRevision ?? selected.revision ?? 1
+    try {
+      const edit = await lease.proof()
+      const saved = await api.update(target, { payload: value, expectedRevision: revision }, ...(edit ? [edit] : []))
+      setAssets(current => current.map(asset => asset.id === target ? saved : asset))
+      editorRef.current?.updateState(current => {
+        const state = assetEditorState(current)
+        const slot = state.assets[target]
+        return { ...state, assets: { ...state.assets, [target]: { payload: slot?.payload ?? value, baseRevision: saved.revision ?? revision + 1 } } }
+      })
+    } catch (cause) { setError(String(cause)) }
+  }
 
   const refresh = useCallback(async () => {
-    if (!api) return
+    if (!api || editorRef.current?.status === 'loading') return
     const list = await api.list(kind || undefined)
     setAssets(list)
-    if (list.length && !list.some(asset => asset.id === selectedId)) setSelectedId(list[0].id)
-  }, [api, kind, selectedId])
+    setAssetsLoaded(true)
+    if (list.length && !list.some(asset => asset.id === selectedId)) { const stored = assetEditorState(editorRef.current?.state).selectedAssetId; selectAsset(list.some(asset => asset.id === stored) ? stored : list[0].id) }
+  }, [api, kind, selectedId, selectAsset, editor?.status])
 
   useEffect(() => { void refresh().catch(cause => setError(String(cause))) }, [refresh])
 
@@ -72,13 +127,28 @@ export function NovelAIAssetPanel() {
   const recordUse = async () => {
     if (!api || !selected || !imageId.trim()) return
     setBusy(true); setError(null)
-    try { await api.use({ assetId: selected.id, imageId: imageId.trim() }); setImageId(''); await refresh(); setUsages(await api.images(selected.id)) } catch (cause) { setError(String(cause)) } finally { setBusy(false) }
+    try { const edit = await lease.proof(); await api.use({ assetId: selected.id, imageId: imageId.trim(), ...(edit ? { edit } : {}) }); setImageId(''); await refresh(); setUsages(await api.images(selected.id)) } catch (cause) { setError(String(cause)) } finally { setBusy(false) }
   }
 
   const remove = async () => {
-    if (!api || !selected) return
+    if (!api || !selected || busy) return
+    const sequence = ++deletePreviewSequence.current
     setBusy(true); setError(null)
-    try { await api.remove(selected.id, true); setSelectedId(null); await refresh() } catch (cause) { setError(String(cause)) } finally { setBusy(false) }
+    try {
+      const [images, versions] = await Promise.all([api.images(selected.id), api.versions(selected.id)])
+      if (sequence === deletePreviewSequence.current) setDeletePreview({ asset: selected, images, versions })
+    } catch (cause) { setError(String(cause)) } finally { setBusy(false) }
+  }
+  const confirmRemove = async () => {
+    if (!api || !deletePreview || busy || selectedId !== deletePreview.asset.id) return
+    const target = deletePreview.asset
+    setBusy(true); setError(null)
+    try {
+      const edit = await lease.proof()
+      await api.remove(target.id, true, deletePreview.images.map(item => item.imageId), ...(edit ? [{ edit, expectedRevision: target.revision ?? 1 }] : []))
+      selectAsset(null)
+      await refresh()
+    } catch (cause) { setError(String(cause)) } finally { setBusy(false) }
   }
 
   const lookup = async () => {
@@ -89,6 +159,8 @@ export function NovelAIAssetPanel() {
 
   return (
     <div className="flex h-full min-h-0 flex-col">
+      {lease.error && <div role="alert" className="ui-inline-note ui-inline-note-warning m-2 shrink-0 flex-wrap text-xs"><span>编辑权不可用：{lease.error.message}。当前草稿已保留。</span><Button size="sm" onClick={lease.retry}>重新取得编辑权</Button></div>}
+      {editor && <div className="flex shrink-0 items-center gap-2 px-3 py-1 text-xs"><Button size="sm" disabled={readOnly || editor.status === 'loading'} onClick={() => { void editor.flush('asset-draft-save').then(result => { if (result.status === 'error') setError(result.message) }) }}>保存素材草稿</Button><span>{editor.dirty ? '草稿有未保存修改' : '草稿已同步'}</span></div>}
       <PanelHeader title="素材库" description="角色 / 风格 / 场景 · 「这块用在哪些图」（M6）" icon={Library} />
       {/* Same narrow-panel rule as the workbench: wrap instead of squeezing. */}
       <div className="flex min-h-0 flex-1 flex-wrap">
@@ -108,7 +180,7 @@ export function NovelAIAssetPanel() {
           <div className="min-h-0 flex-1 overflow-auto">
             {assets.length === 0 && <p className="p-2 text-xs text-[var(--color-text-secondary)]">还没有素材</p>}
             {assets.map(asset => (
-              <button key={asset.id} type="button" onClick={() => setSelectedId(asset.id)}
+              <button key={asset.id} type="button" onClick={() => selectAsset(asset.id)}
                 className={'flex w-full items-center gap-1 overflow-hidden px-2 py-1 text-left text-xs ' + (selectedId === asset.id ? 'bg-[var(--color-hover)] text-[var(--color-accent-text)]' : 'text-[var(--color-text-secondary)]')}>
                 <span className="min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap">{asset.name}</span>
                 <span className="shrink-0 text-[10px]">{asset.uses}</span>
@@ -125,10 +197,10 @@ export function NovelAIAssetPanel() {
                 <span className="text-sm font-medium">{selected.name}</span>
                 <Badge tone="accent">{selected.kind}</Badge>
                 <Badge tone="neutral">引用 {selected.uses}</Badge>
-                <Button size="sm" variant="ghost" icon={Trash2} onClick={() => void remove()} disabled={busy}>删除素材</Button>
+                <Button size="sm" variant="ghost" icon={Trash2} onClick={() => void remove()} disabled={busy || readOnly}>删除素材</Button>
               </div>
-              <textarea defaultValue={selected.payload} aria-label="素材内容" spellCheck={false}
-                onBlur={event => { if (api && event.target.value !== selected.payload) void api.update(selected.id, { payload: event.target.value }).then(() => refresh()).catch(cause => setError(String(cause))) }}
+              <textarea key={selected.id} value={editor ? payload : (selected as Asset & {draftPayload?:string}).draftPayload ?? selected.payload} aria-label="素材内容" spellCheck={false} readOnly={readOnly}
+                onChange={event => setPayload(event.target.value)} onBlur={event => { void persistPayload(event.target.value) }}
                 className="ui-field h-24 resize-none px-2 py-2 font-mono text-xs" />
               <div className="flex flex-wrap items-center gap-1 text-[11px] text-[var(--color-text-secondary)]">
                 <ImageIcon size={12} /> 用在哪些图：
@@ -144,7 +216,7 @@ export function NovelAIAssetPanel() {
               </div>
               <div className="flex flex-wrap items-center gap-1">
                 <input value={imageId} onChange={event => setImageId(event.target.value)} placeholder="图片 ID" className="ui-field w-40 px-2 py-1 text-xs" aria-label="图片 ID" />
-                <Button size="sm" variant="secondary" onClick={() => void recordUse()} disabled={busy || !imageId.trim()}>记一次引用</Button>
+                <Button size="sm" variant="secondary" onClick={() => void recordUse()} disabled={busy || readOnly || !imageId.trim()}>记一次引用</Button>
               </div>
               <div className="mt-2 flex flex-wrap items-center gap-1 border-t border-[var(--color-border)] pt-2">
                 <Search size={12} className="text-[var(--color-text-secondary)]" />
@@ -157,6 +229,17 @@ export function NovelAIAssetPanel() {
           {error && <p role="alert" className="text-xs text-[var(--color-danger)]">{error}</p>}
         </main>
       </div>
+      <Modal title="确认删除素材" open={deletePreview !== null} onClose={() => { if (!busy) { deletePreviewSequence.current += 1; setDeletePreview(null) } }}>
+        {deletePreview && <div className="space-y-3 text-sm">
+          <p>将删除「{deletePreview.asset.name}」以及它的素材引用记录；图片文件和作品版本保留。</p>
+          <p>已关联 {deletePreview.images.length} 张图，当前可见 {deletePreview.versions.length} 个版本关系。回收站版本可能仍引用这些图片。</p>
+          <div className="max-h-32 overflow-auto break-all text-xs">{deletePreview.images.map(usage => <div key={usage.imageId}>{usage.imageId}</div>)}</div>
+          <div className="flex flex-wrap gap-2">
+            <Button onClick={() => setDeletePreview(null)} disabled={busy}>取消删除</Button>
+            <Button variant="danger" onClick={() => void confirmRemove()} disabled={busy}>确认删除</Button>
+          </div>
+        </div>}
+      </Modal>
     </div>
   )
 }

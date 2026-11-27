@@ -2,6 +2,7 @@ import fs from 'fs'
 import os from 'os'
 import path from 'path'
 import { logEvent, getActiveLogPath } from './logger.service'
+import { imageReferencesAtPath } from './image-asset.service'
 
 /**
  * Cache cleanup for the source `app.cache_cleanup.*` routes.
@@ -175,6 +176,10 @@ export function inspectGroup(group: CacheCleanupGroup): GroupSize {
 /** Removes a path recursively; reports whether it is gone afterwards. */
 function removePath(target: string): boolean {
   try {
+    if (imageReferencesAtPath(target, { directory: true }).length) {
+      logEvent('warn', 'cache-cleanup', '缓存仍被图片库引用，已保留', { errorCode: 'CACHE_IN_USE', retryable: false })
+      return false
+    }
     fs.rmSync(target, { recursive: true, force: true })
     return !fs.existsSync(target)
   } catch (error) {

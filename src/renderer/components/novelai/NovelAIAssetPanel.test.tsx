@@ -28,6 +28,20 @@ beforeEach(() => {
 afterEach(() => cleanup())
 
 describe('NovelAI asset library panel (M6 UI)', () => {
+  it('keeps a deletion preview requested immediately when the first selected asset becomes clickable', async () => {
+    const observer = new MutationObserver(() => {
+      const button = Array.from(document.querySelectorAll('button')).find(item => item.textContent === '删除素材')
+      if (!button) return
+      observer.disconnect()
+      button.click()
+    })
+    observer.observe(document.body, { subtree: true, childList: true })
+    try {
+      render(<NovelAIAssetPanel />)
+      await waitFor(() => expect(screen.getByRole('dialog', { name: '确认删除素材' })).toBeTruthy())
+      expect(api.remove).not.toHaveBeenCalled()
+    } finally { observer.disconnect() }
+  })
   it('lists assets with their reference counts and shows the selected asset usages', async () => {
     render(<NovelAIAssetPanel />)
     await waitFor(() => expect(screen.getAllByText('雨中少女').length).toBeGreaterThan(0))
@@ -46,6 +60,37 @@ describe('NovelAI asset library panel (M6 UI)', () => {
     await waitFor(() => expect(api.use).toHaveBeenCalledWith({ assetId: 'a1', imageId: 'img_9' }))
     // At least one refresh after the write; the exact count also depends on selection effects.
     await waitFor(() => expect(api.list.mock.calls.length).toBeGreaterThanOrEqual(2))
+  })
+
+  it('requires an explicit preview and cancellation before any destructive asset call', async () => {
+    render(<NovelAIAssetPanel />)
+    await waitFor(() => expect(screen.getByRole('button', { name: '删除素材' })).toBeTruthy())
+    fireEvent.click(screen.getByRole('button', { name: '删除素材' }))
+    expect(api.remove).not.toHaveBeenCalled()
+    await waitFor(() => expect(screen.getByRole('dialog', { name: '确认删除素材' })).toBeTruthy())
+    expect(screen.getAllByText(/img_1/).length).toBeGreaterThan(0)
+    fireEvent.click(screen.getByRole('button', { name: '取消删除' }))
+    expect(api.remove).not.toHaveBeenCalled()
+  })
+
+  it('calls force deletion only after the user explicitly confirms the preview', async () => {
+    render(<NovelAIAssetPanel />)
+    await waitFor(() => expect(screen.getByRole('button', { name: '删除素材' })).toBeTruthy())
+    fireEvent.click(screen.getByRole('button', { name: '删除素材' }))
+    await waitFor(() => expect(screen.getByRole('button', { name: '确认删除' })).toBeTruthy())
+    expect(api.remove).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole('button', { name: '确认删除' }))
+    await waitFor(() => expect(api.remove).toHaveBeenCalledExactlyOnceWith('a1', true, ['img_1']))
+  })
+
+  it('discards a pending delete preview when selection changes', async () => {
+    render(<NovelAIAssetPanel />)
+    await waitFor(() => expect(screen.getByRole('button', { name: '删除素材' })).toBeTruthy())
+    fireEvent.click(screen.getByRole('button', { name: '删除素材' }))
+    await waitFor(() => expect(screen.getByRole('dialog', { name: '确认删除素材' })).toBeTruthy())
+    fireEvent.click(screen.getByRole('button', { name: /水彩/ }))
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: '确认删除素材' })).toBeNull())
+    expect(api.remove).not.toHaveBeenCalled()
   })
 
   it('answers 「这张图用了哪些素材」 through the reverse lookup', async () => {

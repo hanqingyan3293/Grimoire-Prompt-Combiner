@@ -1,5 +1,6 @@
 import type { AgentRuntime, AgentRuntimeKind, RuntimeCapabilities, RuntimeFactory } from "./types"
-import { nativeRuntimeCapabilities, unavailableRuntimeCapabilities } from './capabilities'
+import type { NativeRuntimeCapabilityContext, RuntimeCapabilityReport, RuntimeDriver } from './capabilities'
+import { nativeRuntimeCapabilities, piSdkStaticCapabilities, unavailableRuntimeCapabilities, withRuntimeCapabilityProvenance } from './capabilities'
 export { inspectPiSdkSurface } from '../../../integrations/pi/piSdk'
 import { OpenAICompatibleRuntime } from './openai-compatible.runtime'
 import { CodexRuntime, OpenCodeRuntime, PiRuntime } from './adapters'
@@ -27,10 +28,37 @@ export function listAgentRuntimes() {
   return Array.from(factories.keys())
 }
 
-export function getAgentRuntimeCapabilities(kind: AgentRuntimeKind): RuntimeCapabilities {
-  if (!factories.has(kind)) return unavailableRuntimeCapabilities('Runtime 未注册')
-  if (kind === 'pi' || kind === 'opencode') return nativeRuntimeCapabilities(kind)
-  return unavailableRuntimeCapabilities('This runtime has no verified capability ledger.')
+function staticDriver(kind: AgentRuntimeKind, piSdk: boolean): RuntimeDriver {
+  if (kind === 'openai-compatible' || kind === 'anthropic' || kind === 'google') return 'provider-adapter'
+  if (kind === 'pi') return piSdk ? 'pi-sdk' : 'pi-rpc'
+  if (kind === 'opencode') return 'opencode-unprepared'
+  return 'codex-unprepared'
+}
+
+/**
+ * Static metadata is labelled as main-config; an actual AgentRuntime instance
+ * is authoritative and its own getCapabilities() is returned unchanged.
+ */
+export function getAgentRuntimeCapabilities(kind: AgentRuntimeKind, context: NativeRuntimeCapabilityContext = {}, instance?: AgentRuntime): RuntimeCapabilityReport {
+  if (!factories.has(kind)) {
+    return withRuntimeCapabilityProvenance(unavailableRuntimeCapabilities('Runtime 未注册'), { source: 'main-config', driver: staticDriver(kind, readRuntimeFeatureFlags().piSdk), instance: false })
+  }
+  if (instance?.getCapabilities) {
+    return withRuntimeCapabilityProvenance(instance.getCapabilities(), {
+      source: 'runtime-instance',
+      driver: (instance.getCapabilityDriver?.() as RuntimeDriver | undefined) || staticDriver(kind, readRuntimeFeatureFlags().piSdk),
+      instance: true,
+    })
+  }
+  const flags = readRuntimeFeatureFlags()
+  if (kind === 'pi') {
+    const capabilities = flags.piSdk ? piSdkStaticCapabilities({ nativeSessionOperations: flags.nativeSessionOperations }) : nativeRuntimeCapabilities('pi', context)
+    return withRuntimeCapabilityProvenance(capabilities, { source: 'main-config', driver: flags.piSdk ? 'pi-sdk' : 'pi-rpc', instance: false })
+  }
+  if (kind === 'opencode') {
+    return withRuntimeCapabilityProvenance(nativeRuntimeCapabilities('opencode', context), { source: 'main-config', driver: 'opencode-unprepared', instance: false })
+  }
+  return withRuntimeCapabilityProvenance(unavailableRuntimeCapabilities('This runtime has no verified capability ledger.'), { source: 'main-config', driver: staticDriver(kind, flags.piSdk), instance: false })
 }
 
 export function registerBuiltInAgentRuntimes() {
@@ -38,7 +66,7 @@ export function registerBuiltInAgentRuntimes() {
   registerAgentRuntime('anthropic', config => new AnthropicRuntime({ baseUrl: String(config?.baseUrl || ''), apiKey: String(config?.apiKey || '') }))
   registerAgentRuntime('google', config => new GoogleRuntime({ baseUrl: String(config?.baseUrl || ''), apiKey: String(config?.apiKey || '') }))
   registerAgentRuntime('codex', config => new CodexRuntime({ endpoint: String(config?.endpoint || 'http://127.0.0.1:17371'), token: String(config?.token || '') }))
-  registerAgentRuntime('opencode', config => new OpenCodeRuntime({ endpoint: String(config?.endpoint || 'http://127.0.0.1:4096'), token: String(config?.token || ''), directory: typeof config?.directory === 'string' ? config.directory : undefined, model: typeof config?.model === 'string' ? config.model : undefined, remoteSessionId: typeof config?.remoteSessionId === 'string' ? config.remoteSessionId : undefined, nativeToolPolicy: config?.nativeToolPolicy === 'ask' ? 'ask' : 'disabled', enableNativeSessionOperations: config?.enableNativeSessionOperations === true }))
+  registerAgentRuntime('opencode', config => new OpenCodeRuntime({ endpoint: String(config?.endpoint || 'http://127.0.0.1:4096'), token: String(config?.token || ''), directory: typeof config?.directory === 'string' ? config.directory : undefined, model: typeof config?.model === 'string' ? config.model : undefined, remoteSessionId: typeof config?.remoteSessionId === 'string' ? config.remoteSessionId : undefined, nativeToolPolicy: config?.nativeToolPolicy === 'ask' ? 'ask' : 'disabled', enableNativeSessionOperations: config?.enableNativeSessionOperations === true, hostPermissionBroker: config?.hostPermissionBroker === true, managed: config?.managed === true }))
   registerAgentRuntime('pi', config => {
     if (config?.driver === 'pi-sdk') {
       if (!readRuntimeFeatureFlags().piSdk) throw new RuntimeCapabilityUnavailableError('pi.sdk', 'Pi SDK runtime feature gate is disabled')

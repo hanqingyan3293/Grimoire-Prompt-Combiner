@@ -26,7 +26,8 @@ interface ApiMock {
       delete: ReturnType<typeof vi.fn>
     }
   }
-  media: { query: ReturnType<typeof vi.fn>; batchPreview: ReturnType<typeof vi.fn> }
+  media: { query: ReturnType<typeof vi.fn>; batchPreview: ReturnType<typeof vi.fn>; duplicates: ReturnType<typeof vi.fn> }
+  images: { delete: ReturnType<typeof vi.fn>; deleteBatch: ReturnType<typeof vi.fn> }
   dialog: {
     save: ReturnType<typeof vi.fn>
     open: ReturnType<typeof vi.fn>
@@ -53,7 +54,9 @@ beforeEach(() => {
     media: {
       query: vi.fn().mockResolvedValue({ items: [], total: 0 }),
       batchPreview: vi.fn().mockResolvedValue({ assets: 42 }),
+      duplicates: vi.fn().mockResolvedValue({ groups: [{ hash: 'fixture-group', imageRefIds: [1, 2, 3] }], total: 1 }),
     },
+    images: { delete: vi.fn().mockResolvedValue(true), deleteBatch: vi.fn().mockResolvedValue({ status: 'completed', deletedIds: [2, 3], cleanup: [], failures: [] }) },
     dialog: {
       save: vi.fn().mockResolvedValue(true),
       open: vi.fn().mockResolvedValue(null),
@@ -78,6 +81,27 @@ afterEach(() => {
 })
 
 describe('GalleryToolbar', () => {
+  it('deletes a confirmed duplicate group with one prechecked main batch call', async () => {
+    render(<GalleryToolbar />)
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: '查找重复' })); await flushMicrotasks() })
+    fireEvent.click(screen.getByRole('button', { name: '保留首张，删除其余' }))
+    expect(api.images.deleteBatch).not.toHaveBeenCalled()
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: '确认删除' })); await flushMicrotasks() })
+    expect(api.images.deleteBatch).toHaveBeenCalledExactlyOnceWith({ ids: [2, 3] })
+    expect(api.images.delete).not.toHaveBeenCalled()
+  })
+
+  it('preserves the duplicate confirmation and displays a reference failure', async () => {
+    api.images.deleteBatch.mockRejectedValueOnce(new Error('ASSET_IN_USE: image is referenced'))
+    render(<GalleryToolbar />)
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: '查找重复' })); await flushMicrotasks() })
+    fireEvent.click(screen.getByRole('button', { name: '保留首张，删除其余' }))
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: '确认删除' })); await flushMicrotasks() })
+    expect(screen.getByRole('dialog', { name: '删除重复图片' })).toBeTruthy()
+    expect(screen.getByText('ASSET_IN_USE: image is referenced')).toBeTruthy()
+    expect(api.images.delete).not.toHaveBeenCalled()
+  })
+
   it('debounces the search input into store.query.search', () => {
     render(<GalleryToolbar />)
     const input = screen.getByLabelText('搜索图库')

@@ -6,13 +6,15 @@
  * overrides, which is what made the old UI drift.
  */
 :root {
+  /* Corner cap (2026-11-26): no surface may exceed 5px. The previous 10/14/24px ladder read as a
+   * chat app, not a tool; dialogs asked for 24px. Everything derived from these tokens follows. */
   --gr-radius-sm: 4px;
-  --gr-radius-md: 6px;
-  --gr-radius-lg: 10px;
-  --gr-radius-xl: 14px;
-  /* Source dialogs are rounded-3xl (24px); overlays carry the separation, not a border. */
-  --gr-radius-2xl: 24px;
+  --gr-radius-md: 4px;
+  --gr-radius-lg: 5px;
+  --gr-radius-xl: 5px;
+  --gr-radius-2xl: 5px;
 
+  
   /* Control geometry — mirrors the vendored source Button spec (rounded-md base,
    * 30/28/36px heights, 13/12/14px type, 6px gap) so a single token change moves
    * every panel control instead of each page inventing its own size. */

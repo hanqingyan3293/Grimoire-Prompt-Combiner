@@ -3,7 +3,7 @@ import { BrowserWindow, clipboard, globalShortcut, ipcMain, safeStorage } from "
 import { getDatabase, saveDatabase } from "../database"
 import { IPC_CHANNELS } from "../../shared/types"
 import { configureComfyUI } from "../services/comfy-client"
-import { requireHttpUrl } from "../services/input-validation"
+import { requireComfyAddress } from "../services/input-validation"
 import { applyLaunchOnBoot, applyPreventSleep, applyProxy } from "../services/app-preferences.service"
 import { logEvent } from "../services/logger.service"
 import { isProtectedCherrySetting, redactCherrySetting } from '../../shared/cherry-settings-privacy'
@@ -45,7 +45,14 @@ export function registerSettingsIPC(): void {
       const value = row[1] as string
       if (key !== "api_key") settings[key] = redactCherrySetting(key, value)
     }
-    try { configureComfyUI(requireHttpUrl(settings.comfyui_base_url, 'ComfyUI 地址')) } catch { configureComfyUI(defaults.comfyui_base_url) }
+    try {
+      settings.comfyui_base_url = requireComfyAddress(settings.comfyui_base_url, 'ComfyUI 地址')
+      configureComfyUI(settings.comfyui_base_url)
+    } catch (error) {
+      settings.comfyui_base_url = defaults.comfyui_base_url
+      configureComfyUI(settings.comfyui_base_url)
+      logEvent('warn', 'comfyui', 'Stored ComfyUI address was rejected; runtime uses the loopback default', { context: error instanceof Error ? error.message : String(error), errorCode: 'COMFY_ADDRESS_INVALID', retryable: false })
+    }
     
     return settings
   })
@@ -61,7 +68,7 @@ export function registerSettingsIPC(): void {
       }
       return true
     }
-    if (key === 'comfyui_base_url') value = requireHttpUrl(value, 'ComfyUI 地址')
+    if (key === 'comfyui_base_url') value = requireComfyAddress(value, 'ComfyUI 地址')
     const db = getDatabase()
     let storedValue = value
     
@@ -73,7 +80,7 @@ export function registerSettingsIPC(): void {
       "INSERT INTO settings (key, value) VALUES (?,?) ON CONFLICT(key) DO UPDATE SET value=?",
       [key, storedValue, storedValue]
     )
-    if (key === 'comfyui_base_url') configureComfyUI(value)
+    if (key === 'comfyui_base_url') configureComfyUI(requireComfyAddress(value, 'ComfyUI 地址'))
     // `/settings/general` preference consumers. The compat shim persists its preferences as
     // `cherry_pref.<source key>`, so this is where a switch on that page becomes real
     // behaviour. Keys with no consumer are deliberately absent here rather than silently
