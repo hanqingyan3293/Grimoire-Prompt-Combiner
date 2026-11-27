@@ -816,3 +816,14 @@
 - **拒绝非本格式文件要给出可读原因**：`yauzl` 抛的是 `End of central directory record signature not found`，用户看不懂；`inspectImport` 会转成「压缩包内缺少 manifest.json，无法识别为 Grimoire 备份」。
 - **schema 更高的包直接拦**：`schemaVersion > CURRENT_SCHEMA_VERSION` 时 `compatible=false`，避免把新库塞进旧代码。
 - **对话框留在主进程**：渲染层只发「导出/导入/诊断」意图，路径由 `dialog` 决定，避免渲染层被注入后获得任意写权限。验收脚本用 `GRIMOIRE_TRANSFER_DIR`（只读环境变量）绕过对话框，这是唯一的自动化缝合点。
+
+### D-TRANSFER-02 选择性导入：按表、按顺序、单事务（2026-11-27，P2 第二批）
+
+- **粒度按表而不是按行**：面板勾选的是 `db.tags` 这种条目；按行选需要万级虚拟列表，成本远超收益，而用户真正想说的通常是「把这套标签组带走」。
+- **自动补父表**：导出 `tags` 会自动带上 `subcategories → categories → tag_groups`。否则包导进空库时外键直接失败（或留下孤立引用）。依赖表写在 `TABLE_DEPENDENCIES`，跟注册表一样是显式清单。
+- **写入顺序固定**：`tag_groups → categories → subcategories → tags → 关联表 …`，未列入的表排在已知表之后并彼此按字母序，保证两次运行顺序一致（可复现）。
+- **列不硬编码**：`PRAGMA table_info` 动态取列，包里多出来的列被忽略、缺的列交给默认值。跨版本的包因此不会写坏。
+- **三种冲突策略**：`skip`（OR IGNORE）/ `keep-both`（单列主键冲突时改 `imp_<id>_<rand>` 再插）/ `overwrite`（OR REPLACE）。**多列主键无法安全改 id，退回 skip 并在结果里体现**，不做"看起来成功其实丢数据"的事。
+- **整体单事务**：任一行抛错整体回滚；实测伪造包导入失败后标签组数量不变（无半条数据）。
+- **实测**（scratch profile，导出 `tag_groups + tags`）：自动补到 4 张表、132.5KB；`skip` 写入 0 条、`keep-both` 写入 4649 条（标签组 1→2）、`overwrite` 覆盖 4649 条（数量不变）。
+- **G9 的坑**：`ui-segmented grid grid-cols-3` 在面板内是硬伤（最窄 210px 会挤爆），被 G9 拦下。改成 `flex` + `min-w-0 flex-1`。面板内的等分一律用弹性布局，不用固定列网格。

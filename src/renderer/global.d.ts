@@ -446,10 +446,11 @@ export interface GrimoireAPI {
   }
   storage: {
     exportBackup: (options?: { includeMedia?: boolean }) => Promise<{ path: string; manifest: BackupManifest } | null>
+    exportSelection: (entryIds: string[]) => Promise<{ path: string; manifest: BackupManifest } | null>
     exportDiagnostics: () => Promise<{ path: string; manifest: BackupManifest } | null>
     inspectImport: () => Promise<ImportInspection | null>
     inspectImportPath: (filePath: string) => Promise<ImportInspection>
-    applyImport: (filePath: string) => Promise<ImportApplyResult>
+    applyImport: (payload: { filePath: string; tables?: string[]; conflict?: "skip" | "keep-both" | "overwrite" }) => Promise<ImportApplyResult>
     onTransferProgress: (callback: (progress: TransferProgress) => void) => () => void
     inventory: (options?: { force?: boolean }) => Promise<StorageInventory>
     scanSizes: () => Promise<StorageInventory>

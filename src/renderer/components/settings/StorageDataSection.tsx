@@ -161,7 +161,7 @@ export function StorageDataSection() {
           <span className="text-sm font-semibold text-[var(--color-text-primary)]">数据存储</span>
           <span className="text-xs text-[var(--color-text-secondary)]">合计 {formatStorageBytes(inventory.totalBytes)}</span>
           {inventory.approximate && <span className="ui-badge text-[10px]">部分未知</span>}
-          <StorageTransferActions onImported={() => void load('refresh')} />
+          <StorageTransferActions inventory={inventory} onImported={() => void load('refresh')} />
           <Button size="sm" variant="ghost" icon={RefreshCw} onClick={() => void load('refresh')} disabled={refreshing}>
             {refreshing ? '统计中' : '刷新'}
           </Button>

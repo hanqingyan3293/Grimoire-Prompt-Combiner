@@ -17,6 +17,7 @@ import yauzl from 'yauzl'
 import { ZipFile } from 'yazl'
 import { CURRENT_SCHEMA_VERSION, getDatabase, getDatabasePath, importDatabase, probeSchemaVersion } from '../database'
 import { buildStorageInventory } from './storage-inventory.service'
+import { insertRowsIntoTable, readPartialPayloads, sortTablesForImport, writeNdjsonPayload, type ConflictPolicy } from './storage-selective.service'
 import { logEvent } from './logger.service'
 import {
   BACKUP_FORMAT,
@@ -127,6 +128,8 @@ function collectItemsFromInventory(entries: { id: string; label: string; domain:
 export interface ExportOptions {
   /** 是否把媒体文件一起打包（体积可能很大）。 */
   readonly includeMedia?: boolean
+  /** 只导出这些条目（`db.<table>`）；为空时导出整库。 */
+  readonly entryIds?: readonly string[]
 }
 
 /** 完整备份：VACUUM INTO 快照 + manifest + 可选媒体文件。 */
@@ -271,7 +274,14 @@ export async function inspectImport(filePath: string): Promise<ImportInspection>
     }
   }
 
-  const raw = await readZipEntry(filePath, 'manifest.json')
+  let raw: Buffer | null = null
+  try {
+    raw = await readZipEntry(filePath, 'manifest.json')
+  } catch (error) {
+    // yauzl 抛的是英文（End of central directory…），用户看不懂；换成能行动的说明。
+    const detail = error instanceof Error ? error.message.split(/\r?\n/)[0] : String(error)
+    throw new Error('这个文件不是 zip 压缩包，或者已经损坏：' + detail)
+  }
   if (!raw) throw new Error('压缩包内缺少 manifest.json，无法识别为 Grimoire 备份')
   let manifest: BackupManifest
   try {
@@ -299,6 +309,10 @@ export async function inspectImport(filePath: string): Promise<ImportInspection>
 export interface ApplyImportOptions {
   /** 导入前是否再校验一次每个文件的 sha256（默认开）。 */
   readonly verifyChecksums?: boolean
+  /** partial：只导入这些表（空 = 全部）。 */
+  readonly tables?: readonly string[]
+  /** partial：冲突策略。 */
+  readonly conflict?: ConflictPolicy
 }
 
 /** 导入：full/database 替换整库（复用 importDatabase 的 staging 与回退），partial 暂时拒绝。 */
@@ -307,7 +321,8 @@ export async function applyImport(filePath: string, options: ApplyImportOptions 
   if (!inspection.compatible) throw new Error(inspection.reason ?? '该文件与当前版本不兼容')
 
   if (inspection.kind === 'partial') {
-    throw new Error('选择性导入还在实现中：请先用「完整备份」导入。')
+    const result = await importSelection(filePath, options.tables ?? [], options.conflict ?? 'keep-both', onProgress)
+    return { kind: 'partial', restartRequired: false, restoredEntries: result.inserted }
   }
 
   const stagingDir = await fsp.mkdtemp(path.join(os.tmpdir(), 'grimoire-import-'))
@@ -332,6 +347,145 @@ export async function applyImport(filePath: string, options: ApplyImportOptions 
     return { kind: inspection.kind, restartRequired: true, restoredEntries: 1 }
   } finally {
     await fsp.rm(stagingDir, { recursive: true, force: true })
+  }
+}
+
+
+// ── 选择性导出 ────────────────────────────────────────────────────────────────────────────
+
+/** 选中的表依赖哪些父表：没有父表数据时，导入会因为外键失败或被孤立。 */
+const TABLE_DEPENDENCIES: Record<string, readonly string[]> = {
+  categories: ['tag_groups'],
+  subcategories: ['categories'],
+  tags: ['subcategories'],
+  tag_aliases: ['tags'],
+  tag_relations: ['tags'],
+  tag_metadata: ['tags'],
+  tag_usage: ['tags'],
+  tag_suggestions: ['tags'],
+  favorites: ['tags'],
+  sub_favorites: ['subcategories'],
+  prompt_assets: ['prompt_asset_categories'],
+  prompt_asset_category_links: ['prompt_assets', 'prompt_asset_categories'],
+  asset_tag_links: ['prompt_assets', 'tags'],
+}
+
+function withDependencies(tables: readonly string[]): string[] {
+  const result = new Set<string>()
+  const visit = (table: string) => {
+    if (result.has(table)) return
+    result.add(table)
+    for (const parent of TABLE_DEPENDENCIES[table] ?? []) visit(parent)
+  }
+  for (const table of tables) visit(table)
+  return sortTablesForImport([...result])
+}
+
+function tableFromEntryId(entryId: string): string | null {
+  return entryId.startsWith('db.') ? entryId.slice(3) : null
+}
+
+/** 按条目导出：每张表一个 NDJSON，manifest 记行数与 sha256，自动补父表。 */
+export async function exportSelection(entryIds: readonly string[], targetPath: string, onProgress?: ProgressSink): Promise<BackupManifest> {
+  const requested = entryIds.map(tableFromEntryId).filter((table): table is string => Boolean(table))
+  if (requested.length === 0) throw new Error('没有可导出的条目')
+  const tables = withDependencies(requested)
+
+  const stagingDir = await fsp.mkdtemp(path.join(os.tmpdir(), 'grimoire-selection-'))
+  try {
+    const db = getDatabase()
+    const items: BackupItem[] = []
+    const files: BackupFile[] = []
+    const zipEntries: ZipEntry[] = []
+
+    for (const table of tables) {
+      onProgress?.({ phase: 'preparing', message: '读取 ' + table })
+      let rows: Record<string, unknown>[] = []
+      try {
+        const result = db.exec('SELECT * FROM "' + table.replaceAll('"', '""') + '"')
+        const columns = result[0]?.columns ?? []
+        rows = (result[0]?.values ?? []).map((values) => {
+          const row: Record<string, unknown> = {}
+          columns.forEach((column, index) => { row[column] = values[index] })
+          return row
+        })
+      } catch (error) {
+        throw new Error('读取表 ' + table + ' 失败：' + (error instanceof Error ? error.message : String(error)))
+      }
+      const filePath = await writeNdjsonPayload(stagingDir, table, rows)
+      const bytes = (await fsp.stat(filePath)).size
+      const sha256 = await sha256File(filePath)
+      zipEntries.push({ name: 'data/' + table + '.ndjson', filePath })
+      files.push({ path: 'data/' + table + '.ndjson', bytes, sha256 })
+      items.push({ id: 'db.' + table, label: table, domain: 'other', rows: rows.length, payload: 'data/' + table + '.ndjson' })
+    }
+
+    const manifest: BackupManifest = {
+      format: BACKUP_FORMAT,
+      kind: 'partial',
+      appVersion: app.getVersion(),
+      schemaVersion: CURRENT_SCHEMA_VERSION,
+      createdAt: new Date().toISOString(),
+      platform: process.platform,
+      items,
+      files,
+      totals: { bytes: files.reduce((total, entry) => total + entry.bytes, 0), entries: items.length },
+    }
+    zipEntries.unshift({ name: 'manifest.json', buffer: Buffer.from(JSON.stringify(manifest, null, 2), 'utf8') })
+    await writeZip(targetPath, zipEntries, onProgress)
+    return manifest
+  } finally {
+    await fsp.rm(stagingDir, { recursive: true, force: true })
+  }
+}
+
+export interface PartialImportResult {
+  readonly tables: ReadonlyArray<{ table: string; inserted: number; skipped: number; renamed: number; failed: number }>
+  readonly inserted: number
+  readonly skipped: number
+  readonly renamed: number
+}
+
+/** partial 导入：单事务、按父表优先顺序写回；任何一步抛错整体回滚。 */
+export async function importSelection(
+  filePath: string,
+  tables: readonly string[],
+  conflict: ConflictPolicy = 'keep-both',
+  onProgress?: ProgressSink,
+): Promise<PartialImportResult> {
+  const inspection = await inspectImport(filePath)
+  if (inspection.kind !== 'partial') throw new Error('这不是选择性备份包')
+  if (!inspection.compatible) throw new Error(inspection.reason ?? '该备份与当前版本不兼容')
+
+  const available = inspection.items.map((item) => tableFromEntryId(item.id)).filter((table): table is string => Boolean(table))
+  const selected = tables.length > 0 ? tables.filter((table) => available.includes(table)) : available
+  if (selected.length === 0) throw new Error('没有选中任何可导入的条目')
+
+  const ordered = sortTablesForImport(selected)
+  onProgress?.({ phase: 'preparing', message: '正在读取包内容' })
+  const payloads = await readPartialPayloads(filePath, ordered)
+
+  const db = getDatabase()
+  const stats: { table: string; inserted: number; skipped: number; renamed: number; failed: number }[] = []
+  db.run('BEGIN')
+  try {
+    for (const table of ordered) {
+      const rows = payloads.get(table) ?? []
+      onProgress?.({ phase: 'writing', message: '写入 ' + table, current: table })
+      const result = insertRowsIntoTable(db, table, rows, conflict)
+      stats.push({ table, inserted: result.inserted, skipped: result.skipped, renamed: result.renamed, failed: result.failed.length })
+    }
+    db.run('COMMIT')
+  } catch (error) {
+    try { db.run('ROLLBACK') } catch { /* 已经回滚 */ }
+    throw error
+  }
+
+  return {
+    tables: stats,
+    inserted: stats.reduce((total, entry) => total + entry.inserted, 0),
+    skipped: stats.reduce((total, entry) => total + entry.skipped, 0),
+    renamed: stats.reduce((total, entry) => total + entry.renamed, 0),
   }
 }
 

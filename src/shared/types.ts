@@ -335,6 +335,7 @@ export const IPC_CHANNELS = {
   STORAGE_INVENTORY: "storage:inventory",
   STORAGE_SCAN_SIZES: "storage:scanSizes",
   STORAGE_EXPORT_BACKUP: "storage:exportBackup",
+  STORAGE_EXPORT_SELECTION: "storage:exportSelection",
   STORAGE_EXPORT_DIAGNOSTICS: "storage:exportDiagnostics",
   STORAGE_INSPECT_IMPORT: "storage:inspectImport",
   STORAGE_INSPECT_IMPORT_PATH: "storage:inspectImportPath",

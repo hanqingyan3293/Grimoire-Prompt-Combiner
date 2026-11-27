@@ -9,7 +9,7 @@
 import { BrowserWindow, dialog, ipcMain, type OpenDialogOptions, type SaveDialogOptions } from 'electron'
 import path from 'path'
 import { IPC_CHANNELS } from '../../shared/types'
-import { applyImport, exportDiagnostics, exportFullBackup, inspectImport } from '../services/storage-transfer.service'
+import { applyImport, exportDiagnostics, exportFullBackup, exportSelection, inspectImport } from '../services/storage-transfer.service'
 import { logEvent } from '../services/logger.service'
 import type { TransferProgress } from '../../shared/storage-transfer-types'
 
@@ -95,9 +95,31 @@ export function registerStorageTransferIPC(): void {
     return await inspectImport(filePath)
   })
 
-  ipcMain.handle(IPC_CHANNELS.STORAGE_APPLY_IMPORT, async (event, filePath: unknown) => {
+  ipcMain.handle(IPC_CHANNELS.STORAGE_APPLY_IMPORT, async (event, payload: unknown) => {
+    const record = (payload ?? {}) as { filePath?: unknown; tables?: unknown; conflict?: unknown }
+    const filePath = record.filePath
     if (typeof filePath !== 'string' || !filePath.trim()) throw new Error('导入文件路径无效')
-    return await applyImport(filePath, {}, progressSender(event))
+    const tables = Array.isArray(record.tables) ? record.tables.filter((item): item is string => typeof item === 'string') : undefined
+    const conflict = record.conflict === 'skip' || record.conflict === 'overwrite' ? record.conflict : 'keep-both'
+    return await applyImport(filePath, { tables, conflict }, progressSender(event))
+  })
+
+  ipcMain.handle(IPC_CHANNELS.STORAGE_EXPORT_SELECTION, async (event, entryIds: unknown) => {
+    if (!Array.isArray(entryIds) || entryIds.length === 0) throw new Error('没有选中任何条目')
+    const ids = entryIds.filter((item): item is string => typeof item === 'string')
+    const owner = BrowserWindow.fromWebContents(event.sender) ?? undefined
+    const automatedDir = automationExportDir()
+    const result = automatedDir
+      ? { canceled: false, filePath: path.join(automatedDir, `grimoire-selection-${Date.now()}.zip`) }
+      : await saveDialog(owner, {
+        title: '导出选中内容',
+        defaultPath: `grimoire-selection-${new Date().toISOString().slice(0, 10)}.zip`,
+        filters: [{ name: 'Grimoire 选择性备份', extensions: ['zip'] }],
+      })
+    if (result.canceled || !result.filePath) return null
+    const manifest = await exportSelection(ids, result.filePath, progressSender(event))
+    logEvent('info', 'storage', 'Selection exported', { context: `${ids.length} entries -> ${result.filePath}` })
+    return { path: result.filePath, manifest }
   })
 
   ipcMain.handle(IPC_CHANNELS.STORAGE_DEFAULT_EXPORT_NAME, async () => `grimoire-backup-${new Date().toISOString().slice(0, 10)}.zip`)
