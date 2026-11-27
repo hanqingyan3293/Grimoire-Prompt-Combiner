@@ -610,11 +610,12 @@ export function SettingsWindow({ onClose, embedded = false }: { onClose?: () => 
         {showSection("about") && (
           <SettingsSectionCard id="about" title="关于" collapsed={collapsedSections["about"] === true} onToggle={() => toggleSection("about")}>
           <div className="space-y-3">
-            <PanelHeader icon={Info} title='关于' description='应用版本、许可证和技术栈' />
+            <PanelHeader icon={Info} title='关于' description='应用版本、定位和技术栈' />
             <div className="text-2xl font-bold text-[var(--color-text-primary)]">魔导书 Grimoire</div>
             <div className="text-sm text-[var(--color-text-secondary)]">版本 v0.7.3-alpha · AGPL-3.0-only</div>
+            <div className="text-sm leading-6 text-[var(--color-text-primary)]">面向 AI 绘画与 AI 对话的提示词工作台：把「查标签 → 组提示词 → 存资产 → 交给模型」放进一个窗口，用多面板工作区同时开着标签库、提示词、资产与 Agent。</div>
             <div className="text-sm text-[var(--color-text-secondary)]">作者：hanqingyan3293 · GitHub：github.com/hanqingyan3293/Grimoire-Prompt-Combiner</div>
-            <div className="text-sm text-[var(--color-text-secondary)]">Electron + React + TypeScript + Vite + Tailwind CSS + SQLite</div>
+            <div className="text-sm text-[var(--color-text-secondary)]">Electron 42 · React 19 · TypeScript · Vite 8 · Tailwind CSS v4 · node:sqlite</div>
             <div className="text-sm leading-6 text-[var(--color-text-secondary)]">本项目是开源软件，允许使用、研究、修改和再分发。分发修改后的版本或通过网络提供服务时，请按照 AGPL-3.0 的要求提供对应源代码和许可证文本。</div>
           </div>
           </SettingsSectionCard>

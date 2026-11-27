@@ -748,3 +748,10 @@
 - `0.7.3-alpha` 是合法 semver（major 0 / minor 7 / patch 3 / prerelease ["alpha"]）；四段的 `1.7.2.1-alpha` 非法，已弃用。
 - 影响：项目无 `electron-updater`，降号不触发任何更新器判定；NSIS 不比较版本，可覆盖安装；数据库 schema 42 不变。代价是 Release 列表出现 7.x→0.7.3 的观感倒退，已在 RELEASE_NOTES 首屏写明「版本号重置」。
 - 产物名改为 `Grimoire.Setup.0.7.3-alpha.exe` / `Grimoire.0.7.3-alpha.exe` / `Grimoire-portable-0.7.3-alpha.zip` / `SHA256SUMS-0.7.3-alpha.txt`；UI、MCP clientInfo、README、README.en 同步。
+
+### D-REL-03 发布文案与 about 收口（2026-11-26）
+
+- README/.en 重写：删掉字体、体积、已知问题 3 等与使用者无关的实现细节，改为「解决什么问题 → 核心能力 → 典型用法 → 下载/源码」的结构；字体在 README 中不再出现（D-UI-02 的延续）。
+- 设置「关于」补一句定位文案，技术栈更正为 `node:sqlite`（原写 SQLite，实际用 `DatabaseSync`）。
+- GitHub Release 标题去掉括号说明，改回纯版本号 `v0.7.3-alpha`（`gh release edit --title` 只改元数据，不重传资产）。
+- 已上传的 0.7.3-alpha 二进制仍是改文案前的构建（about 面板显示旧技术栈行）；是否为此重打包由用户决定，不擅自重传 870MB。
