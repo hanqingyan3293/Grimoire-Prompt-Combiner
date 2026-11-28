@@ -10,6 +10,7 @@ import { registerHistoryIPC } from "./ipc/history.ipc"
 import { registerSettingsIPC } from "./ipc/settings.ipc"
 import { registerStorageIPC } from "./ipc/storage.ipc"
 import { registerStorageTransferIPC } from "./ipc/storage-transfer.ipc"
+import { registerStorageMaintenanceIPC } from "./ipc/storage-maintenance.ipc"
 import { registerSystemFontsIPC } from "./ipc/system.ipc"
 import { registerBootIPC } from "./ipc/boot.ipc"
 import { markBootPhase, getBootMetrics, afterFirstPaint } from './services/boot-metrics.service'
@@ -614,6 +615,7 @@ async function registerAllIPC(): Promise<void> {
   registerSettingsIPC()
   registerStorageIPC()
   registerStorageTransferIPC()
+  registerStorageMaintenanceIPC()
   registerSystemFontsIPC()
   registerBootIPC()
   registerSelectionAssistantIPC()
@@ -848,6 +850,14 @@ app.whenReady().then(async () => {
     }
     // 先出界面再写库：首帧之前做导入会和渲染层的查询抢同一个写锁（实测把首帧推到 5–24s）。
     afterFirstPaint(() => {
+      // 首帧之后再做：备份要写 8MB 文件，清理要移动目录，都不该和首屏抢 IO。
+      void import('./services/storage-cleanup.service').then((m) => m.runStartupCleanup()).catch((error: unknown) => {
+        logEvent('warn', 'storage', 'Startup cleanup failed', { context: error instanceof Error ? error.message : String(error), errorCode: 'STORAGE_CLEANUP_BOOT_FAILED', retryable: true })
+      })
+      void import('./services/storage-backup.service').then((m) => m.runDailyBackupIfDue()).catch((error: unknown) => {
+        logEvent('warn', 'storage', 'Daily backup failed', { context: error instanceof Error ? error.message : String(error), errorCode: 'STORAGE_BACKUP_BOOT_FAILED', retryable: true })
+      })
+
       void importDefaultPromptAssets(defaultPromptAssetDirectory).then((added) => {
         const linked = seedDefaultPromptAssetCategories(defaultPromptAssetDirectory)
         if (added > 0) {

@@ -14,6 +14,7 @@ import { ChevronDown, ChevronRight, Copy, FolderOpen, HardDrive, LoaderCircle, R
 import { Button, IconButton } from '../ui/Button'
 import { StorageEntryCard } from './StorageEntryCard'
 import { StorageTransferActions } from './StorageTransferActions'
+import { StorageMaintenanceSection } from './StorageMaintenanceSection'
 import { formatStorageBytes, type StorageDomain, type StorageEntry, type StorageInventory } from '../../../shared/storage-types'
 import type { BootMetrics } from '../../../main/services/boot-metrics.service'
 
@@ -301,6 +302,8 @@ export function StorageDataSection() {
           </section>
         )
       })}
+
+      <StorageMaintenanceSection onChanged={() => void load('refresh')} />
 
       <p className="text-[10px] leading-4 text-[var(--color-text-secondary)]">
         导出与导入已接入（完整备份 / 数据库文件）；迁移与清理会在后续版本接入，未实现的项不会显示按钮。

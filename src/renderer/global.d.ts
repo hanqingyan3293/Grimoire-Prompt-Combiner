@@ -445,6 +445,15 @@ export interface GrimoireAPI {
     metrics: () => Promise<BootMetrics>
   }
   storage: {
+    cleanupPlan: () => Promise<Array<{ id: string; label: string; paths: string[]; bytes: number; files: number; reason: string; kind: "file" | "directory"; requiresRestart?: boolean }>>
+    cleanupApply: (ids: string[]) => Promise<{ moved: number }>
+    trashList: () => Promise<Array<{ id: string; label: string; originalPath: string; bytes: number; reason: string; createdAt: string; kind: "file" | "directory" }>>
+    trashRestore: (id: string) => Promise<boolean>
+    trashPurge: (id?: string) => Promise<{ removed: number; bytes: number }>
+    backupsList: () => Promise<Array<{ path: string; bytes: number; createdAt: string }>>
+    backupsCreate: () => Promise<{ path: string; bytes: number; createdAt: string }>
+    backupsRestore: (filePath: string) => Promise<{ restartRequired: boolean }>
+    backupsPrune: () => Promise<number>
     exportBackup: (options?: { includeMedia?: boolean }) => Promise<{ path: string; manifest: BackupManifest } | null>
     exportSelection: (entryIds: string[]) => Promise<{ path: string; manifest: BackupManifest } | null>
     exportDiagnostics: () => Promise<{ path: string; manifest: BackupManifest } | null>
